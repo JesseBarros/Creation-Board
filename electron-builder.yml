@@ -1,0 +1,36 @@
+appId: com.quadrobranco.app
+productName: QuadroBranco
+copyright: Copyright © 2026 QuadroBranco
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - out/**
+  - package.json
+  - '!**/*.map'
+
+asar: true
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: build/icon.ico
+  # Sem assinatura de codigo: uso pessoal. O SmartScreen vai avisar na primeira
+  # execucao do instalador ("Mais informacoes" -> "Executar assim mesmo").
+  signAndEditExecutable: true
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: QuadroBranco
+  deleteAppDataOnUninstall: false
+  artifactName: ${productName}-Setup-${version}.${ext}
+
+# Sem publish: build totalmente local, nada de auto-update.
+publish: null

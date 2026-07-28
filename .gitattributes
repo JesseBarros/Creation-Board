@@ -1,0 +1,11 @@
+# Normaliza os fins de linha para LF no repositorio.
+# Sem isto, o Git converte para CRLF no Windows e qualquer arquivo tocado
+# aparece como totalmente reescrito no diff, escondendo a mudanca real.
+* text=auto eol=lf
+
+# Binarios: nunca converter.
+*.ico binary
+*.png binary
+*.jpg binary
+*.webp binary
+*.wbd binary
