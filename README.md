@@ -1,0 +1,349 @@
+# QuadroBranco
+
+Quadro branco infinito local para estudos. Substituto pessoal do Microsoft Whiteboard,
+rodando 100% offline no Windows: sem login, sem nuvem, sem servidor.
+
+**Status:** Fase 1 concluída (canvas infinito, índice espacial, culling, painel de debug).
+
+---
+
+## Rodar sem instalar
+
+```
+npm install
+npm run dev
+```
+
+A janela abre direto, sem instalador e sem deixar nada no sistema. É assim que se
+usa o app durante o desenvolvimento. Fechar a janela encerra tudo; nada fica
+registrado no Windows.
+
+## Controles
+
+Todos os atalhos estão dentro do app: tecla **`F1`** (ou o botão `?` na barra
+inferior). Essa tela é gerada a partir de
+[shortcuts.ts](src/renderer/shortcuts.ts), o mesmo registro que despacha as
+teclas — se o atalho aparece na ajuda, ele funciona.
+
+| Ação | Como |
+|---|---|
+| Salvar | `Ctrl+S` |
+| Voltar ao lobby | `Ctrl+O` |
+| Pan | **Botão direito + arrastar** · botão do meio · dois dedos no trackpad · roda |
+| Pan horizontal | Shift + roda |
+| Zoom no cursor | Ctrl + roda · pinça no trackpad |
+| Zoom 100% / ajustar à tela | `Ctrl+0` / `Ctrl+1` |
+| Aumentar / diminuir zoom | `Ctrl+ +` / `Ctrl+ -` |
+| Grade de fundo | `G` |
+| Atalhos | `F1` |
+| Painel de debug | `F3` |
+| Benchmark | `B` |
+
+Faixa de zoom: **1% a 6400%**.
+
+O botão direito acumula dois papéis: **arrastar** move o quadro, **clicar sem
+arrastar** fica reservado para o menu de contexto da Fase 3. A distinção é por
+deslocamento — abaixo de 3px ainda conta como clique, para a tremida natural da
+mão não cancelar o menu.
+
+## Importar do Microsoft Whiteboard
+
+Botão **"Importar do Whiteboard"** no lobby. Aceita o `.zip` da exportação
+completa (ou o `.html` de dentro dele), vários de uma vez — cada arquivo vira um
+quadro `.wbd` separado.
+
+O conteúdo volta como **objetos editáveis**, não como figura. Medido nos três
+resumos usados no desenvolvimento:
+
+| Quadro | Textos | Traços | Imagens | Post-its | Tempo |
+|---|---|---|---|---|---|
+| CURSO 5 | 41 | 14 | 4 | 0 | 159 ms |
+| Continuação cybersec | 266 | 123 | 21 | 1 | 346 ms |
+| Cybersec resumão | 642 | 380 | 36 | 5 | 879 ms |
+
+**1.533 de 1.535 objetos recuperados.** Os dois ignorados são um `Hyperlink` e um
+`ReactionSticker`, que ainda não têm equivalente no app.
+
+### Como o formato foi decifrado
+
+O export é um `.zip` com um `.html` (o DOM do quadro) e um `-comments.json`
+(apenas comentários — vazio na prática). Todo o conteúdo está no HTML e é
+autossuficiente: nada é baixado da internet ao importar.
+
+- Cada objeto é uma div com `data-whiteboard-type` e `style="left/top"` em
+  coordenadas de mundo, mais uma matriz CSS com a escala.
+- Texto vem do Draft.js: parágrafos em `[data-block]`, texto em `[data-text]`.
+  Fonte, tamanho, cor e peso estão em estilo **inline**.
+- Imagens vêm embutidas em base64, no `<img src="data:image/*;base64,…">`.
+- Tinta vem como **contorno preenchido** em SVG, não como linha com espessura —
+  a variação de pressão da caneta está na forma. Por isso foi criado o tipo
+  [`PathObject`](src/shared/model/types.ts): reduzir a uma polilinha de espessura
+  constante achataria a caligrafia.
+
+Duas decisões que valem saber:
+
+- O `data:` URI é decodificado à mão em [dataUri.ts](src/renderer/features/images/dataUri.ts),
+  e não por `fetch()`. A CSP do app não permite `data:` em `connect-src`, e
+  afrouxá-la por conveniência de parsing seria trocar segurança por atalho. De
+  quebra, o MIME real é detectado pelos bytes — o Whiteboard escreve `image/*`,
+  que não é um tipo válido.
+- A fonte original é **Aptos**. Se não estiver instalada, o texto cai para a
+  fonte substituta e reflui um pouco.
+
+Para conferir um arquivo sem abrir a interface:
+
+```
+$env:QB_IMPORT = "C:\caminho\para\export.zip"; npm run dev
+```
+
+Imprime no terminal quantos objetos de cada tipo foram reconhecidos, o que foi
+ignorado e a extensão do quadro.
+
+## Onde os quadros ficam
+
+Cada quadro é um arquivo `.wbd` em **`C:\Resumos-quadrobranco`**. O botão com o
+caminho, no topo do lobby, abre a pasta no Explorador.
+
+A pasta fica na raiz do disco **de propósito, e não em Documentos**: a pasta
+Documentos desta máquina está redirecionada para o OneDrive, e salvar ali faria
+todo quadro sincronizar para a nuvem — o oposto do que o app se propõe a ser.
+Aqui nada sai da máquina. Levar um resumo para a nuvem é uma decisão manual:
+copiar o `.wbd` para onde quiser, e ele reabre normalmente depois.
+
+Se a raiz de `C:` estiver bloqueada por política de grupo, o app cai
+automaticamente para `%USERPROFILE%\Resumos-quadrobranco`. Quadros salvos por
+versões anteriores em `Documentos\QuadroBranco` são movidos na primeira execução.
+
+O lobby lê apenas `manifest.json` + `preview.png` de dentro de cada `.wbd`, sem
+descompactar o documento. Por isso a lista abre rápido mesmo com quadros grandes.
+
+## Tema claro e escuro
+
+Os dois modos existem, e o quadro escurece de verdade no modo noturno. Para que
+nada suma, as cores são adaptadas **na exibição** — o arquivo guarda sempre a cor
+que você escolheu, e é ela que a exportação vai usar.
+
+A regra distingue dois papéis:
+
+- **Marcas** (traço de caneta, texto, contorno de forma) precisam contrastar com
+  o fundo. Se o contraste cair abaixo do mínimo legível, a luminosidade é
+  espelhada: traço preto vira claro no modo escuro, traço branco vira escuro no
+  modo claro. Cores saturadas — vermelho, azul, verde — já contrastam nos dois
+  fundos e ficam intactas.
+- **Superfícies** (fundo de post-it, preenchimento, marca-texto) *devem* ter
+  contraste baixo. Um post-it amarelo pastel é assim de propósito; inverter isso
+  transformaria os post-its em blocos escuros. Elas nunca passam pelo adaptador.
+
+Para conferir a matemática contra a paleta real:
+
+```
+npm run check:colors
+```
+
+Sai com erro se qualquer marca ficar ilegível em qualquer um dos dois temas.
+
+## Auto-teste de navegação
+
+```
+npm run selftest
+```
+
+Abre o app, dispara eventos de ponteiro direto no canvas e imprime o resultado
+no terminal — sem depender da janela estar em primeiro plano e sem capturar a
+tela. Cobre pan com botão direito, o limiar que separa arrastar de clicar, pan
+com botão do meio, o botão esquerdo permanecendo livre para as ferramentas, o
+zoom ancorado no cursor, os dois limites de zoom e a rolagem sem Ctrl.
+
+O que ele **não** cobre: a tradução que o Windows faz do botão físico para
+`PointerEvent.button`. Esse mapeamento é padrão e não varia.
+
+## Requisitos
+
+- **Node.js ≥ 20.18** — testado em 20.18.3
+- **Windows x64**
+- Nada mais. Sem Python, sem Visual Studio Build Tools (não há dependências nativas).
+
+## Instalação das dependências
+
+```
+npm install
+```
+
+## Desenvolvimento
+
+```
+npm run dev
+```
+
+Sobe o Vite com HMR e abre a janela do Electron com o DevTools destacado.
+Editar arquivos em `src/renderer/` recarrega na hora; editar `src/main/` ou
+`src/preload/` reinicia o processo principal.
+
+## Verificação de tipos
+
+```
+npm run typecheck
+```
+
+Roda `tsc` nos dois projetos (`tsconfig.node.json` para main/preload/shared,
+`tsconfig.web.json` para renderer/shared). O `npm run build` já executa isso antes
+de empacotar — build não passa com erro de tipo.
+
+## Build de produção
+
+```
+npm run build
+```
+
+Gera os três bundles em `out/` (`main/`, `preload/`, `renderer/`). Não gera executável.
+
+## Gerar o instalador .exe
+
+```
+npm run dist
+```
+
+Saída em `release/`:
+
+| Arquivo | O que é |
+|---|---|
+| `QuadroBranco-Setup-0.1.0.exe` | **Instalador NSIS** — é este que você executa |
+| `win-unpacked/QuadroBranco.exe` | App já descompactado, para testar sem instalar |
+
+O instalador é *per-user* (não pede admin), permite escolher a pasta de instalação
+e **cria o atalho na área de trabalho automaticamente**. Depois de instalado, o app
+abre pelo atalho — nunca por terminal.
+
+Para gerar só a pasta descompactada, sem instalador (bem mais rápido durante o
+desenvolvimento):
+
+```
+npm run dist:dir
+```
+
+### SmartScreen na primeira execução
+
+O instalador não é assinado digitalmente (assinatura de código custa algumas centenas
+de dólares por ano e não faz sentido para uso pessoal). Na primeira execução o Windows
+mostra a tela azul do SmartScreen: clique em **"Mais informações" → "Executar assim mesmo"**.
+Só acontece uma vez.
+
+### Ícone do app
+
+O `build/icon.ico` é gerado por script, sem dependências de imagem:
+
+```
+npm run icon
+```
+
+## Estrutura de pastas
+
+```
+src/
+├─ main/          Processo principal (Node). Janela, menus, disco, IPC.
+│  ├─ index.ts        bootstrap e ciclo de vida
+│  └─ ipc/            handlers IPC, um módulo por área
+├─ preload/       Ponte contextBridge → window.quadro (única superfície exposta)
+├─ shared/        Código que atravessa main ↔ renderer
+│  ├─ model/          tipos dos objetos, esquema do .wbd, migrações
+│  ├─ geometry/       Vec2, Rect, interseções
+│  └─ ipc-contract.ts nomes de canais + tipos de payload
+└─ renderer/      Interface e canvas (sem acesso a Node)
+   ├─ core/           Document, SpatialIndex, Camera, Scheduler, History
+   ├─ commands/       um comando por mutação (base do undo/redo)
+   ├─ render/         Renderer, camadas, painters, bitmap cache
+   ├─ tools/          uma ferramenta por arquivo, interface Tool comum
+   ├─ features/       search, snapping, clipboard, images, export
+   ├─ ui/             toolbar, painéis, modais
+   ├─ state/          preferências, tema, favoritos
+   └─ styles/
+```
+
+**Como adicionar uma ferramenta nova:** um arquivo em `tools/`, um painter em
+`render/painters/`, um tipo em `shared/model/types.ts`. Nada mais precisa ser tocado.
+
+## Decisões de arquitetura
+
+| Tema | Escolha | Motivo |
+|---|---|---|
+| Renderização | Canvas 2D puro, sem framework | Controle total do loop; WebGL só se a meta de 60fps com 10k objetos não bater |
+| UI fora do canvas | TS vanilla + CSS | Zero dependências, uma única fonte de verdade de estado |
+| Índice espacial | R-tree (`rbush`) | Lida bem com AABBs de tamanhos muito diferentes — traço curto e imagem gigante no mesmo quadro |
+| Formato `.wbd` | Container ZIP | `document.json` + `assets/` com binários originais: arquivo único, sem inchaço de base64 |
+| Texto | `contentEditable` sobre o canvas ao editar | Cursor, seleção, acentuação e IME de graça; renderiza no canvas quando ocioso |
+| PDF | Vetorial via SVG | Zoom sem perda e texto selecionável; reaproveita o exportador SVG |
+| Undo/redo | Command pattern | Snapshots de estado inteiro estourariam a memória com muitos objetos |
+| Camadas (`z`) | Fractional index | "Trazer para frente" é O(1), sem renumerar a lista |
+
+## Notas de build (Windows)
+
+O `npm run dist` chama `scripts/prepare-wincodesign.mjs` antes do electron-builder.
+Isso resolve uma falha específica do Windows: o pacote `winCodeSign` do electron-builder
+contém symlinks do macOS, e criar symlink no Windows exige Modo de Desenvolvedor ou
+admin — sem isso a extração falha e o empacotamento aborta, **mesmo sem assinar nada**.
+O script extrai o pacote excluindo a pasta `darwin`, que é irrelevante aqui. É idempotente
+e roda em segundos.
+
+## Performance
+
+Meta do projeto: **60fps com 10.000+ objetos**. Medições nesta máquina
+(monitor de 144Hz — por isso os 144fps aparecem como teto de vsync, não como
+limite do renderer):
+
+| Objetos | Visão | Objetos no viewport | Render | FPS |
+|---|---|---|---|---|
+| 10.000 | zoom 100% | 13 | 0,7 ms | 144 (vsync) |
+| 10.000 | zoom 40% | 122 | 2,5 ms | 144 (vsync) |
+| 10.000 | tudo na tela | 6.698 | 10,3 ms | **82** |
+| 50.000 | zoom 100% | 20 | 1,1 ms | 144 (vsync) |
+| 50.000 | tudo na tela | 7.297 | 16,9 ms | **50** |
+
+O pior caso é sempre "tudo na tela" — a única situação em que o culling não tem
+o que descartar. Mesmo assim, com 5x a carga exigida, fica acima de 45fps.
+
+Reproduzir a medição:
+
+```
+$env:QB_BENCH = "10000"; npm run dev
+```
+
+Roda três cenários automaticamente e imprime o resultado no terminal. Descarta o
+primeiro segundo de cada fase (aquecimento de JIT e cache de fontes) e move a
+câmera durante a coleta, para medir fps sustentado em vez de fps de cena parada.
+
+### O que faz o desempenho
+
+- **Culling por viewport** via R-tree: com 50.000 objetos e zoom 100%, apenas ~20
+  chegam ao renderer.
+- **Redesenho sob demanda**: com o quadro parado o loop não desenha nada. FPS
+  aparece como "ocioso" no painel — não é lentidão, é ausência de trabalho.
+- **LOD em três níveis**: abaixo de 40% de zoom os traços usam a polilinha
+  simplificada por RDP e o texto vira barras; abaixo de 12%, cada objeto vira um
+  bloco sólido.
+- **Agrupamento por cor** no LOD de blocos. Trocar `fillStyle` milhares de vezes
+  por frame custa mais que os próprios `fillRect`.
+
+Uma otimização que **foi testada e descartada**: emitir os blocos como um único
+path com milhares de sub-retângulos. Reduz o tempo de JS (12,9 → 11,7 ms) mas
+derruba o frame rate (69 → 38 fps) — o custo migra para a rasterização do path
+gigante na GPU, onde não aparece no `renderMs`. A versão mantida usa `fillRect`
+individual agrupado por cor: 82fps.
+
+## Roadmap
+
+- [x] **Fase 0** — Setup, janela abrindo, instalador `.exe` validado
+- [x] **Fase 1** — Canvas infinito, modelo de dados, índice espacial, culling, painel de debug (F3)
+- [x] **Fase 1.5** — Lobby com miniaturas, salvar `.wbd` (Ctrl+S), tela de atalhos (F1)
+- [ ] **Fase 2** — Caneta, marca-texto, lápis, borracha, cores e espessura
+- [ ] **Fase 3** — Seleção, manipulação, undo/redo
+- [ ] **Fase 4** — Formas geométricas, régua e snap
+- [ ] **Fase 5** — Texto, post-its e alertas
+- [ ] **Fase 6** — Busca Ctrl+F
+- [ ] **Fase 7** — Imagens
+- [ ] **Fase 7.5** — Transcrever imagem em texto (OCR). Viabilidade confirmada:
+      motor nativo do Windows (`Windows.Media.Ocr`), pt-BR já instalado, offline,
+      0 MB no instalador, ~355 ms por imagem. Prosa com acentos sai perfeita;
+      símbolos matemáticos e letras gregas **não** — daí o passo de revisão antes
+      de inserir.
+- [ ] **Fase 8** — Salvar/abrir, autosave, exportação PNG/SVG/PDF
+- [ ] **Fase 9** — Polimento de UI, temas, tela de atalhos, build final

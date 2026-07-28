@@ -1,0 +1,628 @@
+import type { BoardSummary } from '@shared/wbd';
+import { Camera, MAX_ZOOM, MIN_ZOOM } from './core/Camera';
+import { Document } from './core/Document';
+import { Scheduler } from './core/Scheduler';
+import { ViewportInput } from './input/ViewportInput';
+import { Renderer, type RenderTheme } from './render/Renderer';
+import { DebugPanel } from './ui/DebugPanel';
+import { ViewportBar } from './ui/ViewportBar';
+import { Lobby } from './ui/Lobby';
+import { ShortcutsModal } from './ui/ShortcutsModal';
+import { confirmDialog, promptText, toast } from './ui/dialogs';
+import {
+  applyBoard,
+  renderThumbnail,
+  serializeBoard,
+  usedAssetIds,
+} from './features/storage/boardIO';
+import { AssetStore } from './features/images/AssetStore';
+import { importWhiteboardHtml } from './features/import/whiteboard';
+import type { ImportReport, ImportSource } from '@shared/importer';
+import type { SaveBoardResult } from '@shared/wbd';
+import { generateStressBatches } from './dev/stress';
+import { resolve as resolveShortcut, type ShortcutId } from './shortcuts';
+
+const THEMES: Record<'light' | 'dark', RenderTheme> = {
+  light: { boardBg: '#ffffff', gridColor: '#dde2ea' },
+  // No modo escuro o quadro escurece de verdade; as cores das marcas sao
+  // adaptadas na exibicao (ver render/colorAdapt.ts). O arquivo guarda sempre a
+  // cor original que o autor escolheu.
+  dark: { boardBg: '#14161b', gridColor: '#282d38' },
+};
+
+const THEME_KEY = 'qb.theme';
+const DEMO_SEED = 2000;
+/** Lote da geracao de carga: grande o bastante para ser eficiente, pequeno o
+ *  bastante para a janela repintar entre um e outro. */
+const SEED_BATCH = 2500;
+
+type View = 'lobby' | 'board';
+
+/** Estado do quadro aberto no momento. */
+interface Session {
+  /** Caminho do .wbd, ou null se o quadro ainda nunca foi salvo. */
+  path: string | null;
+  name: string;
+  dirty: boolean;
+}
+
+/**
+ * Shell da aplicacao: alterna entre o lobby e o quadro, e cuida dos atalhos
+ * globais e do ciclo de salvamento.
+ */
+export class App {
+  readonly doc = new Document();
+  readonly camera = new Camera();
+  readonly assets = new AssetStore();
+
+  #renderer: Renderer;
+  #scheduler: Scheduler;
+  #input: ViewportInput;
+  #bar: ViewportBar;
+  #debug: DebugPanel;
+  #lobby: Lobby;
+  #help: ShortcutsModal;
+
+  #boardView: HTMLElement;
+  #host: HTMLElement;
+  #hint: HTMLElement;
+  #progress: HTMLElement;
+  #theme: 'light' | 'dark';
+
+  #view: View = 'lobby';
+  #session: Session = { path: null, name: 'Quadro sem nome', dirty: false };
+  #saving = false;
+  #benchPhase = 0;
+
+  constructor(root: HTMLElement) {
+    root.replaceChildren();
+    root.className = 'qb-app';
+
+    // ------------------------------------------------------------ quadro
+    this.#boardView = document.createElement('div');
+    this.#boardView.className = 'qb-view';
+    this.#boardView.hidden = true;
+
+    this.#host = document.createElement('div');
+    this.#host.className = 'qb-canvas-host';
+    this.#boardView.append(this.#host);
+
+    this.#renderer = new Renderer(this.#host, this.doc, this.camera);
+    this.#renderer.resolveImage = (id) => this.assets.bitmap(id);
+
+    this.#hint = document.createElement('div');
+    this.#hint.className = 'qb-hint';
+    this.#hint.innerHTML =
+      '<strong>Quadro vazio.</strong> As ferramentas de desenho chegam na Fase 2.<br>' +
+      'Use <kbd>F3</kbd> para gerar carga de teste e <kbd>F1</kbd> para ver os atalhos.';
+    this.#boardView.append(this.#hint);
+
+    this.#progress = document.createElement('div');
+    this.#progress.className = 'qb-progress';
+    this.#progress.hidden = true;
+    this.#boardView.append(this.#progress);
+
+    this.#bar = new ViewportBar({
+      zoomIn: () => this.#zoomCenter(1.25),
+      zoomOut: () => this.#zoomCenter(1 / 1.25),
+      zoomTo: (z) => this.#setZoomCenter(z),
+      fitToContent: () => this.fitToContent(),
+      toggleGrid: () => this.toggleGrid(),
+      toggleTheme: () => this.toggleTheme(),
+      save: () => void this.save(),
+      backToLobby: () => void this.goToLobby(),
+      showShortcuts: () => this.#help.toggle(),
+    });
+    this.#boardView.append(this.#bar.el);
+
+    this.#debug = new DebugPanel({
+      seed: (n) => void this.seed(n),
+      clear: () => this.clearBoard(),
+      toggleBenchmark: () => this.toggleBenchmark(),
+      isBenchmarking: () => this.#scheduler.continuous,
+    });
+    this.#boardView.append(this.#debug.el);
+
+    // ------------------------------------------------------------- lobby
+    this.#lobby = new Lobby({
+      newBoard: () => void this.newBoard(),
+      openBoard: (s) => void this.openBoard(s),
+      openDemo: () => void this.openDemo(),
+      showShortcuts: () => this.#help.toggle(),
+      toggleTheme: () => this.toggleTheme(),
+      importWhiteboard: () => void this.#pickAndImport(),
+    });
+
+    this.#help = new ShortcutsModal();
+
+    root.append(this.#lobby.el, this.#boardView, this.#help.el);
+
+    // ------------------------------------------------------------- setup
+    this.#theme = (localStorage.getItem(THEME_KEY) as 'light' | 'dark' | null) ?? 'light';
+    this.#applyTheme();
+
+    this.#scheduler = new Scheduler(() => {
+      if (this.#scheduler.continuous) this.#stepBenchmark();
+      return this.#renderer.render();
+    });
+
+    this.#input = new ViewportInput(this.#host, this.camera, () => this.#onCameraChanged());
+
+    this.doc.on('objects', () => {
+      this.#hint.hidden = this.doc.size > 0;
+      this.#scheduler.invalidate();
+    });
+    this.doc.on('prefs', () => this.#scheduler.invalidate());
+
+    this.#observeSize();
+    this.#bindShortcuts();
+    this.#guardUnsavedOnClose();
+
+    // Loop de atualizacao do painel, separado do loop de render: o painel nao
+    // deve nem forcar frames nem ser desenhado dentro da medicao.
+    const pollStats = (): void => {
+      this.#debug.update(this.#scheduler.stats(), this.camera.zoom, performance.now());
+      requestAnimationFrame(pollStats);
+    };
+    requestAnimationFrame(pollStats);
+
+    this.#scheduler.start();
+
+    const params = new URLSearchParams(location.search);
+    const bench = params.get('bench');
+    const importPath = params.get('import');
+    if (importPath) {
+      this.#enterBoard();
+      void import('./dev/importCheck').then((m) => m.runImportCheck(importPath, this));
+    } else if (params.get('selftest')) {
+      // Precisa do quadro montado e medido para os eventos caírem no canvas.
+      this.#enterBoard();
+      void import('./dev/selftest').then((m) => m.runSelfTest(this.#host, this.camera));
+    } else if (bench) {
+      void this.#runAutoBenchmark(Number(bench));
+    } else {
+      void this.goToLobby();
+    }
+  }
+
+  // ----------------------------------------------------------------- views
+
+  async goToLobby(): Promise<void> {
+    if (this.#view === 'board' && !(await this.#confirmDiscard())) return;
+
+    this.#view = 'lobby';
+    this.#boardView.hidden = true;
+    this.#lobby.el.hidden = false;
+    void window.quadro.board.folder().then((p) => this.#lobby.setFolder(p));
+    await this.#lobby.refresh();
+  }
+
+  #enterBoard(): void {
+    this.#view = 'board';
+    this.#lobby.el.hidden = true;
+    this.#boardView.hidden = false;
+    this.#updateTitle();
+    // O host estava com display:none e portanto media 0x0; o ResizeObserver so
+    // dispara depois. Forcamos a medicao agora para o primeiro frame ja sair certo.
+    this.#measure();
+  }
+
+  async newBoard(): Promise<void> {
+    this.doc.clear();
+    this.#session = { path: null, name: 'Quadro sem nome', dirty: false };
+    this.#enterBoard();
+    this.camera.reset(this.#renderer.viewportW, this.#renderer.viewportH);
+    this.#onCameraChanged();
+  }
+
+  async openBoard(summary: BoardSummary): Promise<void> {
+    try {
+      const result = await window.quadro.board.load(summary.path);
+      // Os assets precisam estar decodificados antes dos objetos entrarem, senao
+      // o primeiro frame desenha marcadores no lugar das imagens.
+      await this.assets.load(result.assets, result.document.assets);
+      applyBoard(this.doc, this.camera, result.document);
+      this.#session = { path: result.path, name: result.name, dirty: false };
+      this.#enterBoard();
+      this.#bar.setZoom(this.camera.zoom);
+      this.#onCameraChanged();
+    } catch (err) {
+      toast(`Nao foi possivel abrir "${summary.name}": ${String(err)}`, 'error');
+    }
+  }
+
+  /** Quadro de demonstracao, para ter conteudo sem precisar desenhar nada ainda. */
+  async openDemo(): Promise<void> {
+    this.#session = { path: null, name: 'Demonstracao', dirty: true };
+    this.#enterBoard();
+    await this.seed(DEMO_SEED, false);
+  }
+
+  // -------------------------------------------------------------- conteudo
+
+  /**
+   * Gera carga de teste em lotes, cedendo o controle ao navegador entre eles.
+   * Sem isso, 50.000 objetos travam a janela por vários segundos.
+   */
+  async seed(count: number, refit = true): Promise<void> {
+    this.doc.clear();
+    this.#showProgress(`Gerando ${count.toLocaleString('pt-BR')} objetos…`, 0);
+
+    let done = 0;
+    for (const batch of generateStressBatches(count, SEED_BATCH)) {
+      this.doc.add(batch);
+      done += batch.length;
+      this.#showProgress(`Gerando ${count.toLocaleString('pt-BR')} objetos…`, done / count);
+      // Devolve o controle ao navegador para ele repintar a barra de progresso.
+      await nextFrame();
+    }
+
+    this.#hideProgress();
+    this.#markDirty();
+
+    if (refit) {
+      const b = this.doc.contentBounds();
+      if (b) this.camera.fitTo(b, this.#renderer.viewportW, this.#renderer.viewportH);
+    } else {
+      this.camera.reset(this.#renderer.viewportW, this.#renderer.viewportH);
+    }
+
+    this.#scheduler.resetSamples();
+    this.#onCameraChanged();
+  }
+
+  clearBoard(): void {
+    this.doc.clear();
+    this.#markDirty();
+    this.#scheduler.resetSamples();
+    this.#scheduler.invalidate();
+  }
+
+  // ------------------------------------------------------------ salvamento
+
+  /**
+   * Ctrl+S. Na primeira vez pergunta o nome; depois grava por cima em silencio.
+   */
+  /**
+   * Importa exportacoes do Microsoft Whiteboard, criando um quadro por arquivo.
+   *
+   * Cada arquivo vira um .wbd salvo direto no disco, e nao um quadro aberto na
+   * tela: importar tres resumos de uma vez e a situacao normal, e abrir todos
+   * simultaneamente nao faria sentido.
+   */
+  async importWhiteboard(sources: readonly ImportSource[]): Promise<ImportReport[]> {
+    const reports: ImportReport[] = [];
+
+    for (const source of sources) {
+      if (source.error || !source.html) {
+        reports.push(emptyReport(source.name, [source.error ?? 'arquivo vazio']));
+        continue;
+      }
+
+      // Cada quadro precisa do proprio conjunto de assets, senao imagens de um
+      // resumo vazariam para o .wbd de outro.
+      this.doc.clear();
+      this.assets.clear();
+
+      const result = await importWhiteboardHtml(source.name, source.html, this.assets);
+      this.doc.add(result.objects);
+      if (result.background) this.doc.setPrefs({ background: result.background });
+
+      const bounds = this.doc.contentBounds();
+      if (bounds) {
+        this.camera.fitTo(bounds, this.#renderer.viewportW, this.#renderer.viewportH);
+        // Sem isto o indicador de zoom continua mostrando o valor anterior.
+        this.#onCameraChanged();
+      }
+
+      const saved = await this.#writeBoard(null, source.name);
+      if (!saved) result.report.avisos.push('falha ao gravar o arquivo .wbd');
+      reports.push(result.report);
+    }
+
+    return reports;
+  }
+
+  /** Fluxo do botao "Importar do Whiteboard" no lobby. */
+  async #pickAndImport(): Promise<void> {
+    const sources = await window.quadro.importer.pick();
+    if (sources.length === 0) return; // cancelado
+
+    // A importacao precisa do canvas medido para enquadrar e gerar a miniatura,
+    // mas o usuario nao deve ver o quadro piscando entre um arquivo e outro.
+    const wasLobby = this.#view === 'lobby';
+    this.#enterBoard();
+    this.#showProgress(`Importando ${sources.length} arquivo(s)…`, 0);
+
+    let reports;
+    try {
+      reports = await this.importWhiteboard(sources);
+    } finally {
+      this.#hideProgress();
+    }
+
+    // Volta ao lobby: o resultado sao varios quadros, nao um.
+    this.doc.clear();
+    this.assets.clear();
+    this.#session = { path: null, name: 'Quadro sem nome', dirty: false };
+    if (wasLobby) await this.goToLobby();
+
+    const total = reports.reduce(
+      (n, r) => n + r.textos + r.tracos + r.imagens + r.postits,
+      0,
+    );
+    const falhas = reports.filter((r) => r.avisos.length > 0).length;
+    toast(
+      falhas > 0
+        ? `${reports.length} quadro(s) importados, ${total} objetos — ${falhas} com avisos.`
+        : `${reports.length} quadro(s) importados — ${total} objetos.`,
+      falhas > 0 ? 'error' : 'ok',
+    );
+  }
+
+  async save(): Promise<boolean> {
+    if (this.#saving) return false;
+
+    let name = this.#session.name;
+    if (!this.#session.path) {
+      const input = await promptText({
+        title: 'Salvar quadro',
+        label: 'Nome do quadro',
+        value: name === 'Quadro sem nome' ? '' : name,
+      });
+      if (!input) return false;
+      name = input;
+    }
+
+    this.#saving = true;
+    try {
+      const result = await this.#writeBoard(this.#session.path, name);
+      if (!result) return false;
+      this.#session = { path: result.path, name: result.name, dirty: false };
+      this.#updateTitle();
+      toast(`"${result.name}" salvo.`);
+      return true;
+    } finally {
+      this.#saving = false;
+    }
+  }
+
+  /** Grava o estado atual em disco. Devolve null em caso de falha. */
+  async #writeBoard(path: string | null, name: string): Promise<SaveBoardResult | null> {
+    try {
+      const used = usedAssetIds(this.doc);
+      const preview = await renderThumbnail(this.doc, THEMES[this.#theme], (id) =>
+        this.assets.bitmap(id),
+      );
+      return await window.quadro.board.save({
+        path,
+        name,
+        document: serializeBoard(this.doc, this.camera, this.assets),
+        preview,
+        assets: this.assets.serialize(used),
+      });
+    } catch (err) {
+      toast(`Falha ao salvar: ${String(err)}`, 'error');
+      return null;
+    }
+  }
+
+  #markDirty(): void {
+    if (this.#session.dirty) return;
+    this.#session.dirty = true;
+    this.#updateTitle();
+  }
+
+  #updateTitle(): void {
+    this.#bar.setBoardName(this.#session.name, this.#session.dirty);
+    document.title = `${this.#session.dirty ? '• ' : ''}${this.#session.name} — QuadroBranco`;
+  }
+
+  /** Pergunta antes de descartar alteracoes nao salvas. */
+  async #confirmDiscard(): Promise<boolean> {
+    if (!this.#session.dirty || this.doc.size === 0) return true;
+    const ok = await confirmDialog({
+      title: 'Alteracoes nao salvas',
+      message: `"${this.#session.name}" tem alteracoes que ainda nao foram gravadas. Sair mesmo assim?`,
+      confirmLabel: 'Descartar',
+      cancelLabel: 'Continuar aqui',
+      danger: true,
+    });
+    return ok;
+  }
+
+  #guardUnsavedOnClose(): void {
+    // Aviso do proprio navegador ao fechar a janela. O dialogo nativo do
+    // Electron entra na Fase 8, junto com o autosave.
+    window.addEventListener('beforeunload', (e) => {
+      if (!this.#session.dirty || this.doc.size === 0) return;
+      e.preventDefault();
+      e.returnValue = '';
+    });
+  }
+
+  // ----------------------------------------------------------------- visao
+
+  fitToContent(): void {
+    const b = this.doc.contentBounds();
+    if (!b) return;
+    this.camera.fitTo(b, this.#renderer.viewportW, this.#renderer.viewportH);
+    this.#onCameraChanged();
+  }
+
+  toggleGrid(): void {
+    this.doc.setPrefs({ grid: { ...this.doc.prefs.grid, enabled: !this.doc.prefs.grid.enabled } });
+    this.#bar.setGridEnabled(this.doc.prefs.grid.enabled);
+  }
+
+  toggleTheme(): void {
+    this.#theme = this.#theme === 'light' ? 'dark' : 'light';
+    localStorage.setItem(THEME_KEY, this.#theme);
+    this.#applyTheme();
+    this.#scheduler.invalidate();
+  }
+
+  toggleBenchmark(): void {
+    const next = !this.#scheduler.continuous;
+    this.#scheduler.resetSamples();
+    this.#scheduler.setContinuous(next);
+  }
+
+  #applyTheme(): void {
+    document.documentElement.dataset['theme'] = this.#theme;
+    this.#renderer.theme = THEMES[this.#theme];
+    this.#bar.setGridEnabled(this.doc.prefs.grid.enabled);
+  }
+
+  #zoomCenter(factor: number): void {
+    this.camera.zoomAt({ x: this.#renderer.viewportW / 2, y: this.#renderer.viewportH / 2 }, factor);
+    this.#onCameraChanged();
+  }
+
+  #setZoomCenter(zoom: number): void {
+    this.camera.setZoomAt({ x: this.#renderer.viewportW / 2, y: this.#renderer.viewportH / 2 }, zoom);
+    this.#onCameraChanged();
+  }
+
+  #onCameraChanged(): void {
+    this.#bar.setZoom(this.camera.zoom);
+    this.#scheduler.invalidate();
+  }
+
+  // -------------------------------------------------------------- progresso
+
+  #showProgress(label: string, ratio: number): void {
+    this.#progress.hidden = false;
+    this.#progress.innerHTML = '';
+    const text = document.createElement('span');
+    text.className = 'qb-progress__label';
+    text.textContent = `${label} ${Math.round(ratio * 100)}%`;
+    const track = document.createElement('div');
+    track.className = 'qb-progress__track';
+    const fill = document.createElement('div');
+    fill.className = 'qb-progress__fill';
+    fill.style.width = `${ratio * 100}%`;
+    track.append(fill);
+    this.#progress.append(text, track);
+  }
+
+  #hideProgress(): void {
+    this.#progress.hidden = true;
+  }
+
+  // -------------------------------------------------------------- medicao
+
+  #stepBenchmark(): void {
+    const b = this.doc.contentBounds();
+    if (!b) return;
+    this.#benchPhase += 0.006;
+    const cx = b.x + b.w / 2;
+    const cy = b.y + b.h / 2;
+    const ampX = Math.max(0, b.w / 2 - this.#renderer.viewportW / this.camera.zoom / 2);
+    const ampY = Math.max(0, b.h / 2 - this.#renderer.viewportH / this.camera.zoom / 2);
+    this.camera.x =
+      cx + Math.sin(this.#benchPhase) * ampX - this.#renderer.viewportW / this.camera.zoom / 2;
+    this.camera.y =
+      cy + Math.sin(this.#benchPhase * 0.7) * ampY - this.#renderer.viewportH / this.camera.zoom / 2;
+  }
+
+  async #runAutoBenchmark(count: number): Promise<void> {
+    this.#enterBoard();
+    await this.seed(count);
+    const results: string[] = [];
+
+    const phases: Array<{ nome: string; setup: () => void }> = [
+      { nome: 'zoom 100%', setup: () => this.#setZoomCenter(1) },
+      { nome: 'zoom 40%', setup: () => this.#setZoomCenter(0.4) },
+      { nome: 'ajustado a tela', setup: () => this.fitToContent() },
+    ];
+
+    for (const phase of phases) {
+      phase.setup();
+      this.#scheduler.setContinuous(true);
+      this.#scheduler.resetSamples();
+      // 1s de aquecimento descartado, depois 3s de coleta.
+      await delay(1000);
+      this.#scheduler.resetSamples();
+      await delay(3000);
+      const s = this.#scheduler.stats();
+      results.push(
+        `${phase.nome}: ${s.fps.toFixed(1)} fps | frame ${s.frameMs.toFixed(2)}ms | ` +
+          `render ${s.renderMs.toFixed(2)}ms | visiveis ${s.visible} | lod ${s.lod} | heap ${s.heapMB.toFixed(0)}MB`,
+      );
+      this.#scheduler.setContinuous(false);
+    }
+
+    console.log(`BENCH_RESULT ${JSON.stringify({ objetos: count, fases: results })}`);
+  }
+
+  // ------------------------------------------------------------------ infra
+
+  #measure(): void {
+    const rect = this.#host.getBoundingClientRect();
+    // Enquanto a view esta escondida o host mede 0x0; redimensionar para isso
+    // destruiria o backing store por nada.
+    if (rect.width === 0 || rect.height === 0) return;
+    if (this.#renderer.resize(rect.width, rect.height, window.devicePixelRatio || 1)) {
+      this.#scheduler.invalidate();
+    }
+  }
+
+  #observeSize(): void {
+    new ResizeObserver(() => this.#measure()).observe(this.#host);
+    // devicePixelRatio muda ao arrastar a janela entre monitores de DPI diferente.
+    window.addEventListener('resize', () => this.#measure());
+  }
+
+  #bindShortcuts(): void {
+    const handlers: Record<ShortcutId, () => void> = {
+      save: () => void this.save(),
+      lobby: () => void this.goToLobby(),
+      help: () => this.#help.toggle(),
+      debug: () => this.#debug.toggle(),
+      benchmark: () => this.toggleBenchmark(),
+      grid: () => this.toggleGrid(),
+      zoom100: () => this.#setZoomCenter(1),
+      fit: () => this.fitToContent(),
+      zoomIn: () => this.#zoomCenter(1.25),
+      zoomOut: () => this.#zoomCenter(1 / 1.25),
+    };
+
+    window.addEventListener('keydown', (e) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.isContentEditable || target instanceof HTMLInputElement) return;
+      // Enquanto a ajuda esta aberta, so Esc (tratado pelo proprio modal) e F1.
+      if (this.#help.isOpen && e.key !== 'F1') {
+        if (e.key === 'Escape') this.#help.hide();
+        return;
+      }
+
+      const id = resolveShortcut(e, this.#view);
+      if (!id) return;
+      e.preventDefault();
+      handlers[id]();
+    });
+  }
+
+  get zoomRange(): [number, number] {
+    return [MIN_ZOOM, MAX_ZOOM];
+  }
+
+  /** Desmonta o app liberando listeners globais. Usado no HMR do desenvolvimento. */
+  dispose(): void {
+    this.#scheduler.stop();
+    this.#input.dispose();
+  }
+}
+
+function emptyReport(name: string, avisos: string[]): ImportReport {
+  return { name, textos: 0, tracos: 0, imagens: 0, postits: 0, ignorados: {}, avisos };
+}
+
+function nextFrame(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}

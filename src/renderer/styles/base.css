@@ -1,0 +1,76 @@
+/*
+  Tokens de tema. O tema claro e o padrao -- e um quadro BRANCO.
+  A raiz recebe data-theme="dark" para inverter tudo.
+*/
+:root {
+  --bg: #eef1f6;
+  --panel: #ffffff;
+  --panel-2: #f5f7fa;
+  --border: #d9dee8;
+  --fg: #1b1f27;
+  --fg-muted: #667085;
+  --accent: #3b6ff0;
+  --ok: #2f9e44;
+  --warn: #e8a317;
+  --bad: #e03131;
+  --shadow: 0 6px 24px rgba(20, 28, 46, 0.14);
+  --font-ui: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Cascadia Mono', 'Consolas', ui-monospace, monospace;
+}
+
+:root[data-theme='dark'] {
+  --bg: #0f1116;
+  --panel: #1d2027;
+  --panel-2: #262a33;
+  --border: #333947;
+  --fg: #e6e9ef;
+  --fg-muted: #8b93a3;
+  --shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/*
+  O `display` da folha do agente para [hidden] perde para qualquer regra de
+  classe que declare display (ex.: .qb-bar__menu { display: flex }). Sem este
+  reforco, `el.hidden = true` nao esconde nada.
+*/
+[hidden] {
+  display: none !important;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-ui);
+  /* O canvas gerencia a propria selecao; a selecao nativa so atrapalha. */
+  user-select: none;
+  overflow: hidden;
+  /* Impede o zoom por pinca do proprio Chromium sobre a pagina. */
+  touch-action: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+kbd {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 1px 5px;
+}

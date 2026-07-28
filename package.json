@@ -1,0 +1,36 @@
+{
+  "name": "quadrobranco",
+  "version": "0.1.0",
+  "description": "Quadro branco infinito local para estudos",
+  "main": "./out/main/index.js",
+  "author": "QuadroBranco",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "node": ">=20.18.0"
+  },
+  "scripts": {
+    "dev": "node scripts/run.mjs dev",
+    "preview": "node scripts/run.mjs preview",
+    "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.web.json --noEmit",
+    "build": "npm run typecheck && node scripts/run.mjs build",
+    "icon": "node build/make-icon.js build/icon.ico",
+    "check:colors": "node scripts/check-colors.mjs",
+    "selftest": "node scripts/run.mjs dev --selftest",
+    "prepare:winsign": "node scripts/prepare-wincodesign.mjs",
+    "dist": "npm run build && npm run prepare:winsign && electron-builder --win --x64",
+    "dist:dir": "npm run build && npm run prepare:winsign && electron-builder --win --x64 --dir"
+  },
+  "devDependencies": {
+    "@types/rbush": "^4.0.0",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.11"
+  },
+  "dependencies": {
+    "fflate": "^0.8.3",
+    "rbush": "^4.0.1"
+  }
+}

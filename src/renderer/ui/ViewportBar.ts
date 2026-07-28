@@ -1,0 +1,128 @@
+export interface ViewportBarActions {
+  zoomIn(): void;
+  zoomOut(): void;
+  zoomTo(zoom: number): void;
+  fitToContent(): void;
+  toggleGrid(): void;
+  toggleTheme(): void;
+  save(): void;
+  backToLobby(): void;
+  showShortcuts(): void;
+}
+
+const PRESETS = [0.01, 0.05, 0.25, 0.5, 1, 2, 4, 8, 16, 64];
+
+/** Barra flutuante inferior do quadro. */
+export class ViewportBar {
+  readonly el: HTMLElement;
+  #zoomLabel: HTMLButtonElement;
+  #menu: HTMLElement;
+  #gridBtn: HTMLButtonElement;
+  #nameLabel: HTMLElement;
+
+  constructor(private readonly actions: ViewportBarActions) {
+    this.el = document.createElement('div');
+    this.el.className = 'qb-bar';
+
+    const backBtn = iconButton('‹ quadros', 'Voltar ao lobby (Ctrl+O)', () =>
+      this.actions.backToLobby(),
+    );
+
+    this.#nameLabel = document.createElement('span');
+    this.#nameLabel.className = 'qb-bar__name';
+    this.#nameLabel.textContent = 'Quadro sem nome';
+
+    const saveBtn = iconButton('salvar', 'Salvar (Ctrl+S)', () => this.actions.save());
+    saveBtn.classList.add('qb-bar__btn--primary');
+
+    this.#gridBtn = iconButton('grade', 'Grade de fundo (G)', () => this.actions.toggleGrid());
+    const fitBtn = iconButton('ajustar', 'Ajustar a tela (Ctrl+1)', () =>
+      this.actions.fitToContent(),
+    );
+    const themeBtn = iconButton('tema', 'Alternar tema claro/escuro', () =>
+      this.actions.toggleTheme(),
+    );
+    const helpBtn = iconButton('?', 'Atalhos e comandos (F1)', () => this.actions.showShortcuts());
+    helpBtn.classList.add('qb-bar__btn--icon');
+
+    const minus = iconButton('−', 'Diminuir zoom (Ctrl+-)', () => this.actions.zoomOut());
+    minus.classList.add('qb-bar__btn--icon');
+    const plus = iconButton('+', 'Aumentar zoom (Ctrl++)', () => this.actions.zoomIn());
+    plus.classList.add('qb-bar__btn--icon');
+
+    this.#zoomLabel = iconButton('100%', 'Niveis de zoom', () => this.#toggleMenu());
+    this.#zoomLabel.classList.add('qb-bar__zoom');
+
+    this.#menu = document.createElement('div');
+    this.#menu.className = 'qb-bar__menu';
+    this.#menu.hidden = true;
+    for (const z of PRESETS) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'qb-bar__menu-item';
+      item.textContent = `${z * 100}%`;
+      item.addEventListener('click', () => {
+        this.actions.zoomTo(z);
+        this.#menu.hidden = true;
+      });
+      this.#menu.append(item);
+    }
+
+    const zoomGroup = document.createElement('div');
+    zoomGroup.className = 'qb-bar__group';
+    zoomGroup.append(minus, this.#zoomLabel, plus, this.#menu);
+
+    this.el.append(
+      backBtn,
+      this.#nameLabel,
+      saveBtn,
+      divider(),
+      this.#gridBtn,
+      fitBtn,
+      themeBtn,
+      helpBtn,
+      divider(),
+      zoomGroup,
+    );
+
+    // Clique fora fecha o menu de presets.
+    document.addEventListener('pointerdown', (e) => {
+      if (!this.#menu.hidden && !this.el.contains(e.target as Node)) this.#menu.hidden = true;
+    });
+  }
+
+  setZoom(zoom: number): void {
+    this.#zoomLabel.textContent = `${Math.round(zoom * 100)}%`;
+  }
+
+  setGridEnabled(on: boolean): void {
+    this.#gridBtn.classList.toggle('qb-bar__btn--active', on);
+  }
+
+  /** O ponto antes do nome sinaliza alteracoes ainda nao gravadas. */
+  setBoardName(name: string, dirty: boolean): void {
+    this.#nameLabel.textContent = dirty ? `• ${name}` : name;
+    this.#nameLabel.classList.toggle('qb-bar__name--dirty', dirty);
+    this.#nameLabel.title = dirty ? 'Alteracoes nao salvas' : name;
+  }
+
+  #toggleMenu(): void {
+    this.#menu.hidden = !this.#menu.hidden;
+  }
+}
+
+function iconButton(text: string, title: string, onClick: () => void): HTMLButtonElement {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'qb-bar__btn';
+  b.textContent = text;
+  b.title = title;
+  b.addEventListener('click', onClick);
+  return b;
+}
+
+function divider(): HTMLElement {
+  const d = document.createElement('span');
+  d.className = 'qb-bar__divider';
+  return d;
+}

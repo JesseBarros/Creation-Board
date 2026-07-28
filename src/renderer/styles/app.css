@@ -1,0 +1,235 @@
+.qb-app {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.qb-canvas-host {
+  position: absolute;
+  inset: 0;
+}
+
+/* As duas camadas ocupam exatamente a mesma area; o overlay fica por cima. */
+.qb-layer {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.qb-layer--overlay {
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------- dica */
+
+.qb-hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--fg-muted);
+  font-size: 14px;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------- barra de viewport */
+
+.qb-bar {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+
+.qb-bar__group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.qb-bar__btn {
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.qb-bar__btn:hover {
+  background: var(--panel-2);
+}
+
+.qb-bar__btn--icon {
+  width: 30px;
+  padding: 6px 0;
+  font-size: 16px;
+}
+
+.qb-bar__btn--active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+.qb-bar__zoom {
+  min-width: 58px;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.qb-bar__divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  margin: 0 3px;
+}
+
+.qb-bar__menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 4px;
+  z-index: 10;
+}
+
+.qb-bar__menu-item {
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  padding: 5px 16px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  text-align: right;
+}
+
+.qb-bar__menu-item:hover {
+  background: var(--panel-2);
+}
+
+/* ------------------------------------------------------- painel de debug */
+
+.qb-debug {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 236px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 10px 12px 12px;
+  font-size: 12px;
+}
+
+.qb-debug__title {
+  font-weight: 650;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+
+.qb-debug__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 2px 0;
+}
+
+.qb-debug__key {
+  color: var(--fg-muted);
+}
+
+.qb-debug__val {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.qb-debug__val--ok {
+  color: var(--ok);
+  font-weight: 600;
+}
+.qb-debug__val--warn {
+  color: var(--warn);
+  font-weight: 600;
+}
+.qb-debug__val--bad {
+  color: var(--bad);
+  font-weight: 600;
+}
+.qb-debug__val--idle {
+  color: var(--fg-muted);
+}
+
+.qb-debug__section {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.qb-debug__label {
+  font-size: 11px;
+  color: var(--fg-muted);
+  margin-bottom: 6px;
+}
+
+.qb-debug__buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.qb-debug__btn {
+  flex: 1;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 4px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+}
+
+.qb-debug__btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.qb-debug__btn--wide {
+  width: 100%;
+}
+
+.qb-debug__btn--active {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.qb-debug__hint {
+  margin: 8px 0 0;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--fg-muted);
+}
