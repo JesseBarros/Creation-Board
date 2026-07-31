@@ -1,14 +1,15 @@
 import type { App } from '../App';
+import { checkGeometry, formatGeometry } from './geometryCheck';
 
 /**
  * Verificacao da importacao (QB_IMPORT=<caminho> npm run dev).
  *
  * Importa os arquivos indicados e imprime um relatorio no terminal: quantos
- * objetos de cada tipo foram reconhecidos, o que foi ignorado, e a extensao do
- * quadro resultante. Serve para conferir o parser contra exportacoes reais sem
- * depender de inspecao visual.
+ * objetos de cada tipo foram reconhecidos, o que foi ignorado, a extensao do
+ * quadro resultante e o erro de posicao contra o oraculo de layout. Serve para
+ * conferir o parser contra exportacoes reais sem depender de inspecao visual.
  */
-export async function runImportCheck(path: string, app: App): Promise<void> {
+export async function runImportCheck(path: string, app: App, save = false): Promise<void> {
   const lines: string[] = [];
   try {
     const sources = await window.quadro.importer.read([path]);
@@ -18,7 +19,10 @@ export async function runImportCheck(path: string, app: App): Promise<void> {
     }
 
     const t0 = performance.now();
-    const reports = await app.importWhiteboard(sources);
+    // Por padrao NAO grava: conferir a importacao nao pode criar quadro na
+    // pasta do usuario. `QB_IMPORT_SAVE=1` liga a gravacao, para reimportar os
+    // resumos por terminal depois de mexer no importador.
+    const reports = await app.importWhiteboard(sources, { save });
     const ms = performance.now() - t0;
 
     for (const r of reports) {
@@ -33,6 +37,16 @@ export async function runImportCheck(path: string, app: App): Promise<void> {
       }
       for (const aviso of r.avisos.slice(0, 5)) lines.push(`    AVISO ${aviso}`);
       if (r.avisos.length > 5) lines.push(`    ... e mais ${r.avisos.length - 5} avisos`);
+    }
+
+    // Conferencia de geometria: roda por arquivo, sobre o mesmo HTML ja lido.
+    for (const source of sources) {
+      if (!source.html) continue;
+      try {
+        lines.push(...formatGeometry(await checkGeometry(source.html)));
+      } catch (err) {
+        lines.push(`    geometria: FALHOU ${String(err)}`);
+      }
     }
 
     const bounds = app.doc.contentBounds();

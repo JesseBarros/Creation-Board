@@ -98,7 +98,16 @@ export async function renderThumbnail(
         ctx.translate(t.x, t.y);
         if (t.rotation !== 0) ctx.rotate(t.rotation);
         if (t.scaleX !== 1 || t.scaleY !== 1) ctx.scale(t.scaleX, t.scaleY);
-        paintObject(obj, { ctx, zoom, lod, adapt, image: resolveImage });
+        // A miniatura e gerada em 1x, entao o zoom ja e a escala em pixel final.
+        paintObject(obj, {
+          ctx,
+          zoom,
+          lod,
+          deviceScale: zoom,
+          objectScale: Math.abs(t.scaleY),
+          adapt,
+          image: resolveImage,
+        });
         ctx.restore();
       }
     }

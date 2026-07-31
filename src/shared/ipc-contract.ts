@@ -38,7 +38,7 @@ export interface AppInfo {
 }
 
 /** Superficie exposta em `window.quadro` pelo preload. */
-export interface QuadroBrancoApi {
+export interface CreationBoardApi {
   getAppInfo(): Promise<AppInfo>;
 
   board: {

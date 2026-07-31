@@ -1,101 +1,175 @@
-// Gera build/icon.ico (PNG 256x256 dentro de um container ICO), sem dependencias.
+// Gera build/icon.ico (PNG 256x256 dentro de um container ICO) a partir da logo
+// do aplicativo, sem dependencias externas.
+//
+// Uso: node build/make-icon.js <saida.ico> [origem.png]
+//
+// A origem padrao e a versao SO DO SIMBOLO da logo, sem o texto "Creation
+// Board": num atalho de 32px o nome escrito seria uma mancha ilegivel, e o
+// simbolo sozinho continua reconhecivel.
+//
+// O PNG e decodificado aqui a mao (zlib do Node + desfiltragem das linhas)
+// porque trazer uma biblioteca de imagem para o projeto por causa de um
+// arquivo gerado uma vez nao se paga. Cobre PNG de 8 bits, RGB ou RGBA, sem
+// entrelacamento -- que e o que os exportadores de logo produzem.
 const zlib = require('node:zlib');
 const fs = require('node:fs');
 const path = require('node:path');
 
 const OUT = process.argv[2];
+const SRC = process.argv[3] ?? path.join(__dirname, 'onlycloselogo.png');
 const S = 256; // resolucao final
-const SS = 4; // supersampling para antialiasing
-const N = S * SS;
 
-// --- helpers de desenho (coordenadas em [0,N)) ---
-function sdRoundRect(px, py, x, y, w, h, r) {
-  const cx = Math.abs(px - (x + w / 2)) - (w / 2 - r);
-  const cy = Math.abs(py - (y + h / 2)) - (h / 2 - r);
-  const dx = Math.max(cx, 0);
-  const dy = Math.max(cy, 0);
-  return Math.min(Math.max(cx, cy), 0) + Math.hypot(dx, dy) - r;
-}
+// --- decodificador PNG ---
 
-function distToPolyline(px, py, pts) {
-  let best = Infinity;
-  for (let i = 0; i + 3 < pts.length; i += 2) {
-    const ax = pts[i], ay = pts[i + 1], bx = pts[i + 2], by = pts[i + 3];
-    const abx = bx - ax, aby = by - ay;
-    const len2 = abx * abx + aby * aby;
-    let t = len2 === 0 ? 0 : ((px - ax) * abx + (py - ay) * aby) / len2;
-    t = t < 0 ? 0 : t > 1 ? 1 : t;
-    const d = Math.hypot(px - (ax + t * abx), py - (ay + t * aby));
-    if (d < best) best = d;
+function decodePng(buf) {
+  const SIG = '89504e470d0a1a0a';
+  if (buf.slice(0, 8).toString('hex') !== SIG) throw new Error(`${SRC} nao e um PNG`);
+
+  const width = buf.readUInt32BE(16);
+  const height = buf.readUInt32BE(20);
+  const depth = buf[24];
+  const colorType = buf[25];
+  const interlace = buf[28];
+
+  if (depth !== 8) throw new Error(`profundidade ${depth} nao suportada (esperado 8)`);
+  if (interlace !== 0) throw new Error('PNG entrelacado nao suportado');
+  if (colorType !== 2 && colorType !== 6) {
+    throw new Error(`tipo de cor ${colorType} nao suportado (esperado 2 ou 6)`);
   }
-  return best;
-}
 
-// Curva de caneta: uma senoide suave atravessando o quadro.
-const curve = [];
-for (let i = 0; i <= 60; i++) {
-  const t = i / 60;
-  const x = 0.24 * N + t * 0.42 * N;
-  const y = 0.55 * N - Math.sin(t * Math.PI * 1.0) * 0.16 * N + t * 0.03 * N;
-  curve.push(x, y);
-}
+  const channels = colorType === 6 ? 4 : 3;
 
-function over(dst, src, a) {
-  // composicao "source over" em RGB opaco
-  for (let i = 0; i < 3; i++) dst[i] = src[i] * a + dst[i] * (1 - a);
-}
+  // Os dados podem vir divididos em varios IDAT; a especificacao manda
+  // concatenar antes de descomprimir.
+  const parts = [];
+  let p = 8;
+  while (p < buf.length) {
+    const len = buf.readUInt32BE(p);
+    const type = buf.slice(p + 4, p + 8).toString('ascii');
+    if (type === 'IDAT') parts.push(buf.slice(p + 8, p + 8 + len));
+    if (type === 'IEND') break;
+    p += 12 + len;
+  }
 
-const TILE = [0x3b, 0x6f, 0xf0];
-const BOARD = [0xff, 0xff, 0xff];
-const STROKE = [0x2b, 0x50, 0xc8];
-const NOTE = [0xff, 0xc4, 0x4d];
+  const raw = zlib.inflateSync(Buffer.concat(parts));
+  const stride = width * channels;
+  const out = Buffer.alloc(width * height * 4);
 
-const hi = new Uint8Array(N * N * 4);
-for (let y = 0; y < N; y++) {
-  for (let x = 0; x < N; x++) {
-    const px = x + 0.5, py = y + 0.5;
+  // Desfiltragem: cada linha comeca com um byte dizendo como ela foi codificada
+  // em relacao aos vizinhos da esquerda e de cima.
+  const line = Buffer.alloc(stride);
+  const prev = Buffer.alloc(stride);
+  for (let y = 0; y < height; y++) {
+    const filter = raw[y * (stride + 1)];
+    raw.copy(line, 0, y * (stride + 1) + 1, (y + 1) * (stride + 1));
 
-    let a = 0;
-    const col = [0, 0, 0];
-
-    // tile arredondado (define o alpha do icone)
-    if (sdRoundRect(px, py, 0.03 * N, 0.03 * N, 0.94 * N, 0.94 * N, 0.20 * N) < 0) {
-      a = 1;
-      col[0] = TILE[0]; col[1] = TILE[1]; col[2] = TILE[2];
-    }
-    if (a === 0) { const o = (y * N + x) * 4; hi[o + 3] = 0; continue; }
-
-    // quadro branco interno
-    if (sdRoundRect(px, py, 0.16 * N, 0.18 * N, 0.68 * N, 0.64 * N, 0.06 * N) < 0) {
-      over(col, BOARD, 1);
-    } else { const o = (y * N + x) * 4; hi[o] = col[0]; hi[o+1] = col[1]; hi[o+2] = col[2]; hi[o+3] = 255; continue; }
-
-    // traco de caneta
-    if (distToPolyline(px, py, curve) < 0.045 * N) over(col, STROKE, 1);
-
-    // post-it amarelo no canto inferior direito do quadro
-    if (sdRoundRect(px, py, 0.615 * N, 0.60 * N, 0.165 * N, 0.165 * N, 0.02 * N) < 0) {
-      over(col, NOTE, 1);
+    for (let i = 0; i < stride; i++) {
+      const a = i >= channels ? line[i - channels] : 0; // esquerda
+      const b = prev[i]; // acima
+      const c = i >= channels ? prev[i - channels] : 0; // diagonal
+      let value = line[i];
+      switch (filter) {
+        case 1:
+          value += a;
+          break;
+        case 2:
+          value += b;
+          break;
+        case 3:
+          value += (a + b) >> 1;
+          break;
+        case 4:
+          value += paeth(a, b, c);
+          break;
+        case 0:
+          break;
+        default:
+          throw new Error(`filtro PNG desconhecido: ${filter}`);
+      }
+      line[i] = value & 0xff;
     }
 
-    const o = (y * N + x) * 4;
-    hi[o] = col[0]; hi[o + 1] = col[1]; hi[o + 2] = col[2]; hi[o + 3] = 255;
+    for (let x = 0; x < width; x++) {
+      const s = x * channels;
+      const o = (y * width + x) * 4;
+      out[o] = line[s];
+      out[o + 1] = line[s + 1];
+      out[o + 2] = line[s + 2];
+      out[o + 3] = channels === 4 ? line[s + 3] : 255;
+    }
+
+    line.copy(prev);
+  }
+
+  return { width, height, data: out };
+}
+
+function paeth(a, b, c) {
+  const p = a + b - c;
+  const pa = Math.abs(p - a);
+  const pb = Math.abs(p - b);
+  const pc = Math.abs(p - c);
+  if (pa <= pb && pa <= pc) return a;
+  return pb <= pc ? b : c;
+}
+
+// --- quadrado + reducao ---
+
+const src = decodePng(fs.readFileSync(SRC));
+
+// O icone precisa ser quadrado; a logo nao e. Centraliza no maior lado e
+// preenche a sobra com a cor do proprio canto, para a borda nao aparecer como
+// uma faixa de cor diferente.
+const side = Math.max(src.width, src.height);
+const padX = Math.round((side - src.width) / 2);
+const padY = Math.round((side - src.height) / 2);
+const corner = [src.data[0], src.data[1], src.data[2], src.data[3]];
+
+const square = Buffer.alloc(side * side * 4);
+for (let y = 0; y < side; y++) {
+  for (let x = 0; x < side; x++) {
+    const o = (y * side + x) * 4;
+    const sx = x - padX;
+    const sy = y - padY;
+    if (sx >= 0 && sx < src.width && sy >= 0 && sy < src.height) {
+      src.data.copy(square, o, (sy * src.width + sx) * 4, (sy * src.width + sx) * 4 + 4);
+    } else {
+      square[o] = corner[0];
+      square[o + 1] = corner[1];
+      square[o + 2] = corner[2];
+      square[o + 3] = corner[3];
+    }
   }
 }
 
-// --- downsample box SSxSS ---
+// Reducao por media de area: cada pixel de saida e a media da regiao que ele
+// cobre na origem. Sem isso a logo, cheia de bordas finas, sairia serrilhada.
 const img = Buffer.alloc(S * S * 4);
 for (let y = 0; y < S; y++) {
+  const y0 = Math.floor((y * side) / S);
+  const y1 = Math.max(y0 + 1, Math.floor(((y + 1) * side) / S));
   for (let x = 0; x < S; x++) {
-    let r = 0, g = 0, b = 0, a = 0;
-    for (let sy = 0; sy < SS; sy++) {
-      for (let sx = 0; sx < SS; sx++) {
-        const o = ((y * SS + sy) * N + (x * SS + sx)) * 4;
-        const al = hi[o + 3] / 255;
-        r += hi[o] * al; g += hi[o + 1] * al; b += hi[o + 2] * al; a += al;
+    const x0 = Math.floor((x * side) / S);
+    const x1 = Math.max(x0 + 1, Math.floor(((x + 1) * side) / S));
+
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    let a = 0;
+    let n = 0;
+    for (let sy = y0; sy < y1; sy++) {
+      for (let sx = x0; sx < x1; sx++) {
+        const o = (sy * side + sx) * 4;
+        // Media ponderada pelo alfa: pixels transparentes nao devem puxar a cor.
+        const al = square[o + 3] / 255;
+        r += square[o] * al;
+        g += square[o + 1] * al;
+        b += square[o + 2] * al;
+        a += al;
+        n++;
       }
     }
-    const n = SS * SS;
+
     const o = (y * S + x) * 4;
     img[o] = a > 0 ? Math.round(r / a) : 0;
     img[o + 1] = a > 0 ? Math.round(g / a) : 0;
@@ -131,8 +205,8 @@ function chunk(type, data) {
 const ihdr = Buffer.alloc(13);
 ihdr.writeUInt32BE(S, 0);
 ihdr.writeUInt32BE(S, 4);
-ihdr[8] = 8;  // bit depth
-ihdr[9] = 6;  // RGBA
+ihdr[8] = 8; // bit depth
+ihdr[9] = 6; // RGBA
 const raw = Buffer.alloc(S * (S * 4 + 1));
 for (let y = 0; y < S; y++) {
   raw[y * (S * 4 + 1)] = 0; // filtro None
@@ -148,16 +222,19 @@ const png = Buffer.concat([
 // --- container ICO com uma unica entrada PNG 256x256 ---
 const dir = Buffer.alloc(22);
 dir.writeUInt16LE(0, 0);
-dir.writeUInt16LE(1, 2);  // type = icon
-dir.writeUInt16LE(1, 4);  // count
-dir[6] = 0; dir[7] = 0;   // 0 significa 256
-dir[8] = 0; dir[9] = 0;
+dir.writeUInt16LE(1, 2); // type = icon
+dir.writeUInt16LE(1, 4); // count
+dir[6] = 0;
+dir[7] = 0; // 0 significa 256
+dir[8] = 0;
+dir[9] = 0;
 dir.writeUInt16LE(1, 10); // planes
 dir.writeUInt16LE(32, 12);
-dir.writeUInt32BE(0, 14);
 dir.writeUInt32LE(png.length, 14);
 dir.writeUInt32LE(22, 18);
 
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
-fs.writeFileSync(OUT, Buffer.concat([dir, png]));
-console.log('icon.ico escrito:', OUT, Buffer.concat([dir, png]).length, 'bytes');
+const ico = Buffer.concat([dir, png]);
+fs.writeFileSync(OUT, ico);
+console.log(`icon.ico escrito a partir de ${path.basename(SRC)} (${src.width}x${src.height}):`);
+console.log(`  ${OUT} — ${ico.length} bytes`);

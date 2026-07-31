@@ -1,9 +1,11 @@
-# QuadroBranco
+# Creation Board
 
 Quadro branco infinito local para estudos. Substituto pessoal do Microsoft Whiteboard,
 rodando 100% offline no Windows: sem login, sem nuvem, sem servidor.
 
-**Status:** Fase 1 concluída (canvas infinito, índice espacial, culling, painel de debug).
+**Status:** canvas infinito, lobby e importação do Whiteboard prontos. Ainda **não há
+ferramentas de edição** — o quadro importado se navega, mas não se altera. É a próxima
+entrega.
 
 ---
 
@@ -57,12 +59,13 @@ resumos usados no desenvolvimento:
 
 | Quadro | Textos | Traços | Imagens | Post-its | Tempo |
 |---|---|---|---|---|---|
-| CURSO 5 | 41 | 14 | 4 | 0 | 159 ms |
-| Continuação cybersec | 266 | 123 | 21 | 1 | 346 ms |
-| Cybersec resumão | 642 | 380 | 36 | 5 | 879 ms |
+| CURSO 5 | 41 | 14 | 4 | 0 | 154 ms |
+| Continuação cybersec | 266 | 123 | 21 | 1 | 417 ms |
+| Cybersec resumão | 642 | 380 | 36 | 5 | 937 ms |
 
-**1.533 de 1.535 objetos recuperados.** Os dois ignorados são um `Hyperlink` e um
-`ReactionSticker`, que ainda não têm equivalente no app.
+**1.533 de 1.535 objetos recuperados**, todos com **erro de posição abaixo de 0,2px**.
+Os dois ignorados são um `Hyperlink` e um `ReactionSticker`, que ainda não têm
+equivalente no app.
 
 ### Como o formato foi decifrado
 
@@ -79,6 +82,33 @@ autossuficiente: nada é baixado da internet ao importar.
   a variação de pressão da caneta está na forma. Por isso foi criado o tipo
   [`PathObject`](src/shared/model/types.ts): reduzir a uma polilinha de espessura
   constante achataria a caligrafia.
+
+### Onde cada objeto vai parar
+
+Descobrir a posição de um objeto no export é mais traiçoeiro do que parece, e cada uma
+das armadilhas abaixo já deslocou conteúdo de verdade nesses três resumos:
+
+| Armadilha | O que acontece se ignorar |
+|---|---|
+| Âncora `align center` (só imagem e sticker) | `left/top` é o **centro**, não o canto. A imagem sai meia imagem fora do lugar — até 269px |
+| Rotação na matriz | `matrix(0,1,-1,0)` é 90°. Ler escala como `a` e `d` dá escala **zero** e o objeto some |
+| `tx`/`ty` da matriz | Quase sempre resíduo, mas há textos reais com `ty = -14,3px` |
+| `viewBox` do `<svg>` da tinta | `viewBox="116 -78 …"` empurra o desenho. 40 dos 473 grupos têm origem ≠ 0; o pior deslocava um traço em **5501px** |
+| Tamanho do post-it | Mora em `.textbox`, e a cor em `.textBoxBackground` — elementos diferentes |
+
+Nada disso foi deduzido lendo o CSS: cada regra foi **medida** contra o motor de layout
+do Chromium. É para isso que existe [layoutOracle.ts](src/renderer/dev/layoutOracle.ts),
+que monta o export num iframe fora da tela (com `sandbox="allow-same-origin"`, sem
+`allow-scripts` — mede-se o documento, nada dentro dele executa) e lê o
+`getBoundingClientRect()` de cada elemento. O importador é conferido contra esse gabarito
+a cada execução de `QB_IMPORT`.
+
+Uma diferença que **permanece de propósito**: o tamanho da caixa de texto não fecha com
+o medido. A largura gravada é o *teto de quebra* do original (`max-width`), não a largura
+que o texto ocupou — são grandezas diferentes, e gravar a medida por nós congelaria no
+arquivo um valor da fonte substituta. A altura difere porque a caixa de linha do
+navegador cresce com emoji e com a fonte substituta (medido: 78px de altura para uma
+fonte de 34px). A Fase 5, com layout de texto de verdade, é onde isso se resolve.
 
 Duas decisões que valem saber:
 
@@ -97,12 +127,25 @@ $env:QB_IMPORT = "C:\caminho\para\export.zip"; npm run dev
 ```
 
 Imprime no terminal quantos objetos de cada tipo foram reconhecidos, o que foi
-ignorado e a extensão do quadro.
+ignorado, a extensão do quadro e o **erro de posição por tipo** contra o oráculo de
+layout. A janela fecha sozinha ao terminar, então dá para rodar em sequência.
+
+Essa conferência **não grava nada**: ela roda a importação muitas vezes seguidas e
+encheria a pasta de quadros de cópias numeradas. Para reimportar de verdade por
+terminal, ligue a gravação:
+
+```
+$env:QB_IMPORT_SAVE = "1"; $env:QB_IMPORT = "C:\caminho\export.zip"; npm run dev
+```
 
 ## Onde os quadros ficam
 
 Cada quadro é um arquivo `.wbd` em **`C:\Resumos-quadrobranco`**. O botão com o
 caminho, no topo do lobby, abre a pasta no Explorador.
+
+O nome da pasta não acompanhou a renomeação do app de propósito: mudá-lo faria os
+resumos já salvos sumirem do lobby. Trocar exige uma migração, como a que já existe
+para a pasta antiga em Documentos.
 
 A pasta fica na raiz do disco **de propósito, e não em Documentos**: a pasta
 Documentos desta máquina está redirecionada para o OneDrive, e salvar ali faria
@@ -207,8 +250,8 @@ Saída em `release/`:
 
 | Arquivo | O que é |
 |---|---|
-| `QuadroBranco-Setup-0.1.0.exe` | **Instalador NSIS** — é este que você executa |
-| `win-unpacked/QuadroBranco.exe` | App já descompactado, para testar sem instalar |
+| `Creation Board-Setup-0.1.0.exe` | **Instalador NSIS** — é este que você executa |
+| `win-unpacked/Creation Board.exe` | App já descompactado, para testar sem instalar |
 
 O instalador é *per-user* (não pede admin), permite escolher a pasta de instalação
 e **cria o atalho na área de trabalho automaticamente**. Depois de instalado, o app
@@ -230,10 +273,20 @@ Só acontece uma vez.
 
 ### Ícone do app
 
-O `build/icon.ico` é gerado por script, sem dependências de imagem:
+O `build/icon.ico` é gerado a partir da logo, sem dependências de imagem:
 
 ```
 npm run icon
+```
+
+A origem é `build/onlycloselogo.png` — a versão **só do símbolo**, sem o texto
+"Creation Board". Num atalho de 32px o nome escrito viraria uma mancha ilegível,
+enquanto o símbolo sozinho continua reconhecível. O script decodifica o PNG à mão
+(zlib do Node + desfiltragem das linhas), centraliza num quadrado e reduz para 256px
+por média de área. Para usar outra imagem:
+
+```
+node build/make-icon.js build/icon.ico caminho/da/imagem.png
 ```
 
 ## Estrutura de pastas
@@ -318,8 +371,14 @@ câmera durante a coleta, para medir fps sustentado em vez de fps de cena parada
 - **Redesenho sob demanda**: com o quadro parado o loop não desenha nada. FPS
   aparece como "ocioso" no painel — não é lentidão, é ausência de trabalho.
 - **LOD em três níveis**: abaixo de 40% de zoom os traços usam a polilinha
-  simplificada por RDP e o texto vira barras; abaixo de 12%, cada objeto vira um
-  bloco sólido.
+  simplificada por RDP; abaixo de 12%, cada objeto vira um bloco sólido.
+- **Texto decide por objeto, não pelo zoom.** O critério é o tamanho que o glifo
+  ocupa em pixel físico (`fontSize × escala do objeto × zoom × dpr`), e abaixo de
+  6px ele vira barra cinza. A diferença é prática: nos resumos importados os
+  títulos têm 34 unidades de mundo e o corpo tem 12,5, então a 22% de zoom os
+  títulos saem com 7,5px (legíveis) e o corpo com 2,8px (mancha). Decidir pelo
+  zoom da câmera trataria os dois igual e apagaria justamente os títulos — que são
+  o que se procura ao olhar o resumo inteiro de longe.
 - **Agrupamento por cor** no LOD de blocos. Trocar `fillStyle` milhares de vezes
   por frame custa mais que os próprios `fillRect`.
 
@@ -331,12 +390,17 @@ individual agrupado por cor: 82fps.
 
 ## Roadmap
 
+A ordem diverge do plano original **de propósito**: o objetivo é migrar os resumos do
+Microsoft Whiteboard, e para isso importar e manipular vêm antes de desenhar. Caneta não
+serve para migrar.
+
 - [x] **Fase 0** — Setup, janela abrindo, instalador `.exe` validado
 - [x] **Fase 1** — Canvas infinito, modelo de dados, índice espacial, culling, painel de debug (F3)
 - [x] **Fase 1.5** — Lobby com miniaturas, salvar `.wbd` (Ctrl+S), tela de atalhos (F1)
-- [ ] **Fase 2** — Caneta, marca-texto, lápis, borracha, cores e espessura
-- [ ] **Fase 3** — Seleção, manipulação, undo/redo
-- [ ] **Fase 4** — Formas geométricas, régua e snap
+- [x] **Fase 2** — Importação do Microsoft Whiteboard, conferida contra o motor de layout
+- [ ] **Fase 3** — Seleção e manipulação: mover, redimensionar, rotacionar, excluir, duplicar, ordem de camadas, undo/redo
+- [ ] **Fase 4** — Caneta, marca-texto, lápis, borracha, cores e espessura
+- [ ] **Fase 4.5** — Formas geométricas, régua e snap
 - [ ] **Fase 5** — Texto, post-its e alertas
 - [ ] **Fase 6** — Busca Ctrl+F
 - [ ] **Fase 7** — Imagens

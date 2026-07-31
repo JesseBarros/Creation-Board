@@ -1,5 +1,5 @@
 import type { AlertLevel, NoteObject, RichSpan, TextObject } from '@shared/model/types';
-import type { PaintContext } from './types';
+import { glyphPixels, MIN_GLYPH_PX, type PaintContext } from './types';
 import { readableTextOn } from '../colorAdapt';
 
 /** Concatena os spans. A Fase 5 troca isso por layout real com formatacao por span. */
@@ -10,11 +10,39 @@ export function spansToPlainText(spans: readonly RichSpan[]): string {
 }
 
 /**
+ * Monta a string de fonte do canvas.
+ *
+ * Ponto unico de verdade: o importador mede o texto com ela para saber quantas
+ * linhas a caixa precisa, e o painter desenha com ela. Montar a fonte em dois
+ * lugares faria a medida e o desenho discordarem, e a caixa cortaria linha.
+ */
+export function textFont(
+  fontSize: number,
+  fontFamily: string,
+  bold: boolean,
+  italic: boolean,
+): string {
+  return `${italic ? 'italic ' : ''}${bold ? 'bold ' : ''}${fontSize}px ${fontFamily}`;
+}
+
+/**
+ * Negrito e italico da caixa.
+ *
+ * Enquanto o layout por span nao existe (Fase 5), o estilo do primeiro span
+ * vale para a caixa inteira. Para o conteudo importado isso e exato: o
+ * importador gera um unico span por caixa.
+ */
+function boxStyle(spans: readonly RichSpan[]): { bold: boolean; italic: boolean } {
+  const first = spans[0];
+  return { bold: first?.bold ?? false, italic: first?.italic ?? false };
+}
+
+/**
  * Quebra de linha por largura. Versao provisoria da Fase 1: mede com
  * `measureText` e quebra por palavra. A Fase 5 substitui por um layout que
  * respeita formatacao por span, listas e alinhamento vertical.
  */
-function wrap(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+export function wrap(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
   const lines: string[] = [];
   for (const paragraph of text.split('\n')) {
     let line = '';
@@ -36,15 +64,18 @@ export function paintText(o: TextObject, p: PaintContext): void {
   const { ctx } = p;
   ctx.globalAlpha = o.opacity;
 
-  // Muito afastado: glifos ocupariam menos de um pixel. Barras cinzas dao a
-  // mesma leitura visual por uma fracao do custo.
-  if (p.lod !== 'full') {
+  // A decisao e por OBJETO, e nao pelo zoom da camera: no mesmo quadro e no
+  // mesmo zoom, um titulo pode estar legivel enquanto o corpo do texto nao
+  // esta. Decidir pela camera trataria os dois igual e apagaria justamente os
+  // titulos, que sao o que se procura ao olhar o resumo de longe.
+  if (glyphPixels(o.fontSize, p) < MIN_GLYPH_PX) {
     paintTextPlaceholder(ctx, o.w, o.h, o.fontSize, o.lineHeight, p.adapt(o.color));
     ctx.globalAlpha = 1;
     return;
   }
 
-  ctx.font = `${o.fontSize}px ${o.fontFamily}`;
+  const { bold, italic } = boxStyle(o.content);
+  ctx.font = textFont(o.fontSize, o.fontFamily, bold, italic);
   ctx.fillStyle = p.adapt(o.color);
   ctx.textBaseline = 'top';
   ctx.textAlign = o.align;
@@ -82,13 +113,16 @@ export function paintNote(o: NoteObject, p: PaintContext): void {
     ctx.fill();
   }
 
-  if (p.lod !== 'full') {
+  const pad = 12;
+  const fontSize = 14;
+
+  // Mesmo criterio do texto solto: o post-it desenha o conteudo quando ele cabe
+  // como letra, e para no fundo colorido quando nao cabe.
+  if (glyphPixels(fontSize, p) < MIN_GLYPH_PX) {
     ctx.globalAlpha = 1;
     return;
   }
 
-  const pad = 12;
-  const fontSize = 14;
   ctx.font = `${fontSize}px 'Segoe UI', sans-serif`;
   // O texto acompanha o fundo ja adaptado: num post-it que escureceu, texto
   // preto sumiria.

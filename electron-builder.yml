@@ -1,6 +1,6 @@
-appId: com.quadrobranco.app
-productName: QuadroBranco
-copyright: Copyright © 2026 QuadroBranco
+appId: com.creationboard.app
+productName: Creation Board
+copyright: Copyright © 2026 Creation Board
 
 directories:
   output: release
@@ -28,7 +28,7 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: always
   createStartMenuShortcut: true
-  shortcutName: QuadroBranco
+  shortcutName: Creation Board
   deleteAppDataOnUninstall: false
   artifactName: ${productName}-Setup-${version}.${ext}
 
