@@ -159,7 +159,17 @@ export class Renderer {
       ctx.translate(t.x, t.y);
       if (t.rotation !== 0) ctx.rotate(t.rotation);
       if (t.scaleX !== 1 || t.scaleY !== 1) ctx.scale(t.scaleX, t.scaleY);
-      paintObject(obj, { ctx, zoom, lod, adapt: this.#adapt, image: this.resolveImage });
+      paintObject(obj, {
+        ctx,
+        zoom,
+        lod,
+        // `s` ja e zoom * dpr: o painter precisa dele para saber de que tamanho
+        // uma unidade de mundo sai em pixel fisico.
+        deviceScale: s,
+        objectScale: Math.abs(t.scaleY),
+        adapt: this.#adapt,
+        image: this.resolveImage,
+      });
       ctx.restore();
       drawn++;
     }

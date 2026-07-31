@@ -77,6 +77,9 @@ export async function ensureBoardsDir(): Promise<string> {
  * Roda uma vez e e silenciosa: falhar a migracao nao pode impedir o app de abrir.
  */
 async function migrateLegacyBoards(target: string): Promise<void> {
+  // Nome antigo de proposito: e onde as versoes anteriores gravaram de verdade.
+  // Renomear junto com o app faria a migracao procurar uma pasta que nunca
+  // existiu, e os quadros dessas versoes ficariam para tras.
   const legacy = join(app.getPath('documents'), 'QuadroBranco');
   if (legacy === target) return;
 
@@ -150,7 +153,7 @@ export async function saveBoard(req: SaveBoardRequest): Promise<SaveBoardResult>
 
   const manifest: WbdManifest = {
     schemaVersion: WBD_SCHEMA_VERSION,
-    app: 'QuadroBranco',
+    app: 'Creation Board',
     appVersion: app.getVersion(),
     createdAt: now,
     updatedAt: now,
@@ -218,7 +221,7 @@ export async function loadBoard(path: string): Promise<LoadBoardResult> {
 
   if (manifest.schemaVersion > WBD_SCHEMA_VERSION) {
     throw new Error(
-      `Este quadro foi salvo por uma versao mais nova do QuadroBranco ` +
+      `Este quadro foi salvo por uma versao mais nova do Creation Board ` +
         `(formato ${manifest.schemaVersion}, esta versao le ate ${WBD_SCHEMA_VERSION}).`,
     );
   }

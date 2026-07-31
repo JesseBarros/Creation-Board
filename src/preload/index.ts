@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { IPC, type AppInfo, type QuadroBrancoApi } from '@shared/ipc-contract';
+import { IPC, type AppInfo, type CreationBoardApi } from '@shared/ipc-contract';
 import type {
   BoardSummary,
   LoadBoardResult,
@@ -13,7 +13,7 @@ import type { ImportSource } from '@shared/importer';
  * capacidade e uma funcao nomeada e tipada, para que a superficie de ataque
  * cresca so quando eu deliberadamente adicionar algo aqui.
  */
-const api: QuadroBrancoApi = {
+const api: CreationBoardApi = {
   getAppInfo: (): Promise<AppInfo> => ipcRenderer.invoke(IPC.appInfo) as Promise<AppInfo>,
 
   board: {

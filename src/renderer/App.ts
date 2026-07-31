@@ -173,7 +173,9 @@ export class App {
     const importPath = params.get('import');
     if (importPath) {
       this.#enterBoard();
-      void import('./dev/importCheck').then((m) => m.runImportCheck(importPath, this));
+      void import('./dev/importCheck').then((m) =>
+        m.runImportCheck(importPath, this, params.get('save') === '1'),
+      );
     } else if (params.get('selftest')) {
       // Precisa do quadro montado e medido para os eventos caírem no canvas.
       this.#enterBoard();
@@ -289,8 +291,15 @@ export class App {
    * Cada arquivo vira um .wbd salvo direto no disco, e nao um quadro aberto na
    * tela: importar tres resumos de uma vez e a situacao normal, e abrir todos
    * simultaneamente nao faria sentido.
+   *
+   * `save: false` interpreta sem gravar. Existe para a verificacao automatizada:
+   * ela roda a importacao muitas vezes seguidas, e gravando deixava a pasta de
+   * quadros do usuario cheia de copias numeradas do mesmo resumo.
    */
-  async importWhiteboard(sources: readonly ImportSource[]): Promise<ImportReport[]> {
+  async importWhiteboard(
+    sources: readonly ImportSource[],
+    { save = true }: { save?: boolean } = {},
+  ): Promise<ImportReport[]> {
     const reports: ImportReport[] = [];
 
     for (const source of sources) {
@@ -315,8 +324,10 @@ export class App {
         this.#onCameraChanged();
       }
 
-      const saved = await this.#writeBoard(null, source.name);
-      if (!saved) result.report.avisos.push('falha ao gravar o arquivo .wbd');
+      if (save) {
+        const saved = await this.#writeBoard(null, source.name);
+        if (!saved) result.report.avisos.push('falha ao gravar o arquivo .wbd');
+      }
       reports.push(result.report);
     }
 
@@ -415,7 +426,7 @@ export class App {
 
   #updateTitle(): void {
     this.#bar.setBoardName(this.#session.name, this.#session.dirty);
-    document.title = `${this.#session.dirty ? '• ' : ''}${this.#session.name} — QuadroBranco`;
+    document.title = `${this.#session.dirty ? '• ' : ''}${this.#session.name} — Creation Board`;
   }
 
   /** Pergunta antes de descartar alteracoes nao salvas. */

@@ -36,7 +36,7 @@ export class Lobby {
     const titleBox = document.createElement('div');
     const title = document.createElement('h1');
     title.className = 'qb-lobby__title';
-    title.textContent = 'QuadroBranco';
+    title.textContent = 'Creation Board';
     this.#folderLabel = document.createElement('button');
     this.#folderLabel.className = 'qb-lobby__folder';
     this.#folderLabel.title = 'Abrir a pasta dos quadros no Explorador';
