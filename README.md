@@ -7,6 +7,9 @@ rodando 100% offline no Windows: sem login, sem nuvem, sem servidor.
 (mover, redimensionar, girar, duplicar, excluir, ordem de camadas, undo/redo). O quadro
 importado já se reorganiza. Ainda não há **caneta** — desenhar à mão é a próxima entrega.
 
+> Retomando o desenvolvimento depois de uma pausa? Comece por **[RETOMAR.md](RETOMAR.md)**:
+> em que pé está, a decisão de merge que ficou pendente e como começar a Fase 4.
+
 ---
 
 ## Rodar sem instalar
