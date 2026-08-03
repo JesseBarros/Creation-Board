@@ -8,6 +8,8 @@ export interface ViewportBarActions {
   save(): void;
   backToLobby(): void;
   showShortcuts(): void;
+  undo(): void;
+  redo(): void;
 }
 
 const PRESETS = [0.01, 0.05, 0.25, 0.5, 1, 2, 4, 8, 16, 64];
@@ -19,6 +21,8 @@ export class ViewportBar {
   #menu: HTMLElement;
   #gridBtn: HTMLButtonElement;
   #nameLabel: HTMLElement;
+  #undoBtn: HTMLButtonElement;
+  #redoBtn: HTMLButtonElement;
 
   constructor(private readonly actions: ViewportBarActions) {
     this.el = document.createElement('div');
@@ -34,6 +38,12 @@ export class ViewportBar {
 
     const saveBtn = iconButton('salvar', 'Salvar (Ctrl+S)', () => this.actions.save());
     saveBtn.classList.add('qb-bar__btn--primary');
+
+    this.#undoBtn = iconButton('↶', 'Desfazer (Ctrl+Z)', () => this.actions.undo());
+    this.#undoBtn.classList.add('qb-bar__btn--icon');
+    this.#redoBtn = iconButton('↷', 'Refazer (Ctrl+Shift+Z)', () => this.actions.redo());
+    this.#redoBtn.classList.add('qb-bar__btn--icon');
+    this.setHistory(false, false);
 
     this.#gridBtn = iconButton('grade', 'Grade de fundo (G)', () => this.actions.toggleGrid());
     const fitBtn = iconButton('ajustar', 'Ajustar a tela (Ctrl+1)', () =>
@@ -77,6 +87,9 @@ export class ViewportBar {
       this.#nameLabel,
       saveBtn,
       divider(),
+      this.#undoBtn,
+      this.#redoBtn,
+      divider(),
       this.#gridBtn,
       fitBtn,
       themeBtn,
@@ -97,6 +110,11 @@ export class ViewportBar {
 
   setGridEnabled(on: boolean): void {
     this.#gridBtn.classList.toggle('qb-bar__btn--active', on);
+  }
+
+  setHistory(canUndo: boolean, canRedo: boolean): void {
+    this.#undoBtn.disabled = !canUndo;
+    this.#redoBtn.disabled = !canRedo;
   }
 
   /** O ponto antes do nome sinaliza alteracoes ainda nao gravadas. */

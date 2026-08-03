@@ -1,11 +1,24 @@
 import type { BoardSummary } from '@shared/wbd';
 import { Camera, MAX_ZOOM, MIN_ZOOM } from './core/Camera';
 import { Document } from './core/Document';
+import { History } from './core/History';
 import { Scheduler } from './core/Scheduler';
+import { Selection } from './core/Selection';
 import { ViewportInput } from './input/ViewportInput';
 import { Renderer, type RenderTheme } from './render/Renderer';
+import { ToolManager } from './tools/ToolManager';
+import type { ToolContext } from './tools/types';
+import { hitTest } from './features/selection/hitTest';
+import {
+  deleteSelection,
+  duplicateSelection,
+  nudgeSelection,
+  reorderSelection,
+  selectAll,
+} from './features/selection/actions';
 import { DebugPanel } from './ui/DebugPanel';
 import { ViewportBar } from './ui/ViewportBar';
+import { ContextMenu, type MenuEntry } from './ui/ContextMenu';
 import { Lobby } from './ui/Lobby';
 import { ShortcutsModal } from './ui/ShortcutsModal';
 import { confirmDialog, promptText, toast } from './ui/dialogs';
@@ -54,14 +67,19 @@ export class App {
   readonly doc = new Document();
   readonly camera = new Camera();
   readonly assets = new AssetStore();
+  readonly selection = new Selection();
+  readonly history = new History();
 
   #renderer: Renderer;
   #scheduler: Scheduler;
   #input: ViewportInput;
+  #tools: ToolManager;
+  #toolCtx: ToolContext;
   #bar: ViewportBar;
   #debug: DebugPanel;
   #lobby: Lobby;
   #help: ShortcutsModal;
+  #menu: ContextMenu;
 
   #boardView: HTMLElement;
   #host: HTMLElement;
@@ -93,8 +111,9 @@ export class App {
     this.#hint = document.createElement('div');
     this.#hint.className = 'qb-hint';
     this.#hint.innerHTML =
-      '<strong>Quadro vazio.</strong> As ferramentas de desenho chegam na Fase 2.<br>' +
-      'Use <kbd>F3</kbd> para gerar carga de teste e <kbd>F1</kbd> para ver os atalhos.';
+      '<strong>Quadro vazio.</strong> As ferramentas de desenho chegam na Fase 4.<br>' +
+      'Importe um quadro do Whiteboard pelo lobby, ou use <kbd>F3</kbd> para gerar ' +
+      'carga de teste e <kbd>F1</kbd> para ver os atalhos.';
     this.#boardView.append(this.#hint);
 
     this.#progress = document.createElement('div');
@@ -112,6 +131,8 @@ export class App {
       save: () => void this.save(),
       backToLobby: () => void this.goToLobby(),
       showShortcuts: () => this.#help.toggle(),
+      undo: () => this.undo(),
+      redo: () => this.redo(),
     });
     this.#boardView.append(this.#bar.el);
 
@@ -134,8 +155,9 @@ export class App {
     });
 
     this.#help = new ShortcutsModal();
+    this.#menu = new ContextMenu();
 
-    root.append(this.#lobby.el, this.#boardView, this.#help.el);
+    root.append(this.#lobby.el, this.#boardView, this.#help.el, this.#menu.el);
 
     // ------------------------------------------------------------- setup
     this.#theme = (localStorage.getItem(THEME_KEY) as 'light' | 'dark' | null) ?? 'light';
@@ -143,16 +165,42 @@ export class App {
 
     this.#scheduler = new Scheduler(() => {
       if (this.#scheduler.continuous) this.#stepBenchmark();
-      return this.#renderer.render();
+      const stats = this.#renderer.render();
+      // O cromo da selecao vai na camada de cima, no mesmo frame: desenhado na
+      // camada estatica, ele entraria no cache de conteudo e continuaria
+      // aparecendo depois de a selecao mudar.
+      this.#paintOverlay();
+      return stats;
     });
 
-    this.#input = new ViewportInput(this.#host, this.camera, () => this.#onCameraChanged());
+    this.#input = new ViewportInput(
+      this.#host,
+      this.camera,
+      () => this.#onCameraChanged(),
+      (e) => this.#openContextMenu(e),
+    );
+
+    this.#toolCtx = {
+      doc: this.doc,
+      camera: this.camera,
+      selection: this.selection,
+      history: this.history,
+      invalidate: () => this.#scheduler.invalidate(),
+      markDirty: () => this.#markDirty(),
+    };
+    this.#tools = new ToolManager(this.#host, this.#toolCtx);
 
     this.doc.on('objects', () => {
       this.#hint.hidden = this.doc.size > 0;
+      // Desfazer uma exclusao (ou refaze-la) nao passa pela selecao: sem podar
+      // aqui, o quadro de manipulacao continuaria em volta de objetos que ja
+      // sairam do documento.
+      this.selection.prune(this.doc);
       this.#scheduler.invalidate();
     });
     this.doc.on('prefs', () => this.#scheduler.invalidate());
+    this.selection.onChange(() => this.#scheduler.invalidate());
+    this.history.onChange(() => this.#bar.setHistory(this.history.canUndo, this.history.canRedo));
 
     this.#observeSize();
     this.#bindShortcuts();
@@ -179,7 +227,7 @@ export class App {
     } else if (params.get('selftest')) {
       // Precisa do quadro montado e medido para os eventos caírem no canvas.
       this.#enterBoard();
-      void import('./dev/selftest').then((m) => m.runSelfTest(this.#host, this.camera));
+      void import('./dev/selftest').then((m) => m.runSelfTest(this.#host, this));
     } else if (bench) {
       void this.#runAutoBenchmark(Number(bench));
     } else {
@@ -209,8 +257,22 @@ export class App {
     this.#measure();
   }
 
+  /**
+   * Zera o que e especifico do quadro aberto.
+   *
+   * Historico junto com a selecao de proposito: um passo de undo guarda objetos
+   * do quadro anterior, e aplica-lo depois de trocar de quadro ressuscitaria
+   * conteudo de outro arquivo dentro deste.
+   */
+  #resetEditingState(): void {
+    this.selection.clear();
+    this.history.clear();
+    this.#tools.cancel();
+  }
+
   async newBoard(): Promise<void> {
     this.doc.clear();
+    this.#resetEditingState();
     this.#session = { path: null, name: 'Quadro sem nome', dirty: false };
     this.#enterBoard();
     this.camera.reset(this.#renderer.viewportW, this.#renderer.viewportH);
@@ -224,6 +286,7 @@ export class App {
       // o primeiro frame desenha marcadores no lugar das imagens.
       await this.assets.load(result.assets, result.document.assets);
       applyBoard(this.doc, this.camera, result.document);
+      this.#resetEditingState();
       this.#session = { path: result.path, name: result.name, dirty: false };
       this.#enterBoard();
       this.#bar.setZoom(this.camera.zoom);
@@ -248,6 +311,7 @@ export class App {
    */
   async seed(count: number, refit = true): Promise<void> {
     this.doc.clear();
+    this.#resetEditingState();
     this.#showProgress(`Gerando ${count.toLocaleString('pt-BR')} objetos…`, 0);
 
     let done = 0;
@@ -275,6 +339,7 @@ export class App {
 
   clearBoard(): void {
     this.doc.clear();
+    this.#resetEditingState();
     this.#markDirty();
     this.#scheduler.resetSamples();
     this.#scheduler.invalidate();
@@ -312,6 +377,7 @@ export class App {
       // resumo vazariam para o .wbd de outro.
       this.doc.clear();
       this.assets.clear();
+      this.#resetEditingState();
 
       const result = await importWhiteboardHtml(source.name, source.html, this.assets);
       this.doc.add(result.objects);
@@ -355,6 +421,7 @@ export class App {
     // Volta ao lobby: o resultado sao varios quadros, nao um.
     this.doc.clear();
     this.assets.clear();
+    this.#resetEditingState();
     this.#session = { path: null, name: 'Quadro sem nome', dirty: false };
     if (wasLobby) await this.goToLobby();
 
@@ -500,6 +567,101 @@ export class App {
     this.#scheduler.invalidate();
   }
 
+  // ------------------------------------------------------- selecao e edicao
+
+  #paintOverlay(): void {
+    const ctx = this.#renderer.beginOverlayScreen();
+    this.#tools.paintOverlay(ctx, this.camera);
+  }
+
+  undo(): void {
+    if (!this.history.undo()) return;
+    this.#markDirty();
+    this.#scheduler.invalidate();
+  }
+
+  redo(): void {
+    if (!this.history.redo()) return;
+    this.#markDirty();
+    this.#scheduler.invalidate();
+  }
+
+  /** Esc: primeiro aborta o gesto em curso, so depois limpa a selecao. */
+  #escape(): void {
+    if (this.#menu.isOpen) {
+      this.#menu.hide();
+      return;
+    }
+    if (this.#tools.cancel()) return;
+    this.selection.clear();
+  }
+
+  #openContextMenu(e: MouseEvent): void {
+    if (this.#view !== 'board') return;
+
+    const rect = this.#host.getBoundingClientRect();
+    const world = this.camera.screenToWorld({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    // Clicar com o direito fora da selecao passa a selecao para o que esta sob
+    // o cursor. Sem isso o menu agiria sobre algo que o usuario talvez nem
+    // esteja vendo -- e "Excluir" seria uma surpresa desagradavel.
+    const hit = hitTest(this.doc, world, this.camera.zoom);
+    if (hit && !this.selection.has(hit.id)) this.selection.set([hit.id]);
+    else if (!hit) this.selection.clear();
+
+    const n = this.selection.size;
+    const nada = n === 0;
+    const entries: MenuEntry[] = [
+      {
+        label: 'Desfazer',
+        hint: 'Ctrl+Z',
+        disabled: !this.history.canUndo,
+        onSelect: () => this.undo(),
+      },
+      {
+        label: 'Refazer',
+        hint: 'Ctrl+Shift+Z',
+        disabled: !this.history.canRedo,
+        onSelect: () => this.redo(),
+      },
+      'separator',
+      {
+        label: 'Duplicar',
+        hint: 'Ctrl+D',
+        disabled: nada,
+        onSelect: () => void duplicateSelection(this.#toolCtx),
+      },
+      {
+        label: 'Trazer para frente',
+        hint: 'Ctrl+Shift+]',
+        disabled: nada,
+        onSelect: () => void reorderSelection(this.#toolCtx, 'front'),
+      },
+      {
+        label: 'Enviar para tras',
+        hint: 'Ctrl+Shift+[',
+        disabled: nada,
+        onSelect: () => void reorderSelection(this.#toolCtx, 'back'),
+      },
+      'separator',
+      {
+        label: 'Selecionar tudo',
+        hint: 'Ctrl+A',
+        disabled: this.doc.size === 0,
+        onSelect: () => selectAll(this.#toolCtx),
+      },
+      {
+        label: n > 1 ? `Excluir ${n} objetos` : 'Excluir',
+        hint: 'Delete',
+        danger: true,
+        disabled: nada,
+        onSelect: () => void deleteSelection(this.#toolCtx),
+      },
+    ];
+
+    this.#menu.show(e.clientX, e.clientY, entries);
+    this.#scheduler.invalidate();
+  }
+
   // -------------------------------------------------------------- progresso
 
   #showProgress(label: string, ratio: number): void {
@@ -574,6 +736,9 @@ export class App {
     // Enquanto a view esta escondida o host mede 0x0; redimensionar para isso
     // destruiria o backing store por nada.
     if (rect.width === 0 || rect.height === 0) return;
+    // O ToolManager guarda o retangulo do host em cache para nao forcar layout
+    // a cada pointermove; mudar de tamanho invalida esse cache.
+    this.#tools.remeasure();
     if (this.#renderer.resize(rect.width, rect.height, window.devicePixelRatio || 1)) {
       this.#scheduler.invalidate();
     }
@@ -586,7 +751,7 @@ export class App {
   }
 
   #bindShortcuts(): void {
-    const handlers: Record<ShortcutId, () => void> = {
+    const handlers: Record<ShortcutId, (e: KeyboardEvent) => void> = {
       save: () => void this.save(),
       lobby: () => void this.goToLobby(),
       help: () => this.#help.toggle(),
@@ -597,6 +762,19 @@ export class App {
       fit: () => this.fitToContent(),
       zoomIn: () => this.#zoomCenter(1.25),
       zoomOut: () => this.#zoomCenter(1 / 1.25),
+      undo: () => this.undo(),
+      redo: () => this.redo(),
+      selectAll: () => selectAll(this.#toolCtx),
+      duplicate: () => void duplicateSelection(this.#toolCtx),
+      deleteSelection: () => void deleteSelection(this.#toolCtx),
+      deselect: () => this.#escape(),
+      bringToFront: () => void reorderSelection(this.#toolCtx, 'front'),
+      sendToBack: () => void reorderSelection(this.#toolCtx, 'back'),
+      nudge: (e) => {
+        const dx = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+        const dy = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0;
+        nudgeSelection(this.#toolCtx, dx, dy, e.shiftKey);
+      },
     };
 
     window.addEventListener('keydown', (e) => {
@@ -611,7 +789,7 @@ export class App {
       const id = resolveShortcut(e, this.#view);
       if (!id) return;
       e.preventDefault();
-      handlers[id]();
+      handlers[id](e);
     });
   }
 
@@ -623,6 +801,7 @@ export class App {
   dispose(): void {
     this.#scheduler.stop();
     this.#input.dispose();
+    this.#tools.dispose();
   }
 }
 
