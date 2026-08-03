@@ -86,24 +86,35 @@ export class AssetStore {
     return asset;
   }
 
+  /**
+   * Registra um binario sob um id JA CONHECIDO, sem mexer no resto do store.
+   *
+   * Existe porque `add` sorteia um id novo, e ha dois casos em que o id precisa
+   * ser o que ja esta gravado nos objetos: reabrir um .wbd e colar uma imagem
+   * copiada de outro quadro. Nos dois, um id novo faria o ImageObject apontar
+   * para o nada.
+   */
+  async adopt(id: string, mime: string, bytes: Uint8Array, filename?: string): Promise<boolean> {
+    if (this.#assets.has(id)) return true;
+    try {
+      const blob = new Blob([bytes.slice().buffer as ArrayBuffer], { type: mime });
+      const asset = await this.add(blob, filename);
+      this.#assets.delete(asset.meta.id);
+      asset.meta.id = id;
+      this.#assets.set(id, asset);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   /** Reidrata os assets vindos de um .wbd aberto. */
   async load(serialized: readonly SerializedAsset[], metas: Record<string, AssetMeta>): Promise<void> {
     this.clear();
+    // Um asset corrompido nao pode impedir o quadro inteiro de abrir; o objeto
+    // correspondente cai no marcador de imagem ausente. `adopt` engole a falha.
     await Promise.all(
-      serialized.map(async (s) => {
-        try {
-          const blob = new Blob([s.data.slice().buffer as ArrayBuffer], { type: s.mime });
-          const asset = await this.add(blob, metas[s.id]?.filename);
-          // `add` gera um id novo; aqui o id precisa ser o do arquivo, senao os
-          // ImageObject salvos apontariam para o nada.
-          this.#assets.delete(asset.meta.id);
-          asset.meta.id = s.id;
-          this.#assets.set(s.id, asset);
-        } catch {
-          // Um asset corrompido nao pode impedir o quadro inteiro de abrir; o
-          // objeto correspondente cai no marcador de imagem ausente.
-        }
-      }),
+      serialized.map((s) => this.adopt(s.id, s.mime, s.data, metas[s.id]?.filename)),
     );
   }
 

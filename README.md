@@ -36,6 +36,7 @@ teclas — se o atalho aparece na ajuda, ele funciona.
 | Mover · redimensionar · girar | Arrastar a seleção · uma alça · a alça de cima |
 | Desfazer / refazer | `Ctrl+Z` / `Ctrl+Shift+Z` (ou `Ctrl+Y`) |
 | Duplicar / excluir | `Ctrl+D` / `Delete` |
+| Copiar · recortar · colar | `Ctrl+C` · `Ctrl+X` · `Ctrl+V` (cola no cursor) |
 | Camadas | `Ctrl+Shift+]` / `Ctrl+Shift+[` |
 | Menu de contexto | Clique direito |
 | Pan | **Botão direito + arrastar** · botão do meio · dois dedos no trackpad · roda |
@@ -72,6 +73,21 @@ fronteira é o que permite arrastar o quadro no meio de um gesto sem trocar de m
 Quatro decisões que valem saber:
 
 
+
+### Copiar e colar
+
+`Ctrl+V` cola **centrado no cursor** — onde você está olhando, e não onde o original
+estava. Se o mouse ainda não passou pelo quadro, cai no centro da tela.
+
+A área de transferência é interna, e não a do Windows: um objeto do quadro não tem
+representação fiel em texto nem em imagem, e serializá-lo para o clipboard do sistema
+só para ler de volta em seguida perderia o que importa — traço vira bitmap, texto
+perde a formatação. Colar em *outro* aplicativo é exportação, e pertence à Fase 8.
+
+Ela **atravessa quadros**: copiar num resumo e colar noutro funciona, inclusive com
+imagens. Para isso a cópia leva junto os *bytes* da imagem, não só a referência — o
+`AssetStore` é esvaziado ao trocar de arquivo, então só o `assetId` chegaria do outro
+lado como marcador de imagem ausente.
 
 ## Importar do Microsoft Whiteboard
 
@@ -209,7 +225,7 @@ npm run selftest
 
 Abre o app, dispara eventos de ponteiro e de teclado direto no app e imprime o
 resultado no terminal — sem depender da janela estar em primeiro plano e sem
-capturar a tela. **29 verificações**, em duas frentes:
+capturar a tela. **32 verificações**, em duas frentes:
 
 - **Navegação:** pan com botão direito e com o do meio, o limiar que separa arrastar
   de clicar, o botão esquerdo permanecendo livre para as ferramentas, o zoom ancorado
@@ -220,6 +236,11 @@ capturar a tela. **29 verificações**, em duas frentes:
   camadas e objeto travado recusando seleção. Inclui a verificação de que **um arraste
   inteiro vira um único passo de undo** e a de que clicar no vazio dentro do retângulo
   de um traço diagonal *não* seleciona.
+- **Persistência:** copiar, recortar, colar no cursor, e um teste que move e
+  redimensiona um objeto e passa o documento pelo mesmo JSON que vai para dentro do
+  `.wbd`. Sem ele, um `transform` que não sobrevivesse à gravação devolveria o quadro
+  reorganizado às posições originais na próxima abertura — e só se descobriria isso
+  depois de reorganizar um resumo inteiro.
 
 Como o teste exercita `ToolManager` e o registro de atalhos de ponta a ponta, ele pega
 regressão de fiação, não só de matemática — foi assim que apareceu, por exemplo, um

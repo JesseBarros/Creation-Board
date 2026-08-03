@@ -18,6 +18,8 @@ export class ToolManager {
   #rect: DOMRect;
   /** Ponteiro que capturamos, para nao reagir a um segundo dedo/caneta. */
   #captured: number | null = null;
+  /** Ultima posicao conhecida do cursor, em mundo. Null ate ele entrar no quadro. */
+  #lastWorld: Vec2 | null = null;
 
   constructor(
     private readonly host: HTMLElement,
@@ -30,6 +32,14 @@ export class ToolManager {
 
   get active(): Tool {
     return this.#tools[this.#active];
+  }
+
+  /**
+   * Onde o cursor esta, em mundo. Null se ele ainda nao passou pelo quadro.
+   * E o ponto de colagem: colar cai onde o usuario esta olhando.
+   */
+  get cursorWorld(): Vec2 | null {
+    return this.#lastWorld;
   }
 
   /** O host mudou de tamanho ou de lugar; o cache do retangulo venceu. */
@@ -110,9 +120,11 @@ export class ToolManager {
 
   #toPointer(e: PointerEvent): ToolPointer {
     const screen: Vec2 = { x: e.clientX - this.#rect.left, y: e.clientY - this.#rect.top };
+    const world = this.ctx.camera.screenToWorld(screen);
+    this.#lastWorld = world;
     return {
       screen,
-      world: this.ctx.camera.screenToWorld(screen),
+      world,
       shift: e.shiftKey,
       alt: e.altKey,
       ctrl: e.ctrlKey || e.metaKey,
