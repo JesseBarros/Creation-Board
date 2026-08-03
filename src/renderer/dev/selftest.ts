@@ -1,8 +1,10 @@
 import type { Vec2 } from '@shared/geometry/vec2';
 import { computeBbox } from '@shared/model/bbox';
 import type { BoardObject, ShapeObject, StrokeObject } from '@shared/model/types';
+import type { WbdDocument } from '@shared/model/document';
 import type { App } from '../App';
 import { MAX_ZOOM, MIN_ZOOM, type Camera } from '../core/Camera';
+import { applyBoard, serializeBoard } from '../features/storage/boardIO';
 
 /**
  * Auto-teste de entrada: navegacao da camera e ferramenta de selecao.
@@ -162,7 +164,7 @@ function scene(): BoardObject[] {
 
 // -------------------------------------------------------------------- testes
 
-export function runSelfTest(host: HTMLElement, app: App): void {
+export async function runSelfTest(host: HTMLElement, app: App): Promise<void> {
   const camera = app.camera;
   const results: Result[] = [];
   const check = (nome: string, ok: boolean, detalhe: string): void => {
@@ -176,7 +178,7 @@ export function runSelfTest(host: HTMLElement, app: App): void {
   };
 
   runCameraTests(host, camera, check, reset);
-  runSelectionTests(host, app, check, reset);
+  await runSelectionTests(host, app, check, reset);
 
   // Deixa o cenario montado e selecionado no fim. Com QB_SHOT a janela nao
   // fecha ao terminar, entao a foto vira a conferencia do cromo de selecao --
@@ -188,6 +190,9 @@ export function runSelfTest(host: HTMLElement, app: App): void {
   app.doc.add(scene());
   app.selection.set(['A', 'B']);
   app.fitToContent();
+  // Sem isto o quadro fica marcado como sujo, o guarda de `beforeunload`
+  // recusa o fechamento e a execucao automatizada nunca termina.
+  app.markClean();
 
   const falhas = results.filter((r) => !r.ok).length;
   const linhas = results.map((r) => `  ${r.ok ? 'OK  ' : 'FALHA'} ${r.nome} — ${r.detalhe}`);
@@ -277,7 +282,12 @@ function runCameraTests(host: HTMLElement, camera: Camera, check: Check, reset: 
   );
 }
 
-function runSelectionTests(host: HTMLElement, app: App, check: Check, reset: () => void): void {
+async function runSelectionTests(
+  host: HTMLElement,
+  app: App,
+  check: Check,
+  reset: () => void,
+): Promise<void> {
   const { doc, selection, history } = app;
 
   /** Repoe o cenario. Cada teste comeca do mesmo estado conhecido. */
@@ -497,5 +507,61 @@ function runSelectionTests(host: HTMLElement, app: App, check: Check, reset: () 
     'objeto travado nao pode ser selecionado',
     selection.isEmpty,
     `selecao=${sel()} esperado=[]`,
+  );
+
+  // --- copiar e colar na posicao do cursor
+  setup();
+  clickAt({ x: 150, y: 150 });
+  app.copySelection();
+  // Move o cursor antes de colar: e ele que decide onde a copia cai.
+  const alvo = at({ x: 700, y: 400 });
+  pointer(host, 'pointermove', alvo.x, alvo.y, 0);
+  await app.pasteClipboard();
+  const colado = selection.ids()[0];
+  const colada = colado ? doc.get(colado) : undefined;
+  const centro = colada
+    ? { x: colada.bbox.x + colada.bbox.w / 2, y: colada.bbox.y + colada.bbox.h / 2 }
+    : { x: NaN, y: NaN };
+  check(
+    'Ctrl+C e Ctrl+V colam centrado no cursor',
+    doc.size === 5 && colado !== 'A' && near(centro.x, 700) && near(centro.y, 400),
+    `objetos=${doc.size} centro da copia=(${centro.x.toFixed(1)}, ${centro.y.toFixed(1)}) esperado=(700.0, 400.0)`,
+  );
+
+  // --- recortar tira agora e devolve ao colar
+  setup();
+  clickAt({ x: 150, y: 150 });
+  app.cutSelection();
+  const depoisDoCut = doc.size;
+  await app.pasteClipboard();
+  check(
+    'Ctrl+X recorta e Ctrl+V devolve',
+    depoisDoCut === 3 && doc.size === 4,
+    `depois do recorte=${depoisDoCut} depois de colar=${doc.size} esperado=(3, 4)`,
+  );
+
+  // --- o que a manipulacao produz sobrevive ao formato gravado
+  // Move, redimensiona e gira A, depois passa o documento pelo mesmo JSON que
+  // vai para dentro do .wbd. Se `transform` nao sobrevivesse, salvar um quadro
+  // reorganizado devolveria tudo para as posicoes originais na proxima abertura.
+  setup();
+  clickAt({ x: 150, y: 150 });
+  dragFrom({ x: 150, y: 150 }, 40, 20);
+  dragFrom({ x: 240, y: 220 }, 100, 100);
+  const antes = doc.get('A')!.transform;
+  const gravado = JSON.parse(
+    JSON.stringify(serializeBoard(doc, app.camera, app.assets)),
+  ) as WbdDocument;
+  applyBoard(doc, app.camera, gravado);
+  const depois = doc.get('A')?.transform;
+  check(
+    'mover e redimensionar sobrevivem ao formato do .wbd',
+    depois !== undefined &&
+      near(depois.x, antes.x, 0.01) &&
+      near(depois.y, antes.y, 0.01) &&
+      near(depois.scaleX, antes.scaleX, 0.001) &&
+      near(depois.scaleY, antes.scaleY, 0.001),
+    `antes=(${antes.x.toFixed(1)}, ${antes.y.toFixed(1)}, escala ${antes.scaleX.toFixed(2)}) ` +
+      `depois=(${depois?.x.toFixed(1)}, ${depois?.y.toFixed(1)}, escala ${depois?.scaleX.toFixed(2)})`,
   );
 }

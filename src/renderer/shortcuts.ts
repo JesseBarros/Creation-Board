@@ -22,6 +22,9 @@ export type ShortcutId =
   | 'redo'
   | 'selectAll'
   | 'duplicate'
+  | 'copy'
+  | 'cut'
+  | 'paste'
   | 'deleteSelection'
   | 'deselect'
   | 'bringToFront'
@@ -72,6 +75,9 @@ export const SHORTCUTS: ShortcutDef[] = [
   { id: 'undo', group: 'Editar', keys: 'Ctrl+Z', label: 'Desfazer', scope: 'board' },
   { id: 'redo', group: 'Editar', keys: 'Ctrl+Shift+Z', keysAlt: 'Ctrl+Y', label: 'Refazer', scope: 'board' },
   { id: 'duplicate', group: 'Editar', keys: 'Ctrl+D', label: 'Duplicar a selecao', scope: 'board' },
+  { id: 'copy', group: 'Editar', keys: 'Ctrl+C', label: 'Copiar', scope: 'board' },
+  { id: 'cut', group: 'Editar', keys: 'Ctrl+X', label: 'Recortar', scope: 'board' },
+  { id: 'paste', group: 'Editar', keys: 'Ctrl+V', label: 'Colar na posicao do cursor', scope: 'board' },
   {
     id: 'deleteSelection',
     group: 'Editar',

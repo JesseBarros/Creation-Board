@@ -9,6 +9,7 @@ import { Renderer, type RenderTheme } from './render/Renderer';
 import { ToolManager } from './tools/ToolManager';
 import type { ToolContext } from './tools/types';
 import { hitTest } from './features/selection/hitTest';
+import { BoardClipboard } from './features/selection/clipboard';
 import {
   deleteSelection,
   duplicateSelection,
@@ -69,6 +70,8 @@ export class App {
   readonly assets = new AssetStore();
   readonly selection = new Selection();
   readonly history = new History();
+  /** Sobrevive a troca de quadro de proposito: copiar de um e colar noutro. */
+  readonly clipboard = new BoardClipboard();
 
   #renderer: Renderer;
   #scheduler: Scheduler;
@@ -491,6 +494,20 @@ export class App {
     this.#updateTitle();
   }
 
+  /**
+   * Declara que nao ha nada a gravar.
+   *
+   * Usado pelo auto-teste: o que ele deixa na tela e cenario descartavel, e com
+   * o quadro marcado como sujo o guarda de `beforeunload` recusa o fechamento --
+   * `app.quit()` nao surte efeito e a execucao automatizada fica pendurada
+   * esperando alguem clicar no X.
+   */
+  markClean(): void {
+    if (!this.#session.dirty) return;
+    this.#session.dirty = false;
+    this.#updateTitle();
+  }
+
   #updateTitle(): void {
     this.#bar.setBoardName(this.#session.name, this.#session.dirty);
     document.title = `${this.#session.dirty ? '• ' : ''}${this.#session.name} — Creation Board`;
@@ -586,6 +603,29 @@ export class App {
     this.#scheduler.invalidate();
   }
 
+  copySelection(): void {
+    this.clipboard.copy(this.selection.objects(this.doc), this.assets);
+  }
+
+  cutSelection(): void {
+    this.clipboard.cut(this.#toolCtx, this.assets);
+  }
+
+  /**
+   * Cola onde o cursor esta. Se ele ainda nao passou pelo quadro -- colar logo
+   * depois de abrir o arquivo, por teclado -- cai no centro da tela, que e o
+   * unico ponto que com certeza esta a vista.
+   */
+  async pasteClipboard(): Promise<void> {
+    const at =
+      this.#tools.cursorWorld ??
+      this.camera.screenToWorld({
+        x: this.#renderer.viewportW / 2,
+        y: this.#renderer.viewportH / 2,
+      });
+    await this.clipboard.paste(this.#toolCtx, this.assets, at);
+  }
+
   /** Esc: primeiro aborta o gesto em curso, so depois limpa a selecao. */
   #escape(): void {
     if (this.#menu.isOpen) {
@@ -624,6 +664,24 @@ export class App {
         onSelect: () => this.redo(),
       },
       'separator',
+      {
+        label: 'Copiar',
+        hint: 'Ctrl+C',
+        disabled: nada,
+        onSelect: () => this.copySelection(),
+      },
+      {
+        label: 'Recortar',
+        hint: 'Ctrl+X',
+        disabled: nada,
+        onSelect: () => this.cutSelection(),
+      },
+      {
+        label: 'Colar aqui',
+        hint: 'Ctrl+V',
+        disabled: this.clipboard.isEmpty,
+        onSelect: () => void this.clipboard.paste(this.#toolCtx, this.assets, world),
+      },
       {
         label: 'Duplicar',
         hint: 'Ctrl+D',
@@ -766,6 +824,9 @@ export class App {
       redo: () => this.redo(),
       selectAll: () => selectAll(this.#toolCtx),
       duplicate: () => void duplicateSelection(this.#toolCtx),
+      copy: () => this.copySelection(),
+      cut: () => this.cutSelection(),
+      paste: () => void this.pasteClipboard(),
       deleteSelection: () => void deleteSelection(this.#toolCtx),
       deselect: () => this.#escape(),
       bringToFront: () => void reorderSelection(this.#toolCtx, 'front'),

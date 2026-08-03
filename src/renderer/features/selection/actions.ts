@@ -110,7 +110,7 @@ export function reorderSelection(ctx: ToolContext, direction: 'front' | 'back'):
  * compartilha-las faria editar a copia alterar o original -- e pior, o undo de
  * uma das duas restauraria o array que a outra ainda esta usando.
  */
-function cloneObject(obj: BoardObject, z: string, dx: number, dy: number): BoardObject {
+export function cloneObject(obj: BoardObject, z: string, dx: number, dy: number): BoardObject {
   const now = Date.now();
   const base = {
     ...obj,
@@ -153,6 +153,6 @@ function cloneObject(obj: BoardObject, z: string, dx: number, dy: number): Board
   }
 }
 
-function rotulo(acao: string, n: number): string {
+export function rotulo(acao: string, n: number): string {
   return n === 1 ? `${acao} objeto` : `${acao} ${n} objetos`;
 }
