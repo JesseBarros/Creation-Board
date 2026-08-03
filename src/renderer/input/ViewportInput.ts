@@ -41,6 +41,8 @@ export class ViewportInput {
     private readonly host: HTMLElement,
     private readonly camera: Camera,
     private readonly onChange: () => void,
+    /** Clique direito que NAO foi um arraste de pan. Abre o menu de contexto. */
+    private readonly onContextMenu?: (e: MouseEvent) => void,
   ) {
     this.#bind();
   }
@@ -88,10 +90,11 @@ export class ViewportInput {
       e.preventDefault();
       return;
     }
-    // Ate a Fase 3 nao existe menu de contexto proprio; sem isso o Chromium
-    // nao mostra nada de qualquer forma, mas o preventDefault deixa explicito
-    // que o clique com o direito e nosso.
+    // O menu nativo do Chromium nunca aparece: o menu do quadro e nosso, montado
+    // em HTML para poder listar acoes do app (duplicar, camadas) que o nativo
+    // nao conhece.
     e.preventDefault();
+    this.onContextMenu?.(e);
   }
 
   #onWheel(e: WheelEvent): void {

@@ -3,9 +3,9 @@
 Quadro branco infinito local para estudos. Substituto pessoal do Microsoft Whiteboard,
 rodando 100% offline no Windows: sem login, sem nuvem, sem servidor.
 
-**Status:** canvas infinito, lobby e importação do Whiteboard prontos. Ainda **não há
-ferramentas de edição** — o quadro importado se navega, mas não se altera. É a próxima
-entrega.
+**Status:** canvas infinito, lobby, importação do Whiteboard e **seleção completa**
+(mover, redimensionar, girar, duplicar, excluir, ordem de camadas, undo/redo). O quadro
+importado já se reorganiza. Ainda não há **caneta** — desenhar à mão é a próxima entrega.
 
 ---
 
@@ -31,6 +31,13 @@ teclas — se o atalho aparece na ajuda, ele funciona.
 |---|---|
 | Salvar | `Ctrl+S` |
 | Voltar ao lobby | `Ctrl+O` |
+| Selecionar | Clique · Shift+clique soma · arrastar no vazio faz laço |
+| Selecionar tudo / limpar | `Ctrl+A` / `Esc` |
+| Mover · redimensionar · girar | Arrastar a seleção · uma alça · a alça de cima |
+| Desfazer / refazer | `Ctrl+Z` / `Ctrl+Shift+Z` (ou `Ctrl+Y`) |
+| Duplicar / excluir | `Ctrl+D` / `Delete` |
+| Camadas | `Ctrl+Shift+]` / `Ctrl+Shift+[` |
+| Menu de contexto | Clique direito |
 | Pan | **Botão direito + arrastar** · botão do meio · dois dedos no trackpad · roda |
 | Pan horizontal | Shift + roda |
 | Zoom no cursor | Ctrl + roda · pinça no trackpad |
@@ -44,9 +51,54 @@ teclas — se o atalho aparece na ajuda, ele funciona.
 Faixa de zoom: **1% a 6400%**.
 
 O botão direito acumula dois papéis: **arrastar** move o quadro, **clicar sem
-arrastar** fica reservado para o menu de contexto da Fase 3. A distinção é por
-deslocamento — abaixo de 3px ainda conta como clique, para a tremida natural da
-mão não cancelar o menu.
+arrastar** abre o menu de contexto. A distinção é por deslocamento — abaixo de 3px
+ainda conta como clique, para a tremida natural da mão não cancelar o menu.
+
+## Selecionar e manipular
+
+O botão **esquerdo pertence às ferramentas**; direito e meio são da navegação. Essa
+fronteira é o que permite arrastar o quadro no meio de um gesto sem trocar de modo.
+
+| Gesto | O que faz |
+|---|---|
+| Clique | Seleciona o objeto sob o cursor |
+| Shift + clique | Soma à seleção; num objeto já selecionado, tira |
+| Arrastar do vazio | Laço: pega tudo na área (Shift soma ao que já estava) |
+| Arrastar a seleção | Move — **Shift** trava no eixo dominante |
+| Arrastar uma alça | Redimensiona — **Shift** mantém a proporção, **Alt** ancora no centro |
+| Arrastar a alça de cima | Gira — **Shift** trava de 15 em 15 graus |
+| Setas | Move 1px; com Shift, 10px |
+
+Quatro decisões que valem saber:
+
+- **O clique segue a geometria, não o retângulo.** Um traço manuscrito na diagonal
+  ocupa um retângulo enorme e quase nenhum pixel dele; um "V" grande tem o meio vazio.
+  Selecionar pelo AABB faria o clique no vazio agarrar o traço — e, pior, agarrar o
+  traço de cima em vez do texto que está visivelmente ali. O AABB serve só como filtro
+  barato (via R-tree) e a decisão final vai contra a geometria real: distância à
+  polilinha nos traços, `isPointInPath` no **mesmo `Path2D` que foi desenhado** na tinta
+  importada, e polígono/elipse nas formas. O laço é a exceção deliberada: arrastar um
+  laço é "pegue tudo por aqui", não mira, e refinar por geometria faria ele ignorar
+  objetos que o usuário visivelmente cercou.
+- **Um arraste inteiro é um passo de undo.** Durante o gesto os patches são aplicados
+  direto no documento, sem passar pelo histórico; o comando só é empurrado ao soltar o
+  botão. A alternativa — um comando por frame, confiando na fusão do `History` — se
+  desfaz se o usuário parar de mexer no meio do arraste por mais que a janela de fusão,
+  quebrando um gesto em dois passos.
+- **Escala vai para o `transform`, não para a largura do objeto.** Assim existe um só
+  caminho de código para todos os tipos: traço e tinta importada nem têm largura/altura,
+  e reescalá-los significaria reescrever milhares de coordenadas por frame. Pelo
+  transform é O(1) e o `.wbd` continua guardando a geometria original.
+- **Selecionar vários objetos girados força escala uniforme.** Esticar só um eixo de um
+  objeto girado não é escala: é cisalhamento, e `Transform` não tem onde guardar isso.
+  Em vez de aplicar uma conta errada e entortar o objeto em relação ao que a alça
+  prometeu, o arraste vira proporcional. Não aparece com um objeto só, porque aí o
+  quadro de manipulação gira junto e os eixos coincidem.
+
+Com **um** objeto selecionado o quadro de manipulação acompanha a rotação dele; com
+vários, é o AABB e não gira — não existe orientação única que sirva para um conjunto
+com rotações diferentes, e escolher a de um deles faria o quadro pular ao trocar a
+seleção.
 
 ## Importar do Microsoft Whiteboard
 
@@ -191,14 +243,29 @@ Sai com erro se qualquer marca ficar ilegível em qualquer um dos dois temas.
 npm run selftest
 ```
 
-Abre o app, dispara eventos de ponteiro direto no canvas e imprime o resultado
-no terminal — sem depender da janela estar em primeiro plano e sem capturar a
-tela. Cobre pan com botão direito, o limiar que separa arrastar de clicar, pan
-com botão do meio, o botão esquerdo permanecendo livre para as ferramentas, o
-zoom ancorado no cursor, os dois limites de zoom e a rolagem sem Ctrl.
+Abre o app, dispara eventos de ponteiro e de teclado direto no app e imprime o
+resultado no terminal — sem depender da janela estar em primeiro plano e sem
+capturar a tela. **29 verificações**, em duas frentes:
+
+- **Navegação:** pan com botão direito e com o do meio, o limiar que separa arrastar
+  de clicar, o botão esquerdo permanecendo livre para as ferramentas, o zoom ancorado
+  no cursor, os dois limites de zoom e a rolagem sem Ctrl.
+- **Seleção:** clique, Shift+clique somando e tirando, laço por área, mover,
+  Shift travando o eixo, redimensionar pela alça com a âncora oposta parada, girar um
+  quarto de volta, excluir, desfazer, duplicar, setas, `Ctrl+A`, `Esc`, ordem de
+  camadas e objeto travado recusando seleção. Inclui a verificação de que **um arraste
+  inteiro vira um único passo de undo** e a de que clicar no vazio dentro do retângulo
+  de um traço diagonal *não* seleciona.
+
+Como o teste exercita `ToolManager` e o registro de atalhos de ponta a ponta, ele pega
+regressão de fiação, não só de matemática — foi assim que apareceu, por exemplo, um
+gesto de mover que nunca chegava a promover o arraste.
 
 O que ele **não** cobre: a tradução que o Windows faz do botão físico para
-`PointerEvent.button`. Esse mapeamento é padrão e não varia.
+`PointerEvent.button` (padrão, não varia) nem o desenho do overlay. Para o desenho,
+o teste termina deixando a cena selecionada na tela, então
+`QB_SHOT=<arquivo.png> npm run selftest` fotografa o contorno, as alças e a alça de
+rotação de verdade.
 
 ## Requisitos
 
@@ -398,7 +465,7 @@ serve para migrar.
 - [x] **Fase 1** — Canvas infinito, modelo de dados, índice espacial, culling, painel de debug (F3)
 - [x] **Fase 1.5** — Lobby com miniaturas, salvar `.wbd` (Ctrl+S), tela de atalhos (F1)
 - [x] **Fase 2** — Importação do Microsoft Whiteboard, conferida contra o motor de layout
-- [ ] **Fase 3** — Seleção e manipulação: mover, redimensionar, rotacionar, excluir, duplicar, ordem de camadas, undo/redo
+- [x] **Fase 3** — Seleção e manipulação: mover, redimensionar, rotacionar, excluir, duplicar, ordem de camadas, undo/redo
 - [ ] **Fase 4** — Caneta, marca-texto, lápis, borracha, cores e espessura
 - [ ] **Fase 4.5** — Formas geométricas, régua e snap
 - [ ] **Fase 5** — Texto, post-its e alertas

@@ -196,6 +196,26 @@ export class Renderer {
     return ctx;
   }
 
+  /**
+   * Overlay em coordenadas de TELA (CSS px), com o DPR ja aplicado.
+   *
+   * As alcas de selecao e o laco sao cromo de interface, nao conteudo: tem
+   * tamanho fixo em pixel e devem sair nitidos em qualquer zoom. Desenhados no
+   * espaco do mundo, cada espessura precisaria ser dividida pelo zoom a mao e
+   * ainda cairia em meio pixel. Quem usa isto converte os pontos com
+   * `camera.worldToScreen`.
+   */
+  beginOverlayScreen(): CanvasRenderingContext2D {
+    const ctx = this.#overlayCtx;
+    if (this.#overlayHasContent) {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
+    }
+    this.#overlayHasContent = true;
+    ctx.setTransform(this.#dpr, 0, 0, this.#dpr, 0, 0);
+    return ctx;
+  }
+
   /** Limpa o overlay e marca que ele nao precisa mais ser limpo ate voltar a ter conteudo. */
   clearOverlay(): void {
     if (!this.#overlayHasContent) return;

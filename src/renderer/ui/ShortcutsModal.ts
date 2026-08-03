@@ -1,4 +1,4 @@
-import { groupedShortcuts } from '../shortcuts';
+import { displayKeys, groupedShortcuts } from '../shortcuts';
 
 /**
  * Tela de ajuda com todos os atalhos.
@@ -49,13 +49,20 @@ export class ShortcutsModal {
 
         const keys = document.createElement('span');
         keys.className = 'qb-help__keys';
-        // "Ctrl+=|+" mostra so a primeira alternativa; as demais existem para o
-        // matcher aceitar variacoes de layout de teclado.
-        for (const part of item.keys.split('|')[0]!.split('+')) {
-          const kbd = document.createElement('kbd');
-          kbd.textContent = part.trim();
-          keys.append(kbd);
-        }
+        const combos = displayKeys(item);
+        combos.forEach((combo, i) => {
+          if (i > 0) {
+            const ou = document.createElement('span');
+            ou.className = 'qb-help__or';
+            ou.textContent = 'ou';
+            keys.append(ou);
+          }
+          for (const part of combo.split('+')) {
+            const kbd = document.createElement('kbd');
+            kbd.textContent = part.trim();
+            keys.append(kbd);
+          }
+        });
 
         const label = document.createElement('span');
         label.className = 'qb-help__label';

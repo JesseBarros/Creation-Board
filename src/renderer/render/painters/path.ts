@@ -19,7 +19,14 @@ const cache = new Map<string, { rev: number; path: Path2D }>();
  */
 const MAX_CACHED = 4000;
 
-function pathFor(o: PathObject): Path2D {
+/**
+ * Path2D do objeto, reconstruido so quando `rev` muda.
+ *
+ * Exportado porque o hit-test precisa exatamente do mesmo path que foi
+ * desenhado: e `isPointInPath` sobre ele que responde se o clique caiu DENTRO da
+ * caligrafia ou apenas dentro do retangulo que a envolve.
+ */
+export function path2dFor(o: PathObject): Path2D {
   const hit = cache.get(o.id);
   if (hit && hit.rev === o.rev) return hit.path;
 
@@ -35,7 +42,7 @@ export function paintPath(o: PathObject, p: PaintContext): void {
   const { ctx } = p;
   ctx.globalAlpha = o.opacity;
   ctx.fillStyle = p.adapt(o.fill);
-  ctx.fill(pathFor(o), o.fillRule ?? 'nonzero');
+  ctx.fill(path2dFor(o), o.fillRule ?? 'nonzero');
   ctx.globalAlpha = 1;
 }
 

@@ -83,6 +83,11 @@
   color: var(--accent);
 }
 
+.qb-bar__btn:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
 .qb-bar__zoom {
   min-width: 58px;
   font-variant-numeric: tabular-nums;
