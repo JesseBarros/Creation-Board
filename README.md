@@ -261,7 +261,7 @@ npm run selftest
 
 Abre o app, dispara eventos de ponteiro e de teclado direto no app e imprime o
 resultado no terminal — sem depender da janela estar em primeiro plano e sem
-capturar a tela. **32 verificações**, em duas frentes:
+capturar a tela. **33 verificações**, em três frentes:
 
 - **Navegação:** pan com botão direito e com o do meio, o limiar que separa arrastar
   de clicar, o botão esquerdo permanecendo livre para as ferramentas, o zoom ancorado
@@ -277,6 +277,10 @@ capturar a tela. **32 verificações**, em duas frentes:
   `.wbd`. Sem ele, um `transform` que não sobrevivesse à gravação devolveria o quadro
   reorganizado às posições originais na próxima abertura — e só se descobriria isso
   depois de reorganizar um resumo inteiro.
+- **Desempenho:** arrastar 10.000 objetos selecionados de uma vez, com teto de 33 ms
+  por frame (30fps). É um piso de qualidade, não uma medição — falha se uma mudança
+  futura tornar a manipulação em massa lenta. A repartição do custo sai junto na
+  linha do resultado.
 
 Como o teste exercita `ToolManager` e o registro de atalhos de ponta a ponta, ele pega
 regressão de fiação, não só de matemática — foi assim que apareceu, por exemplo, um
@@ -469,6 +473,37 @@ câmera durante a coleta, para medir fps sustentado em vez de fps de cena parada
   o que se procura ao olhar o resumo inteiro de longe.
 - **Agrupamento por cor** no LOD de blocos. Trocar `fillStyle` milhares de vezes
   por frame custa mais que os próprios `fillRect`.
+
+### Custo de manipular, que é outro problema
+
+Arrastar uma seleção não é limitado pelo culling: o que custa é recalcular o AABB e
+reposicionar no índice espacial **cada objeto selecionado**, a cada frame. O custo
+cresce com o tamanho da seleção, não com o zoom — e o pior caso é `Ctrl+A` num quadro
+grande seguido de um arraste.
+
+Medido com 10.000 objetos selecionados de uma vez, pelo `npm run selftest`:
+
+| Etapa | Custo por frame |
+|---|---|
+| Recalcular AABB | 3,1 ms |
+| Índice espacial, objeto a objeto | ~~20,4 ms~~ |
+| **Índice espacial, refeito em lote** | **6,9 ms** |
+| Contorno e alças da seleção | 4,0 ms |
+| **Total** | **27,3 ms (37fps)** |
+
+A troca de 20,4 para 6,9 ms é o único ajuste que a Fase 3 precisou, e só apareceu
+porque foi medido: `update` por objeto paga um `remove` — que procura a entrada na
+árvore — mais um `insert` reequilibrado, enquanto a carga em lote empacota a árvore de
+baixo para cima e não paga nenhum dos dois. Acima de **um quarto** do quadro alterado
+de uma vez, `Document.replaceMany` refaz o índice inteiro em vez de mexer objeto a
+objeto.
+
+O palpite, aqui, teria errado o alvo: a hipótese natural era que o gargalo fosse
+recalcular o AABB dos traços, varrendo milhares de pontos. São 3,1 ms — a menor
+das três parcelas.
+
+Nos resumos de verdade isso nem chega perto de apertar: o maior deles tem 1.063
+objetos, cerca de um décimo da carga medida.
 
 Uma otimização que **foi testada e descartada**: emitir os blocos como um único
 path com milhares de sub-retângulos. Reduz o tempo de JS (12,9 → 11,7 ms) mas

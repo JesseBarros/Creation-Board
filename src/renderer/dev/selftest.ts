@@ -4,7 +4,11 @@ import type { BoardObject, ShapeObject, StrokeObject } from '@shared/model/types
 import type { WbdDocument } from '@shared/model/document';
 import type { App } from '../App';
 import { MAX_ZOOM, MIN_ZOOM, type Camera } from '../core/Camera';
+import { applyPatches } from '../commands/patch';
+import { computeFrame } from '../features/selection/frame';
+import { moveObjects } from '../features/selection/transformOps';
 import { applyBoard, serializeBoard } from '../features/storage/boardIO';
+import { generateStressObjects } from './stress';
 
 /**
  * Auto-teste de entrada: navegacao da camera e ferramenta de selecao.
@@ -539,6 +543,59 @@ async function runSelectionTests(
     depoisDoCut === 3 && doc.size === 4,
     `depois do recorte=${depoisDoCut} depois de colar=${doc.size} esperado=(3, 4)`,
   );
+
+  // --- custo de arrastar uma selecao muito grande
+  // O caso real: abrir um resumo importado, Ctrl+A e reorganizar tudo de uma
+  // vez. Cada frame do arraste recalcula o bbox e reposiciona no R-tree cada
+  // objeto selecionado, entao o custo cresce com a selecao, nao com o zoom --
+  // o culling nao ajuda aqui.
+  {
+    const N = 10000;
+    reset();
+    selection.clear();
+    history.clear();
+    doc.clear();
+    doc.add(generateStressObjects(N));
+    selection.set([...doc.all()].map((o) => o.id));
+
+    const originais = selection.objects(doc);
+    applyPatches(doc, moveObjects(originais, 1, 1)); // aquecimento do JIT
+
+    const FRAMES = 20;
+    const t0 = performance.now();
+    for (let i = 1; i <= FRAMES; i++) applyPatches(doc, moveObjects(originais, i, i));
+    const msArraste = (performance.now() - t0) / FRAMES;
+
+    // O overlay refaz esta lista a cada frame para saber o que contornar.
+    const t1 = performance.now();
+    for (let i = 0; i < FRAMES; i++) computeFrame(selection.objects(doc));
+    const msOverlay = (performance.now() - t1) / FRAMES;
+
+    // Reparticao do custo, para nao otimizar por palpite.
+    let msBbox = 0;
+    let msIndex = 0;
+    let msRebuild = 0;
+    {
+      const objs = [...doc.all()];
+      const a = performance.now();
+      for (let i = 0; i < FRAMES; i++) for (const o of objs) computeBbox(o);
+      msBbox = (performance.now() - a) / FRAMES;
+      const b = performance.now();
+      for (let i = 0; i < FRAMES; i++) for (const o of objs) doc.index.update(o);
+      msIndex = (performance.now() - b) / FRAMES;
+      const c = performance.now();
+      for (let i = 0; i < FRAMES; i++) doc.index.rebuild(objs);
+      msRebuild = (performance.now() - c) / FRAMES;
+    }
+    const total = msArraste + msOverlay;
+    check(
+      `arrastar ${N.toLocaleString('pt-BR')} objetos selecionados fica acima de 30fps`,
+      total < 33,
+      `${total.toFixed(1)} ms/frame (mover ${msArraste.toFixed(1)} + overlay ${msOverlay.toFixed(1)}), ` +
+        `teto 33 ms | reparticao: bbox ${msBbox.toFixed(1)} · indice em lote ${msRebuild.toFixed(1)} ` +
+        `(seria ${msIndex.toFixed(1)} um a um)`,
+    );
+  }
 
   // --- o que a manipulacao produz sobrevive ao formato gravado
   // Move, redimensiona e gira A, depois passa o documento pelo mesmo JSON que
