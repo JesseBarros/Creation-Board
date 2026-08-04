@@ -1522,7 +1522,16 @@ export class App {
     // O ToolManager guarda o retangulo do host em cache para nao forcar layout
     // a cada pointermove; mudar de tamanho invalida esse cache.
     this.#tools.remeasure();
-    if (this.#renderer.resize(rect.width, rect.height, window.devicePixelRatio || 1)) {
+    const mudou = this.#renderer.resize(rect.width, rect.height, window.devicePixelRatio || 1);
+    // Repinta SEMPRE, e nao so quando o tamanho mudou. Uma medicao acontece
+    // porque algo mexeu na janela, e nesses momentos a tela pode estar com
+    // pixels de antes; repintar de graca e melhor que confiar que nao esta.
+    // Com o tamanho novo a pintura e sincrona, para nao existir nem um frame
+    // com o canvas esticado no tamanho velho.
+    if (mudou) {
+      this.#renderer.render();
+      this.#paintOverlay();
+    } else {
       this.#scheduler.invalidate();
     }
   }

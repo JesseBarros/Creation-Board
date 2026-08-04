@@ -39,6 +39,35 @@ function createWindow(): void {
     mainWindow = null;
   });
 
+  /**
+   * Forca a janela a repintar INTEIRA depois de mudar de tamanho.
+   *
+   * Bug relatado com captura: ao redimensionar (ou maximizar), a janela ficava
+   * "rasgada" -- a regiao que ja existia mantinha os pixels do tamanho antigo, e
+   * so a faixa recem-exposta aparecia com o layout novo. Dava para ver a barra
+   * lateral e as reguas duas vezes, uma em cada posicao. Qualquer acao seguinte
+   * consertava, porque provocava repintura.
+   *
+   * A causa esta na composicao do Chromium, e nao no nosso desenho: o canvas e
+   * repintado pelo `ResizeObserver`, mas a interface em DOM depende do
+   * compositor invalidar a area certa. `webContents.invalidate()` existe
+   * exatamente para isso -- pedir a repintura completa.
+   *
+   * `resize` dispara muitas vezes durante um arraste de borda; o atraso curto
+   * junta a rajada numa repintura so, no fim do gesto.
+   */
+  let repaintTimer: NodeJS.Timeout | undefined;
+  const repaintSoon = (): void => {
+    clearTimeout(repaintTimer);
+    repaintTimer = setTimeout(() => mainWindow?.webContents.invalidate(), 80);
+  };
+  mainWindow.on('resize', repaintSoon);
+  mainWindow.on('maximize', repaintSoon);
+  mainWindow.on('unmaximize', repaintSoon);
+  mainWindow.on('restore', repaintSoon);
+  mainWindow.on('enter-full-screen', repaintSoon);
+  mainWindow.on('leave-full-screen', repaintSoon);
+
   // Links externos vao para o navegador do sistema, nunca abrem uma janela
   // Electron sem preload (que seria uma superficie de ataque).
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {

@@ -273,8 +273,8 @@ A gravação de pressão por ponto também ficou: é o que uma mesa digitalizado
 o que permitiria a caneta modular a espessura sozinha, se um dia isso for desejado — com
 mouse continuaria idêntica ao que é hoje.
 
-### B7 — Interface "rasgada" ao digitar
-`a investigar` · `alto`
+### B7 — Interface "rasgada" ao redimensionar a janela
+`corrigido — aguarda reteste` · `alto` · 04/08/2026
 
 Relato dele em 04/08/2026, com captura: digitando numa caixa de texto, a janela aparece
 **partida ao meio**, com pedaços da interface repetidos embaixo (barra lateral e réguas
@@ -290,21 +290,31 @@ edição é posicionada por `transform`, e área transformada conta como área r
 rolagem automática podia arrastar a interface inteira. Agora é `overflow: clip`, que **não
 cria container rolável**.
 
-**Mas eu NÃO provei que era essa a causa.** Escrevi um guarda que abre uma caixa grande na
-quina, tenta rolar `body` e `.qb-app` em 400px e exige que não role — e ele passa. Só que
-**ele também passou com o CSS antigo de volta**, o que significa que o cenário do teste não
-produz a rolagem. A correção é endurecimento defensável; a causa continua aberta.
+Esse endurecimento **não** foi provado como a causa: o guarda que escrevi passa, mas
+passou também com o CSS antigo de volta — ou seja, o cenário do teste não produz a
+rolagem. Fica como proteção, não como explicação.
 
-**O que falta saber** (é o que decide o próximo passo):
+**A causa apareceu quando ele disse que "o rasgo se autocorrige quando eu faço qualquer
+outra coisa".** Isso descarta layout e aponta para **pintura**: a tela ficou com pixels
+velhos até algo forçar repintura. Relendo a captura com isso em mente, o desenho fecha: a
+barra lateral aparece **na posição de uma janela mais baixa** em cima, e na posição da
+janela atual embaixo. É a janela sendo **redimensionada** — a região que já existia manteve
+os pixels do tamanho antigo, e só a faixa recém-exposta foi pintada com o layout novo.
 
-1. acontece com a janela **maximizada** ou depois de redimensionar?
-2. **se conserta sozinho** ao mover o quadro (pan), dar zoom ou clicar fora?
-3. o rasgo aparece **enquanto digita** ou só depois de um tempo?
+**Correção, em duas frentes:**
 
-A repetição da barra lateral e das réguas na captura não pode vir do canvas — elas são DOM
-e existem uma vez só. Isso aponta para **quadro parcialmente redesenhado** (dois frames
-compostos na mesma imagem), o que costuma acontecer durante redimensionamento de janela.
-Daí a pergunta 1.
+1. **No processo principal:** `webContents.invalidate()` depois de `resize`, `maximize`,
+   `unmaximize`, `restore` e tela cheia. É a API que existe exatamente para pedir repintura
+   completa — a interface em DOM depende do compositor invalidar a área certa, e é aí que
+   ele falhava. Com um atraso curto, para a rajada de eventos do arraste de borda virar uma
+   repintura só.
+2. **No renderer:** `#measure()` passou a repintar **sempre**, e de forma **síncrona**
+   quando o tamanho muda. Uma medição só acontece porque algo mexeu na janela; nesses
+   momentos a tela pode estar com pixels de antes, e repintar é barato demais para apostar
+   que não está.
+
+**Como confirmar:** redimensionar e maximizar a janela repetidamente, com e sem uma caixa
+de texto aberta. Se não rasgar mais, fecha.
 
 ## Melhorias
 
