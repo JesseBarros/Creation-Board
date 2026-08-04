@@ -2,7 +2,7 @@ import type { BoardSummary } from '@shared/wbd';
 import { Camera, MAX_ZOOM, MIN_ZOOM } from './core/Camera';
 import { Document } from './core/Document';
 import { History } from './core/History';
-import { Scheduler } from './core/Scheduler';
+import { Scheduler, type FrameStats } from './core/Scheduler';
 import { Selection } from './core/Selection';
 import { ViewportInput } from './input/ViewportInput';
 import { Renderer, type RenderTheme } from './render/Renderer';
@@ -1579,6 +1579,26 @@ export class App {
 
   get zoomRange(): [number, number] {
     return [MIN_ZOOM, MAX_ZOOM];
+  }
+
+  /** Zoom direto, centrado na tela. Usado pelas medicoes por terminal. */
+  setZoom(zoom: number): void {
+    this.#setZoomCenter(zoom);
+  }
+
+  /**
+   * Marca a camada estatica como suja, sem que nada tenha mudado.
+   *
+   * So para medicao: e a mesma coisa que a interface faz a cada troca de
+   * ferramenta, e medir isso separado responde se a repintura completa cabe num
+   * frame no quadro de verdade.
+   */
+  invalidateForMeasurement(): void {
+    this.#scheduler.invalidate();
+  }
+
+  get frameStats(): FrameStats {
+    return this.#scheduler.stats();
   }
 
   /** Desmonta o app liberando listeners globais. Usado no HMR do desenvolvimento. */
