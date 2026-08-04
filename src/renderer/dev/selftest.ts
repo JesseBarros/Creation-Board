@@ -1800,10 +1800,11 @@ async function runHudTests(app: App, check: Check, reset: () => void): Promise<v
   const { doc } = app;
   reset();
 
-  const barButton = (label: string): HTMLButtonElement | undefined =>
-    [...document.querySelectorAll<HTMLButtonElement>('.qb-bar__btn')].find(
-      (b) => b.textContent?.trim() === label,
-    );
+  // Procura por `data-action`, e nao pelo texto: a barra virou icones, e um
+  // teste preso ao rotulo quebra a cada renomeacao -- foi o que aconteceu
+  // quando o "?" virou "comandos".
+  const barButton = (action: string): HTMLButtonElement | null =>
+    document.querySelector<HTMLButtonElement>(`.qb-bar__btn[data-action="${action}"]`);
 
   // --- os tres botoes relatados
   const grade = barButton('grade');
@@ -1812,13 +1813,13 @@ async function runHudTests(app: App, check: Check, reset: () => void): Promise<v
   const gradeDepois = doc.prefs.grid.enabled;
   if (gradeDepois !== gradeAntes) grade?.click();
 
-  const ima = barButton('ímã');
+  const ima = barButton('ima');
   const imaAntes = doc.prefs.snapToGrid;
   ima?.click();
   const imaDepois = doc.prefs.snapToGrid;
   if (imaDepois !== imaAntes) ima?.click();
 
-  const regua = barButton('régua');
+  const regua = barButton('regua');
   const reguaAntes = app.rulersEnabled;
   regua?.click();
   const reguaDepois = app.rulersEnabled;
@@ -1826,23 +1827,32 @@ async function runHudTests(app: App, check: Check, reset: () => void): Promise<v
 
   check(
     'os botoes de grade, ima e regua da barra inferior fazem efeito',
-    grade !== undefined &&
-      ima !== undefined &&
-      regua !== undefined &&
+    grade !== null &&
+      ima !== null &&
+      regua !== null &&
       gradeDepois !== gradeAntes &&
       imaDepois !== imaAntes &&
       reguaDepois !== reguaAntes,
-    `achados: grade=${grade !== undefined} ima=${ima !== undefined} regua=${regua !== undefined} | ` +
+    `achados: grade=${grade !== null} ima=${ima !== null} regua=${regua !== null} | ` +
       `mudou: grade=${gradeDepois !== gradeAntes} ima=${imaDepois !== imaAntes} ` +
       `regua=${reguaDepois !== reguaAntes}`,
   );
 
-  // --- o botao de comandos (era "?")
-  const comandos = barButton('comandos');
+  // --- a barra virou icones, mas continua nomeada e alcancavel
+  // Sem texto visivel, o nome do botao vive no `aria-label` -- e e ele que um
+  // leitor de tela anuncia. Um icone sem nome e um botao mudo.
+  const acoes = ['voltar', 'salvar', 'exportar', 'desfazer', 'refazer', 'grade', 'ima', 'regua', 'ajustar', 'tema', 'comandos', 'zoom-menos', 'zoom-mais'];
+  const faltando = acoes.filter((a) => barButton(a) === null);
+  const semNome = acoes.filter((a) => {
+    const b = barButton(a);
+    return b !== null && !b.getAttribute('aria-label');
+  });
+  const comIcone = acoes.filter((a) => barButton(a)?.querySelector('svg') !== null).length;
   check(
-    'a barra tem o botao "comandos" no lugar do ponto de interrogacao',
-    comandos !== undefined,
-    `encontrado=${comandos !== undefined}`,
+    'todos os botoes da barra existem, tem icone e tem nome acessivel',
+    faltando.length === 0 && semNome.length === 0 && comIcone === acoes.length,
+    `faltando=[${faltando.join(', ')}] sem nome=[${semNome.join(', ')}] ` +
+      `com icone=${comIcone}/${acoes.length}`,
   );
 
   // --- trocar de cor NAO pode reconstruir o painel

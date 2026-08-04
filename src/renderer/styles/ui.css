@@ -502,3 +502,7 @@
 .qb-bar__btn--primary:hover {
   background: color-mix(in srgb, var(--accent) 85%, #000);
 }
+
+.qb-bar__btn--primary:hover {
+  background: color-mix(in srgb, var(--accent) 85%, #000);
+}

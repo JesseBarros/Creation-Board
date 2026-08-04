@@ -4,14 +4,14 @@ Registro do que apareceu usando o app de verdade, antes da Fase 9 (polimento).
 O [RETOMAR.md](RETOMAR.md) diz em que pé o projeto está; este arquivo diz **o que está
 errado e o que falta**. Some quando a lista zerar.
 
-**Última atualização: 04/08/2026.** **4 itens abertos** (1 bug, 3 melhorias) e **5
-corrigidos**. A lista começou com 11: dois relatos não eram defeito, o maior deles
-(travamento geral) era o ambiente de desenvolvimento, um bug novo apareceu no meio do
-caminho (o colar de imagem — real, meu) e a Etapa 1 fechou mais quatro.
+**Última atualização: 04/08/2026.** **3 itens abertos** (1 bug, 2 melhorias… e mais 2 do
+grupo final) e **6 corrigidos**. A lista começou com 11: dois relatos não eram defeito, o
+maior deles (travamento geral) era o ambiente de desenvolvimento, um bug novo apareceu no
+meio do caminho (o colar de imagem — real, meu) e as etapas fecharam o resto.
 
-**Ainda em aberto:** B5 (queda breve ao clicar na barra — talvez já resolvida junto do B3,
-precisa de reteste), M1 (botão de negrito), M3 (redesenho da barra), M5 (espessura 0–100%)
-e M6 (seletor de cor personalizado).
+**Ainda em aberto:** B5 (queda breve ao clicar — talvez já resolvida junto do B3, precisa
+de reteste), B4 (cursor de caneta), M1 (botão de negrito), M5 (espessura 0–100%) e M6
+(seletor de cor personalizado). Os quatro últimos mexem no mesmo painel e saem juntos.
 
 Vale registrar o padrão, porque ele se repete: **medir antes de corrigir devolveu mais
 resultado que corrigir teria devolvido.** Nenhuma linha de correção foi escrita, e três
@@ -263,11 +263,29 @@ Virou **"Importar arquivo"**. No lobby vazio o rótulo ficou mais longo de prop�
 primeiro, e não mais um botão numa fila.
 
 ### M3 — Redesenhar a barra de ferramentas inferior
-`aberto` · `médio`
+`corrigido` · `médio` · 04/08/2026
 
-A barra acumulou doze controles ao longo de oito fases — já estava anotada no RETOMAR como
-candidata a polimento. **Falta decidir a direção**: agrupar em menus, esconder o que é
-raro, ou separar em duas barras.
+Direção dada por ele: *"não é ruim, porém tem informação por extenso demais; algo mais
+clean, na pegada da barra do Windows 11"*.
+
+**O que mudou:** os doze rótulos escritos viraram **ícones**, agrupados por assunto com
+filetes discretos, sobre fundo translúcido com desfoque (o "acrílico" do Windows 11), com
+cantos mais generosos e o destaque de "ligado" numa barrinha sob o ícone.
+
+**O que continua escrito, de propósito:** o nome do quadro (com o ponto de alterações não
+salvas) e o nível de zoom. Os dois são **informação**, não rótulo de comando — virar ícone
+esconderia justamente o que se precisa ler.
+
+**Os ícones são SVG, não glifos de fonte.** Um `▦` ou um `⌗` depende da fonte instalada e
+do fallback do sistema: muda de máquina para máquina e às vezes vira um retângulo vazio.
+Em SVG a forma é a mesma em qualquer lugar, acompanha a cor do texto e escala sem
+serrilhar.
+
+**Consequência que virou melhoria de teste:** sem texto visível, o nome do botão passou a
+viver no `aria-label` — que é o que um leitor de tela anuncia. E o auto-teste deixou de
+procurar os botões pelo texto (que quebrava a cada renomeação, como aconteceu quando o `?`
+virou "comandos") e passou a procurar por `data-action`, exigindo que **todos** tenham
+ícone e nome acessível.
 
 ### M4 — Renomear o ícone de interrogação para "comandos"
 `corrigido` · `baixo` · 04/08/2026

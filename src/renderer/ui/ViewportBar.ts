@@ -1,3 +1,5 @@
+import { icon, type IconName } from './icons';
+
 export interface ViewportBarActions {
   zoomIn(): void;
   zoomOut(): void;
@@ -17,7 +19,23 @@ export interface ViewportBarActions {
 
 const PRESETS = [0.01, 0.05, 0.25, 0.5, 1, 2, 4, 8, 16, 64];
 
-/** Barra flutuante inferior do quadro. */
+/**
+ * Barra flutuante inferior do quadro.
+ *
+ * Desenhada como a barra de tarefas do Windows 11: **icone em vez de palavra**,
+ * fundo translucido com desfoque, cantos arredondados e os controles separados
+ * em grupos por assunto. A versao anterior escrevia tudo por extenso -- doze
+ * rotulos lado a lado --, e a leitura de cada um custava mais que o desenho
+ * correspondente.
+ *
+ * O que continua escrito e o que E informacao, e nao rotulo de comando: o nome
+ * do quadro (com o ponto de alteracoes nao salvas) e o nivel de zoom. Trocar
+ * esses dois por icone esconderia justamente o que se precisa ler.
+ *
+ * Cada botao carrega `data-action`, e e por ele que o auto-teste encontra os
+ * botoes -- procurar pelo texto quebraria a cada mudanca de rotulo, e foi
+ * exatamente o que aconteceu quando o `?` virou "comandos".
+ */
 export class ViewportBar {
   readonly el: HTMLElement;
   #zoomLabel: HTMLButtonElement;
@@ -28,12 +46,13 @@ export class ViewportBar {
   #nameLabel: HTMLElement;
   #undoBtn: HTMLButtonElement;
   #redoBtn: HTMLButtonElement;
+  #savedTitle = '';
 
   constructor(private readonly actions: ViewportBarActions) {
     this.el = document.createElement('div');
     this.el.className = 'qb-bar';
 
-    const backBtn = iconButton('‹ quadros', 'Voltar ao lobby (Ctrl+O)', () =>
+    const backBtn = iconButton('voltar', 'voltar', 'Voltar aos quadros (Ctrl+O)', () =>
       this.actions.backToLobby(),
     );
 
@@ -41,41 +60,53 @@ export class ViewportBar {
     this.#nameLabel.className = 'qb-bar__name';
     this.#nameLabel.textContent = 'Quadro sem nome';
 
-    const saveBtn = iconButton('salvar', 'Salvar (Ctrl+S)', () => this.actions.save());
+    const saveBtn = iconButton('salvar', 'salvar', 'Salvar (Ctrl+S)', () => this.actions.save());
     saveBtn.classList.add('qb-bar__btn--primary');
-
-    const exportBtn = iconButton('exportar', 'Exportar PNG, SVG ou PDF (Ctrl+E)', () =>
+    const exportBtn = iconButton('exportar', 'exportar', 'Exportar PNG, SVG ou PDF (Ctrl+E)', () =>
       this.actions.exportBoard(),
     );
 
-    this.#undoBtn = iconButton('↶', 'Desfazer (Ctrl+Z)', () => this.actions.undo());
-    this.#undoBtn.classList.add('qb-bar__btn--icon');
-    this.#redoBtn = iconButton('↷', 'Refazer (Ctrl+Shift+Z)', () => this.actions.redo());
-    this.#redoBtn.classList.add('qb-bar__btn--icon');
+    this.#undoBtn = iconButton('desfazer', 'desfazer', 'Desfazer (Ctrl+Z)', () =>
+      this.actions.undo(),
+    );
+    this.#redoBtn = iconButton('refazer', 'refazer', 'Refazer (Ctrl+Shift+Z)', () =>
+      this.actions.redo(),
+    );
     this.setHistory(false, false);
 
-    this.#gridBtn = iconButton('grade', 'Grade de fundo (G)', () => this.actions.toggleGrid());
-    this.#snapBtn = iconButton('ímã', 'Grade magnética: encaixar na grade (A)', () =>
+    this.#gridBtn = iconButton('grade', 'grade', 'Grade de fundo (G)', () =>
+      this.actions.toggleGrid(),
+    );
+    this.#snapBtn = iconButton('ima', 'ima', 'Grade magnetica: encaixar na grade (A)', () =>
       this.actions.toggleSnap(),
     );
-    this.#rulerBtn = iconButton('régua', 'Réguas nas bordas (R)', () => this.actions.toggleRulers());
-    const fitBtn = iconButton('ajustar', 'Ajustar a tela (Ctrl+1)', () =>
+    this.#rulerBtn = iconButton('regua', 'regua', 'Reguas nas bordas (R)', () =>
+      this.actions.toggleRulers(),
+    );
+    const fitBtn = iconButton('ajustar', 'ajustar', 'Ajustar a tela (Ctrl+1)', () =>
       this.actions.fitToContent(),
     );
-    const themeBtn = iconButton('tema', 'Alternar tema claro/escuro', () =>
+    const themeBtn = iconButton('tema', 'tema', 'Alternar tema claro/escuro', () =>
       this.actions.toggleTheme(),
     );
-    const helpBtn = iconButton('comandos', 'Atalhos e comandos (F1)', () =>
+    const helpBtn = iconButton('comandos', 'comandos', 'Atalhos e comandos (F1)', () =>
       this.actions.showShortcuts(),
     );
 
-    const minus = iconButton('−', 'Diminuir zoom (Ctrl+-)', () => this.actions.zoomOut());
-    minus.classList.add('qb-bar__btn--icon');
-    const plus = iconButton('+', 'Aumentar zoom (Ctrl++)', () => this.actions.zoomIn());
-    plus.classList.add('qb-bar__btn--icon');
+    const minus = iconButton('menos', 'zoom-menos', 'Diminuir zoom (Ctrl+-)', () =>
+      this.actions.zoomOut(),
+    );
+    const plus = iconButton('mais', 'zoom-mais', 'Aumentar zoom (Ctrl++)', () =>
+      this.actions.zoomIn(),
+    );
 
-    this.#zoomLabel = iconButton('100%', 'Niveis de zoom', () => this.#toggleMenu());
-    this.#zoomLabel.classList.add('qb-bar__zoom');
+    this.#zoomLabel = document.createElement('button');
+    this.#zoomLabel.type = 'button';
+    this.#zoomLabel.className = 'qb-bar__btn qb-bar__zoom';
+    this.#zoomLabel.dataset['action'] = 'zoom';
+    this.#zoomLabel.textContent = '100%';
+    this.#zoomLabel.title = 'Niveis de zoom';
+    this.#zoomLabel.addEventListener('click', () => this.#toggleMenu());
 
     this.#menu = document.createElement('div');
     this.#menu.className = 'qb-bar__menu';
@@ -92,25 +123,18 @@ export class ViewportBar {
       this.#menu.append(item);
     }
 
-    const zoomGroup = document.createElement('div');
-    zoomGroup.className = 'qb-bar__group';
-    zoomGroup.append(minus, this.#zoomLabel, plus, this.#menu);
+    const zoomGroup = group(minus, this.#zoomLabel, plus, this.#menu);
 
     this.el.append(
-      backBtn,
-      this.#nameLabel,
-      saveBtn,
-      exportBtn,
+      group(backBtn, this.#nameLabel),
       divider(),
-      this.#undoBtn,
-      this.#redoBtn,
+      group(saveBtn, exportBtn),
       divider(),
-      this.#gridBtn,
-      this.#snapBtn,
-      this.#rulerBtn,
-      fitBtn,
-      themeBtn,
-      helpBtn,
+      group(this.#undoBtn, this.#redoBtn),
+      divider(),
+      group(this.#gridBtn, this.#snapBtn, this.#rulerBtn, fitBtn),
+      divider(),
+      group(themeBtn, helpBtn),
       divider(),
       zoomGroup,
     );
@@ -163,21 +187,35 @@ export class ViewportBar {
     }
   }
 
-  #savedTitle = '';
-
   #toggleMenu(): void {
     this.#menu.hidden = !this.#menu.hidden;
   }
 }
 
-function iconButton(text: string, title: string, onClick: () => void): HTMLButtonElement {
+function iconButton(
+  name: IconName,
+  action: string,
+  title: string,
+  onClick: () => void,
+): HTMLButtonElement {
   const b = document.createElement('button');
   b.type = 'button';
-  b.className = 'qb-bar__btn';
-  b.textContent = text;
+  b.className = 'qb-bar__btn qb-bar__btn--icon';
+  b.dataset['action'] = action;
+  // Sem texto visivel, o nome do botao vive aqui -- e e isto que um leitor de
+  // tela anuncia e o que o auto-teste procura.
   b.title = title;
+  b.setAttribute('aria-label', title);
+  b.append(icon(name));
   b.addEventListener('click', onClick);
   return b;
+}
+
+function group(...children: Array<Node>): HTMLElement {
+  const g = document.createElement('div');
+  g.className = 'qb-bar__group';
+  g.append(...children);
+  return g;
 }
 
 function divider(): HTMLElement {
