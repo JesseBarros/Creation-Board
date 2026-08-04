@@ -331,6 +331,9 @@ export class App {
       void import('./dev/importCheck').then((m) =>
         m.runImportCheck(importPath, this, params.get('save') === '1'),
       );
+    } else if (params.get('paste')) {
+      this.#enterBoard();
+      void import('./dev/pasteCheck').then((m) => m.runPasteCheck(this));
     } else if (params.get('export')) {
       this.#enterBoard();
       void import('./dev/exportCheck').then((m) =>
@@ -1572,7 +1575,12 @@ export class App {
 
       const id = resolveShortcut(e, this.#view);
       if (!id) return;
-      e.preventDefault();
+      // `Ctrl+V` e a excecao, e ela custou um bug: cancelar o padrao aqui
+      // impede o navegador de disparar o evento `paste`, e e ele -- o unico --
+      // que traz a imagem da area de transferencia do SISTEMA. Com o padrao
+      // cancelado, colar imagem simplesmente nunca acontecia: a tecla parecia
+      // morta, porque o unico caminho que sobrava era a area interna do app.
+      if (id !== 'paste') e.preventDefault();
       handlers[id](e);
     });
   }

@@ -2150,6 +2150,31 @@ async function runImageTests(
     `objetos=${doc.size} tipo=${[...doc.all()][0]?.type ?? '-'} esperado=(1, image)`,
   );
 
+  // --- o caminho REAL do colar: a tecla nao pode cancelar o padrao
+  //
+  // Este e o teste que faltava e que deixou passar um bug de verdade: a
+  // verificacao acima despacha o evento `paste` direto, e por isso ela passava
+  // enquanto colar imagem NAO funcionava no app. Quem dispara o `paste` e o
+  // navegador, em resposta ao Ctrl+V -- e `preventDefault` no keydown cancela
+  // essa acao padrao, matando o evento antes de ele existir.
+  setup();
+  const tecla = new KeyboardEvent('keydown', {
+    key: 'v',
+    ctrlKey: true,
+    bubbles: true,
+    cancelable: true,
+  });
+  window.dispatchEvent(tecla);
+  check(
+    'Ctrl+V nao cancela o padrao do navegador, senao o evento paste nunca chega',
+    !tecla.defaultPrevented,
+    `padrao cancelado=${tecla.defaultPrevented} esperado=false ` +
+      `(com true, colar imagem do sistema nunca funciona)`,
+  );
+  // A colagem interna que a tecla agenda cai no proximo tique; espera para nao
+  // sujar a verificacao seguinte.
+  await settle();
+
   // --- recorte: compoe, encolhe a caixa e desloca a origem
   setup();
   await app.insertImageFiles([await fakeImageFile(400, 200)], { x: 500, y: 500 });
