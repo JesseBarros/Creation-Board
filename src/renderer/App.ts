@@ -370,6 +370,13 @@ export class App {
     // O host estava com display:none e portanto media 0x0; o ResizeObserver so
     // dispara depois. Forcamos a medicao agora para o primeiro frame ja sair certo.
     this.#measure();
+    // E pinta AGORA, em vez de esperar o proximo frame de animacao: ate o rAF
+    // chegar, as duas camadas ainda tem os pixels do quadro anterior, e e isso
+    // que aparecia como "residuo do frame anterior" ao alternar entre o lobby e
+    // o quadro. Um frame com o fundo do tema custa nada; o quadro de outra
+    // pessoa por um instante custa confianca.
+    this.#renderer.render();
+    this.#paintOverlay();
   }
 
   /**

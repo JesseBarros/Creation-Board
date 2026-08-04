@@ -65,8 +65,9 @@ export class ViewportBar {
     const themeBtn = iconButton('tema', 'Alternar tema claro/escuro', () =>
       this.actions.toggleTheme(),
     );
-    const helpBtn = iconButton('?', 'Atalhos e comandos (F1)', () => this.actions.showShortcuts());
-    helpBtn.classList.add('qb-bar__btn--icon');
+    const helpBtn = iconButton('comandos', 'Atalhos e comandos (F1)', () =>
+      this.actions.showShortcuts(),
+    );
 
     const minus = iconButton('−', 'Diminuir zoom (Ctrl+-)', () => this.actions.zoomOut());
     minus.classList.add('qb-bar__btn--icon');

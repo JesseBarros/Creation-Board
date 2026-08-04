@@ -16,6 +16,9 @@ import type { StyleToolId } from './types';
 
 const STORAGE_KEY = 'qb.draw';
 
+/** Espera antes de gravar a preferencia em disco. Ver `#commit`. */
+const PERSIST_DELAY_MS = 400;
+
 /**
  * Cores de tinta. Sao exatamente as que `npm run check:colors` valida como
  * "marca", isto e, as que continuam legiveis nos dois temas depois do adaptador
@@ -246,7 +249,22 @@ export class DrawStyle {
     return () => this.#listeners.delete(fn);
   }
 
+  /**
+   * Avisa a interface na hora e grava em disco depois.
+   *
+   * A gravacao e adiada porque `localStorage.setItem` e SINCRONO: escrever a
+   * cada clique numa cor punha uma ida ao disco no meio do gesto, e era parte
+   * do atraso sentido no seletor de cores. O estado em memoria muda na hora --
+   * quem desenha nunca ve o valor velho --, e o arquivo alcanca sozinho.
+   */
   #commit(): void {
+    for (const fn of this.#listeners) fn();
+
+    clearTimeout(this.#persistTimer);
+    this.#persistTimer = window.setTimeout(() => this.#persist(), PERSIST_DELAY_MS);
+  }
+
+  #persist(): void {
     try {
       localStorage.setItem(
         STORAGE_KEY,
@@ -262,8 +280,17 @@ export class DrawStyle {
     } catch {
       // Sem localStorage o app continua funcionando; so nao lembra a escolha.
     }
-    for (const fn of this.#listeners) fn();
   }
+
+  /** Grava agora o que estiver pendente. O guarda de fechamento da janela usa. */
+  flush(): void {
+    if (this.#persistTimer === 0) return;
+    clearTimeout(this.#persistTimer);
+    this.#persistTimer = 0;
+    this.#persist();
+  }
+
+  #persistTimer = 0;
 }
 
 /**

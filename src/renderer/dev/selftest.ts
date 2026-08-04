@@ -297,6 +297,10 @@ export async function runSelfTest(host: HTMLElement, app: App): Promise<void> {
     // trecho com o pedaco marcado e o contorno roxo em volta do objeto sao
     // justamente o que numero nenhum verifica.
     showSearchForShot(app);
+    // O `reset()` dos blocos mexe na camera direto, sem avisar a barra, entao o
+    // rotulo de zoom fica com o valor do ultimo `fitToContent`. Passar pelo
+    // caminho normal acerta o numero -- a foto nao pode mentir sobre o estado.
+    app.setZoom(1);
   });
   // Sem isto o quadro fica marcado como sujo, o guarda de `beforeunload`
   // recusa o fechamento e a execucao automatizada nunca termina.
@@ -1831,6 +1835,35 @@ async function runHudTests(app: App, check: Check, reset: () => void): Promise<v
     `achados: grade=${grade !== undefined} ima=${ima !== undefined} regua=${regua !== undefined} | ` +
       `mudou: grade=${gradeDepois !== gradeAntes} ima=${imaDepois !== imaAntes} ` +
       `regua=${reguaDepois !== reguaAntes}`,
+  );
+
+  // --- o botao de comandos (era "?")
+  const comandos = barButton('comandos');
+  check(
+    'a barra tem o botao "comandos" no lugar do ponto de interrogacao',
+    comandos !== undefined,
+    `encontrado=${comandos !== undefined}`,
+  );
+
+  // --- trocar de cor NAO pode reconstruir o painel
+  // Era isso que deixava o seletor lento: cada clique recriava as quatro linhas
+  // de opcao -- cerca de vinte botoes -- e cada elemento novo obriga o
+  // navegador a recalcular estilo e layout.
+  app.setTool('pen');
+  const paleta = app.drawStyle.colorsFor('pen');
+  const corAntiga = app.drawStyle.color('pen');
+  const corNova = paleta.find((c) => c !== corAntiga)!;
+  const botaoAntes = document.querySelector<HTMLElement>('.qb-tools__color');
+  app.drawStyle.setColor('pen', corNova);
+  const botaoDepois = document.querySelector<HTMLElement>('.qb-tools__color');
+  const ativo = document.querySelector<HTMLElement>('.qb-tools__color--active');
+  app.drawStyle.setColor('pen', corAntiga);
+
+  check(
+    'trocar de cor move o destaque sem recriar os botoes do painel',
+    botaoAntes !== null && botaoAntes === botaoDepois && ativo?.dataset['value'] === corNova,
+    `mesmo elemento=${botaoAntes === botaoDepois} ` +
+      `destaque em=${ativo?.dataset['value'] ?? 'nenhum'} esperado=${corNova}`,
   );
 
   // --- MEDICAO: quanto custa alternar de ferramenta com o quadro cheio
