@@ -269,6 +269,7 @@ export async function runSelfTest(host: HTMLElement, app: App): Promise<void> {
   await block('busca', () => runSearchTests(app, check, reset));
   await block('imagens', () => runImageTests(host, app, check, reset));
   await block('exportar e autosave', () => runExportTests(app, check, reset));
+  await block('barra e troca de ferramenta', () => runHudTests(app, check, reset));
 
   // Deixa o cenario montado no fim. Com QB_SHOT a janela nao fecha ao terminar,
   // entao a foto vira a conferencia do que nenhum numero daqui verifica: o cromo
@@ -1152,17 +1153,26 @@ function runDrawingTests(host: HTMLElement, app: App, check: Check, reset: () =>
 
   // --- a espessura anda pelos degraus e volta
   setup('pen');
+  // Parte do degrau do MEIO, e nao do que estiver gravado: `DrawStyle` persiste
+  // em localStorage, entao a preferencia deixada por quem usou o app antes
+  // entrava no teste. Com a caneta ja no degrau mais grosso, `]` nao tinha para
+  // onde subir e a verificacao reprovava sem nada estar quebrado.
+  const degraus = app.drawStyle.widthsFor('pen');
+  const anterior = app.drawStyle.width('pen');
+  app.drawStyle.setWidth('pen', degraus[1]!);
   const larguraInicial = app.drawStyle.width('pen');
   key(']');
   const maisGrosso = app.drawStyle.width('pen');
   key('[');
   key('[');
   const maisFino = app.drawStyle.width('pen');
-  app.drawStyle.setWidth('pen', larguraInicial);
+  // Devolve o que era do usuario, e nao o degrau que o teste escolheu.
+  app.drawStyle.setWidth('pen', anterior);
   check(
     '] engrossa e [ afina o traco',
     maisGrosso > larguraInicial && maisFino < larguraInicial,
-    `inicial=${larguraInicial} depois de ]=${maisGrosso} depois de [[=${maisFino}`,
+    `inicial=${larguraInicial} depois de ]=${maisGrosso} depois de [[=${maisFino} ` +
+      `(preferencia do usuario preservada: ${anterior})`,
   );
 
   // --- o traco desenhado sobrevive ao formato gravado
@@ -1770,6 +1780,108 @@ function runTextTests(host: HTMLElement, app: App, check: Check, reset: () => vo
 /** Texto de uma linha do layout, para comparar quebras. */
 function textOf(line: { runs: ReadonlyArray<{ text: string }> }): string {
   return line.runs.map((r) => r.text).join('');
+}
+
+// --------------------------------------------- barra e troca de ferramenta
+
+/**
+ * O que o teclado ja cobria, agora pelo BOTAO.
+ *
+ * A lacuna que isto fecha e concreta: `G`, `A` e `R` sempre passaram no
+ * auto-teste, e mesmo assim os tres botoes correspondentes da barra foram
+ * relatados como sem efeito. Testar a acao e testar o caminho ate ela sao
+ * coisas diferentes.
+ */
+async function runHudTests(app: App, check: Check, reset: () => void): Promise<void> {
+  const { doc } = app;
+  reset();
+
+  const barButton = (label: string): HTMLButtonElement | undefined =>
+    [...document.querySelectorAll<HTMLButtonElement>('.qb-bar__btn')].find(
+      (b) => b.textContent?.trim() === label,
+    );
+
+  // --- os tres botoes relatados
+  const grade = barButton('grade');
+  const gradeAntes = doc.prefs.grid.enabled;
+  grade?.click();
+  const gradeDepois = doc.prefs.grid.enabled;
+  if (gradeDepois !== gradeAntes) grade?.click();
+
+  const ima = barButton('ímã');
+  const imaAntes = doc.prefs.snapToGrid;
+  ima?.click();
+  const imaDepois = doc.prefs.snapToGrid;
+  if (imaDepois !== imaAntes) ima?.click();
+
+  const regua = barButton('régua');
+  const reguaAntes = app.rulersEnabled;
+  regua?.click();
+  const reguaDepois = app.rulersEnabled;
+  if (reguaDepois !== reguaAntes) regua?.click();
+
+  check(
+    'os botoes de grade, ima e regua da barra inferior fazem efeito',
+    grade !== undefined &&
+      ima !== undefined &&
+      regua !== undefined &&
+      gradeDepois !== gradeAntes &&
+      imaDepois !== imaAntes &&
+      reguaDepois !== reguaAntes,
+    `achados: grade=${grade !== undefined} ima=${ima !== undefined} regua=${regua !== undefined} | ` +
+      `mudou: grade=${gradeDepois !== gradeAntes} ima=${imaDepois !== imaAntes} ` +
+      `regua=${reguaDepois !== reguaAntes}`,
+  );
+
+  // --- MEDICAO: quanto custa alternar de ferramenta com o quadro cheio
+  // Relato: o app engasga ao trocar de icone rapidamente. A conta abaixo separa
+  // o custo do DOM (reconstruir o painel de opcoes) do custo de REDESENHAR o
+  // quadro inteiro, que e o que a troca de ferramenta dispara hoje.
+  doc.clear();
+  doc.add(generateStressObjects(4000));
+  app.fitToContent();
+  await nextFrames(3);
+
+  const TROCAS = 12;
+  const t0 = performance.now();
+  for (let i = 0; i < TROCAS; i++) app.setTool(i % 2 === 0 ? 'pen' : 'select');
+  const msDom = (performance.now() - t0) / TROCAS;
+
+  // Agora o custo real percebido: cada troca seguida do frame que ela obriga.
+  const t1 = performance.now();
+  for (let i = 0; i < TROCAS; i++) {
+    app.setTool(i % 2 === 0 ? 'pen' : 'select');
+    await nextFrames(1);
+  }
+  const msComFrame = (performance.now() - t1) / TROCAS;
+
+  // Linha de base: o mesmo numero de frames sem trocar nada.
+  const t2 = performance.now();
+  for (let i = 0; i < TROCAS; i++) await nextFrames(1);
+  const msOcioso = (performance.now() - t2) / TROCAS;
+
+  check(
+    'trocar de ferramenta com 4.000 objetos nao custa um repaint do quadro',
+    msComFrame - msOcioso < 4,
+    `troca+frame ${msComFrame.toFixed(1)} ms · ocioso ${msOcioso.toFixed(1)} ms · ` +
+      `so DOM ${msDom.toFixed(2)} ms → custo da troca ${(msComFrame - msOcioso).toFixed(1)} ms`,
+  );
+
+  reset();
+  doc.clear();
+  app.setTool('select');
+}
+
+/** Espera N frames de animacao. */
+function nextFrames(count: number): Promise<void> {
+  return new Promise((resolve) => {
+    let left = count;
+    const tick = (): void => {
+      if (--left <= 0) resolve();
+      else requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
 }
 
 // ----------------------------------------------------- exportar e autosave

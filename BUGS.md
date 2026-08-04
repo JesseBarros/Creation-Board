@@ -5,7 +5,8 @@ O [RETOMAR.md](RETOMAR.md) diz em que pé o projeto está; este arquivo diz **o 
 errado e o que falta**. Some quando a lista zerar.
 
 **Última atualização: 04/08/2026.** 11 itens abertos (5 bugs, 6 melhorias), vindos da
-primeira rodada de testes dele.
+primeira rodada de testes dele. B1, B2 e B5 já passaram por medição — e **duas suspeitas
+minhas caíram**, o que mudou a ordem de correção.
 
 ---
 
@@ -45,25 +46,38 @@ como a Fase 5.5 nasceu.
 
 Navegando rapidamente entre as abas e o quadro, aparecem falhas visuais.
 
-**Suspeita inicial:** ao voltar para o quadro, o host esteve com `display:none` e mediu
-0×0; `#enterBoard()` força uma medição, mas o `ResizeObserver` dispara depois e pode
-produzir um frame com o backing store do tamanho errado. Também é possível que o overlay
-não seja limpo na troca.
+Ele confirmou o sintoma: **resíduo do frame anterior** — aparece por um instante o que
+estava na tela antes.
 
-**Falta saber:** o "lapso" é o quadro piscando em branco, conteúdo aparecendo cortado, ou
-resíduo do frame anterior?
+**Causa provável, e ela é estrutural:** o canvas guarda os pixels do quadro anterior até
+alguém repintar. `#enterBoard()` torna a view visível e agenda o redesenho, mas o
+redesenho só acontece no próximo `requestAnimationFrame` — e entre uma coisa e outra a
+tela mostra o quadro antigo. Nada limpa as duas camadas na troca.
+
+**Correção provável:** limpar (ou redesenhar de forma síncrona) antes de mostrar a view.
+Um frame em branco incomoda muito menos que o quadro de outra pessoa.
 
 ### B2 — Botões de grade, ímã e régua não funcionam direito
 `a investigar` · `alto`
 
-Os três botões da barra inferior não respondem como esperado.
+Relato dele: **"não acontece nada"** ao clicar nos três.
 
-**O que já se sabe:** os mesmos comandos **pelo teclado** (`G`, `A`, `R`) são cobertos
-pelo auto-teste e passam. Logo, o defeito está no caminho do botão — não na ação. Isso
-estreita muito a busca: é a `ViewportBar`, ou algo que engole o clique antes dela.
+**Medido em 04/08/2026 (novo no auto-teste):** os três botões foram procurados no DOM,
+clicados e **os três fizeram efeito** — `grid.enabled`, `snapToGrid` e as réguas mudaram
+de estado. Numa instância nova do app, o caminho do botão funciona.
 
-**Falta saber:** não fazem nada, precisam de dois cliques, ou funcionam mas o destaque de
-"ligado" não acompanha?
+Isso descarta as hipóteses fáceis (handler não ligado, clique engolido por um elemento por
+cima) e deixa três em pé:
+
+1. o efeito acontece mas **não se vê** no contexto dele — a grade é de pontos de 1px, e o
+   ímã só se percebe arrastando perto de uma linha da grade;
+2. a instância que ele testou estava velha (o servidor de dev recarrega a página a cada
+   alteração minha, e várias entraram durante o teste);
+3. o clique real (com hit-test do mouse) esbarra em algo que o `.click()` sintético do
+   teste não vê.
+
+**Como separar em um gesto:** apertar `R` no teclado e depois clicar no botão "régua". Se
+a tecla mostra a régua e o botão não, é (3). Se os dois mostram, é (1) ou (2).
 
 ### B3 — Lentidão ao trocar de cor
 `a investigar` · `médio`
@@ -87,16 +101,30 @@ próprio círculo no overlay.
 ### B5 — HUD lenta e travamentos gerais
 `a investigar` · `crítico`
 
-O app engasga durante o uso.
+Relato dele: **engasga ao alternar os ícones rapidamente** — "como se não tivesse
+desempenho suficiente para a tarefa, ou o processo de troca gerasse um bug".
 
-**Suspeita inicial (a medir, não a assumir):** o **autosave da Fase 8** grava 3s depois de
-cada alteração, e gravar chama `renderThumbnail`, que desenha o quadro **inteiro** num
-canvas fora da tela. Num resumo de 1.063 objetos isso acontece a cada pausa de 3 segundos.
-Outras pistas: o `pollStats` roda um `requestAnimationFrame` eterno mesmo com o painel
-fechado, e o `localStorage` do B3.
+**A suspeita inicial caiu.** Eu apostava no autosave da Fase 8 (grava 3s depois de cada
+alteração e gera miniatura do quadro inteiro). Não é: o sintoma está preso à troca, não ao
+tempo parado.
 
-**Falta saber:** trava desde sempre ou começou agora? Em quadro importado grande ou também
-num quadro vazio? Trava periodicamente (a cada poucos segundos) ou durante um gesto?
+**Medido em 04/08/2026, com 4.000 objetos todos na tela:**
+
+| | Custo |
+|---|---|
+| Trocar de ferramenta (só o DOM do painel) | **0,11 ms** |
+| Troca + o frame que ela obriga | 17,4 ms |
+| Frame ocioso, sem trocar nada (piso do vsync) | 15,8 ms |
+| **Custo real da troca** | **1,6 ms** |
+
+Ou seja: o repaint que a troca dispara **cabe folgado num frame**. Trocar de ferramenta,
+sozinho, não explica o engasgo.
+
+**O que sobra como suspeito, e depende de uma pergunta:** se "alternar os ícones" for
+alternar entre o **lobby e o quadro**, o caminho é outro e é caro de verdade — voltar ao
+lobby lista os arquivos do disco e decodifica as miniaturas, e abrir um quadro
+**descompacta o `.wbd` e decodifica os assets**. Repetir isso rápido engasga, e explicaria
+o B1 pelo mesmo motivo.
 
 ---
 
@@ -112,7 +140,8 @@ descoberta, não de capacidade: uma linha **B / I / U** no painel da ferramenta 
 ### M2 — Renomear o botão de importação do Whiteboard
 `aberto` · `baixo`
 
-O botão do lobby diz "Importar do Whiteboard". **Falta decidir o novo nome.**
+O botão do lobby diz "Importar do Whiteboard". Novo nome, decidido por ele:
+**"Importar arquivo"**.
 
 ### M3 — Redesenhar a barra de ferramentas inferior
 `aberto` · `médio`
@@ -154,23 +183,30 @@ seletor avisa quando a cor escolhida tem contraste baixo.
 Agrupada por **área tocada** e por **dependência**, e não pela ordem em que os relatos
 chegaram: corrigir na ordem de chegada faria mexer duas vezes nos mesmos arquivos.
 
-### Etapa 0 — Medir antes de corrigir (B5, B3, B1)
+### Etapa 0 — Medir antes de corrigir · **feita em 04/08/2026**
 
-Nada é corrigido aqui. B5, B3 e B1 têm cara de **causa comum**, e o projeto já errou duas
-vezes ao adivinhar gargalo (Fase 3 e Fase 6). Instrumentar primeiro: frame time durante o
-uso, custo do autosave com miniatura, custo do `localStorage`, e o que acontece com o
-canvas na troca de view.
+Duas suspeitas minhas caíram, e é por isso que esta etapa existe:
 
-Se a causa for comum, uma correção fecha três relatos — e redesenhar a barra (M3) antes
-disso seria reescrever código que a correção vai mexer.
+- o autosave **não** é a causa do B5 (o sintoma está preso à troca, não ao tempo parado);
+- trocar de ferramenta custa **1,6 ms** com 4.000 objetos na tela — cabe folgado num
+  frame, então o repaint da troca também não explica o engasgo;
+- os três botões do B2 **funcionam** quando clicados por código.
 
-### Etapa 1 — Desempenho (B5, B3, B1)
-Corrigir o que a Etapa 0 apontar. É a etapa `crítico`: travamento é o que faz o app deixar
-de ser usável.
+Sobrou uma pergunta que decide a etapa seguinte: o que exatamente é "alternar os ícones".
 
-### Etapa 2 — Botões da barra inferior (B2)
-Independente do resto e já delimitado (teclado funciona, botão não). Vem antes do M3
-porque **redesenhar uma barra com um defeito de clique dentro** só esconderia o defeito.
+O auto-teste ganhou as duas verificações que faltavam — os botões da barra pelo **clique**
+(o teclado já era coberto) e o custo da troca de ferramenta com o quadro cheio.
+
+### Etapa 1 — B1 (resíduo do frame) e o que a pergunta do B5 apontar
+O B1 já tem causa e correção provável: limpar as camadas antes de mostrar a view. Se o B5
+for a troca lobby↔quadro, ele é da mesma família — a transição é o caminho caro (listar
+disco, descompactar `.wbd`, decodificar assets) — e as duas correções andam juntas.
+
+### Etapa 2 — B2 e B3, depois de saber o que o gesto real faz
+O B2 depende do teste de um gesto (tecla `R` contra o botão "régua"). O B3 (lentidão do
+seletor de cor) tem causa provável já lida no código: cada troca grava em `localStorage` e
+**reconstrói todas as linhas do painel**. Vêm antes do M3 porque redesenhar uma barra com
+defeito dentro só esconderia o defeito.
 
 ### Etapa 3 — Barra inferior e nomes (M3, M4, M2)
 Mesmo arquivo (`ViewportBar`), mais o rótulo do lobby (M2). Fazer junto evita mexer duas
