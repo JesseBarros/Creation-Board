@@ -31,6 +31,19 @@ cima dele**. Falta busca.
 A ordem diverge do plano original **de propósito**: o objetivo é migrar os resumos do
 Whiteboard, e para isso importar e manipular vieram antes de desenhar.
 
+## Pedido em aberto: borracha progressiva
+
+**Pedido em 04/08/2026, testando a Fase 5.** A borracha precisa apagar o traço **por
+pedaço, onde ela passa** — não o traço inteiro. O modelo atual empurra quem quer apagar
+uma parte para "selecionar e `Delete`", e nas palavras dele isso não é *nem agradável nem
+funcional*. Combinado guardar para consertar depois, fora da Fase 5.
+
+Isso **reverte a decisão 6 da lista abaixo** e o que o README diz sobre a borracha — os
+dois textos precisam mudar junto, senão a documentação passa a contradizer o app. O custo
+já estava mapeado na justificativa original: apagar por pedaço exige **partir a polilinha**
+e recalcular **LOD e AABB dos dois cacos**, e cada corte multiplica objetos no índice
+espacial. Medir antes de escolher a abordagem.
+
 **A `main` foi até a Fase 4.5** (mesclada em 04/08/2026, em avanço rápido). A Fase 5 está
 na branch **`fase-5-texto`**, ainda sem mesclar — ele não pediu.
 
