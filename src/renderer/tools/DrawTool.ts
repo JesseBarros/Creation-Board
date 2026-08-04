@@ -1,0 +1,195 @@
+import { simplifyFlat } from '@shared/geometry/simplify';
+import { computeBbox } from '@shared/model/bbox';
+import { keyBetween } from '@shared/model/fractional';
+import { createId } from '@shared/model/id';
+import type { StrokeObject } from '@shared/model/types';
+import { AddObjects } from '../commands';
+import type { Camera } from '../core/Camera';
+import { STROKE_STRIDE } from '../render/painters/stroke';
+import type { DrawStyle } from './DrawStyle';
+import type { DrawToolId, Tool, ToolContext, ToolPointer } from './types';
+
+/**
+ * Caneta, marca-texto e lapis.
+ *
+ * Uma classe so, tres instancias: as tres desenham o mesmo `StrokeObject` e
+ * diferem apenas na `variant` (que o painter interpreta) e no estilo corrente.
+ * Separa-las em tres classes duplicaria toda a captura de pontos para nada.
+ *
+ * Os pontos sao guardados em espaco LOCAL, relativos ao primeiro ponto do traco,
+ * que vira o `transform` do objeto. Guardar em mundo faria todo traco nascer com
+ * transform na origem e um AABB que depende de onde o quadro estava -- mover o
+ * traco depois deixaria de ser mexer no transform.
+ */
+export class DrawTool implements Tool {
+  #drawing = false;
+  /** Primeiro ponto do traco em mundo; e a origem do espaco local. */
+  #anchor = { x: 0, y: 0 };
+  /** Triplas [x, y, pressao] em espaco local. */
+  #points: number[] = [];
+  /** Ultimo ponto aceito, em px de tela, para o filtro de distancia. */
+  #lastScreen = { x: 0, y: 0 };
+
+  constructor(
+    readonly id: DrawToolId,
+    private readonly ctx: ToolContext,
+    private readonly style: DrawStyle,
+  ) {}
+
+  // --------------------------------------------------------------- ponteiro
+
+  onPointerDown(p: ToolPointer): void {
+    this.#drawing = true;
+    this.#anchor = { x: p.world.x, y: p.world.y };
+    this.#points = [0, 0, p.pressure];
+    this.#lastScreen = { x: p.screen.x, y: p.screen.y };
+    this.ctx.invalidateOverlay();
+  }
+
+  onPointerMove(p: ToolPointer): void {
+    if (!this.#drawing) return;
+
+    // Uma mesa digitalizadora entrega ate 240 pontos por segundo, muitos deles a
+    // menos de um pixel do anterior. Guardar todos incha o arquivo e o custo de
+    // desenho sem mudar um pixel do resultado.
+    const dx = p.screen.x - this.#lastScreen.x;
+    const dy = p.screen.y - this.#lastScreen.y;
+    if (dx * dx + dy * dy < MIN_STEP_PX * MIN_STEP_PX) return;
+
+    this.#lastScreen = { x: p.screen.x, y: p.screen.y };
+    this.#points.push(p.world.x - this.#anchor.x, p.world.y - this.#anchor.y, p.pressure);
+    this.ctx.invalidateOverlay();
+  }
+
+  onPointerUp(p: ToolPointer): void {
+    if (!this.#drawing) return;
+    this.#drawing = false;
+
+    const points = this.#points;
+    this.#points = [];
+
+    // Toque sem arraste: um ponto so nao forma segmento e o painter nao desenha
+    // nada. Duplicar o ponto transforma o toque num pingo, que e o que o usuario
+    // acabou de pedir ao encostar a caneta.
+    if (points.length === STROKE_STRIDE) {
+      points.push(points[0]!, points[1]!, p.pressure);
+    }
+
+    const stroke = this.#build(points);
+    this.ctx.history.push(new AddObjects(this.ctx.doc, [stroke], LABELS[this.id]));
+    this.ctx.history.seal();
+    this.ctx.markDirty();
+    this.ctx.invalidate();
+  }
+
+  cancel(): boolean {
+    if (!this.#drawing) return false;
+    this.#drawing = false;
+    this.#points = [];
+    this.ctx.invalidate();
+    return true;
+  }
+
+  // ----------------------------------------------------------------- objeto
+
+  #build(points: number[]): StrokeObject {
+    const now = Date.now();
+    const width = this.style.width(this.id);
+    const stroke: StrokeObject = {
+      id: createId(),
+      type: 'stroke',
+      variant: this.id,
+      parentId: null,
+      z: this.#nextZ(),
+      transform: { x: this.#anchor.x, y: this.#anchor.y, rotation: 0, scaleX: 1, scaleY: 1 },
+      bbox: { x: 0, y: 0, w: 0, h: 0 },
+      opacity: 1,
+      locked: false,
+      hidden: false,
+      rev: 0,
+      createdAt: now,
+      updatedAt: now,
+      points,
+      lod: simplifyFlat(points, STROKE_STRIDE, LOD_EPSILON),
+      color: this.style.color(this.id),
+      width,
+    };
+    // O AABB e sempre derivado, nunca escrito a mao; `computeBbox` ja infla pela
+    // espessura, que extrapola a linha de centro dos pontos para os dois lados.
+    stroke.bbox = computeBbox(stroke);
+    return stroke;
+  }
+
+  /**
+   * Camada do traco novo.
+   *
+   * Caneta e lapis entram por CIMA, que e onde se espera encontrar o que se
+   * acabou de escrever. O marca-texto entra por BAIXO de tudo: grifar um resumo
+   * importado com ele no topo cobriria com uma faixa translucida justamente o
+   * texto que se quis destacar.
+   */
+  #nextZ(): string {
+    const { doc } = this.ctx;
+    if (this.id !== 'highlighter') return keyBetween(doc.topZ(), null);
+    return keyBetween('', doc.bottomZ());
+  }
+
+  // ---------------------------------------------------------------- visual
+
+  cursorFor(): string {
+    return 'crosshair';
+  }
+
+  /**
+   * Traco em andamento, desenhado em px de TELA.
+   *
+   * O contexto que chega aqui e o de tela (ver App.#paintOverlay), entao os
+   * pontos sao convertidos pela camera e a espessura e multiplicada pelo zoom.
+   * As opcoes de linha sao as mesmas do painter de proposito: o que se ve
+   * durante o gesto tem de ser identico ao que fica quando o botao solta.
+   */
+  paintOverlay(ctx: CanvasRenderingContext2D, camera: Camera): void {
+    const pts = this.#points;
+    if (!this.#drawing || pts.length < STROKE_STRIDE) return;
+
+    const zoom = camera.zoom;
+    const toScreenX = (lx: number): number => (lx + this.#anchor.x - camera.x) * zoom;
+    const toScreenY = (ly: number): number => (ly + this.#anchor.y - camera.y) * zoom;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(toScreenX(pts[0]!), toScreenY(pts[1]!));
+    for (let i = STROKE_STRIDE; i + 1 < pts.length; i += STROKE_STRIDE) {
+      ctx.lineTo(toScreenX(pts[i]!), toScreenY(pts[i + 1]!));
+    }
+    // Um traco de um ponto so ainda nao tem segmento: o `lineCap` redondo sozinho
+    // nao pinta nada, entao o pingo precisa de um ponto explicito.
+    if (pts.length === STROKE_STRIDE) {
+      ctx.lineTo(toScreenX(pts[0]!), toScreenY(pts[1]!));
+    }
+
+    ctx.strokeStyle = this.style.color(this.id);
+    ctx.lineWidth = this.style.width(this.id) * zoom;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.globalAlpha = this.id === 'highlighter' ? 0.4 : 1;
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+/** Deslocamento minimo, em px de tela, para um ponto novo entrar no traco. */
+const MIN_STEP_PX = 1;
+
+/**
+ * Tolerancia do RDP que gera o LOD, em unidades de mundo. O mesmo valor que a
+ * carga de teste usa (dev/stress.ts): abaixo de meio zoom a diferenca entre a
+ * polilinha cheia e a simplificada nao chega a um pixel.
+ */
+const LOD_EPSILON = 2.5;
+
+const LABELS: Record<DrawToolId, string> = {
+  pen: 'Desenhar',
+  highlighter: 'Grifar',
+  pencil: 'Desenhar a lapis',
+};

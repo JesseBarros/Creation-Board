@@ -1,5 +1,8 @@
 import type { Vec2 } from '@shared/geometry/vec2';
 import type { Camera } from '../core/Camera';
+import type { DrawStyle } from './DrawStyle';
+import { DrawTool } from './DrawTool';
+import { EraserTool } from './EraserTool';
 import { SelectTool } from './SelectTool';
 import type { Tool, ToolContext, ToolId, ToolPointer } from './types';
 
@@ -13,6 +16,7 @@ import type { Tool, ToolContext, ToolId, ToolPointer } from './types';
 export class ToolManager {
   #tools: Record<ToolId, Tool>;
   #active: ToolId = 'select';
+  #onToolChange: (() => void) | undefined;
   #disposers: Array<() => void> = [];
   /** Retangulo do host em cache: le-lo a cada pointermove forcaria layout. */
   #rect: DOMRect;
@@ -24,14 +28,45 @@ export class ToolManager {
   constructor(
     private readonly host: HTMLElement,
     private readonly ctx: ToolContext,
+    style: DrawStyle,
   ) {
-    this.#tools = { select: new SelectTool(ctx) };
+    this.#tools = {
+      select: new SelectTool(ctx),
+      pen: new DrawTool('pen', ctx, style),
+      highlighter: new DrawTool('highlighter', ctx, style),
+      pencil: new DrawTool('pencil', ctx, style),
+      eraser: new EraserTool(ctx),
+    };
     this.#rect = host.getBoundingClientRect();
     this.#bind();
   }
 
   get active(): Tool {
     return this.#tools[this.#active];
+  }
+
+  get activeId(): ToolId {
+    return this.#active;
+  }
+
+  /**
+   * Troca a ferramenta ativa, abortando o gesto em curso.
+   *
+   * Sem o cancelamento, apertar `E` no meio de um traco deixaria a caneta com um
+   * traco pendurado que voltaria a crescer na proxima vez que ela fosse escolhida.
+   */
+  setActive(id: ToolId): void {
+    if (id === this.#active) return;
+    this.active.cancel();
+    this.#active = id;
+    this.host.style.cursor = this.#tools[id].cursorFor(this.#idlePointer());
+    this.ctx.invalidate();
+    this.#onToolChange?.();
+  }
+
+  /** Avisa a UI que a ferramenta mudou (atalho de teclado, por exemplo). */
+  onToolChange(fn: () => void): void {
+    this.#onToolChange = fn;
   }
 
   /**
@@ -125,9 +160,26 @@ export class ToolManager {
     return {
       screen,
       world,
+      // Mesa digitalizadora entrega a pressao real; mouse manda sempre 0,5. Zero
+      // chega de dois jeitos -- evento sintetico do autoteste e alguns drivers no
+      // pointerup -- e um traco de pressao zero sairia sem espessura no lapis.
+      pressure: e.pressure > 0 ? e.pressure : 0.5,
       shift: e.shiftKey,
       alt: e.altKey,
       ctrl: e.ctrlKey || e.metaKey,
+    };
+  }
+
+  /** Ponteiro sem evento, para perguntar o cursor fora de qualquer interacao. */
+  #idlePointer(): ToolPointer {
+    const world = this.#lastWorld ?? { x: 0, y: 0 };
+    return {
+      screen: this.ctx.camera.worldToScreen(world),
+      world,
+      pressure: 0.5,
+      shift: false,
+      alt: false,
+      ctrl: false,
     };
   }
 

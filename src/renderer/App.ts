@@ -7,7 +7,8 @@ import { Selection } from './core/Selection';
 import { ViewportInput } from './input/ViewportInput';
 import { Renderer, type RenderTheme } from './render/Renderer';
 import { ToolManager } from './tools/ToolManager';
-import type { ToolContext } from './tools/types';
+import { DrawStyle } from './tools/DrawStyle';
+import { isDrawTool, type ToolContext, type ToolId } from './tools/types';
 import { hitTest } from './features/selection/hitTest';
 import { BoardClipboard } from './features/selection/clipboard';
 import {
@@ -18,6 +19,7 @@ import {
   selectAll,
 } from './features/selection/actions';
 import { DebugPanel } from './ui/DebugPanel';
+import { ToolBar } from './ui/ToolBar';
 import { ViewportBar } from './ui/ViewportBar';
 import { ContextMenu, type MenuEntry } from './ui/ContextMenu';
 import { Lobby } from './ui/Lobby';
@@ -72,12 +74,15 @@ export class App {
   readonly history = new History();
   /** Sobrevive a troca de quadro de proposito: copiar de um e colar noutro. */
   readonly clipboard = new BoardClipboard();
+  /** Cor e espessura correntes; e preferencia do usuario, nao conteudo do quadro. */
+  readonly drawStyle = new DrawStyle();
 
   #renderer: Renderer;
   #scheduler: Scheduler;
   #input: ViewportInput;
   #tools: ToolManager;
   #toolCtx: ToolContext;
+  #toolbar: ToolBar;
   #bar: ViewportBar;
   #debug: DebugPanel;
   #lobby: Lobby;
@@ -114,7 +119,7 @@ export class App {
     this.#hint = document.createElement('div');
     this.#hint.className = 'qb-hint';
     this.#hint.innerHTML =
-      '<strong>Quadro vazio.</strong> As ferramentas de desenho chegam na Fase 4.<br>' +
+      '<strong>Quadro vazio.</strong> Escolha a caneta (<kbd>P</kbd>) e desenhe.<br>' +
       'Importe um quadro do Whiteboard pelo lobby, ou use <kbd>F3</kbd> para gerar ' +
       'carga de teste e <kbd>F1</kbd> para ver os atalhos.';
     this.#boardView.append(this.#hint);
@@ -138,6 +143,9 @@ export class App {
       redo: () => this.redo(),
     });
     this.#boardView.append(this.#bar.el);
+
+    this.#toolbar = new ToolBar({ setTool: (id) => this.setTool(id) }, this.drawStyle);
+    this.#boardView.append(this.#toolbar.el);
 
     this.#debug = new DebugPanel({
       seed: (n) => void this.seed(n),
@@ -166,15 +174,20 @@ export class App {
     this.#theme = (localStorage.getItem(THEME_KEY) as 'light' | 'dark' | null) ?? 'light';
     this.#applyTheme();
 
-    this.#scheduler = new Scheduler(() => {
-      if (this.#scheduler.continuous) this.#stepBenchmark();
-      const stats = this.#renderer.render();
-      // O cromo da selecao vai na camada de cima, no mesmo frame: desenhado na
-      // camada estatica, ele entraria no cache de conteudo e continuaria
-      // aparecendo depois de a selecao mudar.
-      this.#paintOverlay();
-      return stats;
-    });
+    this.#scheduler = new Scheduler(
+      () => {
+        if (this.#scheduler.continuous) this.#stepBenchmark();
+        const stats = this.#renderer.render();
+        // O cromo da selecao vai na camada de cima, no mesmo frame: desenhado na
+        // camada estatica, ele entraria no cache de conteudo e continuaria
+        // aparecendo depois de a selecao mudar.
+        this.#paintOverlay();
+        return stats;
+      },
+      // Frame so de overlay: o traco em andamento e o circulo da borracha mudam
+      // a cada evento de ponteiro sem tocar em nenhum objeto do documento.
+      () => this.#paintOverlay(),
+    );
 
     this.#input = new ViewportInput(
       this.#host,
@@ -189,9 +202,12 @@ export class App {
       selection: this.selection,
       history: this.history,
       invalidate: () => this.#scheduler.invalidate(),
+      invalidateOverlay: () => this.#scheduler.invalidateOverlay(),
       markDirty: () => this.#markDirty(),
     };
-    this.#tools = new ToolManager(this.#host, this.#toolCtx);
+    this.#tools = new ToolManager(this.#host, this.#toolCtx, this.drawStyle);
+    // Atalho de teclado tambem troca a ferramenta; a barra precisa acompanhar.
+    this.#tools.onToolChange(() => this.#toolbar.setActive(this.#tools.activeId));
 
     this.doc.on('objects', () => {
       this.#hint.hidden = this.doc.size > 0;
@@ -591,6 +607,28 @@ export class App {
     this.#tools.paintOverlay(ctx, this.camera);
   }
 
+  /** Troca a ferramenta ativa, pelo botao da barra ou pelo atalho. */
+  setTool(id: ToolId): void {
+    this.#tools.setActive(id);
+    this.#toolbar.setActive(id);
+  }
+
+  get activeTool(): ToolId {
+    return this.#tools.activeId;
+  }
+
+  /**
+   * `[` e `]`: um degrau de espessura na ferramenta ativa.
+   *
+   * Nao faz nada com a selecao ou a borracha ativas -- a alternativa seria
+   * mudar em silencio a espessura de uma ferramenta que nao esta a vista.
+   */
+  stepStrokeWidth(direction: -1 | 1): void {
+    const id = this.#tools.activeId;
+    if (!isDrawTool(id)) return;
+    this.drawStyle.stepWidth(id, direction);
+  }
+
   undo(): void {
     if (!this.history.undo()) return;
     this.#markDirty();
@@ -831,6 +869,13 @@ export class App {
       deselect: () => this.#escape(),
       bringToFront: () => void reorderSelection(this.#toolCtx, 'front'),
       sendToBack: () => void reorderSelection(this.#toolCtx, 'back'),
+      toolSelect: () => this.setTool('select'),
+      toolPen: () => this.setTool('pen'),
+      toolHighlighter: () => this.setTool('highlighter'),
+      toolPencil: () => this.setTool('pencil'),
+      toolEraser: () => this.setTool('eraser'),
+      thinner: () => this.stepStrokeWidth(-1),
+      thicker: () => this.stepStrokeWidth(1),
       nudge: (e) => {
         const dx = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
         const dy = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0;

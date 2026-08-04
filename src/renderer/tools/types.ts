@@ -7,22 +7,32 @@ import type { Selection } from '../core/Selection';
 /**
  * Contrato de uma ferramenta.
  *
- * A Fase 3 tem uma so (selecao), mas a interface ja e a que a caneta, a borracha
- * e as formas vao usar. O que cada ferramenta recebe e um evento de ponteiro ja
- * traduzido para coordenadas de mundo -- nenhuma delas precisa saber que existe
- * camera, DPR ou retangulo do host.
+ * O que cada ferramenta recebe e um evento de ponteiro ja traduzido para
+ * coordenadas de mundo -- nenhuma delas precisa saber que existe camera, DPR ou
+ * retangulo do host.
  *
  * O botao ESQUERDO pertence as ferramentas. Direito e meio sao da navegacao
- * (ver input/ViewportInput.ts) e nunca chegam aqui.
+ * (ver input/ViewportInput.ts) e nunca chegam aqui. E essa fronteira que permite
+ * arrastar o quadro no meio de um traco sem trocar de modo nem cortar o traco.
  */
 
-export type ToolId = 'select';
+export type ToolId = 'select' | 'pen' | 'highlighter' | 'pencil' | 'eraser';
+
+/** Ferramentas que produzem tinta; as unicas com cor e espessura. */
+export const DRAW_TOOLS = ['pen', 'highlighter', 'pencil'] as const;
+export type DrawToolId = (typeof DRAW_TOOLS)[number];
+
+export function isDrawTool(id: ToolId): id is DrawToolId {
+  return (DRAW_TOOLS as readonly ToolId[]).includes(id);
+}
 
 export interface ToolPointer {
   /** Posicao em coordenadas de mundo. */
   world: Vec2;
   /** Posicao em px de tela, relativa ao canto do host. */
   screen: Vec2;
+  /** Pressao da caneta, 0..1. Ver a normalizacao em ToolManager. */
+  pressure: number;
   shift: boolean;
   alt: boolean;
   ctrl: boolean;
@@ -33,8 +43,16 @@ export interface ToolContext {
   readonly camera: Camera;
   readonly selection: Selection;
   readonly history: History;
-  /** Agenda um redesenho. Necessario para mudancas que so afetam o overlay. */
+  /** Agenda um redesenho completo: fundo, objetos e overlay. */
   invalidate(): void;
+  /**
+   * Agenda um redesenho apenas do overlay.
+   *
+   * E o que mantem o desenho barato: um traco em andamento muda a cada
+   * pointermove, mas nao muda nenhum objeto do documento. Passar por
+   * `invalidate()` repintaria os 10 mil objetos da camada estatica a cada ponto.
+   */
+  invalidateOverlay(): void;
   /** Sinaliza que o quadro passou a ter alteracoes nao gravadas. */
   markDirty(): void;
 }

@@ -56,6 +56,37 @@ export class RemoveObjects implements Command {
 }
 
 /**
+ * Apaga objetos que ja sairam do documento durante o gesto.
+ *
+ * Existe porque `RemoveObjects` captura os objetos dentro do proprio `apply()`,
+ * e a borracha nao pode esperar por isso: ela precisa apagar enquanto o usuario
+ * arrasta, senao o traço so sumiria ao soltar o botao. Quando o gesto termina os
+ * objetos ja nao estao no documento, a captura tardia viria vazia e desfazer nao
+ * devolveria nada. Aqui os objetos chegam prontos, capturados por quem apagou.
+ *
+ * `apply()` e idempotente de proposito: no push inicial ele reexecuta uma
+ * remocao que ja aconteceu, e `Document.remove` ignora id inexistente.
+ */
+export class EraseObjects implements Command {
+  readonly label: string;
+
+  constructor(
+    private readonly doc: Document,
+    private readonly objects: readonly BoardObject[],
+  ) {
+    this.label = objects.length === 1 ? 'Apagar' : `Apagar ${objects.length} objetos`;
+  }
+
+  apply(): void {
+    this.doc.remove(this.objects.map((o) => o.id));
+  }
+
+  revert(): void {
+    this.doc.add(this.objects);
+  }
+}
+
+/**
  * Mover, redimensionar ou rotacionar.
  *
  * Funde-se com o comando seguinte enquanto o arraste esta em curso: sem isso,
