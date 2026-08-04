@@ -68,6 +68,9 @@ function createWindow(): void {
   // passar pelo dialogo de salvar -- que e justamente o que nao da para
   // automatizar. Ferramenta de desenvolvimento apenas.
   const exportPrefix = process.env['QB_EXPORT'];
+  // QB_PASTE=1 manda um Ctrl+V NATIVO na janela, para exercitar o caminho real
+  // do colar (com uma imagem ja na area de transferencia do Windows).
+  const pasteCheck = process.env['QB_PASTE'];
   const query = bench
     ? `?bench=${encodeURIComponent(bench)}`
     : selftest
@@ -76,7 +79,9 @@ function createWindow(): void {
         ? `?import=${encodeURIComponent(importPath)}${importSave}`
         : exportPrefix
           ? `?export=${encodeURIComponent(exportPrefix)}`
-          : '';
+          : pasteCheck
+            ? '?paste=1'
+            : '';
 
   if (!app.isPackaged) {
     // Os modos de verificacao terminam imprimindo um marcador. Fechar a janela
@@ -91,7 +96,9 @@ function createWindow(): void {
           ? 'IMPORTCHECK_FIM'
           : exportPrefix
             ? 'EXPORTCHECK_FIM'
-            : null;
+            : pasteCheck
+              ? 'PASTECHECK_FIM'
+              : null;
 
     mainWindow.webContents.on('console-message', (_e, _level, message) => {
       console.log(`[renderer] ${message}`);
@@ -104,6 +111,23 @@ function createWindow(): void {
   // carregar. Usa capturePage, que fotografa apenas o conteudo desta janela --
   // diferente de uma captura de tela, nao registra nada do resto da area de
   // trabalho. Ferramenta de verificacao durante o desenvolvimento.
+  if (pasteCheck && !app.isPackaged) {
+    mainWindow.webContents.once('did-finish-load', () => {
+      // Espera a janela ter foco e o renderer montar o quadro: um Ctrl+V que
+      // chega antes disso nao encontra ninguem para receber o evento.
+      setTimeout(() => {
+        mainWindow?.focus();
+        mainWindow?.webContents.focus();
+        // Tecla NATIVA, e nao um KeyboardEvent sintetico: e a diferenca entre
+        // testar o handler e testar o caminho ate ele.
+        for (const type of ['keyDown', 'char', 'keyUp'] as const) {
+          mainWindow?.webContents.sendInputEvent({ type, keyCode: 'V', modifiers: ['control'] });
+        }
+        console.log('[main] Ctrl+V nativo enviado');
+      }, 1200);
+    });
+  }
+
   const shotPath = process.env['QB_SHOT'];
   if (shotPath && !app.isPackaged) {
     mainWindow.webContents.once('did-finish-load', () => {

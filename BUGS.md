@@ -161,6 +161,30 @@ o resumo acima.
 
 ---
 
+### B6 — `Ctrl+V` não cola imagem da área de transferência
+`corrigido` · `alto` · 04/08/2026
+
+Copiar uma imagem fora do app e apertar `Ctrl+V` num quadro aberto não colava nada.
+
+**Causa (bug meu, da Fase 7):** o despacho de atalhos chamava `e.preventDefault()` em
+**todo** atalho reconhecido — e `preventDefault` num `Ctrl+V` cancela a ação padrão do
+navegador. É essa ação que dispara o evento `paste`, o único caminho pelo qual a imagem da
+área de transferência do sistema chega ao app. Com ela cancelada, sobrava só a área de
+transferência interna, e a tecla parecia morta.
+
+
+**Correção:** não cancelar o padrão no `paste`. Uma linha, com o porquê ao lado dela.
+
+**Como foi verificado** (três camadas, porque uma só já falhou aqui):
+
+1. verificação no auto-teste de que o `Ctrl+V` **não** cancela o padrão — é o guarda que
+   pega a regressão se alguém reintroduzir o `preventDefault` geral;
+2. `QB_PASTE=1`, um modo novo em que o processo principal envia um **Ctrl+V nativo**
+   (`sendInputEvent`) com uma imagem de verdade na área de transferência do Windows;
+3. a prova invertida: desfiz a correção, rodei de novo e o resultado virou **"NÃO COLOU"**
+   — depois restaurei. Sem esse passo, eu teria uma correção que funciona e nenhuma
+   garantia de que era ela a causa.
+
 ## Melhorias
 
 ### M1 — Botão de negrito na caixa de texto
