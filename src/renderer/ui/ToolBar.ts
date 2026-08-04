@@ -8,6 +8,7 @@ import {
 } from '../tools/DrawStyle';
 import { hasStyle, type StyleToolId, type ToolId } from '../tools/types';
 import { ALERT_COLORS } from '../render/painters/text';
+import { icon, type IconName } from './icons';
 
 /**
  * Barra vertical de ferramentas, na lateral esquerda do quadro.
@@ -33,22 +34,26 @@ export interface ToolBarActions {
 
 interface ToolDef {
   id: ToolId;
-  icon: string;
+  icon: IconName;
   label: string;
   key: string;
 }
 
 const TOOLS: ToolDef[] = [
-  { id: 'select', icon: '⭦', label: 'Selecionar', key: 'V' },
-  { id: 'pen', icon: '🖊', label: 'Caneta', key: 'P' },
-  { id: 'highlighter', icon: '▬', label: 'Marca-texto', key: 'M' },
-  { id: 'pencil', icon: '✎', label: 'Lapis', key: 'L' },
-  { id: 'text', icon: 'T', label: 'Texto', key: 'T' },
+  // Icones em SVG, e nao glifos: os simbolos que estavam aqui (a seta do
+  // cursor, a caneta, o lapis) dependiam da fonte do sistema para existir, e
+  // vinham em pesos e tamanhos diferentes uns dos outros -- uma fila
+  // desalinhada. Ver ui/icons.ts.
+  { id: 'select', icon: 'selecionar', label: 'Selecionar', key: 'V' },
+  { id: 'pen', icon: 'caneta', label: 'Caneta', key: 'P' },
+  { id: 'highlighter', icon: 'marcaTexto', label: 'Marca-texto', key: 'M' },
+  { id: 'pencil', icon: 'lapis', label: 'Lapis', key: 'L' },
+  { id: 'text', icon: 'texto', label: 'Texto', key: 'T' },
   // Icone com pauta, e nao mais um quadrado: ao lado do de formas, dois
   // quadrados parecidos nao distinguem uma ferramenta da outra na barra.
-  { id: 'note', icon: '▤', label: 'Post-it', key: 'N' },
-  { id: 'shape', icon: '◻', label: 'Formas', key: 'F' },
-  { id: 'eraser', icon: '⌫', label: 'Borracha', key: 'E' },
+  { id: 'note', icon: 'postit', label: 'Post-it', key: 'N' },
+  { id: 'shape', icon: 'formas', label: 'Formas', key: 'F' },
+  { id: 'eraser', icon: 'borracha', label: 'Borracha', key: 'E' },
 ];
 
 /** Rotulo de cada nivel de alerta, mais o "sem alerta". */
@@ -59,15 +64,15 @@ const ALERT_LABELS: Record<AlertLevel, string> = {
 };
 
 /** Icone e nome de cada forma no seletor. */
-const SHAPE_LABELS: Record<ShapeKind, { icon: string; label: string }> = {
-  rect: { icon: '▭', label: 'Retangulo (Shift: quadrado)' },
-  square: { icon: '◻', label: 'Quadrado' },
-  ellipse: { icon: '⬭', label: 'Elipse (Shift: circulo)' },
-  circle: { icon: '◯', label: 'Circulo' },
-  triangle: { icon: '△', label: 'Triangulo' },
-  diamond: { icon: '◇', label: 'Losango' },
-  line: { icon: '╱', label: 'Linha (Shift: 15 em 15 graus)' },
-  arrow: { icon: '↗', label: 'Seta (Shift: 15 em 15 graus)' },
+const SHAPE_LABELS: Record<ShapeKind, { icon: IconName; label: string }> = {
+  rect: { icon: 'retangulo', label: 'Retangulo (Shift: quadrado)' },
+  square: { icon: 'retangulo', label: 'Quadrado' },
+  ellipse: { icon: 'elipse', label: 'Elipse (Shift: circulo)' },
+  circle: { icon: 'elipse', label: 'Circulo' },
+  triangle: { icon: 'triangulo', label: 'Triangulo' },
+  diamond: { icon: 'losango', label: 'Losango' },
+  line: { icon: 'linha', label: 'Linha (Shift: 15 em 15 graus)' },
+  arrow: { icon: 'seta', label: 'Seta (Shift: 15 em 15 graus)' },
 };
 
 export class ToolBar {
@@ -94,7 +99,8 @@ export class ToolBar {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'qb-tools__btn';
-      b.textContent = t.icon;
+      b.dataset['action'] = t.id;
+      b.append(icon(t.icon, 19));
       b.title = `${t.label} (${t.key})`;
       b.setAttribute('aria-label', t.label);
       b.addEventListener('click', () => this.actions.setTool(t.id));
@@ -166,10 +172,9 @@ export class ToolBar {
       marcar(this.#shapeRow, 'qb-tools__shape--active', this.style.shapeKind);
       // O preenchimento nao e uma forma: ele acende sozinho.
       const fill = this.#shapeRow.querySelector<HTMLElement>('.qb-tools__shape--fill');
-      if (fill) {
-        fill.classList.toggle('qb-tools__shape--active', this.style.shapeFilled);
-        fill.textContent = this.style.shapeFilled ? '◼' : '◻';
-      }
+      // O icone e o mesmo nos dois estados; quem diz se esta ligado e o
+      // destaque, como em todos os outros botoes da barra.
+      fill?.classList.toggle('qb-tools__shape--active', this.style.shapeFilled);
     }
     if (id === 'eraser') marcar(this.#alertRow, 'qb-tools__alert--active', this.style.eraserMode);
     else marcar(this.#colorRow, 'qb-tools__color--active', this.style.color(id));
@@ -217,21 +222,21 @@ export class ToolBar {
     const current = this.style.eraserMode;
     this.#alertRow.replaceChildren();
 
-    const add = (mode: EraserMode, icon: string, label: string): void => {
+    const add = (mode: EraserMode, name: IconName, label: string): void => {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'qb-tools__alert';
       b.dataset['value'] = mode;
       b.classList.toggle('qb-tools__alert--active', mode === current);
-      b.textContent = icon;
+      b.append(icon(name, 17));
       b.title = label;
       b.setAttribute('aria-label', label);
       b.addEventListener('click', () => this.style.setEraserMode(mode));
       this.#alertRow.append(b);
     };
 
-    add('peca', '◌', 'Apagar por peça: some só o que a borracha cobrir');
-    add('objeto', '⊘', 'Apagar o traço inteiro que a borracha tocar');
+    add('peca', 'apagarPeca', 'Apagar por peça: some só o que a borracha cobrir');
+    add('objeto', 'apagarTraco', 'Apagar o traço inteiro que a borracha tocar');
   }
 
   #renderNoteColors(): void {
@@ -293,7 +298,7 @@ export class ToolBar {
       // depois sem recriar o botao (ver `#syncActive`).
       b.dataset['value'] = kind;
       b.classList.toggle('qb-tools__shape--active', kind === current);
-      b.textContent = meta.icon;
+      b.append(icon(meta.icon, 17));
       b.title = meta.label;
       b.setAttribute('aria-label', meta.label);
       b.addEventListener('click', () => this.style.setShapeKind(kind));
@@ -304,7 +309,7 @@ export class ToolBar {
     fill.type = 'button';
     fill.className = 'qb-tools__shape qb-tools__shape--fill';
     fill.classList.toggle('qb-tools__shape--active', this.style.shapeFilled);
-    fill.textContent = this.style.shapeFilled ? '◼' : '◻';
+    fill.append(icon('preencher', 17));
     fill.title = 'Preencher a forma (translucido, na cor do contorno)';
     fill.setAttribute('aria-label', 'Preencher a forma');
     fill.addEventListener('click', () => this.style.setShapeFilled(!this.style.shapeFilled));

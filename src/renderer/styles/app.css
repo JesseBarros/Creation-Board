@@ -184,37 +184,59 @@
   gap: 8px;
 }
 
+/* Mesmo material da barra inferior: translucido, desfocado e arredondado. */
 .qb-tools__rail {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 5px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  gap: 2px;
+  padding: 4px;
+  background: color-mix(in srgb, var(--panel) 82%, transparent);
+  backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 14px;
   box-shadow: var(--shadow);
 }
 
 .qb-tools__btn {
-  width: 38px;
-  height: 38px;
+  position: relative;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;
   border: none;
-  border-radius: 8px;
-  font-size: 17px;
+  border-radius: 9px;
+  color: var(--fg);
   line-height: 1;
+  transition: background-color 0.12s ease, color 0.12s ease;
 }
 
 .qb-tools__btn:hover {
   background: var(--panel-2);
 }
 
+.qb-tools__btn:active {
+  transform: scale(0.94);
+}
+
 .qb-tools__btn--active {
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
   color: var(--accent);
+}
+
+/*
+  A barra do ativo fica na LATERAL, e nao embaixo como na barra inferior: numa
+  fila vertical, o indicador embaixo apontaria para o botao seguinte.
+*/
+.qb-tools__btn--active::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  width: 2px;
+  height: 14px;
+  border-radius: 1px;
+  background: var(--accent);
 }
 
 .qb-tools__options {
@@ -222,9 +244,10 @@
   flex-direction: column;
   gap: 8px;
   padding: 8px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel) 82%, transparent);
+  backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 14px;
   box-shadow: var(--shadow);
 }
 
@@ -238,16 +261,17 @@
 }
 
 .qb-tools__shape {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;
   border: none;
-  border-radius: 6px;
-  font-size: 15px;
+  border-radius: 8px;
+  color: var(--fg);
   line-height: 1;
+  transition: background-color 0.12s ease, color 0.12s ease;
 }
 
 .qb-tools__shape:hover {
@@ -264,8 +288,9 @@
   grid-column: 1 / -1;
   width: auto;
   margin-top: 3px;
+  padding-top: 3px;
   border-top: 1px solid var(--border);
-  border-radius: 0 0 6px 6px;
+  border-radius: 0 0 8px 8px;
 }
 
 /* Duas colunas: oito cores de tinta viram um bloco 2x4 em vez de uma fila alta. */
@@ -338,17 +363,19 @@
 }
 
 .qb-tools__alert {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
+  color: var(--fg);
   font-size: 14px;
   font-weight: 700;
   line-height: 1;
+  transition: background-color 0.12s ease, color 0.12s ease;
 }
 
 .qb-tools__alert:hover {

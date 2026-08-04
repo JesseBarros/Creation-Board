@@ -287,6 +287,17 @@ procurar os botões pelo texto (que quebrava a cada renomeação, como aconteceu
 virou "comandos") e passou a procurar por `data-action`, exigindo que **todos** tenham
 ícone e nome acessível.
 
+**Estendido para a barra lateral** (pedido dele depois de ver a inferior): as oito
+ferramentas, as seis formas, o preenchimento e os dois modos da borracha também viraram
+SVG, e o painel ganhou o mesmo material translúcido. Ali o ganho foi maior que na inferior,
+porque os glifos antigos (`⭦`, `🖊`, `✎`, `▬`) vinham de fontes diferentes — um deles era
+emoji — e chegavam em pesos e tamanhos que não combinavam entre si: a fila parecia
+desalinhada mesmo estando alinhada.
+
+O indicador de "ativo" muda de lado conforme a barra: **embaixo** na horizontal, **na
+lateral** na vertical. Numa fila vertical, o indicador embaixo apontaria para o botão
+seguinte.
+
 ### M4 — Renomear o ícone de interrogação para "comandos"
 `corrigido` · `baixo` · 04/08/2026
 

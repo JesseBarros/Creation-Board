@@ -1855,6 +1855,28 @@ async function runHudTests(app: App, check: Check, reset: () => void): Promise<v
       `com icone=${comIcone}/${acoes.length}`,
   );
 
+  // --- a barra lateral tambem virou icone, e tambem precisa continuar nomeada
+  const ferramentas = ['select', 'pen', 'highlighter', 'pencil', 'text', 'note', 'shape', 'eraser'];
+  const railBtn = (id: string): HTMLButtonElement | null =>
+    document.querySelector<HTMLButtonElement>(`.qb-tools__btn[data-action="${id}"]`);
+  const semIcone = ferramentas.filter((f) => railBtn(f)?.querySelector('svg') == null);
+  const semRotulo = ferramentas.filter((f) => !railBtn(f)?.getAttribute('aria-label'));
+  // Clicar no botao tem de trocar a ferramenta -- o mesmo caminho que faltava
+  // ser testado na barra inferior.
+  railBtn('pen')?.click();
+  const depoisDoClique = app.activeTool;
+  railBtn('select')?.click();
+
+  check(
+    'os botoes da barra lateral tem icone, nome e trocam a ferramenta ao clicar',
+    semIcone.length === 0 &&
+      semRotulo.length === 0 &&
+      depoisDoClique === 'pen' &&
+      app.activeTool === 'select',
+    `sem icone=[${semIcone.join(', ')}] sem nome=[${semRotulo.join(', ')}] ` +
+      `clique na caneta=${depoisDoClique} voltou para=${app.activeTool}`,
+  );
+
   // --- trocar de cor NAO pode reconstruir o painel
   // Era isso que deixava o seletor lento: cada clique recriava as quatro linhas
   // de opcao -- cerca de vinte botoes -- e cada elemento novo obriga o
