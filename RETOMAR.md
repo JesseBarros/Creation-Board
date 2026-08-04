@@ -4,7 +4,18 @@ Ponto de retomada do **Creation Board**. O [README](README.md) explica o que o a
 como cada parte funciona; este arquivo responde outra pergunta: *em que pé isso está e
 o que fazer a seguir*. Some quando o projeto acabar.
 
-**Última sessão: 04/08/2026.** Fases 5, 5.5, 6, 7 e 8 concluídas.
+**Última sessão: 04/08/2026.** Fases 5, 5.5, 6, 7 e 8 concluídas, mais uma **rodada de
+correção de bugs** vinda do uso real — ver **[BUGS.md](BUGS.md)**.
+
+> **Retomar por aqui:** dois itens esperam **reteste dele**, e é a primeira coisa a
+> perguntar:
+> - **B7** — a janela "rasgava" ao redimensionar. Corrigido (repintura forçada no processo
+>   principal + repintura síncrona ao medir), mas ele não chegou a testar.
+> - **B5** — queda breve de fps ao clicar num controle. Provavelmente foi junto com o B3;
+>   confirmar com o `F3` aberto.
+>
+> Com esses dois fechados, a lista zera e a **Fase 9** (polimento, temas, build final)
+> começa. E ela começa por `npm run dist`: o instalador não é gerado desde a Fase 0.
 
 ---
 
