@@ -58,6 +58,28 @@ export interface RichSpan {
   color?: string;
 }
 
+/**
+ * Rastro de borracha sobre um objeto de tinta, em espaco LOCAL do objeto.
+ *
+ * O apagamento progressivo e guardado como MASCARA, e nao recortando a
+ * geometria. Os dois motivos:
+ *
+ * 1. A caligrafia importada e `PathObject` -- contorno preenchido, nao
+ *    polilinha. Recortar um pedaco dela exigiria subtracao booleana de
+ *    contornos, que nao existe no projeto e erra feio em caso degenerado.
+ * 2. Um mecanismo so serve aos dois tipos de tinta, e desfazer vira remover uma
+ *    marca da lista em vez de recolar dois cacos de traco.
+ *
+ * O preco esta no desenho: objeto com marca passa por um canvas intermediario
+ * (ver render/painters/erase.ts). So os objetos apagados pagam isso.
+ */
+export interface EraseMark {
+  /** Pontos achatados [x, y, ...] em espaco local. */
+  points: number[];
+  /** Espessura do rastro, em unidades locais. */
+  width: number;
+}
+
 export type StrokeVariant = 'pen' | 'highlighter' | 'pencil';
 
 export interface StrokeObject extends BaseObject {
@@ -73,6 +95,8 @@ export interface StrokeObject extends BaseObject {
   lod?: number[];
   color: string;
   width: number;
+  /** Rastros da borracha progressiva. Ausente = traco intacto. */
+  erased?: EraseMark[];
 }
 
 /**
@@ -93,6 +117,8 @@ export interface PathObject extends BaseObject {
   d: string;
   fill: string;
   fillRule?: 'nonzero' | 'evenodd';
+  /** Rastros da borracha progressiva. Ausente = tinta intacta. */
+  erased?: EraseMark[];
 }
 
 export type ShapeKind =
@@ -163,6 +189,13 @@ export interface ImageObject extends BaseObject {
 export interface GroupObject extends BaseObject {
   type: 'group';
   children: ObjectId[];
+}
+
+/** Tinta: os dois tipos que a borracha alcanca. */
+export type InkObject = StrokeObject | PathObject;
+
+export function isInk(obj: BoardObject): obj is InkObject {
+  return obj.type === 'stroke' || obj.type === 'path';
 }
 
 export type BoardObject =

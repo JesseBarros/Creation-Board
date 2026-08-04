@@ -3,6 +3,7 @@ import { computeBbox } from '@shared/model/bbox';
 import type {
   BoardObject,
   NoteObject,
+  PathObject,
   ShapeKind,
   ShapeObject,
   StrokeObject,
@@ -194,6 +195,25 @@ function diagonal(id: string, x: number, y: number, z: string): StrokeObject {
   return o;
 }
 
+/**
+ * Tinta importada: contorno preenchido, como a caligrafia que vem do Whiteboard.
+ * Nao e produzida por nenhuma ferramenta do app -- so pela importacao.
+ */
+function inkPath(id: string, x: number, y: number, z: string): PathObject {
+  const o: PathObject = {
+    ...BASE,
+    id,
+    type: 'path',
+    z,
+    transform: { x, y, rotation: 0, scaleX: 1, scaleY: 1 },
+    bbox: { x: 0, y: 0, w: 0, h: 0 },
+    d: 'M0 0 L120 0 L120 24 L0 24 Z',
+    fill: '#1f2933',
+  };
+  o.bbox = computeBbox(o);
+  return o;
+}
+
 function scene(): BoardObject[] {
   return [
     shape('A', 100, 100, 'a1'),
@@ -299,6 +319,14 @@ function paintSampleStrokes(host: HTMLElement, app: App): void {
   // tinta que ja estava no quadro, em vez de borra-la.
   draw('highlighter', 110, 400, 420, 0);
   draw('pencil', 700, 320, 170, 60, (t) => 0.15 + 0.85 * t);
+
+  // Um buraco de borracha no meio do traco de caneta: e o que a foto tem a
+  // mostrar da Fase 5.5, porque nenhum numero prova que o pedaco sumiu com a
+  // borda certa e sem deixar mancha da cor do fundo.
+  app.setTool('eraser');
+  app.drawStyle.setEraserMode('peca');
+  app.drawStyle.setWidth('eraser', 28);
+  freehand(host, 760 + box.left, 160 + box.top, 20, 60, 12);
 }
 
 /** Uma forma fechada e uma aberta, tambem para a foto. */
@@ -924,6 +952,7 @@ function runDrawingTests(host: HTMLElement, app: App, check: Check, reset: () =>
 
   // --- a borracha apaga tinta e desfazer devolve
   setup('eraser');
+  app.drawStyle.setEraserMode('objeto');
   // O traco INK vai de (100,300) a (300,500); a borracha cruza o meio dele.
   drawAt({ x: 150, y: 420 }, 120, -60, 10);
   // Os totais vao para variaveis pelo mesmo motivo do teste de Delete: lidos
@@ -946,6 +975,106 @@ function runDrawingTests(host: HTMLElement, app: App, check: Check, reset: () =>
     'a borracha passa por cima de forma e texto sem apaga-los',
     doc.size === 4 && doc.get('A') !== undefined && doc.get('C') !== undefined,
     `objetos=${doc.size} esperado=4 (so tinta e apagavel)`,
+  );
+
+  // --- modo peca: o traco perde um pedaco e CONTINUA no quadro
+  // E a diferenca que define a Fase 5.5: antes, cruzar o traco apagava o traco.
+  setup('eraser');
+  app.drawStyle.setEraserMode('peca');
+  app.drawStyle.setWidth('eraser', 28);
+  drawAt({ x: 150, y: 420 }, 120, -60, 10);
+  const cortado = doc.get('INK') as StrokeObject | undefined;
+  const marcas = cortado?.erased?.length ?? 0;
+  key('z', { ctrl: true });
+  const devolvido = doc.get('INK') as StrokeObject | undefined;
+  check(
+    'a borracha por peca abre buraco no traco sem remove-lo, e Ctrl+Z devolve a tinta',
+    cortado !== undefined &&
+      doc.size === 4 &&
+      marcas > 0 &&
+      (devolvido?.erased?.length ?? 0) === 0,
+    `objetos=${doc.size} rastros=${marcas} depois do Ctrl+Z=${devolvido?.erased?.length ?? 0} ` +
+      `esperado=(4, mais de 0, 0)`,
+  );
+
+  // --- o buraco nao responde ao clique
+  // Sem isto sobraria tinta invisivel agarrando o cursor -- o mesmo problema do
+  // AABB que o hit-test por geometria existe para evitar.
+  setup('eraser');
+  app.drawStyle.setEraserMode('peca');
+  drawAt({ x: 150, y: 420 }, 120, -60, 10);
+  app.setTool('select');
+  // (200, 400) esta sobre a diagonal do INK, dentro do rastro que acabou de passar.
+  clickWorld(host, box, { x: 200, y: 400 });
+  const pegouNoBuraco = selection.size;
+  clickWorld(host, box, { x: 280, y: 480 });
+  const pegouNaTinta = selection.size;
+  check(
+    'clicar no buraco nao seleciona; clicar na tinta que sobrou seleciona',
+    pegouNoBuraco === 0 && pegouNaTinta === 1,
+    `no buraco=${pegouNoBuraco} na tinta=${pegouNaTinta} esperado=(0, 1)`,
+  );
+
+  // --- apagar tudo aos poucos remove o objeto
+  // Senao sobraria um objeto invisivel no indice espacial, entrando no laco e
+  // contando no Ctrl+A.
+  setup('eraser');
+  app.drawStyle.setEraserMode('peca');
+  app.drawStyle.setWidth('eraser', 56);
+  drawAt({ x: 100, y: 300 }, 200, 200, 24);
+  // Os totais vao para variaveis pelo mesmo motivo dos outros testes de
+  // contagem: lidos direto, o compilador estreita o segundo pelo primeiro e
+  // acusa que 3 e 4 nunca coincidem.
+  const depoisDeVarrer = doc.size;
+  const varreu = doc.get('INK') === undefined && depoisDeVarrer === 3;
+  key('z', { ctrl: true });
+  const depoisDoUndoDaVarrida = doc.size;
+  check(
+    'apagar o traco todo por peca remove o objeto, e Ctrl+Z devolve',
+    varreu && doc.get('INK') !== undefined && depoisDoUndoDaVarrida === 4,
+    `removeu=${varreu} depois do Ctrl+Z=${depoisDoUndoDaVarrida} objetos esperado=(true, 4)`,
+  );
+  app.drawStyle.setWidth('eraser', 28);
+
+  // --- a caligrafia importada tambem se apaga por peca
+  // E o caso que decidiu a arquitetura: PathObject e contorno preenchido, e
+  // recortar um pedaco dele exigiria subtracao booleana de contornos.
+  setup('eraser');
+  app.drawStyle.setEraserMode('peca');
+  doc.add([inkPath('TINTA', 700, 600, 'a5')]);
+  drawAt({ x: 760, y: 612 }, 0, 40, 8);
+  const tinta = doc.get('TINTA') as PathObject | undefined;
+  check(
+    'a caligrafia importada aceita apagamento por peca',
+    tinta !== undefined && (tinta.erased?.length ?? 0) > 0 && doc.size === 5,
+    `rastros=${tinta?.erased?.length ?? 0} objetos=${doc.size} esperado=(mais de 0, 5)`,
+  );
+
+  // --- o rastro sobrevive ao arquivo
+  const gravadoComRastro = JSON.parse(
+    JSON.stringify(serializeBoard(doc, app.camera, app.assets)),
+  ) as WbdDocument;
+  applyBoard(doc, app.camera, gravadoComRastro);
+  const relido = doc.get('TINTA') as PathObject | undefined;
+  check(
+    'o rastro da borracha sobrevive ao formato do .wbd',
+    relido !== undefined &&
+      (relido.erased?.length ?? 0) === (tinta?.erased?.length ?? -1) &&
+      (relido.erased?.[0]?.points.length ?? 0) > 0,
+    `rastros=${relido?.erased?.length ?? 0} pontos no primeiro=${relido?.erased?.[0]?.points.length ?? 0}`,
+  );
+
+  // --- os dois modos convivem, e a escolha e da barra
+  setup('eraser');
+  app.drawStyle.setEraserMode('objeto');
+  const modoObjeto = app.drawStyle.eraserMode;
+  drawAt({ x: 150, y: 420 }, 120, -60, 10);
+  const sumiuInteiro = doc.get('INK') === undefined;
+  app.drawStyle.setEraserMode('peca');
+  check(
+    'o modo traco inteiro continua disponivel na barra',
+    modoObjeto === 'objeto' && sumiuInteiro && app.drawStyle.eraserMode === 'peca',
+    `modo=${modoObjeto} apagou inteiro=${sumiuInteiro} voltou para=${app.drawStyle.eraserMode}`,
   );
 
   // --- objeto travado sobrevive a borracha

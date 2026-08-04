@@ -38,14 +38,14 @@ export type DrawToolId = (typeof DRAW_TOOLS)[number];
  * criar um controle novo faz `[` e `]` valerem tambem para o texto, sem inventar
  * um segundo par de teclas para a mesma ideia de "maior/menor".
  */
-export type StyleToolId = DrawToolId | 'shape' | 'text';
+export type StyleToolId = DrawToolId | 'shape' | 'text' | 'eraser';
 
 export function isDrawTool(id: ToolId): id is DrawToolId {
   return (DRAW_TOOLS as readonly ToolId[]).includes(id);
 }
 
 export function hasStyle(id: ToolId): id is StyleToolId {
-  return isDrawTool(id) || id === 'shape' || id === 'text';
+  return isDrawTool(id) || id === 'shape' || id === 'text' || id === 'eraser';
 }
 
 /** Objetos que se editam escrevendo dentro deles. */

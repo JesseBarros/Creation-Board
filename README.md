@@ -37,7 +37,8 @@ teclas — se o atalho aparece na ajuda, ele funciona.
 | Salvar | `Ctrl+S` |
 | Voltar ao lobby | `Ctrl+O` |
 | Ferramentas | `V` selecionar · `P` caneta · `M` marca-texto · `L` lápis · `T` texto · `N` post-it · `F` formas · `E` borracha |
-| Espessura do traço | `[` mais fino · `]` mais grosso (no texto, corpo da fonte) |
+| Espessura do traço | `[` mais fino · `]` mais grosso (no texto, corpo da fonte; na borracha, diâmetro) |
+| Borracha | `E` · apaga **por peça** (padrão) ou o traço inteiro — escolha na barra |
 | Editar texto | `F2` (ou `Enter`) na seleção · duplo clique na caixa |
 | Formatar (dentro da caixa) | `Ctrl+B` · `Ctrl+I` · `Ctrl+U` · `Esc` sai mantendo o texto |
 | Encaixe | Automático ao arrastar · `Ctrl` ignora · `A` liga a grade magnética |
@@ -78,7 +79,7 @@ As três variantes produzem o mesmo `StrokeObject`, que já existia desde a Fase
 mesmo tipo que a importação e a carga de teste usam. A caneta *produz* esses objetos;
 não inventa nada novo.
 
-Quatro decisões que o código não conta sozinho:
+Cinco decisões que o código não conta sozinho:
 
 - **O marca-texto entra por baixo de tudo.** Grifar é destacar o que já está no quadro;
   entrando no topo, a faixa translúcida cobriria justamente o texto que se quis
@@ -91,12 +92,24 @@ Quatro decisões que o código não conta sozinho:
   tinta fora do próprio retângulo do objeto — que o culling corta na borda da tela. Em
   mesa digitalizadora a variação é real; com mouse, `PointerEvent.pressure` vem sempre
   0,5 e o traço sai uniforme.
-- **A borracha apaga o objeto inteiro, e só tinta.** Apagar por pedaço exigiria partir a
-  polilinha e recalcular LOD e AABB dos dois cacos; na prática de um resumo, quem erra
-  uma letra refaz a palavra. E ela ignora texto, post-it e imagem: um gesto largo
+- **A borracha apaga por peça, e só tinta.** Ela tem dois modos, escolhidos na barra:
+  **peça** (padrão) remove por onde passa e deixa o resto do traço no lugar, e **traço
+  inteiro** remove o objeto que ela toca — dois gestos diferentes, corrigir uma letra e
+  limpar uma anotação. Nos dois casos ela ignora texto, post-it e imagem: um gesto largo
   passando por cima de uma caixa de texto apagaria o resumo inteiro sem que ninguém
   tivesse pedido. Para essas, o caminho é selecionar e `Delete`, que mostra o que vai
   sumir antes de sumir. Um gesto de borracha é um passo de undo.
+- **O apagamento por peça é máscara, não recorte.** O objeto guarda por onde a borracha
+  passou (`erased`) e o buraco aparece no desenho, via `destination-out` num canvas
+  intermediário. Recortar a geometria seria mais direto para o traço da caneta e
+  **impossível de estender** à caligrafia importada, que é contorno preenchido
+  (`PathObject`) e exigiria subtração booleana de contornos. Com máscara, um mecanismo só
+  atende os dois, desfazer é remover marcas em vez de recolar cacos, e pintar por cima com
+  a cor do fundo — a saída barata — estaria errado nos três lugares onde importa: no tema
+  escuro a mancha apareceria clara, o marca-texto por baixo continuaria visível através
+  dela, e a miniatura sairia com retângulos brancos. **Só o objeto que tem marca paga o
+  canvas intermediário.** Tinta apagada também deixa de responder ao clique, senão
+  sobraria um buraco visível que continua agarrando o cursor.
 - **O traço em andamento vive na camada de overlay.** O `Scheduler` tem dois níveis de
   sujeira: conteúdo e overlay. Cada ponto de um traço invalida só o de cima, então
   desenhar num quadro de 10 mil objetos não repinta os 10 mil por ponto — que é
@@ -409,7 +422,7 @@ npm run selftest
 
 Abre o app, dispara eventos de ponteiro e de teclado direto no app e imprime o
 resultado no terminal — sem depender da janela estar em primeiro plano e sem
-capturar a tela. **77 verificações**, em sete frentes:
+capturar a tela. **83 verificações**, em sete frentes:
 
 - **Navegação:** pan com botão direito e com o do meio, o limiar que separa arrastar
   de clicar, o botão esquerdo permanecendo livre para as ferramentas, o zoom ancorado
@@ -427,6 +440,10 @@ capturar a tela. **77 verificações**, em sete frentes:
   e ela recusando forma, texto e objeto travado. Inclui o caso que justifica a divisão
   de botões inteira: **arrastar o quadro com o botão direito no meio de um traço** não
   o corta em dois nem o deixa no lugar errado.
+- **Borracha por peça:** o buraco aparecendo sem o traço sair do quadro, o buraco *não*
+  respondendo ao clique enquanto a tinta que sobrou responde, apagar tudo aos poucos
+  removendo o objeto, a caligrafia importada (`PathObject`) aceitando o mesmo apagamento,
+  o rastro sobrevivendo ao `.wbd` e o modo traço inteiro continuando disponível.
 - **Formas e encaixe:** a forma criada pelo arraste, `Shift` travando o quadrado, `Alt`
   crescendo do centro, a seta guardando a direção, o preenchimento translúcido, o clique
   sem arraste *não* deixando forma de tamanho zero, e as teclas `F`, `R` e `U`. No
@@ -466,7 +483,9 @@ teste termina montando uma cena com a seleção ativa e **tudo produzido pelas f
 de verdade** — então `QB_SHOT=<arquivo.png> npm run selftest` fotografa só a janela do app
 e mostra o contorno, as alças, a alça de rotação, o grifo passando por baixo da tinta, a
 espessura do lápis variando com a pressão, as formas, as réguas, uma caixa de texto com
-negrito, sublinhado e marcadores, e um post-it com alerta.
+negrito, sublinhado e marcadores, um post-it com alerta e **um buraco de borracha no meio
+de um traço** — nenhum número prova que o pedaço sumiu com a borda certa e sem deixar
+mancha da cor do fundo.
 
 ## Requisitos
 
@@ -703,6 +722,7 @@ serve para migrar.
 - [x] **Fase 4** — Caneta, marca-texto, lápis, borracha, cores e espessura
 - [x] **Fase 4.5** — Formas geométricas, régua e snap
 - [x] **Fase 5** — Texto, post-its e alertas
+- [x] **Fase 5.5** — Borracha progressiva (apagar por peça)
 - [ ] **Fase 6** — Busca Ctrl+F
 - [ ] **Fase 7** — Imagens
 - [ ] **Fase 7.5** — Transcrever imagem em texto (OCR). Viabilidade confirmada:

@@ -4,15 +4,15 @@ Ponto de retomada do **Creation Board**. O [README](README.md) explica o que o a
 como cada parte funciona; este arquivo responde outra pergunta: *em que pé isso está e
 o que fazer a seguir*. Some quando o projeto acabar.
 
-**Última sessão: 04/08/2026.** Fase 5 concluída.
+**Última sessão: 04/08/2026.** Fases 5 e 5.5 concluídas.
 
 ---
 
 ## Estado em uma linha
 
-Fases 0 a 5 prontas. Dá para importar um resumo do Microsoft Whiteboard, **reorganizá-lo
-com alinhamento assistido, escrever à mão, desenhar formas e digitar texto e post-its em
-cima dele**. Falta busca.
+Fases 0 a 5.5 prontas. Dá para importar um resumo do Microsoft Whiteboard, **reorganizá-lo
+com alinhamento assistido, escrever à mão, desenhar formas, digitar texto e post-its em
+cima dele e apagar tinta por peça**. Falta busca.
 
 ## O que existe hoje
 
@@ -26,26 +26,17 @@ cima dele**. Falta busca.
 | 4 | Caneta, marca-texto, lápis, borracha, cores e espessura | pronta |
 | 4.5 | Formas, encaixe com guias, grade magnética, réguas | pronta |
 | 5 | Texto, post-its e alertas | pronta |
+| 5.5 | Borracha progressiva (apagar por peça) | pronta |
 | **6** | **Busca `Ctrl+F`** | **próxima** |
 
 A ordem diverge do plano original **de propósito**: o objetivo é migrar os resumos do
 Whiteboard, e para isso importar e manipular vieram antes de desenhar.
 
-## Pedido em aberto: borracha progressiva
+A Fase 5.5 nasceu de um pedido dele ao testar a Fase 5 — a borracha apagando o traço
+inteiro não servia — e **reverteu a decisão da Fase 4**. Está resolvida.
 
-**Pedido em 04/08/2026, testando a Fase 5.** A borracha precisa apagar o traço **por
-pedaço, onde ela passa** — não o traço inteiro. O modelo atual empurra quem quer apagar
-uma parte para "selecionar e `Delete`", e nas palavras dele isso não é *nem agradável nem
-funcional*. Combinado guardar para consertar depois, fora da Fase 5.
-
-Isso **reverte a decisão 6 da lista abaixo** e o que o README diz sobre a borracha — os
-dois textos precisam mudar junto, senão a documentação passa a contradizer o app. O custo
-já estava mapeado na justificativa original: apagar por pedaço exige **partir a polilinha**
-e recalcular **LOD e AABB dos dois cacos**, e cada corte multiplica objetos no índice
-espacial. Medir antes de escolher a abordagem.
-
-**A `main` foi até a Fase 4.5** (mesclada em 04/08/2026, em avanço rápido). A Fase 5 está
-na branch **`fase-5-texto`**, ainda sem mesclar — ele não pediu.
+**A `main` foi até a Fase 5** (mesclada em 04/08/2026, em avanço rápido). A Fase 5.5 está
+na branch **`fase-5-5-borracha`**, ainda sem mesclar — ele não pediu.
 
 ---
 
@@ -55,11 +46,11 @@ Sempre por terminal — nunca por captura de tela cheia (ver o *porquê* no READ
 
 ```
 npm run typecheck     # tsc nos dois projetos, strict
-npm run selftest      # 77 verificações, deve terminar com "tudo passou"
+npm run selftest      # 83 verificações, deve terminar com "tudo passou"
 npm run check:colors  # contraste das cores nos dois temas
 ```
 
-⚠️ **Uma das 77 mede a máquina, não o código:** "arrastar 10.000 objetos selecionados
+⚠️ **Uma das 83 mede a máquina, não o código:** "arrastar 10.000 objetos selecionados
 fica acima de 30fps", com teto de 33 ms por frame. Ela reprova com o computador ocupado —
 em 04/08/2026 reprovou com **50–62 ms** simplesmente porque o **CS2 estava aberto**, e a
 `main` sem nenhuma mudança reprovou pior que a branch nova. O sinal de que é a máquina, e
@@ -100,8 +91,8 @@ regressão. **O texto é o caso com história** (leia antes de suspeitar de bug)
 Para ver renderização, `QB_SHOT=<arquivo.png> npm run selftest` fotografa **só a janela
 do app** e deixa na tela a cena de conferência: seleção com alças, um traço de cada
 variante, duas formas, as réguas ligadas, um objeto encostado noutro pelo encaixe, uma
-caixa de texto com negrito, sublinhado e marcadores, e um post-it com alerta — tudo
-produzido pelas ferramentas de verdade. Atenção: com `QB_SHOT` a janela **não fecha
+caixa de texto com negrito, sublinhado e marcadores, um post-it com alerta e um buraco de
+borracha no meio de um traço — tudo produzido pelas ferramentas de verdade. Atenção: com `QB_SHOT` a janela **não fecha
 sozinha** — o processo fica aberto até você encerrá-lo.
 
 **A guia de encaixe não sai na foto**, e não é bug: ela existe só enquanto o botão está
@@ -151,10 +142,20 @@ Busca `Ctrl+F`: achar uma palavra num resumo de mil objetos e levar a câmera at
    27,3. O real era o índice espacial, 20,4 ms. Medir primeiro, otimizar depois.
 5. **O marca-texto entra por baixo de tudo** (chave `z`, não ordem de desenho), senão
    grifar cobriria o texto que se quis destacar. Caneta e lápis entram por cima.
-6. **A borracha apaga o objeto inteiro, e só tinta** (`stroke` e `path`). Ela ignora
-   texto, post-it e imagem de propósito: um gesto largo apagaria o resumo inteiro sem
-   ninguém ter pedido. O comando dela é `EraseObjects`, separado de `RemoveObjects`
-   porque a borracha apaga *durante* o arraste.
+6. **A borracha apaga por peça (padrão) ou o traço inteiro, e só tinta** (`stroke` e
+   `path`). Ela ignora texto, post-it e imagem de propósito: um gesto largo apagaria o
+   resumo inteiro sem ninguém ter pedido. Os comandos são `EraseInk` e `EraseObjects`,
+   separados de `RemoveObjects` porque a borracha apaga *durante* o arraste — quando o
+   gesto termina o estado já mudou, e a captura tardia viria vazia.
+6b. **O apagamento por peça é MÁSCARA, não recorte da geometria.** O objeto guarda os
+   rastros em `erased` e o buraco aparece no desenho, com `destination-out` num canvas
+   intermediário (`render/painters/erase.ts`). Recortar seria viável no traço de caneta e
+   **impossível de estender** à caligrafia importada, que é contorno preenchido e exigiria
+   subtração booleana de contornos. Pintar por cima com a cor do fundo — a saída barata —
+   estaria errado: no tema escuro a mancha apareceria clara, o marca-texto por baixo
+   continuaria visível e a miniatura sairia com retângulos brancos. Um objeto que ficou
+   sem nenhum pixel visível sai do quadro; quem decide isso é uma rasterização de 64px, e
+   não a geometria, porque `PathObject` não tem "pontos do traço" para conferir.
 7. **A espessura do lápis nunca passa de 100% da largura nominal.** O AABB é calculado
    inflando a linha de centro em `width / 2`; um pico maior desenharia tinta fora do
    retângulo do objeto, e o culling a cortaria na borda da tela.
@@ -203,8 +204,8 @@ src/renderer/
 │  ├─ import/     leitor do export do Whiteboard
 │  ├─ images/     AssetStore
 │  └─ storage/    boardIO
-├─ render/      Renderer (estática + overlay), painters, text/layout, SelectionOverlay,
-│               SnapGuides, Rulers, PinnedNotes
+├─ render/      Renderer (estática + overlay), painters (+ erase: máscara da borracha),
+│               text/layout, SelectionOverlay, SnapGuides, Rulers, PinnedNotes
 ├─ ui/          ToolBar, Lobby, ViewportBar, ContextMenu, ShortcutsModal, DebugPanel
 └─ dev/         selftest, layoutOracle, importCheck, stress  ← ferramentas de medição
 ```

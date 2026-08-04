@@ -87,6 +87,57 @@ export class EraseObjects implements Command {
 }
 
 /**
+ * Um gesto inteiro da borracha progressiva, em um passo de undo.
+ *
+ * Guarda o estado ANTERIOR e o POSTERIOR de cada objeto tocado, e nao a lista de
+ * rastros aplicados: um objeto que ficou sem nenhum pixel visivel sai do quadro
+ * no meio do gesto, e "tirar as marcas" nao o traria de volta.
+ *
+ * Como a borracha ja aplicou tudo enquanto o usuario arrastava, `apply()` e
+ * idempotente de proposito -- no push inicial ele reexecuta o que ja aconteceu.
+ */
+export class EraseInk implements Command {
+  readonly label = 'Apagar';
+  #removedIds: ObjectId[];
+
+  constructor(
+    private readonly doc: Document,
+    /** Como os objetos tocados estavam antes do gesto. */
+    private readonly before: readonly BoardObject[],
+    /** Como ficaram os que sobreviveram. */
+    private readonly after: readonly BoardObject[],
+  ) {
+    const survivors = new Set(after.map((o) => o.id));
+    this.#removedIds = before.filter((o) => !survivors.has(o.id)).map((o) => o.id);
+  }
+
+  apply(): void {
+    this.doc.replaceMany(this.after.map(clone));
+    if (this.#removedIds.length > 0) this.doc.remove(this.#removedIds);
+  }
+
+  revert(): void {
+    const back = this.before.map(clone);
+    const missing = back.filter((o) => this.doc.get(o.id) === undefined);
+    const present = back.filter((o) => this.doc.get(o.id) !== undefined);
+    if (missing.length > 0) this.doc.add(missing);
+    if (present.length > 0) {
+      // `rev` sempre anda para frente, mesmo desfazendo: e ele que invalida
+      // caches por objeto.
+      this.doc.replaceMany(
+        present.map((o) => ({ ...o, rev: (this.doc.get(o.id)?.rev ?? o.rev) + 1 })),
+      );
+    }
+  }
+}
+
+/** Copia rasa com a lista de rastros clonada, para o historico nao compartilhar estado. */
+function clone<T extends BoardObject>(obj: T): T {
+  const erased = 'erased' in obj ? obj.erased : undefined;
+  return erased ? { ...obj, erased: erased.map((m) => ({ ...m, points: [...m.points] })) } : { ...obj };
+}
+
+/**
  * Mover, redimensionar ou rotacionar.
  *
  * Funde-se com o comando seguinte enquanto o arraste esta em curso: sem isso,

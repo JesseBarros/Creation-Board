@@ -4,6 +4,7 @@ import { paintPath } from './path';
 import { paintImage } from './image';
 import { paintShape } from './shape';
 import { paintNote, paintText } from './text';
+import { withErase } from './erase';
 import type { PaintContext } from './types';
 import type { ColorAdapter } from '../colorAdapt';
 
@@ -15,11 +16,13 @@ import type { ColorAdapter } from '../colorAdapt';
  */
 export function paintObject(obj: BoardObject, p: PaintContext): void {
   switch (obj.type) {
+    // Os dois tipos de tinta passam pelo `withErase`: se houver rastro de
+    // borracha ele abre o buraco, e se nao houver o painter e chamado direto.
     case 'stroke':
-      paintStroke(obj, p);
+      withErase(obj, p, paintStroke);
       return;
     case 'path':
-      paintPath(obj, p);
+      withErase(obj, p, paintPath);
       return;
     case 'shape':
       paintShape(obj, p);
