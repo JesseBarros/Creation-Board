@@ -1,5 +1,11 @@
 import type { AlertLevel, ShapeKind } from '@shared/model/types';
-import { ALERT_ICONS, NOTE_COLORS, SHAPE_KINDS, type DrawStyle } from '../tools/DrawStyle';
+import {
+  ALERT_ICONS,
+  NOTE_COLORS,
+  SHAPE_KINDS,
+  type DrawStyle,
+  type EraserMode,
+} from '../tools/DrawStyle';
 import { hasStyle, type StyleToolId, type ToolId } from '../tools/types';
 import { ALERT_COLORS } from '../render/painters/text';
 
@@ -148,11 +154,37 @@ export class ToolBar {
     // O seletor de forma so existe para a ferramenta de formas; para as de tinta
     // a linha inteira sai do fluxo em vez de ficar como um espaco vazio.
     this.#shapeRow.hidden = id !== 'shape';
-    this.#alertRow.hidden = true;
     this.#widthRow.hidden = false;
     if (id === 'shape') this.#renderShapes();
-    this.#renderColors(id);
+
+    // A borracha nao tem cor -- ela tira tinta, nao poe. No lugar da paleta vai
+    // a escolha de como ela apaga.
+    this.#colorRow.hidden = id === 'eraser';
+    this.#alertRow.hidden = id !== 'eraser';
+    if (id === 'eraser') this.#renderEraserModes();
+    else this.#renderColors(id);
+
     this.#renderWidths(id);
+  }
+
+  #renderEraserModes(): void {
+    const current = this.style.eraserMode;
+    this.#alertRow.replaceChildren();
+
+    const add = (mode: EraserMode, icon: string, label: string): void => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'qb-tools__alert';
+      b.classList.toggle('qb-tools__alert--active', mode === current);
+      b.textContent = icon;
+      b.title = label;
+      b.setAttribute('aria-label', label);
+      b.addEventListener('click', () => this.style.setEraserMode(mode));
+      this.#alertRow.append(b);
+    };
+
+    add('peca', '◌', 'Apagar por peça: some só o que a borracha cobrir');
+    add('objeto', '⊘', 'Apagar o traço inteiro que a borracha tocar');
   }
 
   #renderNoteColors(): void {
@@ -249,9 +281,11 @@ export class ToolBar {
     const current = this.style.width(id);
     const steps = this.style.widthsFor(id);
     const biggest = steps[steps.length - 1] ?? 1;
-    // No texto o mesmo eixo e o corpo da fonte; o rotulo acompanha, senao a
-    // dica diria "espessura" para quem esta escolhendo tamanho de letra.
-    const noun = id === 'text' ? 'Tamanho da fonte' : 'Espessura';
+    // O mesmo eixo significa coisas diferentes por ferramenta; o rotulo
+    // acompanha, senao a dica diria "espessura" para quem escolhe corpo de letra
+    // ou diametro de borracha.
+    const noun =
+      id === 'text' ? 'Tamanho da fonte' : id === 'eraser' ? 'Diametro' : 'Espessura';
     this.#widthRow.replaceChildren();
 
     for (const width of steps) {

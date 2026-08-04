@@ -2,9 +2,10 @@ import type { Rect } from '@shared/geometry/rect';
 import { intersects } from '@shared/geometry/rect';
 import type { Vec2 } from '@shared/geometry/vec2';
 import { localBounds, worldToLocal } from '@shared/model/bbox';
-import type { BoardObject, ShapeObject, StrokeObject } from '@shared/model/types';
+import { isInk, type BoardObject, type ShapeObject, type StrokeObject } from '@shared/model/types';
 import type { Document } from '../../core/Document';
 import { path2dFor } from '../../render/painters/path';
+import { isErasedAt } from '../../render/painters/erase';
 
 /**
  * Hit-test: que objeto esta sob o cursor.
@@ -58,7 +59,7 @@ export function hitTest(doc: Document, world: Vec2, zoom: number): BoardObject |
  * Objetos pegos por um retangulo de selecao (marquee).
  *
  * Aqui o criterio e o AABB, e nao a geometria fina: arrastar um laco e um gesto
- * de [...], nao de mira. Refinar por geometria faria o laco
+ * de "pegue tudo por aqui", nao de mira. Refinar por geometria faria o laco
  * ignorar objetos que o usuario visivelmente cercou, que surpreende mais do que
  * pegar um a mais -- e o excedente sai com um Shift+clique.
  */
@@ -93,6 +94,11 @@ export function hitsObject(obj: BoardObject, wx: number, wy: number, tolWorld: n
   ) {
     return false;
   }
+
+  // Tinta apagada nao responde ao clique. Sem isto, apagar o meio de um traco
+  // deixaria um buraco visivel que continua agarrando o cursor -- o mesmo
+  // problema do AABB que este modulo inteiro existe para evitar.
+  if (isInk(obj) && isErasedAt(obj, p.x, p.y)) return false;
 
   switch (obj.type) {
     case 'stroke':

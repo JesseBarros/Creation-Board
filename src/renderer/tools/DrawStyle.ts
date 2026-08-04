@@ -77,6 +77,10 @@ const WIDTHS: Record<StyleToolId, readonly number[]> = {
   pencil: [1.5, 3, 5],
   shape: [2, 4, 7],
   text: [16, 24, 40],
+  // Borracha em px de TELA, e nao de mundo: ela e instrumento de apontar, e o
+  // que importa e o quanto cobre do que se esta vendo. Em unidades de mundo,
+  // aproximar o zoom para acertar um detalhe faria a borracha crescer junto.
+  eraser: [12, 28, 56],
 };
 
 const DEFAULTS: Record<StyleToolId, { color: string; width: number }> = {
@@ -85,7 +89,19 @@ const DEFAULTS: Record<StyleToolId, { color: string; width: number }> = {
   pencil: { color: INK_COLORS[0], width: WIDTHS.pencil[1]! },
   shape: { color: INK_COLORS[0], width: WIDTHS.shape[0]! },
   text: { color: INK_COLORS[0], width: WIDTHS.text[0]! },
+  // A cor da borracha nunca e usada; ela entra aqui so para o eixo de tamanho
+  // ser o mesmo das outras ferramentas, com `[` e `]` valendo igual.
+  eraser: { color: INK_COLORS[0], width: WIDTHS.eraser[1]! },
 };
+
+/**
+ * Como a borracha apaga.
+ *
+ * `peca` remove por onde ela passa, deixando o resto do traco no lugar;
+ * `objeto` remove o traco inteiro que ela toca. As duas existem porque servem a
+ * gestos diferentes: corrigir uma letra e limpar uma anotacao inteira.
+ */
+export type EraserMode = 'peca' | 'objeto';
 
 /** Formas oferecidas na barra, na ordem em que aparecem. */
 export const SHAPE_KINDS: readonly ShapeKind[] = [
@@ -107,6 +123,7 @@ export class DrawStyle {
   #shapeFilled: boolean;
   #noteBg: string;
   #noteAlert: AlertLevel | null;
+  #eraserMode: EraserMode;
   #listeners = new Set<() => void>();
 
   constructor() {
@@ -116,6 +133,17 @@ export class DrawStyle {
     this.#shapeFilled = stored.shapeFilled ?? false;
     this.#noteBg = stored.noteBg ?? NOTE_COLORS[0];
     this.#noteAlert = stored.noteAlert ?? null;
+    this.#eraserMode = stored.eraserMode ?? 'peca';
+  }
+
+  get eraserMode(): EraserMode {
+    return this.#eraserMode;
+  }
+
+  setEraserMode(mode: EraserMode): void {
+    if (this.#eraserMode === mode) return;
+    this.#eraserMode = mode;
+    this.#commit();
   }
 
   colorsFor(id: StyleToolId): readonly string[] {
@@ -228,6 +256,7 @@ export class DrawStyle {
           shapeFilled: this.#shapeFilled,
           noteBg: this.#noteBg,
           noteAlert: this.#noteAlert,
+          eraserMode: this.#eraserMode,
         }),
       );
     } catch {
@@ -250,6 +279,7 @@ function readStored(): {
   shapeFilled?: boolean;
   noteBg?: string;
   noteAlert?: AlertLevel | null;
+  eraserMode?: EraserMode;
 } {
   let raw: unknown;
   try {
@@ -278,7 +308,9 @@ function readStored(): {
   const kind = obj['shapeKind'];
   const bg = obj['noteBg'];
   const alert = obj['noteAlert'];
+  const eraser = obj['eraserMode'];
   return {
+    eraserMode: eraser === 'peca' || eraser === 'objeto' ? eraser : undefined,
     tools,
     shapeKind:
       typeof kind === 'string' && (SHAPE_KINDS as readonly string[]).includes(kind)
