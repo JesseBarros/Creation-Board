@@ -14,6 +14,7 @@ import { hasStyle, type EditableObject, type ToolContext, type ToolId } from './
 import { TextEditor } from './features/text/TextEditor';
 import { EditText, RestyleNotes, type NoteStyle } from './commands';
 import type { ObjectPatch } from './commands/patch';
+import type { Rect } from '@shared/geometry/rect';
 import { contentHeight, styleOf } from './render/text/layout';
 import type { TextObject } from '@shared/model/types';
 import { hitTest } from './features/selection/hitTest';
@@ -26,6 +27,9 @@ import {
   selectAll,
 } from './features/selection/actions';
 import { DebugPanel } from './ui/DebugPanel';
+import { SearchBar } from './ui/SearchBar';
+import { searchBoard, type SearchHit } from './features/search/search';
+import { paintSearchHighlight } from './render/SearchHighlight';
 import { ToolBar } from './ui/ToolBar';
 import { ViewportBar } from './ui/ViewportBar';
 import { ContextMenu, type MenuEntry } from './ui/ContextMenu';
@@ -106,6 +110,7 @@ export class App {
   #lobby: Lobby;
   #help: ShortcutsModal;
   #menu: ContextMenu;
+  #search: SearchBar;
 
   #boardView: HTMLElement;
   #host: HTMLElement;
@@ -181,6 +186,13 @@ export class App {
       this.drawStyle,
     );
     this.#boardView.append(this.#toolbar.el);
+
+    this.#search = new SearchBar({
+      search: (q) => this.#search.setHits(searchBoard(this.doc, q)),
+      goTo: () => this.#focusSearchHit(),
+      close: () => this.closeSearch(),
+    });
+    this.#boardView.append(this.#search.el);
 
     this.#debug = new DebugPanel({
       seed: (n) => void this.seed(n),
@@ -343,6 +355,9 @@ export class App {
     // pertence ao quadro que esta saindo, e gravar agora escreveria num
     // documento que ja foi trocado.
     this.#editor.abort();
+    // A busca aponta para objetos deste quadro; mante-la aberta na troca
+    // deixaria uma lista de resultados que nao existem mais.
+    this.#search.close();
     this.selection.clear();
     this.history.clear();
     this.#tools.cancel();
@@ -695,6 +710,9 @@ export class App {
 
     const ctx = this.#renderer.beginOverlayScreen();
     this.#tools.paintOverlay(ctx, this.camera);
+    // O destaque da busca nao depende da ferramenta ativa: procurar no meio de
+    // um desenho nao deve obrigar a trocar para a selecao so para ver o achado.
+    paintSearchHighlight(ctx, this.camera, this.#searchBbox());
     paintPinnedNotes(
       ctx,
       this.doc,
@@ -716,6 +734,71 @@ export class App {
         RULER_THEMES[this.#theme],
       );
     }
+  }
+
+  /** AABB do resultado destacado, ou null quando a busca esta fechada. */
+  #searchBbox(): Rect | null {
+    const hit = this.#search.isOpen ? this.#search.current : null;
+    return hit ? (this.doc.get(hit.id)?.bbox ?? null) : null;
+  }
+
+  // ------------------------------------------------------------------ busca
+
+  /** `Ctrl+F`. Reabrir com a busca ja aberta apenas devolve o foco ao campo. */
+  openSearch(): void {
+    this.#search.open();
+    this.#scheduler.invalidateOverlay();
+  }
+
+  closeSearch(): void {
+    this.#search.close();
+    this.#scheduler.invalidateOverlay();
+    // O foco volta para o quadro, senao a proxima tecla continuaria caindo num
+    // campo de texto invisivel e nenhum atalho responderia.
+    this.#host.focus({ preventScroll: true });
+  }
+
+  get isSearchOpen(): boolean {
+    return this.#search.isOpen;
+  }
+
+  /** Resultado destacado no momento, ou null. Usado pelo autoteste. */
+  get searchHit(): SearchHit | null {
+    return this.#search.isOpen ? this.#search.current : null;
+  }
+
+  /** Anda pelos resultados sem passar pelo campo de texto. */
+  stepSearch(direction: 1 | -1): void {
+    this.#search.step(direction);
+  }
+
+  /**
+   * Leva a camera ate o resultado atual.
+   *
+   * O zoom vai para 100%, ou para o que fizer o objeto caber -- o que for MENOR.
+   * Manter o zoom de onde se estava resolveria "centralizar" e nao "encontrar":
+   * num quadro visto a 8%, o resultado chegaria centralizado e ilegivel.
+   */
+  #focusSearchHit(): void {
+    const hit = this.#search.current;
+    const obj = hit ? this.doc.get(hit.id) : undefined;
+    if (!obj) return;
+
+    const b = obj.bbox;
+    const vw = this.#renderer.viewportW;
+    const vh = this.#renderer.viewportH;
+    const pad = 80;
+    const fit = Math.min((vw - pad * 2) / Math.max(b.w, 1), (vh - pad * 2) / Math.max(b.h, 1));
+    const zoom = Math.min(1, fit);
+
+    this.camera.zoom = zoom;
+    this.camera.x = b.x + b.w / 2 - vw / 2 / zoom;
+    this.camera.y = b.y + b.h / 2 - vh / 2 / zoom;
+
+    // Selecionar junto deixa o resultado pronto para `Delete`, `Ctrl+C` ou uma
+    // arrastada -- achar quase sempre e o passo anterior a mexer.
+    this.selection.set([obj.id]);
+    this.#onCameraChanged();
   }
 
   /**
@@ -881,6 +964,10 @@ export class App {
   #escape(): void {
     if (this.#menu.isOpen) {
       this.#menu.hide();
+      return;
+    }
+    if (this.#search.isOpen) {
+      this.closeSearch();
       return;
     }
     if (this.#tools.cancel()) return;
@@ -1110,6 +1197,7 @@ export class App {
       undo: () => this.undo(),
       redo: () => this.redo(),
       selectAll: () => selectAll(this.#toolCtx),
+      find: () => this.openSearch(),
       duplicate: () => void duplicateSelection(this.#toolCtx),
       copy: () => this.copySelection(),
       cut: () => this.cutSelection(),

@@ -21,6 +21,7 @@ export type ShortcutId =
   | 'undo'
   | 'redo'
   | 'selectAll'
+  | 'find'
   | 'duplicate'
   | 'copy'
   | 'cut'
@@ -104,6 +105,11 @@ export const SHORTCUTS: ShortcutDef[] = [
   { id: 'toolPen', group: 'Ferramentas', keys: 'P', label: 'Caneta', scope: 'board' },
   { id: 'toolHighlighter', group: 'Ferramentas', keys: 'M', label: 'Marca-texto (entra por baixo do conteudo)', scope: 'board' },
   { id: 'toolPencil', group: 'Ferramentas', keys: 'L', label: 'Lapis (a espessura acompanha a pressao)', scope: 'board' },
+  { id: 'find', group: 'Buscar', keys: 'Ctrl+F', label: 'Buscar texto no quadro', scope: 'board' },
+  { group: 'Buscar', keys: 'Enter', label: 'Ir para o resultado; de novo, para o proximo' },
+  { group: 'Buscar', keys: 'Shift+Enter', label: 'Resultado anterior' },
+  { group: 'Buscar', keys: 'Escape', label: 'Fechar a busca' },
+
   { id: 'toolText', group: 'Ferramentas', keys: 'T', label: 'Texto (clique cria; arrastar define a largura)', scope: 'board' },
   { id: 'toolNote', group: 'Ferramentas', keys: 'N', label: 'Post-it (papel e alerta se escolhem na barra)', scope: 'board' },
   { id: 'toolShape', group: 'Ferramentas', keys: 'F', label: 'Formas (o tipo se escolhe na barra)', scope: 'board' },
