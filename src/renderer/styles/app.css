@@ -1,13 +1,30 @@
+/*
+  `clip`, e nao `hidden`.
+
+  Os dois escondem o que passa da borda, mas `hidden` cria um CONTAINER
+  ROLAVEL -- ele so nao rola pela roda do mouse; rola por programa. E o
+  navegador rola por programa o tempo todo: sempre que o cursor de texto se
+  mexe, ele leva o cursor "para dentro da vista".
+
+  A caixa de texto em edicao e um elemento posicionado em (0,0) e levado ao
+  lugar por `transform`, e area transformada CONTA como area rolavel. Editando
+  perto da borda, digitar rolava a interface inteira -- barras e canvas junto --
+  e a janela aparecia rasgada, com pedacos repetidos.
+
+  `clip` nao cria container rolavel: nao ha o que rolar, entao nao ha o que
+  entortar.
+*/
 .qb-app {
   position: relative;
   width: 100%;
   height: 100%;
-  overflow: hidden;
+  overflow: clip;
 }
 
 .qb-canvas-host {
   position: absolute;
   inset: 0;
+  overflow: clip;
 }
 
 /* As duas camadas ocupam exatamente a mesma area; o overlay fica por cima. */

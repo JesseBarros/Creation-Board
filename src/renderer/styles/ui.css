@@ -44,6 +44,8 @@
 .qb-view {
   position: absolute;
   inset: 0;
+  /* Mesmo motivo do `.qb-app`: nada aqui pode virar area rolavel. */
+  overflow: clip;
 }
 
 /* ================================================================= lobby */

@@ -273,6 +273,39 @@ A gravação de pressão por ponto também ficou: é o que uma mesa digitalizado
 o que permitiria a caneta modular a espessura sozinha, se um dia isso for desejado — com
 mouse continuaria idêntica ao que é hoje.
 
+### B7 — Interface "rasgada" ao digitar
+`a investigar` · `alto`
+
+Relato dele em 04/08/2026, com captura: digitando numa caixa de texto, a janela aparece
+**partida ao meio**, com pedaços da interface repetidos embaixo (barra lateral e réguas
+aparecendo duas vezes) e duas linhas azuis atravessando a altura toda. Nas palavras dele:
+*"quando eu digito ele meio que sai da progressão do texto, a escala sem acompanhar a
+digitalização"*.
+
+**O que foi endurecido, e é correto por si:** `body`, `.qb-app`, `.qb-view` e
+`.qb-canvas-host` usavam `overflow: hidden`. Ele esconde o que passa da borda mas
+**continua sendo um container rolável** — só não pela roda do mouse. E o navegador rola por
+programa toda vez que o cursor de texto se mexe, para mantê-lo à vista; como a caixa em
+edição é posicionada por `transform`, e área transformada conta como área rolável, essa
+rolagem automática podia arrastar a interface inteira. Agora é `overflow: clip`, que **não
+cria container rolável**.
+
+**Mas eu NÃO provei que era essa a causa.** Escrevi um guarda que abre uma caixa grande na
+quina, tenta rolar `body` e `.qb-app` em 400px e exige que não role — e ele passa. Só que
+**ele também passou com o CSS antigo de volta**, o que significa que o cenário do teste não
+produz a rolagem. A correção é endurecimento defensável; a causa continua aberta.
+
+**O que falta saber** (é o que decide o próximo passo):
+
+1. acontece com a janela **maximizada** ou depois de redimensionar?
+2. **se conserta sozinho** ao mover o quadro (pan), dar zoom ou clicar fora?
+3. o rasgo aparece **enquanto digita** ou só depois de um tempo?
+
+A repetição da barra lateral e das réguas na captura não pode vir do canvas — elas são DOM
+e existem uma vez só. Isso aponta para **quadro parcialmente redesenhado** (dois frames
+compostos na mesma imagem), o que costuma acontecer durante redimensionamento de janela.
+Daí a pergunta 1.
+
 ## Melhorias
 
 ### M1 — Botão de negrito na caixa de texto

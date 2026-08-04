@@ -1777,6 +1777,42 @@ function runTextTests(host: HTMLElement, app: App, check: Check, reset: () => vo
       `altura ${paraLista.h.toFixed(1)}->${comMarcador?.h.toFixed(1)}->${semMarcador?.h.toFixed(1)}`,
   );
 
+  // --- a interface NAO pode rolar, nunca
+  //
+  // Bug real relatado em 04/08/2026: digitando perto da borda, a janela
+  // aparecia rasgada, com pedacos da interface repetidos. A causa era
+  // `overflow: hidden`, que esconde o que passa da borda mas **continua sendo
+  // um container rolavel** -- e o navegador rola por programa toda vez que o
+  // cursor de texto se mexe, para mante-lo a vista. Como a caixa em edicao e
+  // posicionada por `transform`, e area transformada conta como area rolavel,
+  // digitar arrastava a interface inteira.
+  //
+  // O teste tenta rolar na marra, com uma caixa grande aberta na quina.
+  setup('text');
+  drawStyle.setWidth('text', 72);
+  click(host, box.left + box.width - 80, box.top + box.height - 60);
+  typeInEditor('linha um\nlinha dois\nlinha tres', { commit: false });
+
+  const roláveis = [document.body, document.querySelector<HTMLElement>('.qb-app')].filter(
+    (el): el is HTMLElement => el !== null,
+  );
+  for (const el of roláveis) {
+    el.scrollTop = 400;
+    el.scrollLeft = 400;
+  }
+  const rolou = roláveis.filter((el) => el.scrollTop !== 0 || el.scrollLeft !== 0);
+  editorEl()?.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+  );
+  drawStyle.setWidth('text', 16);
+
+  check(
+    'a interface nao rola, nem quando empurrada — senao digitar entorta a janela',
+    rolou.length === 0,
+    `tentou rolar body e .qb-app em 400px · rolaram=[${rolou.map((e) => e.className || e.tagName).join(', ')}] ` +
+      `esperado=nenhum`,
+  );
+
   // --- o botao de negrito age sobre a caixa selecionada
   // O `Ctrl+B` ja funcionava DENTRO da caixa desde a Fase 5; o que faltava era
   // o controle visivel, e ele tambem precisa valer para quem so selecionou o
