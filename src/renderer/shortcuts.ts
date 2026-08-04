@@ -35,7 +35,6 @@ export type ShortcutId =
   | 'toolSelect'
   | 'toolPen'
   | 'toolHighlighter'
-  | 'toolPencil'
   | 'toolEraser'
   | 'toolShape'
   | 'toolText'
@@ -111,7 +110,6 @@ export const SHORTCUTS: ShortcutDef[] = [
   { id: 'toolSelect', group: 'Ferramentas', keys: 'V', label: 'Selecionar', scope: 'board' },
   { id: 'toolPen', group: 'Ferramentas', keys: 'P', label: 'Caneta', scope: 'board' },
   { id: 'toolHighlighter', group: 'Ferramentas', keys: 'M', label: 'Marca-texto (entra por baixo do conteudo)', scope: 'board' },
-  { id: 'toolPencil', group: 'Ferramentas', keys: 'L', label: 'Lapis (a espessura acompanha a pressao)', scope: 'board' },
   { id: 'find', group: 'Buscar', keys: 'Ctrl+F', label: 'Buscar texto no quadro', scope: 'board' },
   { group: 'Buscar', keys: 'Enter', label: 'Ir para o resultado; de novo, para o proximo' },
   { group: 'Buscar', keys: 'Shift+Enter', label: 'Resultado anterior' },

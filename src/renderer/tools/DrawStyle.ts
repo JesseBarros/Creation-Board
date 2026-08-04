@@ -77,7 +77,6 @@ export const ALERT_ICONS: Record<AlertLevel, string> = {
 const WIDTHS: Record<StyleToolId, readonly number[]> = {
   pen: [2, 4, 7],
   highlighter: [12, 20, 30],
-  pencil: [1.5, 3, 5],
   shape: [2, 4, 7],
   text: [16, 24, 40],
   // Borracha em px de TELA, e nao de mundo: ela e instrumento de apontar, e o
@@ -89,7 +88,6 @@ const WIDTHS: Record<StyleToolId, readonly number[]> = {
 const DEFAULTS: Record<StyleToolId, { color: string; width: number }> = {
   pen: { color: INK_COLORS[0], width: WIDTHS.pen[1]! },
   highlighter: { color: HIGHLIGHTER_COLORS[0], width: WIDTHS.highlighter[1]! },
-  pencil: { color: INK_COLORS[0], width: WIDTHS.pencil[1]! },
   shape: { color: INK_COLORS[0], width: WIDTHS.shape[0]! },
   text: { color: INK_COLORS[0], width: WIDTHS.text[0]! },
   // A cor da borracha nunca e usada; ela entra aqui so para o eixo de tamanho

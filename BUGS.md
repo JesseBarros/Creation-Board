@@ -202,6 +202,23 @@ transferência interna, e a tecla parecia morta.
    — depois restaurei. Sem esse passo, eu teria uma correção que funciona e nenhuma
    garantia de que era ela a causa.
 
+### M7 — Remover o lápis da barra
+`corrigido` · `médio` · 04/08/2026
+
+
+
+**O que saiu:** a ferramenta da barra, o atalho `L`, a entrada de estilo e a instância.
+
+**O que FICOU, de propósito:** a variante `pencil` no modelo e o caminho de desenho no
+painter. Quadros salvos antes disso têm traços de lápis, e um arquivo antigo tem de
+continuar sendo desenhado como foi criado. O auto-teste passou a **rasterizar um traço de
+lápis e exigir pixels** — sem isso, alguém limparia esse caminho por parecer código morto e
+os quadros já salvos perderiam tinta.
+
+A gravação de pressão por ponto também ficou: é o que uma mesa digitalizadora entrega, e é
+o que permitiria a caneta modular a espessura sozinha, se um dia isso for desejado — com
+mouse continuaria idêntica ao que é hoje.
+
 ## Melhorias
 
 ### M1 — Botão de negrito na caixa de texto

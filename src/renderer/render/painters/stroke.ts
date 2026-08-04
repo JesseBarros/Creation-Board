@@ -7,6 +7,11 @@ export const STROKE_STRIDE = 3;
 /**
  * Faixa de espessura do lapis, como fracao da largura nominal.
  *
+ * A FERRAMENTA lapis saiu da barra em 04/08/2026 -- com mouse ela era
+ * indistinguivel da caneta. Este caminho de desenho continua aqui de proposito:
+ * quadros salvos antes disso tem tracos com `variant: 'pencil'`, e um arquivo
+ * antigo tem de continuar sendo desenhado como foi criado.
+ *
  * O teto e 1 e nao pode subir: o AABB do traco e calculado inflando a linha de
  * centro em `width / 2` (ver shared/model/bbox.ts). Um pico de pressao que
  * passasse disso desenharia tinta fora do proprio retangulo do objeto, e o

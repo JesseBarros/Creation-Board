@@ -47,7 +47,6 @@ const TOOLS: ToolDef[] = [
   { id: 'select', icon: 'selecionar', label: 'Selecionar', key: 'V' },
   { id: 'pen', icon: 'caneta', label: 'Caneta', key: 'P' },
   { id: 'highlighter', icon: 'marcaTexto', label: 'Marca-texto', key: 'M' },
-  { id: 'pencil', icon: 'lapis', label: 'Lapis', key: 'L' },
   { id: 'text', icon: 'texto', label: 'Texto', key: 'T' },
   // Icone com pauta, e nao mais um quadrado: ao lado do de formas, dois
   // quadrados parecidos nao distinguem uma ferramenta da outra na barra.
