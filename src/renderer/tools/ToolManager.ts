@@ -38,7 +38,6 @@ export class ToolManager {
       select: new SelectTool(ctx),
       pen: new DrawTool('pen', ctx, style),
       highlighter: new DrawTool('highlighter', ctx, style),
-      pencil: new DrawTool('pencil', ctx, style),
       eraser: new EraserTool(ctx, style),
       shape: new ShapeTool(ctx, style),
       text: new TextTool(ctx, style),

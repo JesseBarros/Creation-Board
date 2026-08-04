@@ -1548,7 +1548,6 @@ export class App {
       toolSelect: () => this.setTool('select'),
       toolPen: () => this.setTool('pen'),
       toolHighlighter: () => this.setTool('highlighter'),
-      toolPencil: () => this.setTool('pencil'),
       toolEraser: () => this.setTool('eraser'),
       toolShape: () => this.setTool('shape'),
       toolText: () => this.setTool('text'),

@@ -21,7 +21,6 @@ export type ToolId =
   | 'select'
   | 'pen'
   | 'highlighter'
-  | 'pencil'
   | 'eraser'
   | 'shape'
   | 'text'
@@ -29,8 +28,19 @@ export type ToolId =
   /** Modo, e nao ferramenta de barra: entra por duplo clique numa imagem. */
   | 'crop';
 
-/** Ferramentas que produzem tinta a mao livre. */
-export const DRAW_TOOLS = ['pen', 'highlighter', 'pencil'] as const;
+/**
+ * Ferramentas que produzem tinta a mao livre.
+ *
+ * O LAPIS saiu da barra em 04/08/2026, a pedido dele: com mouse ele e
+ * indistinguivel da caneta, porque a unica diferenca e a espessura acompanhar a
+ * pressao -- e `PointerEvent.pressure` vem sempre 0,5 sem mesa digitalizadora.
+ * Duas ferramentas identicas com nomes diferentes so ocupavam a barra.
+ *
+ * A variante `pencil` continua existindo no MODELO e no painter: quadros salvos
+ * antes disso tem tracos de lapis, e eles precisam continuar sendo desenhados
+ * como foram criados.
+ */
+export const DRAW_TOOLS = ['pen', 'highlighter'] as const;
 export type DrawToolId = (typeof DRAW_TOOLS)[number];
 
 /**

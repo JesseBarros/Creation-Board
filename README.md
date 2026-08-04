@@ -5,7 +5,7 @@ rodando 100% offline no Windows: sem login, sem nuvem, sem servidor.
 
 **Status:** canvas infinito, lobby, importação do Whiteboard, **seleção completa**
 (mover, redimensionar, girar, duplicar, excluir, ordem de camadas, undo/redo), **desenho
-à mão** (caneta, marca-texto, lápis e borracha progressiva), **formas com encaixe e
+à mão** (caneta, marca-texto e borracha progressiva), **formas com encaixe e
 réguas**, **texto, post-its e alertas**, **busca `Ctrl+F`** e **imagens** (colar, arrastar
 e recortar). Dá para importar um resumo do Whiteboard e trabalhar em cima dele por
 inteiro. Faltam exportação, autosave e o polimento final.
@@ -38,7 +38,7 @@ teclas — se o atalho aparece na ajuda, ele funciona.
 | Salvar | `Ctrl+S` · autosave 3s depois da última alteração (após o 1º save) |
 | Exportar | `Ctrl+E` — PNG, SVG ou PDF; quadro todo ou seleção |
 | Voltar ao lobby | `Ctrl+O` |
-| Ferramentas | `V` selecionar · `P` caneta · `M` marca-texto · `L` lápis · `T` texto · `N` post-it · `F` formas · `E` borracha |
+| Ferramentas | `V` selecionar · `P` caneta · `M` marca-texto · `T` texto · `N` post-it · `F` formas · `E` borracha |
 | Espessura do traço | `[` mais fino · `]` mais grosso (no texto, corpo da fonte; na borracha, diâmetro) |
 | Borracha | `E` · apaga **por peça** (padrão) ou o traço inteiro — escolha na barra |
 | Editar texto | `F2` (ou `Enter`) na seleção · duplo clique na caixa |
@@ -74,29 +74,30 @@ ainda conta como clique, para a tremida natural da mão não cancelar o menu.
 
 ## Desenhar
 
-Oito ferramentas na barra vertical à esquerda: seleção, caneta, marca-texto, lápis,
-texto, post-it, formas e borracha. Com uma delas que produza marca ativa, o painel ao lado
+Sete ferramentas na barra vertical à esquerda: seleção, caneta, marca-texto, texto,
+post-it, formas e borracha. Com uma delas que produza marca ativa, o painel ao lado
 traz cor e espessura (e o tipo de forma ou o papel do post-it, quando for o caso) — e
 lembra a escolha **por ferramenta**, porque quem grifa de amarelo e volta para a caneta
 espera a caneta de antes, não uma caneta amarela grossa.
 
-As três variantes produzem o mesmo `StrokeObject`, que já existia desde a Fase 1 — é o
-mesmo tipo que a importação e a carga de teste usam. A caneta *produz* esses objetos;
+As ferramentas de tinta produzem o mesmo `StrokeObject`, que já existia desde a Fase 1 — é
+o mesmo tipo que a importação e a carga de teste usam. A caneta *produz* esses objetos;
 não inventa nada novo.
 
 Cinco decisões que o código não conta sozinho:
 
 - **O marca-texto entra por baixo de tudo.** Grifar é destacar o que já está no quadro;
   entrando no topo, a faixa translúcida cobriria justamente o texto que se quis
-  destacar. Caneta e lápis entram por cima, que é onde se espera encontrar o que se
+  destacar. A caneta entra por cima, que é onde se espera encontrar o que se
   acabou de escrever. Tudo isso é uma chave de camada (`z`), não ordem de desenho.
-- **O lápis é o único que usa a pressão.** `StrokeObject` guarda pressão por ponto desde
-  a Fase 1 e nada lia esse valor; agora o painter modula a espessura do lápis entre 45%
-  e 100% da largura nominal, segmento a segmento. O teto de 100% não pode subir: o AABB
-  é calculado inflando a linha de centro em `width / 2`, e um pico maior desenharia
-  tinta fora do próprio retângulo do objeto — que o culling corta na borda da tela. Em
-  mesa digitalizadora a variação é real; com mouse, `PointerEvent.pressure` vem sempre
-  0,5 e o traço sai uniforme.
+- **O lápis foi removido da barra** (04/08/2026, a pedido). Ele era a única ferramenta que
+  modulava a espessura pela pressão — e `PointerEvent.pressure` vem sempre 0,5 com mouse,
+  então **sem mesa digitalizadora ele era indistinguível da caneta**: dois botões para o
+  mesmo traço. A variante `pencil` continua no modelo e no painter, porque quadros salvos
+  antes disso têm traços de lápis e precisam continuar sendo desenhados como foram
+  criados; o auto-teste rasteriza um deles e exige pixels, para ninguém limpar esse
+  caminho achando que é código morto. A pressão continua sendo gravada por ponto: é o que
+  uma mesa entrega, e é o que permitiria a caneta modular sozinha se um dia for desejado.
 - **A borracha apaga por peça, e só tinta.** Ela tem dois modos, escolhidos na barra:
   **peça** (padrão) remove por onde passa e deixa o resto do traço no lugar, e **traço
   inteiro** remove o objeto que ela toca — dois gestos diferentes, corrigir uma letra e

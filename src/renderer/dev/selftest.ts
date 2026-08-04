@@ -20,6 +20,7 @@ import { snapRect } from '../features/snapping/snap';
 import { applyBoard, serializeBoard } from '../features/storage/boardIO';
 import { plainText } from '../features/text/spans';
 import { searchBoard } from '../features/search/search';
+import { paintObject } from '../render/painters';
 import { exportBounds, renderPng } from '../features/export/exportBoard';
 import { renderSvg } from '../features/export/exportSvg';
 import { autosaveVerdict } from '../features/storage/autosave';
@@ -314,16 +315,15 @@ export async function runSelfTest(host: HTMLElement, app: App): Promise<void> {
 type Check = (nome: string, ok: boolean, detalhe: string) => void;
 
 /**
- * Um traco de cada variante, para a foto do QB_SHOT.
+ * Um traco de cada ferramenta de tinta, para a foto do QB_SHOT.
  *
  * O marca-texto passa por cima do texto de propósito: e ali que se ve se ele
- * entrou por baixo (grifo) ou por cima (borrao). O lapis vai com pressao
- * crescente, que e a unica forma de ver a modulacao de espessura.
+ * entrou por baixo (grifo) ou por cima (borrao).
  */
 function paintSampleStrokes(host: HTMLElement, app: App): void {
   const box = host.getBoundingClientRect();
   const draw = (
-    tool: 'pen' | 'highlighter' | 'pencil',
+    tool: 'pen' | 'highlighter',
     x: number,
     y: number,
     dx: number,
@@ -338,7 +338,6 @@ function paintSampleStrokes(host: HTMLElement, app: App): void {
   // Cruza o traco preto da cena: e ali que se ve o grifo passando POR BAIXO da
   // tinta que ja estava no quadro, em vez de borra-la.
   draw('highlighter', 110, 400, 420, 0);
-  draw('pencil', 700, 320, 170, 60, (t) => 0.15 + 0.85 * t);
 
   // Um buraco de borracha no meio do traco de caneta: e o que a foto tem a
   // mostrar da Fase 5.5, porque nenhum numero prova que o pedaco sumiu com a
@@ -868,7 +867,7 @@ async function runSelectionTests(
 function runDrawingTests(host: HTMLElement, app: App, check: Check, reset: () => void): void {
   const { doc, selection, history } = app;
 
-  const setup = (tool: 'select' | 'pen' | 'highlighter' | 'pencil' | 'eraser'): void => {
+  const setup = (tool: 'select' | 'pen' | 'highlighter' | 'eraser'): void => {
     reset();
     selection.clear();
     history.clear();
@@ -966,16 +965,43 @@ function runDrawingTests(host: HTMLElement, app: App, check: Check, reset: () =>
     `z do grifo=${grifo?.z} z do objeto grifado=${aZ} esperado=grifo menor`,
   );
 
-  // --- a pressao chega ao traco (e o que o lapis usa para variar a espessura)
-  setup('pencil');
+  // --- a pressao chega ao traco
+  // O lapis saiu da barra em 04/08/2026 (com mouse era identico a caneta), mas
+  // a pressao continua sendo GRAVADA por ponto: e o que uma mesa digitalizadora
+  // entrega, e e o que os tracos de lapis ja salvos precisam para continuar
+  // sendo desenhados como foram criados.
+  setup('pen');
   drawAt({ x: 700, y: 200 }, 120, 0, 8, (t) => 0.2 + 0.6 * t);
-  const lapis = drawn();
-  const primeira = lapis?.points[2] ?? NaN;
-  const ultima = lapis?.points[lapis.points.length - 1] ?? NaN;
+  const comPressao = drawn();
+  const primeira = comPressao?.points[2] ?? NaN;
+  const ultima = comPressao?.points[comPressao.points.length - 1] ?? NaN;
   check(
     'a pressao da caneta chega ao traco',
-    lapis !== undefined && lapis.variant === 'pencil' && ultima > primeira + 0.3,
+    comPressao !== undefined && ultima > primeira + 0.3,
     `pressao inicial=${primeira?.toFixed(2)} final=${ultima?.toFixed(2)} esperado=crescente`,
+  );
+
+  // --- traco de lapis salvo antes da remocao continua sendo desenhado
+  // A ferramenta saiu da barra, mas a variante continua no modelo. Sem esta
+  // verificacao, alguem limparia o caminho do lapis no painter por parecer
+  // codigo morto -- e os quadros ja salvos perderiam tinta.
+  const antigo: StrokeObject = {
+    ...BASE,
+    id: 'LAPIS',
+    type: 'stroke',
+    variant: 'pencil',
+    z: 'a9',
+    transform: { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 },
+    bbox: { x: 0, y: 0, w: 0, h: 0 },
+    points: [0, 0, 0.2, 20, 20, 0.6, 40, 40, 1],
+    color: '#1f2933',
+    width: 6,
+  };
+  antigo.bbox = computeBbox(antigo);
+  check(
+    'traco de lapis salvo antes da remocao continua sendo desenhado',
+    temTinta(antigo),
+    `variante=${antigo.variant} pixels desenhados=${temTinta(antigo)}`,
   );
 
   // --- pan com o botao direito no meio do traco
@@ -1206,6 +1232,41 @@ function runDrawingTests(host: HTMLElement, app: App, check: Check, reset: () =>
   );
 
   app.setTool('select');
+}
+
+/**
+ * O objeto deixa algum pixel no canvas?
+ *
+ * Rasteriza pequeno e pergunta se sobrou alfa. E a unica forma de conferir que
+ * um painter continua desenhando de verdade, e nao apenas de que ele nao lanca
+ * excecao.
+ */
+function temTinta(obj: BoardObject): boolean {
+  const b = obj.bbox;
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return false;
+
+  const escala = 60 / Math.max(b.w, b.h, 1);
+  ctx.setTransform(escala, 0, 0, escala, 2 - b.x * escala, 2 - b.y * escala);
+  const t = obj.transform;
+  ctx.translate(t.x, t.y);
+  paintObject(obj, {
+    ctx,
+    zoom: escala,
+    lod: 'full',
+    deviceScale: escala,
+    objectScale: 1,
+    adapt: (c) => c,
+  });
+
+  const data = ctx.getImageData(0, 0, 64, 64).data;
+  for (let i = 3; i < data.length; i += 4) {
+    if (data[i]! > 8) return true;
+  }
+  return false;
 }
 
 /** Clique num ponto de MUNDO, com a camera zerada. */
@@ -1856,7 +1917,7 @@ async function runHudTests(app: App, check: Check, reset: () => void): Promise<v
   );
 
   // --- a barra lateral tambem virou icone, e tambem precisa continuar nomeada
-  const ferramentas = ['select', 'pen', 'highlighter', 'pencil', 'text', 'note', 'shape', 'eraser'];
+  const ferramentas = ['select', 'pen', 'highlighter', 'text', 'note', 'shape', 'eraser'];
   const railBtn = (id: string): HTMLButtonElement | null =>
     document.querySelector<HTMLButtonElement>(`.qb-tools__btn[data-action="${id}"]`);
   const semIcone = ferramentas.filter((f) => railBtn(f)?.querySelector('svg') == null);

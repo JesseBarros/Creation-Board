@@ -194,5 +194,4 @@ const LOD_EPSILON = 2.5;
 const LABELS: Record<DrawToolId, string> = {
   pen: 'Desenhar',
   highlighter: 'Grifar',
-  pencil: 'Desenhar a lapis',
 };
