@@ -4,10 +4,10 @@ Quadro branco infinito local para estudos. Substituto pessoal do Microsoft White
 rodando 100% offline no Windows: sem login, sem nuvem, sem servidor.
 
 **Status:** canvas infinito, lobby, importação do Whiteboard, **seleção completa**
-(mover, redimensionar, girar, duplicar, excluir, ordem de camadas, undo/redo) e
-**desenho à mão** (caneta, marca-texto, lápis e borracha). Dá para importar um resumo do
-Whiteboard, reorganizá-lo e escrever em cima dele. Faltam formas geométricas e edição de
-texto.
+(mover, redimensionar, girar, duplicar, excluir, ordem de camadas, undo/redo), **desenho
+à mão** (caneta, marca-texto, lápis e borracha) e **formas com encaixe e réguas**. Dá
+para importar um resumo do Whiteboard, reorganizá-lo com alinhamento assistido e escrever
+em cima dele. Falta edição de texto.
 
 > Retomando o desenvolvimento depois de uma pausa? Comece por **[RETOMAR.md](RETOMAR.md)**:
 > em que pé está e o que fazer a seguir.
@@ -36,8 +36,10 @@ teclas — se o atalho aparece na ajuda, ele funciona.
 |---|---|
 | Salvar | `Ctrl+S` |
 | Voltar ao lobby | `Ctrl+O` |
-| Ferramentas | `V` selecionar · `P` caneta · `M` marca-texto · `L` lápis · `E` borracha |
+| Ferramentas | `V` selecionar · `P` caneta · `M` marca-texto · `L` lápis · `F` formas · `E` borracha |
 | Espessura do traço | `[` mais fino · `]` mais grosso |
+| Encaixe | Automático ao arrastar · `Ctrl` ignora · `A` liga a grade magnética |
+| Réguas | `R` liga/desliga · `U` troca px ↔ cm |
 | Selecionar | Clique · Shift+clique soma · arrastar no vazio faz laço |
 | Selecionar tudo / limpar | `Ctrl+A` / `Esc` |
 | Mover · redimensionar · girar | Arrastar a seleção · uma alça · a alça de cima |
@@ -64,8 +66,9 @@ ainda conta como clique, para a tremida natural da mão não cancelar o menu.
 
 ## Desenhar
 
-Cinco ferramentas na barra vertical à esquerda: seleção, caneta, marca-texto, lápis e
-borracha. Com uma ferramenta de tinta ativa, o painel ao lado traz cor e espessura — e
+Seis ferramentas na barra vertical à esquerda: seleção, caneta, marca-texto, lápis,
+formas e borracha. Com uma delas que produza marca ativa, o painel ao lado traz cor e
+espessura (e o tipo de forma, quando for o caso) — e
 lembra a escolha **por ferramenta**, porque quem grifa de amarelo e volta para a caneta
 espera a caneta de antes, não uma caneta amarela grossa.
 
@@ -101,6 +104,49 @@ Quatro decisões que o código não conta sozinho:
 Escrevendo perto da borda dá para **puxar o quadro com o botão direito sem largar o
 traço**: pan e ferramenta não disputam o mesmo botão (ver abaixo). O traço continua de
 onde parou, no lugar certo do mundo, e sai como um único objeto.
+
+## Formas, encaixe e réguas
+
+**Formas** (`F`) são uma ferramenta só para as seis — retângulo, elipse, triângulo,
+losango, linha e seta —, com o tipo escolhido na barra. Seis botões de ferramenta para o
+que é a mesma interação, arrastar de um canto ao outro, encheriam a barra sem ensinar
+nada. Os modificadores são os mesmos da seleção, para não inventar vocabulário: **Shift**
+trava quadrado/círculo (ou o ângulo de 15 em 15 na linha) e **Alt** faz a forma crescer a
+partir do centro.
+
+Linha e seta guardam a **direção** em `w`/`h` — o painter vai de `0,0` até `w,h`. Elas
+não são normalizadas para o canto superior esquerdo como as formas fechadas; isso viraria
+uma seta apontando sempre para baixo e para a direita.
+
+**O encaixe** age ao mover, ao redimensionar e ao criar. Duas fontes, nesta ordem:
+
+1. **Vizinhos** — as bordas e o centro dos objetos por perto viram linhas candidatas, com
+   uma **guia laranja** ligando o que foi alinhado com o quê. É o que serve para
+   reorganizar um resumo importado.
+2. **Grade**, só quando a grade magnética está ligada (`A`, gravado no `.wbd`).
+
+Vizinho vence a grade quando os dois estão ao alcance: alinhar com o objeto que se está
+olhando é uma intenção; cair na célula da grade é só uma consequência de onde a grade
+calhou de ficar. **`Ctrl` durante o arraste ignora o encaixe** — é como se encostam duas
+formas de propósito sem a guia empurrar uma delas.
+
+Três detalhes que o código registra e valem repetir:
+
+- O limiar é de 7px **de tela**. Em unidades de mundo, o encaixe ficaria imperceptível com
+  o zoom afastado e agarraria tudo com o zoom aproximado.
+- A busca por vizinhos se limita a 500px de tela ao redor. Alinhar com um objeto fora da
+  tela não ajuda ninguém — a guia apontaria para o nada — e varrer o quadro inteiro
+  custaria caro num resumo de mil objetos.
+- Ao redimensionar, o encaixe só age com o quadro **alinhado aos eixos** e sem proporção
+  travada. Girado, a borda não é paralela às guias e "alinhar" não quer dizer nada; com a
+  proporção travada, encaixar um eixo moveria o outro e tiraria a borda do lugar que
+  acabou de encaixar.
+
+**As réguas** (`R`) são faixas graduadas no topo e na esquerda, em px ou cm (`U`), com um
+marcador seguindo o cursor — que é o que responde "onde eu estou" num quadro infinito,
+onde não há borda de página para servir de referência. Elas são desenhadas no overlay, e
+não como elementos de DOM: mudam a cada movimento de câmera, e um DOM reposicionado a
+60Hz custaria layout a cada frame.
 
 ## Selecionar e manipular
 
@@ -308,7 +354,7 @@ npm run selftest
 
 Abre o app, dispara eventos de ponteiro e de teclado direto no app e imprime o
 resultado no terminal — sem depender da janela estar em primeiro plano e sem
-capturar a tela. **47 verificações**, em cinco frentes:
+capturar a tela. **60 verificações**, em seis frentes:
 
 - **Navegação:** pan com botão direito e com o do meio, o limiar que separa arrastar
   de clicar, o botão esquerdo permanecendo livre para as ferramentas, o zoom ancorado
@@ -326,6 +372,12 @@ capturar a tela. **47 verificações**, em cinco frentes:
   e ela recusando forma, texto e objeto travado. Inclui o caso que justifica a divisão
   de botões inteira: **arrastar o quadro com o botão direito no meio de um traço** não
   o corta em dois nem o deixa no lugar errado.
+- **Formas e encaixe:** a forma criada pelo arraste, `Shift` travando o quadrado, `Alt`
+  crescendo do centro, a seta guardando a direção, o preenchimento translúcido, o clique
+  sem arraste *não* deixando forma de tamanho zero, e as teclas `F`, `R` e `U`. No
+  encaixe: alinhar com a borda do vizinho, `Ctrl` ignorando, a grade magnética agindo só
+  quando ligada, a guia saindo junto com a correção, e — o que mais importa — o encaixe
+  agindo **durante** o arraste e não só ao soltar.
 - **Persistência:** copiar, recortar, colar no cursor, o traço desenhado sobrevivendo à
   ida e volta pelo formato gravado, e um teste que move e
   redimensiona um objeto e passa o documento pelo mesmo JSON que vai para dentro do
@@ -579,7 +631,7 @@ serve para migrar.
 - [x] **Fase 2** — Importação do Microsoft Whiteboard, conferida contra o motor de layout
 - [x] **Fase 3** — Seleção e manipulação: mover, redimensionar, rotacionar, excluir, duplicar, ordem de camadas, undo/redo
 - [x] **Fase 4** — Caneta, marca-texto, lápis, borracha, cores e espessura
-- [ ] **Fase 4.5** — Formas geométricas, régua e snap
+- [x] **Fase 4.5** — Formas geométricas, régua e snap
 - [ ] **Fase 5** — Texto, post-its e alertas
 - [ ] **Fase 6** — Busca Ctrl+F
 - [ ] **Fase 7** — Imagens

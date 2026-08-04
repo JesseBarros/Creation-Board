@@ -187,6 +187,46 @@
   box-shadow: var(--shadow);
 }
 
+/* Seis formas + o preenchimento, num bloco de duas colunas como as cores. */
+.qb-tools__shapes {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 3px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.qb-tools__shape {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.qb-tools__shape:hover {
+  background: var(--panel-2);
+}
+
+.qb-tools__shape--active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+/* O preenchimento nao e uma forma: ocupa a linha inteira, separado por um filete. */
+.qb-tools__shape--fill {
+  grid-column: 1 / -1;
+  width: auto;
+  margin-top: 3px;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 6px 6px;
+}
+
 /* Duas colunas: oito cores de tinta viram um bloco 2x4 em vez de uma fila alta. */
 .qb-tools__colors {
   display: grid;

@@ -1,12 +1,13 @@
 import type { Vec2 } from '@shared/geometry/vec2';
 import { computeBbox } from '@shared/model/bbox';
-import type { BoardObject, ShapeObject, StrokeObject } from '@shared/model/types';
+import type { BoardObject, ShapeKind, ShapeObject, StrokeObject } from '@shared/model/types';
 import type { WbdDocument } from '@shared/model/document';
 import type { App } from '../App';
 import { MAX_ZOOM, MIN_ZOOM, type Camera } from '../core/Camera';
 import { applyPatches } from '../commands/patch';
 import { computeFrame } from '../features/selection/frame';
 import { moveObjects } from '../features/selection/transformOps';
+import { snapRect } from '../features/snapping/snap';
 import { applyBoard, serializeBoard } from '../features/storage/boardIO';
 import { generateStressObjects } from './stress';
 
@@ -210,22 +211,25 @@ export async function runSelfTest(host: HTMLElement, app: App): Promise<void> {
   runCameraTests(host, camera, check, reset);
   await runSelectionTests(host, app, check, reset);
   runDrawingTests(host, app, check, reset);
+  runShapeAndSnapTests(host, app, check, reset);
 
   // Deixa o cenario montado no fim. Com QB_SHOT a janela nao fecha ao terminar,
   // entao a foto vira a conferencia do que nenhum numero daqui verifica: o cromo
-  // de selecao -- contorno, alcas e alca de rotacao -- e a aparencia das tres
-  // variantes de traco. Os tracos sao desenhados pela ferramenta de verdade, e
-  // nao montados a mao, para a foto mostrar o que o usuario veria.
+  // de selecao, a aparencia das tres variantes de traco, as formas, as reguas e a
+  // guia de encaixe. Tudo produzido pelas ferramentas de verdade, e nao montado a
+  // mao, para a foto mostrar o que o usuario veria.
   reset();
   app.selection.clear();
   app.history.clear();
   app.doc.clear();
+  app.doc.setPrefs({ snapToGrid: false, unit: 'px' });
   app.doc.add(scene());
   paintSampleStrokes(host, app);
+  paintSampleShapes(host, app);
   app.setTool('select');
-  app.selection.set(['A', 'B']);
   app.history.clear();
-  app.fitToContent();
+  if (!app.rulersEnabled) app.toggleRulers();
+  snapAgainstNeighbor(host, app);
   // Sem isto o quadro fica marcado como sujo, o guarda de `beforeunload`
   // recusa o fechamento e a execucao automatizada nunca termina.
   app.markClean();
@@ -263,6 +267,38 @@ function paintSampleStrokes(host: HTMLElement, app: App): void {
   // tinta que ja estava no quadro, em vez de borra-la.
   draw('highlighter', 110, 400, 420, 0);
   draw('pencil', 700, 320, 170, 60, (t) => 0.15 + 0.85 * t);
+}
+
+/** Uma forma fechada e uma aberta, tambem para a foto. */
+function paintSampleShapes(host: HTMLElement, app: App): void {
+  const box = host.getBoundingClientRect();
+  app.setTool('shape');
+
+  app.drawStyle.setShapeKind('ellipse');
+  app.drawStyle.setShapeFilled(true);
+  drag(host, 0, 620 + box.left, 480 + box.top, 200, 120);
+
+  app.drawStyle.setShapeKind('arrow');
+  app.drawStyle.setShapeFilled(false);
+  drag(host, 0, 560 + box.left, 560 + box.top, -180, -90);
+}
+
+/**
+ * Encosta A em C pelo encaixe, e deixa o resultado na tela.
+ *
+ * O gesto para a 5px da borda de C e o encaixe completa o resto -- na foto, as
+ * duas bordas coincidem exatamente. A GUIA nao aparece aqui: ela existe so
+ * enquanto o botao esta pressionado, e um gesto deixado em aberto e desfeito
+ * pelo proprio guarda de `blur` do ToolManager assim que a janela perde o foco
+ * (que e o comportamento certo -- gesto pendurado nao pode sobreviver). Quem
+ * verifica a guia e a checagem numerica sobre `snapRect`.
+ */
+function snapAgainstNeighbor(host: HTMLElement, app: App): void {
+  const box = host.getBoundingClientRect();
+  app.setTool('select');
+  app.selection.set(['A']);
+  drag(host, 0, 150 + box.left, 150 + box.top, 395, 0);
+  app.history.clear();
 }
 
 function runCameraTests(host: HTMLElement, camera: Camera, check: Check, reset: () => void): void {
@@ -921,4 +957,253 @@ function runDrawingTests(host: HTMLElement, app: App, check: Check, reset: () =>
 /** Clique num ponto de MUNDO, com a camera zerada. */
 function clickWorld(host: HTMLElement, box: DOMRect, w: Vec2, mod: Modifiers = {}): void {
   click(host, w.x + box.left, w.y + box.top, mod);
+}
+
+// ----------------------------------------------------------- formas e encaixe
+
+function runShapeAndSnapTests(
+  host: HTMLElement,
+  app: App,
+  check: Check,
+  reset: () => void,
+): void {
+  const { doc, selection, history, drawStyle } = app;
+
+  const setup = (tool: 'select' | 'shape', kind: ShapeKind = 'rect'): void => {
+    reset();
+    selection.clear();
+    history.clear();
+    doc.clear();
+    // As preferencias sobrevivem ao `clear` -- elas sao do quadro, nao dos
+    // objetos. Sem zerar aqui, um teste que liga a grade magnetica contaminaria
+    // todos os seguintes.
+    doc.setPrefs({ snapToGrid: false, unit: 'px' });
+    doc.add(scene());
+    drawStyle.setShapeKind(kind);
+    drawStyle.setShapeFilled(false);
+    app.setTool(tool);
+  };
+
+  const box = host.getBoundingClientRect();
+  const dragWorld = (w: Vec2, dx: number, dy: number, mod: Modifiers = {}): void => {
+    drag(host, 0, w.x + box.left, w.y + box.top, dx, dy, mod);
+  };
+  const madeShape = (): ShapeObject | undefined =>
+    [...doc.all()].find(
+      (o): o is ShapeObject => o.type === 'shape' && !['A', 'B', 'C'].includes(o.id),
+    );
+
+  // --- arrastar cria a forma escolhida
+  setup('shape');
+  dragWorld({ x: 700, y: 300 }, 120, 80);
+  const forma = madeShape();
+  check(
+    'arrastar com a ferramenta de formas cria a forma escolhida',
+    forma !== undefined &&
+      forma.kind === 'rect' &&
+      near(forma.transform.x, 700) &&
+      near(forma.transform.y, 300) &&
+      near(forma.w, 120) &&
+      near(forma.h, 80) &&
+      history.depth === 1,
+    `tipo=${forma?.kind} pos=(${forma?.transform.x.toFixed(1)}, ${forma?.transform.y.toFixed(1)}) ` +
+      `tamanho=${forma?.w.toFixed(1)}x${forma?.h.toFixed(1)} passos=${history.depth} ` +
+      `esperado=rect (700, 300) 120x80 e 1 passo`,
+  );
+
+  // --- clique sem arraste nao deixa forma de tamanho zero
+  setup('shape');
+  clickWorld(host, box, { x: 700, y: 300 });
+  check(
+    'clique sem arrastar nao cria forma',
+    doc.size === 4 && madeShape() === undefined,
+    `objetos=${doc.size} esperado=4`,
+  );
+
+  // --- Shift trava o quadrado
+  setup('shape');
+  dragWorld({ x: 700, y: 300 }, 120, 40, { shift: true });
+  const quadrado = madeShape();
+  check(
+    'Shift trava a forma em quadrado, pelo maior lado',
+    quadrado !== undefined && quadrado.kind === 'square' && near(quadrado.w, 120) && near(quadrado.h, 120),
+    `tipo=${quadrado?.kind} tamanho=${quadrado?.w.toFixed(1)}x${quadrado?.h.toFixed(1)} esperado=square 120x120`,
+  );
+
+  // --- Alt cresce a partir do centro
+  setup('shape');
+  dragWorld({ x: 700, y: 300 }, 60, 40, { alt: true });
+  const doCentro = madeShape();
+  check(
+    'Alt faz a forma crescer a partir do centro',
+    doCentro !== undefined &&
+      near(doCentro.transform.x, 640) &&
+      near(doCentro.transform.y, 260) &&
+      near(doCentro.w, 120) &&
+      near(doCentro.h, 80),
+    `pos=(${doCentro?.transform.x.toFixed(1)}, ${doCentro?.transform.y.toFixed(1)}) ` +
+      `tamanho=${doCentro?.w.toFixed(1)}x${doCentro?.h.toFixed(1)} esperado=(640, 260) 120x80`,
+  );
+
+  // --- linha guarda a direcao em w/h
+  // Normalizar a linha para o canto superior esquerdo, como se faz com as formas
+  // fechadas, viraria uma seta apontando sempre para baixo e para a direita.
+  setup('shape', 'arrow');
+  dragWorld({ x: 800, y: 400 }, -100, -60);
+  const seta = madeShape();
+  check(
+    'seta guarda a direcao do gesto, e nao o retangulo',
+    seta !== undefined &&
+      near(seta.transform.x, 800) &&
+      near(seta.transform.y, 400) &&
+      near(seta.w, -100) &&
+      near(seta.h, -60),
+    `pos=(${seta?.transform.x.toFixed(1)}, ${seta?.transform.y.toFixed(1)}) ` +
+      `w=${seta?.w.toFixed(1)} h=${seta?.h.toFixed(1)} esperado=(800, 400) w=-100 h=-60`,
+  );
+
+  // --- preenchimento translucido na cor do contorno
+  setup('shape');
+  drawStyle.setShapeFilled(true);
+  dragWorld({ x: 700, y: 300 }, 120, 80);
+  const cheia = madeShape();
+  drawStyle.setShapeFilled(false);
+  check(
+    'a forma preenchida usa o proprio contorno em translucido',
+    cheia !== undefined && cheia.fill === `${cheia.stroke}22`,
+    `contorno=${cheia?.stroke} preenchimento=${cheia?.fill} esperado=contorno + "22"`,
+  );
+
+  // --- encaixe: mover alinha com a borda do vizinho
+  // A esta em x=100 e B em x=300. Arrastar A 195px para a direita deixa a borda
+  // dele a 5px da borda de B -- dentro do limiar, entao ele completa sozinho.
+  setup('select');
+  clickWorld(host, box, { x: 150, y: 150 });
+  dragWorld({ x: 150, y: 150 }, 195, 0);
+  check(
+    'mover encaixa na borda do vizinho',
+    near(doc.get('A')!.transform.x, 300),
+    `A.x=${doc.get('A')!.transform.x.toFixed(1)} esperado=300.0 (arraste levaria a 295.0)`,
+  );
+
+  // --- o encaixe vale DURANTE o gesto, e nao so ao soltar
+  // Se ele so agisse no pointerup, o objeto pularia para a posicao alinhada
+  // depois de o usuario ja ter soltado -- e a guia teria mostrado uma promessa
+  // que so se cumpre depois.
+  setup('select');
+  clickWorld(host, box, { x: 150, y: 150 });
+  const inicio = { x: 150 + box.left, y: 150 + box.top };
+  pointer(host, 'pointerdown', inicio.x, inicio.y, 0);
+  for (const passo of [100, 250, 395]) {
+    pointer(host, 'pointermove', inicio.x + passo, inicio.y, 0);
+  }
+  const noMeioDoGesto = doc.get('A')!.transform.x;
+  pointer(host, 'pointerup', inicio.x + 395, inicio.y, 0);
+  check(
+    'o encaixe ja age durante o arraste, antes de soltar',
+    near(noMeioDoGesto, 500),
+    `A.x no meio do gesto=${noMeioDoGesto.toFixed(1)} esperado=500.0 (arraste levaria a 495.0)`,
+  );
+
+  // --- Ctrl ignora o encaixe
+  setup('select');
+  clickWorld(host, box, { x: 150, y: 150 });
+  dragWorld({ x: 150, y: 150 }, 195, 0, { ctrl: true });
+  check(
+    'Ctrl durante o arraste ignora o encaixe',
+    near(doc.get('A')!.transform.x, 295),
+    `A.x=${doc.get('A')!.transform.x.toFixed(1)} esperado=295.0`,
+  );
+
+  // --- grade magnetica
+  // Com um objeto so no quadro nao ha vizinho para atrair: quem responde e a
+  // grade, e so quando ela esta ligada.
+  const soloDrag = (): number => {
+    reset();
+    selection.clear();
+    history.clear();
+    doc.clear();
+    doc.add([scene()[0]!]);
+    app.setTool('select');
+    clickWorld(host, box, { x: 150, y: 150 });
+    dragWorld({ x: 150, y: 150 }, 17, 0);
+    return doc.get('A')!.transform.x;
+  };
+
+  doc.setPrefs({ snapToGrid: false });
+  const semGrade = soloDrag();
+  doc.setPrefs({ snapToGrid: true });
+  const comGrade = soloDrag();
+  doc.setPrefs({ snapToGrid: false });
+  check(
+    'a grade magnetica arredonda a posicao, e so quando ligada',
+    near(semGrade, 117) && near(comGrade, 120),
+    `desligada=${semGrade.toFixed(1)} ligada=${comGrade.toFixed(1)} esperado=(117.0, 120.0)`,
+  );
+
+  // --- a guia sai junto com o encaixe
+  // Sem guia o encaixe seria magica invisivel: o objeto pula e nada explica por que.
+  setup('select');
+  const encaixe = snapRect(
+    { x: 295, y: 100, w: 100, h: 100 },
+    {
+      doc,
+      zoom: 1,
+      exclude: new Set(['A']),
+      snapToGrid: false,
+      gridSize: doc.prefs.grid.size,
+    },
+  );
+  const guiaX = encaixe.guides.find((g) => g.axis === 'x');
+  check(
+    'o encaixe devolve a guia que explica o alinhamento',
+    near(encaixe.dx, 5) && guiaX !== undefined && near(guiaX.at, 300),
+    `dx=${encaixe.dx.toFixed(1)} guias=${encaixe.guides.length} linha=${guiaX?.at.toFixed(1)} esperado=(5.0, linha em 300.0)`,
+  );
+
+  // --- F escolhe formas; regua e unidade nos atalhos
+  setup('select');
+  key('f');
+  const depoisDoF = app.activeTool;
+  const reguaAntes = app.rulersEnabled;
+  key('r');
+  const reguaDepois = app.rulersEnabled;
+  key('u');
+  const unidade = doc.prefs.unit;
+  key('u');
+  key('r');
+  check(
+    'F escolhe formas, R liga as reguas e U troca a unidade',
+    depoisDoF === 'shape' &&
+      reguaDepois !== reguaAntes &&
+      unidade === 'cm' &&
+      doc.prefs.unit === 'px' &&
+      app.rulersEnabled === reguaAntes,
+    `F=${depoisDoF} regua ${reguaAntes}->${reguaDepois} unidade=${unidade} (voltou a ${doc.prefs.unit})`,
+  );
+
+  // --- a forma sobrevive ao formato gravado
+  setup('shape');
+  dragWorld({ x: 700, y: 300 }, 120, 80);
+  const antes = madeShape();
+  const gravado = JSON.parse(
+    JSON.stringify(serializeBoard(doc, app.camera, app.assets)),
+  ) as WbdDocument;
+  applyBoard(doc, app.camera, gravado);
+  const depois = antes ? doc.get(antes.id) : undefined;
+  check(
+    'a forma sobrevive ao formato do .wbd',
+    antes !== undefined &&
+      depois?.type === 'shape' &&
+      depois.kind === antes.kind &&
+      near(depois.w, antes.w, 0.001) &&
+      near(depois.h, antes.h, 0.001) &&
+      depois.stroke === antes.stroke &&
+      near(depois.strokeWidth, antes.strokeWidth, 0.001),
+    `antes=${antes?.kind} ${antes?.w.toFixed(1)}x${antes?.h.toFixed(1)} depois=${
+      depois?.type === 'shape' ? `${depois.kind} ${depois.w.toFixed(1)}x${depois.h.toFixed(1)}` : 'nenhuma'
+    }`,
+  );
+
+  app.setTool('select');
 }

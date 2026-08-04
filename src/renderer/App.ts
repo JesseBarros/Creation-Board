@@ -6,9 +6,10 @@ import { Scheduler } from './core/Scheduler';
 import { Selection } from './core/Selection';
 import { ViewportInput } from './input/ViewportInput';
 import { Renderer, type RenderTheme } from './render/Renderer';
+import { paintRulers, type RulerTheme } from './render/Rulers';
 import { ToolManager } from './tools/ToolManager';
 import { DrawStyle } from './tools/DrawStyle';
-import { isDrawTool, type ToolContext, type ToolId } from './tools/types';
+import { hasStyle, type ToolContext, type ToolId } from './tools/types';
 import { hitTest } from './features/selection/hitTest';
 import { BoardClipboard } from './features/selection/clipboard';
 import {
@@ -46,7 +47,17 @@ const THEMES: Record<'light' | 'dark', RenderTheme> = {
   dark: { boardBg: '#14161b', gridColor: '#282d38' },
 };
 
+/**
+ * Cores das reguas. Ficam aqui, e nao no RenderTheme, porque regua e cromo de
+ * interface: ela nao pertence ao quadro nem entra na miniatura gravada.
+ */
+const RULER_THEMES: Record<'light' | 'dark', RulerTheme> = {
+  light: { bg: '#f5f7fa', fg: '#667085', line: '#d9dee8', cursor: '#3b6ff0' },
+  dark: { bg: '#1d2027', fg: '#8b93a3', line: '#333947', cursor: '#5b87f5' },
+};
+
 const THEME_KEY = 'qb.theme';
+const RULERS_KEY = 'qb.rulers';
 const DEMO_SEED = 2000;
 /** Lote da geracao de carga: grande o bastante para ser eficiente, pequeno o
  *  bastante para a janela repintar entre um e outro. */
@@ -95,6 +106,7 @@ export class App {
   #progress: HTMLElement;
   #theme: 'light' | 'dark';
 
+  #rulers: boolean;
   #view: View = 'lobby';
   #session: Session = { path: null, name: 'Quadro sem nome', dirty: false };
   #saving = false;
@@ -135,6 +147,8 @@ export class App {
       zoomTo: (z) => this.#setZoomCenter(z),
       fitToContent: () => this.fitToContent(),
       toggleGrid: () => this.toggleGrid(),
+      toggleSnap: () => this.toggleSnapToGrid(),
+      toggleRulers: () => this.toggleRulers(),
       toggleTheme: () => this.toggleTheme(),
       save: () => void this.save(),
       backToLobby: () => void this.goToLobby(),
@@ -172,7 +186,10 @@ export class App {
 
     // ------------------------------------------------------------- setup
     this.#theme = (localStorage.getItem(THEME_KEY) as 'light' | 'dark' | null) ?? 'light';
+    this.#rulers = localStorage.getItem(RULERS_KEY) === '1';
     this.#applyTheme();
+    this.#bar.setRulers(this.#rulers);
+    this.#bar.setSnap(this.doc.prefs.snapToGrid);
 
     this.#scheduler = new Scheduler(
       () => {
@@ -201,6 +218,7 @@ export class App {
       camera: this.camera,
       selection: this.selection,
       history: this.history,
+      adapt: (color) => this.#renderer.adapt(color),
       invalidate: () => this.#scheduler.invalidate(),
       invalidateOverlay: () => this.#scheduler.invalidateOverlay(),
       markDirty: () => this.#markDirty(),
@@ -566,6 +584,33 @@ export class App {
     this.#bar.setGridEnabled(this.doc.prefs.grid.enabled);
   }
 
+  /**
+   * Grade magnetica. E preferencia do QUADRO, e nao do app: um resumo desenhado
+   * a mao livre e um diagrama de caixas querem coisas diferentes, e o `.wbd` ja
+   * guardava esse campo desde a Fase 1.
+   *
+   * As guias de alinhamento entre objetos nao dependem disto -- elas estao
+   * sempre ligadas, e o Ctrl durante o arraste e que as desliga.
+   */
+  toggleSnapToGrid(): void {
+    this.doc.setPrefs({ snapToGrid: !this.doc.prefs.snapToGrid });
+    this.#bar.setSnap(this.doc.prefs.snapToGrid);
+    this.#markDirty();
+  }
+
+  toggleRulers(): void {
+    this.#rulers = !this.#rulers;
+    localStorage.setItem(RULERS_KEY, this.#rulers ? '1' : '0');
+    this.#bar.setRulers(this.#rulers);
+    this.#scheduler.invalidateOverlay();
+  }
+
+  /** Alterna a unidade das reguas entre px e cm. */
+  toggleRulerUnit(): void {
+    this.doc.setPrefs({ unit: this.doc.prefs.unit === 'px' ? 'cm' : 'px' });
+    this.#scheduler.invalidateOverlay();
+  }
+
   toggleTheme(): void {
     this.#theme = this.#theme === 'light' ? 'dark' : 'light';
     localStorage.setItem(THEME_KEY, this.#theme);
@@ -605,6 +650,19 @@ export class App {
   #paintOverlay(): void {
     const ctx = this.#renderer.beginOverlayScreen();
     this.#tools.paintOverlay(ctx, this.camera);
+    // As reguas vao por ULTIMO: elas sao a moldura da janela, e um traco em
+    // andamento passando por cima delas as faria parecer parte do quadro.
+    if (this.#rulers) {
+      paintRulers(
+        ctx,
+        this.camera,
+        this.#renderer.viewportW,
+        this.#renderer.viewportH,
+        this.doc.prefs.unit,
+        this.#tools.cursorWorld,
+        RULER_THEMES[this.#theme],
+      );
+    }
   }
 
   /** Troca a ferramenta ativa, pelo botao da barra ou pelo atalho. */
@@ -617,6 +675,10 @@ export class App {
     return this.#tools.activeId;
   }
 
+  get rulersEnabled(): boolean {
+    return this.#rulers;
+  }
+
   /**
    * `[` e `]`: um degrau de espessura na ferramenta ativa.
    *
@@ -625,7 +687,7 @@ export class App {
    */
   stepStrokeWidth(direction: -1 | 1): void {
     const id = this.#tools.activeId;
-    if (!isDrawTool(id)) return;
+    if (!hasStyle(id)) return;
     this.drawStyle.stepWidth(id, direction);
   }
 
@@ -874,8 +936,12 @@ export class App {
       toolHighlighter: () => this.setTool('highlighter'),
       toolPencil: () => this.setTool('pencil'),
       toolEraser: () => this.setTool('eraser'),
+      toolShape: () => this.setTool('shape'),
       thinner: () => this.stepStrokeWidth(-1),
       thicker: () => this.stepStrokeWidth(1),
+      snapToGrid: () => this.toggleSnapToGrid(),
+      rulers: () => this.toggleRulers(),
+      rulerUnit: () => this.toggleRulerUnit(),
       nudge: (e) => {
         const dx = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
         const dy = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0;

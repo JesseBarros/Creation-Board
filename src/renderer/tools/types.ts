@@ -16,14 +16,21 @@ import type { Selection } from '../core/Selection';
  * arrastar o quadro no meio de um traco sem trocar de modo nem cortar o traco.
  */
 
-export type ToolId = 'select' | 'pen' | 'highlighter' | 'pencil' | 'eraser';
+export type ToolId = 'select' | 'pen' | 'highlighter' | 'pencil' | 'eraser' | 'shape';
 
-/** Ferramentas que produzem tinta; as unicas com cor e espessura. */
+/** Ferramentas que produzem tinta a mao livre. */
 export const DRAW_TOOLS = ['pen', 'highlighter', 'pencil'] as const;
 export type DrawToolId = (typeof DRAW_TOOLS)[number];
 
+/** Ferramentas com cor e espessura -- as de tinta mais a de formas. */
+export type StyleToolId = DrawToolId | 'shape';
+
 export function isDrawTool(id: ToolId): id is DrawToolId {
   return (DRAW_TOOLS as readonly ToolId[]).includes(id);
+}
+
+export function hasStyle(id: ToolId): id is StyleToolId {
+  return isDrawTool(id) || id === 'shape';
 }
 
 export interface ToolPointer {
@@ -43,6 +50,14 @@ export interface ToolContext {
   readonly camera: Camera;
   readonly selection: Selection;
   readonly history: History;
+  /**
+   * Cor do documento traduzida para a cor a exibir no tema atual.
+   *
+   * A previa de um gesto passa por aqui pelo mesmo motivo que os painters: no
+   * tema escuro, desenhar a previa com a cor crua faria um traco quase preto
+   * sumir no fundo e reaparecer claro so quando o gesto terminasse.
+   */
+  adapt(color: string): string;
   /** Agenda um redesenho completo: fundo, objetos e overlay. */
   invalidate(): void;
   /**

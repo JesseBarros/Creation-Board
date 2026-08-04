@@ -168,7 +168,10 @@ export class DrawTool implements Tool {
       ctx.lineTo(toScreenX(pts[0]!), toScreenY(pts[1]!));
     }
 
-    ctx.strokeStyle = this.style.color(this.id);
+    // Marca-texto e superficie e nao passa pelo adaptador, igual ao painter:
+    // adaptar sua cor no tema escuro o transformaria num traco opaco.
+    const color = this.style.color(this.id);
+    ctx.strokeStyle = this.id === 'highlighter' ? color : this.ctx.adapt(color);
     ctx.lineWidth = this.style.width(this.id) * zoom;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';

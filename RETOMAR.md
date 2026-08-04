@@ -4,14 +4,15 @@ Ponto de retomada do **Creation Board**. O [README](README.md) explica o que o a
 como cada parte funciona; este arquivo responde outra pergunta: *em que pé isso está e
 o que fazer a seguir*. Some quando o projeto acabar.
 
-**Última sessão: 03/08/2026.** Fase 4 concluída.
+**Última sessão: 04/08/2026.** Fase 4.5 concluída.
 
 ---
 
 ## Estado em uma linha
 
-Fases 0 a 4 prontas. Dá para importar um resumo do Microsoft Whiteboard, **reorganizá-lo
-e escrever à mão em cima dele**. Faltam formas geométricas e edição de texto.
+Fases 0 a 4.5 prontas. Dá para importar um resumo do Microsoft Whiteboard, **reorganizá-lo
+com alinhamento assistido, escrever à mão e desenhar formas em cima dele**. Falta edição
+de texto.
 
 ## O que existe hoje
 
@@ -23,13 +24,14 @@ e escrever à mão em cima dele**. Faltam formas geométricas e edição de text
 | 2 | Importação do Whiteboard, conferida contra o motor de layout | pronta |
 | 3 | Seleção, mover/redimensionar/girar, duplicar, excluir, camadas, undo/redo, copiar/colar | pronta |
 | 4 | Caneta, marca-texto, lápis, borracha, cores e espessura | pronta |
-| **4.5** | **Formas geométricas, régua e snap** | **próxima** |
+| 4.5 | Formas, encaixe com guias, grade magnética, réguas | pronta |
+| **5** | **Texto, post-its e alertas** | **próxima** |
 
 A ordem diverge do plano original **de propósito**: o objetivo é migrar os resumos do
 Whiteboard, e para isso importar e manipular vieram antes de desenhar.
 
-**A `main` está em dia.** As branches da Fase 2 e da Fase 3 foram mescladas em
-03/08/2026, em avanço rápido; a Fase 4 saiu daí, na branch `fase-4-desenho`.
+**A `main` foi até a Fase 4** (mesclada em 04/08/2026, em avanço rápido). A Fase 4.5 está
+na branch **`fase-4-5-formas`**, ainda sem mesclar — ele não pediu.
 
 ---
 
@@ -39,9 +41,17 @@ Sempre por terminal — nunca por captura de tela cheia (ver o *porquê* no READ
 
 ```
 npm run typecheck     # tsc nos dois projetos, strict
-npm run selftest      # 47 verificações, deve terminar com "tudo passou"
+npm run selftest      # 60 verificações, deve terminar com "tudo passou"
 npm run check:colors  # contraste das cores nos dois temas
 ```
+
+⚠️ **Uma das 60 mede a máquina, não o código:** "arrastar 10.000 objetos selecionados
+fica acima de 30fps", com teto de 33 ms por frame. Ela reprova com o computador ocupado —
+em 04/08/2026 reprovou com **50–62 ms** simplesmente porque o **CS2 estava aberto**, e a
+`main` sem nenhuma mudança reprovou pior que a branch nova. O sinal de que é a máquina, e
+não uma regressão, está na própria linha do resultado: se o custo de `bbox` (matemática
+pura, que quase nunca muda) subiu junto, é carga externa. Rodar de novo com o jogo
+fechado antes de investigar qualquer coisa.
 
 E, ao tocar em `Document`, `SpatialIndex` ou no importador, conferir a geometria contra
 o oráculo de layout:
@@ -56,37 +66,41 @@ isso é regressão. (O desvio de *tamanho* das caixas de texto é conhecido e de
 ver a lista de decisões abaixo.)
 
 Para ver renderização, `QB_SHOT=<arquivo.png> npm run selftest` fotografa **só a janela
-do app** e deixa na tela a cena de conferência: a seleção com as alças e um traço de
-cada variante, desenhados pela ferramenta de verdade. Atenção: com `QB_SHOT` a janela
-**não fecha sozinha** — o processo fica aberto até você encerrá-lo.
+do app** e deixa na tela a cena de conferência: seleção com alças, um traço de cada
+variante, duas formas, as réguas ligadas e um objeto encostado noutro pelo encaixe —
+tudo produzido pelas ferramentas de verdade. Atenção: com `QB_SHOT` a janela **não fecha
+sozinha** — o processo fica aberto até você encerrá-lo.
+
+**A guia de encaixe não sai na foto**, e não é bug: ela existe só enquanto o botão está
+pressionado, e um gesto deixado em aberto é desfeito pelo guarda de `blur` do
+`ToolManager` assim que a janela perde o foco (comportamento certo — gesto pendurado não
+pode sobreviver). Quem verifica a guia é a checagem numérica sobre `snapRect`; para vê-la
+com os olhos, arraste um objeto perto de outro no app.
 
 **Rodar sempre por `npm run dev`.** O instalador (`npm run dist`) só quando você pedir,
 com tudo estável.
 
 ---
 
-## Como começar a Fase 4.5
+## Como começar a Fase 5
 
-O caminho é o mesmo que a caneta abriu, e agora ele está trilhado:
+Texto é a fase que resolve a pendência da importação (ver decisão 3 abaixo) e é a maior
+até aqui, porque precisa de **layout de texto de verdade**: quebra de linha, medição de
+glifos e um cursor que anda pelo texto.
 
-1. **`src/renderer/tools/ShapeTool.ts`** — implementa a interface `Tool`
-   (`src/renderer/tools/types.ts`). Arrastar define o retângulo da forma; `Shift`
-   deveria travar em quadrado/círculo, como o `Shift` da escala já faz.
-2. **Registrar** em `ToolManager` (o `Record<ToolId, Tool>` do construtor), acrescentar
-   o `ToolId` e um botão em `ui/ToolBar.ts` — a barra já monta cor e espessura sozinha
-   para qualquer ferramenta que `isDrawTool` reconheça.
-3. O tipo `ShapeObject` e o painter `render/painters/shape.ts` **já existem**, com oito
-   `ShapeKind`. A ferramenta precisa produzi-los, não inventá-los.
-4. A forma em andamento vai na **camada de overlay** (`ctx.invalidateOverlay()`), como o
-   traço da caneta: assim arrastar uma forma não repinta 10 mil objetos por frame. Só ao
-   soltar ela vira objeto de verdade, via `AddObjects`.
-5. Atalho no registro único (`shortcuts.ts`) — teclas livres hoje: `R`, `O`, `A`, `T`.
-   `V P M L E G B [ ]` já estão tomadas.
+1. O tipo `TextObject` e o painter `render/painters/text.ts` **já existem** e já são
+   usados pela importação — inclusive com LOD por objeto. O que falta é *editar*.
+2. A edição usa `contentEditable` sobre o canvas, que é a decisão de arquitetura já
+   registrada no README: cursor, seleção, acentuação e IME saem de graça do navegador, e
+   o canvas volta a desenhar quando a edição termina. Um editor de texto próprio dentro
+   do canvas seria meses de trabalho para reimplementar o que o Chromium já faz.
+3. `NoteObject` (post-it, com `alert` e `pinned`) segue o mesmo caminho e reaproveita o
+   editor — a diferença é o fundo e o comportamento de fixar.
+4. A ferramenta nova entra como as outras: arquivo em `tools/`, `ToolId` novo, botão em
+   `ui/ToolBar.ts`, atalho em `shortcuts.ts`. Teclas livres: `T`, `N`, `O`, `S`.
+5. Quando o layout de texto existir, **rever o tamanho das caixas importadas**: é ali que
+   a divergência conhecida deixa de ser deliberada e passa a ser corrigível.
 6. Cobrir no `selftest` junto — ver a nota abaixo.
-
-Régua e snap são a outra metade da fase, e mexem noutro lugar: um módulo de
-alinhamento consultado pelos gestos de mover e de criar, com as guias desenhadas no
-overlay.
 
 ---
 
@@ -117,7 +131,16 @@ overlay.
 8. **A espessura do lápis nunca passa de 100% da largura nominal.** O AABB é calculado
    inflando a linha de centro em `width / 2`; um pico de pressão maior desenharia tinta
    fora do retângulo do objeto, e o culling a cortaria na borda da tela.
-9. **Funcionalidade nova entra com cobertura no `selftest`.** Ele despacha eventos de
+9. **O encaixe devolve uma correção, não uma posição.** Quem arrasta tem um delta
+   acumulado desde o início do gesto; substituir a posição faria o objeto perder o
+   vínculo com o cursor. Vale para mover, redimensionar e criar forma.
+10. **Linha e seta não são normalizadas para o canto superior esquerdo.** Elas guardam a
+    direção em `w`/`h` (o painter vai de `0,0` até `w,h`); normalizar viraria uma seta
+    apontando sempre para baixo e para a direita.
+11. **A prévia de um gesto passa pelo adaptador de cor** (`ToolContext.adapt`), igual aos
+    painters. Sem isso, no tema escuro a prévia de um traço quase preto sumiria no fundo e
+    só reapareceria clara quando o gesto terminasse.
+12. **Funcionalidade nova entra com cobertura no `selftest`.** Ele despacha eventos de
    ponteiro e teclado no app real, então pega regressão de fiação, não só de matemática.
    Foi ele que achou, na Fase 3, um gesto de mover que nunca promovia o arraste.
    Armadilha ao mexer nele: se deixar o quadro marcado como sujo, o guarda de
@@ -132,13 +155,14 @@ overlay.
 src/renderer/
 ├─ core/        Document, SpatialIndex, Camera, Scheduler, History, Selection
 ├─ commands/    um comando por mutação — é a base do undo/redo
-├─ tools/       Tool, ToolManager, SelectTool, DrawTool, EraserTool, DrawStyle
+├─ tools/       Tool, ToolManager, SelectTool, DrawTool, EraserTool, ShapeTool, DrawStyle
 ├─ features/
 │  ├─ selection/  hitTest, frame, transformOps, actions, clipboard
+│  ├─ snapping/   snap (guias de alinhamento + grade)
 │  ├─ import/     leitor do export do Whiteboard
 │  ├─ images/     AssetStore
 │  └─ storage/    boardIO
-├─ render/      Renderer (estática + overlay), painters, SelectionOverlay
+├─ render/      Renderer (estática + overlay), painters, SelectionOverlay, SnapGuides, Rulers
 ├─ ui/          ToolBar, Lobby, ViewportBar, ContextMenu, ShortcutsModal, DebugPanel
 └─ dev/         selftest, layoutOracle, importCheck, stress  ← ferramentas de medição
 ```

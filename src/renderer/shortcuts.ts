@@ -35,8 +35,12 @@ export type ShortcutId =
   | 'toolHighlighter'
   | 'toolPencil'
   | 'toolEraser'
+  | 'toolShape'
   | 'thinner'
-  | 'thicker';
+  | 'thicker'
+  | 'snapToGrid'
+  | 'rulers'
+  | 'rulerUnit';
 
 export interface ShortcutDef {
   /** Ausente = entrada apenas informativa (gesto de mouse, sem tecla). */
@@ -97,10 +101,16 @@ export const SHORTCUTS: ShortcutDef[] = [
   { id: 'toolPen', group: 'Ferramentas', keys: 'P', label: 'Caneta', scope: 'board' },
   { id: 'toolHighlighter', group: 'Ferramentas', keys: 'M', label: 'Marca-texto (entra por baixo do conteudo)', scope: 'board' },
   { id: 'toolPencil', group: 'Ferramentas', keys: 'L', label: 'Lapis (a espessura acompanha a pressao)', scope: 'board' },
+  { id: 'toolShape', group: 'Ferramentas', keys: 'F', label: 'Formas (o tipo se escolhe na barra)', scope: 'board' },
   { id: 'toolEraser', group: 'Ferramentas', keys: 'E', label: 'Borracha (apaga o traco inteiro)', scope: 'board' },
   { id: 'thinner', group: 'Ferramentas', keys: '[', label: 'Traco mais fino', scope: 'board' },
   { id: 'thicker', group: 'Ferramentas', keys: ']', label: 'Traco mais grosso', scope: 'board' },
+  { group: 'Ferramentas', keys: 'Arrastar', label: 'Formas: Shift trava quadrado/circulo/angulo, Alt cresce do centro' },
   { group: 'Ferramentas', keys: 'Botao direito + arrastar', label: 'Mover o quadro sem cortar o traco' },
+
+  { group: 'Encaixe', keys: 'Arrastar', label: 'Guias aparecem ao alinhar com as bordas e o centro dos vizinhos' },
+  { group: 'Encaixe', keys: 'Ctrl + arrastar', label: 'Ignorar o encaixe neste gesto' },
+  { id: 'snapToGrid', group: 'Encaixe', keys: 'A', label: 'Grade magnetica: encaixar tambem na grade', scope: 'board' },
 
   { group: 'Selecao', keys: 'Clique', label: 'Selecionar o objeto sob o cursor' },
   { group: 'Selecao', keys: 'Shift + clique', label: 'Somar ou tirar da selecao' },
@@ -136,6 +146,8 @@ export const SHORTCUTS: ShortcutDef[] = [
   },
 
   { id: 'grid', group: 'Visualizacao', keys: 'G', label: 'Ligar/desligar a grade de fundo', scope: 'board' },
+  { id: 'rulers', group: 'Visualizacao', keys: 'R', label: 'Reguas nas bordas', scope: 'board' },
+  { id: 'rulerUnit', group: 'Visualizacao', keys: 'U', label: 'Unidade das reguas: px ou cm', scope: 'board' },
   { id: 'help', group: 'Visualizacao', keys: 'F1|?', label: 'Mostrar esta lista de atalhos' },
   { id: 'debug', group: 'Visualizacao', keys: 'F3', label: 'Painel de debug e carga de teste', scope: 'board' },
   { id: 'benchmark', group: 'Visualizacao', keys: 'B', label: 'Medir fps sustentado', scope: 'board' },
