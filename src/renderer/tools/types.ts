@@ -1,4 +1,5 @@
 import type { Vec2 } from '@shared/geometry/vec2';
+import type { NoteObject, TextObject } from '@shared/model/types';
 import type { Camera } from '../core/Camera';
 import type { Document } from '../core/Document';
 import type { History } from '../core/History';
@@ -16,22 +17,39 @@ import type { Selection } from '../core/Selection';
  * arrastar o quadro no meio de um traco sem trocar de modo nem cortar o traco.
  */
 
-export type ToolId = 'select' | 'pen' | 'highlighter' | 'pencil' | 'eraser' | 'shape';
+export type ToolId =
+  | 'select'
+  | 'pen'
+  | 'highlighter'
+  | 'pencil'
+  | 'eraser'
+  | 'shape'
+  | 'text'
+  | 'note';
 
 /** Ferramentas que produzem tinta a mao livre. */
 export const DRAW_TOOLS = ['pen', 'highlighter', 'pencil'] as const;
 export type DrawToolId = (typeof DRAW_TOOLS)[number];
 
-/** Ferramentas com cor e espessura -- as de tinta mais a de formas. */
-export type StyleToolId = DrawToolId | 'shape';
+/**
+ * Ferramentas com cor e "espessura": as de tinta, a de formas e a de texto.
+ *
+ * No texto a espessura e o CORPO DA FONTE. Reaproveitar o mesmo eixo em vez de
+ * criar um controle novo faz `[` e `]` valerem tambem para o texto, sem inventar
+ * um segundo par de teclas para a mesma ideia de "maior/menor".
+ */
+export type StyleToolId = DrawToolId | 'shape' | 'text';
 
 export function isDrawTool(id: ToolId): id is DrawToolId {
   return (DRAW_TOOLS as readonly ToolId[]).includes(id);
 }
 
 export function hasStyle(id: ToolId): id is StyleToolId {
-  return isDrawTool(id) || id === 'shape';
+  return isDrawTool(id) || id === 'shape' || id === 'text';
 }
+
+/** Objetos que se editam escrevendo dentro deles. */
+export type EditableObject = TextObject | NoteObject;
 
 export interface ToolPointer {
   /** Posicao em coordenadas de mundo. */
@@ -70,6 +88,14 @@ export interface ToolContext {
   invalidateOverlay(): void;
   /** Sinaliza que o quadro passou a ter alteracoes nao gravadas. */
   markDirty(): void;
+  /**
+   * Abre a edicao de texto sobre um objeto.
+   *
+   * `isNew` diz que o objeto ainda NAO esta no documento: uma caixa recem-criada
+   * so entra no quadro se receber texto, e assim uma caixa aberta por engano nao
+   * deixa nem objeto invisivel nem passo de undo.
+   */
+  beginEdit(obj: EditableObject, opts?: { isNew?: boolean; selectAll?: boolean }): void;
 }
 
 export interface Tool {
@@ -78,6 +104,9 @@ export interface Tool {
   onPointerDown(p: ToolPointer): void;
   onPointerMove(p: ToolPointer): void;
   onPointerUp(p: ToolPointer): void;
+
+  /** Duplo clique, quando a ferramenta faz algo com ele. */
+  onDoubleClick?(p: ToolPointer): void;
 
   /** Cursor apropriado para a posicao atual, fora de qualquer gesto. */
   cursorFor(p: ToolPointer): string;

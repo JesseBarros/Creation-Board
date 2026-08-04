@@ -4,15 +4,15 @@ Ponto de retomada do **Creation Board**. O [README](README.md) explica o que o a
 como cada parte funciona; este arquivo responde outra pergunta: *em que pé isso está e
 o que fazer a seguir*. Some quando o projeto acabar.
 
-**Última sessão: 04/08/2026.** Fase 4.5 concluída.
+**Última sessão: 04/08/2026.** Fase 5 concluída.
 
 ---
 
 ## Estado em uma linha
 
-Fases 0 a 4.5 prontas. Dá para importar um resumo do Microsoft Whiteboard, **reorganizá-lo
-com alinhamento assistido, escrever à mão e desenhar formas em cima dele**. Falta edição
-de texto.
+Fases 0 a 5 prontas. Dá para importar um resumo do Microsoft Whiteboard, **reorganizá-lo
+com alinhamento assistido, escrever à mão, desenhar formas e digitar texto e post-its em
+cima dele**. Falta busca.
 
 ## O que existe hoje
 
@@ -25,13 +25,14 @@ de texto.
 | 3 | Seleção, mover/redimensionar/girar, duplicar, excluir, camadas, undo/redo, copiar/colar | pronta |
 | 4 | Caneta, marca-texto, lápis, borracha, cores e espessura | pronta |
 | 4.5 | Formas, encaixe com guias, grade magnética, réguas | pronta |
-| **5** | **Texto, post-its e alertas** | **próxima** |
+| 5 | Texto, post-its e alertas | pronta |
+| **6** | **Busca `Ctrl+F`** | **próxima** |
 
 A ordem diverge do plano original **de propósito**: o objetivo é migrar os resumos do
 Whiteboard, e para isso importar e manipular vieram antes de desenhar.
 
-**A `main` foi até a Fase 4** (mesclada em 04/08/2026, em avanço rápido). A Fase 4.5 está
-na branch **`fase-4-5-formas`**, ainda sem mesclar — ele não pediu.
+**A `main` foi até a Fase 4.5** (mesclada em 04/08/2026, em avanço rápido). A Fase 5 está
+na branch **`fase-5-texto`**, ainda sem mesclar — ele não pediu.
 
 ---
 
@@ -41,11 +42,11 @@ Sempre por terminal — nunca por captura de tela cheia (ver o *porquê* no READ
 
 ```
 npm run typecheck     # tsc nos dois projetos, strict
-npm run selftest      # 60 verificações, deve terminar com "tudo passou"
+npm run selftest      # 77 verificações, deve terminar com "tudo passou"
 npm run check:colors  # contraste das cores nos dois temas
 ```
 
-⚠️ **Uma das 60 mede a máquina, não o código:** "arrastar 10.000 objetos selecionados
+⚠️ **Uma das 77 mede a máquina, não o código:** "arrastar 10.000 objetos selecionados
 fica acima de 30fps", com teto de 33 ms por frame. Ela reprova com o computador ocupado —
 em 04/08/2026 reprovou com **50–62 ms** simplesmente porque o **CS2 estava aberto**, e a
 `main` sem nenhuma mudança reprovou pior que a branch nova. O sinal de que é a máquina, e
@@ -53,22 +54,41 @@ não uma regressão, está na própria linha do resultado: se o custo de `bbox` 
 pura, que quase nunca muda) subiu junto, é carga externa. Rodar de novo com o jogo
 fechado antes de investigar qualquer coisa.
 
-E, ao tocar em `Document`, `SpatialIndex` ou no importador, conferir a geometria contra
-o oráculo de layout:
+E, ao tocar em `Document`, `SpatialIndex`, no importador ou no **layout de texto**,
+conferir a geometria contra o oráculo:
 
 ```
 $env:QB_IMPORT = "C:\Resumos-quadrobranco\_exports-originais\Cybersec resumão.zip"
 npm run dev
 ```
 
-Deve sair **1.063 objetos** com erro de posição **≤ 0,2px**. Qualquer número maior que
-isso é regressão. (O desvio de *tamanho* das caixas de texto é conhecido e deliberado —
-ver a lista de decisões abaixo.)
+Deve sair **1.063 objetos**. Os números de referência depois da Fase 5:
+
+| Tipo | n | pos_méd | pos_máx | tam_méd | tam_máx |
+|---|---|---|---|---|---|
+| PlainText | 642 | 0,3 | 80,1 | 84,9 | 734,5 |
+| InkGroup | 345 | 0,0 | 0,2 | 0,0 | 0,3 |
+| AzureImage | 36 | 0,0 | 0,1 | 0,0 | 0,0 |
+| Note | 5 | 0,0 | 0,1 | 3,8 | 4,6 |
+
+Tinta, imagem e post-it fecham em **≤ 0,2px de posição** — qualquer número maior ali é
+regressão. **O texto é o caso com história** (leia antes de suspeitar de bug):
+
+- O erro de *tamanho* caiu de 136,2 para 84,9 de média (máx. de 3.295 para 734) porque a
+  caixa deixou de guardar o teto de quebra e passa a guardar o que o texto ocupou.
+- O que sobrou é **limite de medição, não decisão**: o navegador monta a caixa de linha
+  com a métrica da fonte que desenhou cada glifo, inclusive a substituta de um emoji
+  (medido: 62px de caixa para fonte de 34px), e essa métrica não aparece no `measureText`
+  do canvas.
+- `pos_máx` de 80px vem dos **dois textos girados a 45°**: num objeto girado o AABB
+  depende dos dois lados da caixa, então uma caixa mais estreita move os cantos. A origem
+  do objeto continua exata.
 
 Para ver renderização, `QB_SHOT=<arquivo.png> npm run selftest` fotografa **só a janela
 do app** e deixa na tela a cena de conferência: seleção com alças, um traço de cada
-variante, duas formas, as réguas ligadas e um objeto encostado noutro pelo encaixe —
-tudo produzido pelas ferramentas de verdade. Atenção: com `QB_SHOT` a janela **não fecha
+variante, duas formas, as réguas ligadas, um objeto encostado noutro pelo encaixe, uma
+caixa de texto com negrito, sublinhado e marcadores, e um post-it com alerta — tudo
+produzido pelas ferramentas de verdade. Atenção: com `QB_SHOT` a janela **não fecha
 sozinha** — o processo fica aberto até você encerrá-lo.
 
 **A guia de encaixe não sai na foto**, e não é bug: ela existe só enquanto o botão está
@@ -82,25 +102,21 @@ com tudo estável.
 
 ---
 
-## Como começar a Fase 5
+## Como começar a Fase 6
 
-Texto é a fase que resolve a pendência da importação (ver decisão 3 abaixo) e é a maior
-até aqui, porque precisa de **layout de texto de verdade**: quebra de linha, medição de
-glifos e um cursor que anda pelo texto.
+Busca `Ctrl+F`: achar uma palavra num resumo de mil objetos e levar a câmera até ela.
 
-1. O tipo `TextObject` e o painter `render/painters/text.ts` **já existem** e já são
-   usados pela importação — inclusive com LOD por objeto. O que falta é *editar*.
-2. A edição usa `contentEditable` sobre o canvas, que é a decisão de arquitetura já
-   registrada no README: cursor, seleção, acentuação e IME saem de graça do navegador, e
-   o canvas volta a desenhar quando a edição termina. Um editor de texto próprio dentro
-   do canvas seria meses de trabalho para reimplementar o que o Chromium já faz.
-3. `NoteObject` (post-it, com `alert` e `pinned`) segue o mesmo caminho e reaproveita o
-   editor — a diferença é o fundo e o comportamento de fixar.
-4. A ferramenta nova entra como as outras: arquivo em `tools/`, `ToolId` novo, botão em
-   `ui/ToolBar.ts`, atalho em `shortcuts.ts`. Teclas livres: `T`, `N`, `O`, `S`.
-5. Quando o layout de texto existir, **rever o tamanho das caixas importadas**: é ali que
-   a divergência conhecida deixa de ser deliberada e passa a ser corrigível.
-6. Cobrir no `selftest` junto — ver a nota abaixo.
+1. O texto a indexar já está pronto e em um lugar só: `RichSpan[]` em `TextObject` e
+   `NoteObject`, com `plainText()` em `features/text/spans.ts` para achatar. `BaseObject`
+   já tem `name`, pensado desde a Fase 1 para entrar no mesmo índice.
+2. O que **não** existe é índice de texto. Varrer 642 caixas por tecla digitada é
+   provavelmente rápido o bastante para começar — **medir antes de construir índice**, que
+   é a regra que já evitou otimização errada duas vezes neste projeto.
+3. Navegar até o resultado é `camera.fitTo` no `bbox` do objeto, e destacar é seleção —
+   as duas peças já existem.
+4. A tela de busca entra como as outras em `ui/`, e o atalho como linha em
+   `shortcuts.ts`. Teclas livres: `O`, `S`, `C`.
+5. Cobrir no `selftest` junto — ver a nota abaixo.
 
 ---
 
@@ -111,41 +127,51 @@ glifos e um cursor que anda pelo texto.
    do lobby. É deliberado.
 2. **Reimportar sobrescreve o `.wbd`.** Os `.zip` originais em
    `C:\Resumos-quadrobranco\_exports-originais\` são a fonte de verdade para reimportar.
-3. **O tamanho da caixa de texto importada não bate com o original, de propósito.** A
-   largura gravada é o teto de quebra do original, não a largura que o texto ocupou; a
-   altura difere por métrica de emoji e fonte substituta. Resolve na **Fase 5**, que traz
-   layout de texto de verdade. Não é bug, não tentar "consertar" antes disso.
-4. **Geometria de importação se mede, não se deduz.** Ler o CSS do export já levou a
-   duas hipóteses plausíveis e *ambas erradas*. Existe um oráculo
-   (`src/renderer/dev/layoutOracle.ts`) que mede no próprio Chromium — usar ele.
-5. **O mesmo vale para desempenho.** Na Fase 3, o palpite natural sobre o gargalo do
+3. **Geometria de importação se mede, não se deduz.** Ler o CSS do export já levou a
+   hipóteses plausíveis e erradas — três, contando a da Fase 5 (achei que as âncoras de
+   texto fossem centradas; o oráculo mostrou `align topLeft`). Existe um oráculo
+   (`src/renderer/dev/layoutOracle.ts`) que mede no próprio Chromium — usar ele. Ele
+   agora também relata **fonte, peso, entrelinha e número de linhas computados**, que é o
+   que transformou "a caixa não fecha" em "a caixa não fecha por causa de emoji".
+4. **O mesmo vale para desempenho.** Na Fase 3, o palpite natural sobre o gargalo do
    arraste em massa (recalcular o AABB dos traços) era o menor dos custos: 3,1 ms de
    27,3. O real era o índice espacial, 20,4 ms. Medir primeiro, otimizar depois.
-6. **O marca-texto entra por baixo de tudo** (chave `z`, não ordem de desenho), senão
+5. **O marca-texto entra por baixo de tudo** (chave `z`, não ordem de desenho), senão
    grifar cobriria o texto que se quis destacar. Caneta e lápis entram por cima.
-7. **A borracha apaga o objeto inteiro, e só tinta** (`stroke` e `path`). Ela ignora
+6. **A borracha apaga o objeto inteiro, e só tinta** (`stroke` e `path`). Ela ignora
    texto, post-it e imagem de propósito: um gesto largo apagaria o resumo inteiro sem
    ninguém ter pedido. O comando dela é `EraseObjects`, separado de `RemoveObjects`
-   porque a borracha apaga *durante* o arraste — quando o gesto termina os objetos já
-   saíram, e a captura tardia do `RemoveObjects` viria vazia.
-8. **A espessura do lápis nunca passa de 100% da largura nominal.** O AABB é calculado
-   inflando a linha de centro em `width / 2`; um pico de pressão maior desenharia tinta
-   fora do retângulo do objeto, e o culling a cortaria na borda da tela.
-9. **O encaixe devolve uma correção, não uma posição.** Quem arrasta tem um delta
+   porque a borracha apaga *durante* o arraste.
+7. **A espessura do lápis nunca passa de 100% da largura nominal.** O AABB é calculado
+   inflando a linha de centro em `width / 2`; um pico maior desenharia tinta fora do
+   retângulo do objeto, e o culling a cortaria na borda da tela.
+8. **O encaixe devolve uma correção, não uma posição.** Quem arrasta tem um delta
    acumulado desde o início do gesto; substituir a posição faria o objeto perder o
-   vínculo com o cursor. Vale para mover, redimensionar e criar forma.
-10. **Linha e seta não são normalizadas para o canto superior esquerdo.** Elas guardam a
-    direção em `w`/`h` (o painter vai de `0,0` até `w,h`); normalizar viraria uma seta
-    apontando sempre para baixo e para a direita.
-11. **A prévia de um gesto passa pelo adaptador de cor** (`ToolContext.adapt`), igual aos
-    painters. Sem isso, no tema escuro a prévia de um traço quase preto sumiria no fundo e
-    só reapareceria clara quando o gesto terminasse.
-12. **Funcionalidade nova entra com cobertura no `selftest`.** Ele despacha eventos de
-   ponteiro e teclado no app real, então pega regressão de fiação, não só de matemática.
-   Foi ele que achou, na Fase 3, um gesto de mover que nunca promovia o arraste.
-   Armadilha ao mexer nele: se deixar o quadro marcado como sujo, o guarda de
-   `beforeunload` recusa o fechamento e a execução automatizada pendura — por isso
-   existe `App.markClean()`.
+   vínculo com o cursor. Vale para mover, redimensionar e criar.
+9. **Linha e seta não são normalizadas para o canto superior esquerdo.** Elas guardam a
+   direção em `w`/`h`; normalizar viraria uma seta apontando sempre para baixo e para a
+   direita.
+10. **A prévia de um gesto passa pelo adaptador de cor** (`ToolContext.adapt`), igual aos
+    painters. Sem isso, no tema escuro a prévia de um traço quase preto sumiria no fundo.
+11. **A edição de texto é um `contentEditable` sobre o canvas.** Cursor, seleção,
+    acentuação e IME saem de graça do Chromium; um editor próprio dentro do canvas seria
+    reescrever um motor de texto. Enquanto a caixa está aberta o objeto **não é
+    desenhado** (`Renderer.hiddenId`), senão o texto sai duplicado meio pixel fora.
+12. **A caixa nova só entra no documento se receber texto.** Enquanto se digita ela é só
+    o `<div>` — por isso uma caixa aberta por engano não deixa objeto invisível nem passo
+    de undo. Esvaziar uma caixa existente a remove, pelo mesmo motivo.
+13. **O layout de texto é ponto único de verdade** (`render/text/layout.ts`): painter,
+    importador e editor medem pelo mesmo código. Foi cada um medindo por conta própria
+    que produziu a divergência de tamanho que a importação carregou da Fase 2 à 5.
+14. **A altura de linha vem da fonte, com piso no multiplicador** — `fontBoundingBox` e
+    `actualBoundingBox`, a maior das duas. `fontSize × lineHeight` sozinho corta emoji.
+15. **Funcionalidade nova entra com cobertura no `selftest`.** Ele despacha eventos de
+    ponteiro e teclado no app real, então pega regressão de fiação, não só de matemática.
+    Foi ele que achou, na Fase 5, um `commit()` que lia `#isNew` **depois** de fechar o
+    editor — toda caixa nova virava "edição" de um objeto inexistente. Armadilha ao mexer
+    nele: se deixar o quadro marcado como sujo, o guarda de `beforeunload` recusa o
+    fechamento e a execução pendura — por isso existe `App.markClean()`, e por isso cada
+    bloco roda dentro de um guarda que transforma exceção em FALHA.
 
 ---
 
@@ -155,14 +181,17 @@ glifos e um cursor que anda pelo texto.
 src/renderer/
 ├─ core/        Document, SpatialIndex, Camera, Scheduler, History, Selection
 ├─ commands/    um comando por mutação — é a base do undo/redo
-├─ tools/       Tool, ToolManager, SelectTool, DrawTool, EraserTool, ShapeTool, DrawStyle
+├─ tools/       Tool, ToolManager, SelectTool, DrawTool, EraserTool, ShapeTool,
+│               TextTool, NoteTool, DrawStyle
 ├─ features/
 │  ├─ selection/  hitTest, frame, transformOps, actions, clipboard
 │  ├─ snapping/   snap (guias de alinhamento + grade)
+│  ├─ text/       TextEditor (contentEditable), spans (DOM ↔ RichSpan)
 │  ├─ import/     leitor do export do Whiteboard
 │  ├─ images/     AssetStore
 │  └─ storage/    boardIO
-├─ render/      Renderer (estática + overlay), painters, SelectionOverlay, SnapGuides, Rulers
+├─ render/      Renderer (estática + overlay), painters, text/layout, SelectionOverlay,
+│               SnapGuides, Rulers, PinnedNotes
 ├─ ui/          ToolBar, Lobby, ViewportBar, ContextMenu, ShortcutsModal, DebugPanel
 └─ dev/         selftest, layoutOracle, importCheck, stress  ← ferramentas de medição
 ```

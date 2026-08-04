@@ -1,6 +1,13 @@
 import type { Vec2 } from '@shared/geometry/vec2';
 import { computeBbox } from '@shared/model/bbox';
-import type { BoardObject, ShapeKind, ShapeObject, StrokeObject } from '@shared/model/types';
+import type {
+  BoardObject,
+  NoteObject,
+  ShapeKind,
+  ShapeObject,
+  StrokeObject,
+  TextObject,
+} from '@shared/model/types';
 import type { WbdDocument } from '@shared/model/document';
 import type { App } from '../App';
 import { MAX_ZOOM, MIN_ZOOM, type Camera } from '../core/Camera';
@@ -9,6 +16,9 @@ import { computeFrame } from '../features/selection/frame';
 import { moveObjects } from '../features/selection/transformOps';
 import { snapRect } from '../features/snapping/snap';
 import { applyBoard, serializeBoard } from '../features/storage/boardIO';
+import { plainText } from '../features/text/spans';
+import { layoutOf, layoutText } from '../render/text/layout';
+import { offscreenPinnedNotes } from '../render/PinnedNotes';
 import { generateStressObjects } from './stress';
 
 /**
@@ -208,28 +218,50 @@ export async function runSelfTest(host: HTMLElement, app: App): Promise<void> {
     camera.zoom = 1;
   };
 
-  runCameraTests(host, camera, check, reset);
-  await runSelectionTests(host, app, check, reset);
-  runDrawingTests(host, app, check, reset);
-  runShapeAndSnapTests(host, app, check, reset);
+  /**
+   * Roda um bloco de verificacoes sem deixar uma excecao derrubar o resto.
+   *
+   * Sem isto, um erro dentro de um bloco aborta `runSelfTest` inteiro: o
+   * relatorio nunca e impresso, `markClean` nunca roda, o guarda de
+   * `beforeunload` recusa o fechamento e a execucao automatizada fica pendurada
+   * ate alguem fechar a janela na mao. Um bloco que explode tem de virar FALHA
+   * com a mensagem, como qualquer outra.
+   */
+  const block = async (nome: string, fn: () => void | Promise<void>): Promise<void> => {
+    try {
+      await fn();
+    } catch (err) {
+      const stack = err instanceof Error ? (err.stack ?? err.message) : String(err);
+      check(`bloco "${nome}" terminou sem explodir`, false, stack.split('\n').slice(0, 3).join(' | '));
+    }
+  };
+
+  await block('camera', () => runCameraTests(host, camera, check, reset));
+  await block('selecao', () => runSelectionTests(host, app, check, reset));
+  await block('desenho', () => runDrawingTests(host, app, check, reset));
+  await block('formas e encaixe', () => runShapeAndSnapTests(host, app, check, reset));
+  await block('texto e post-its', () => runTextTests(host, app, check, reset));
 
   // Deixa o cenario montado no fim. Com QB_SHOT a janela nao fecha ao terminar,
   // entao a foto vira a conferencia do que nenhum numero daqui verifica: o cromo
   // de selecao, a aparencia das tres variantes de traco, as formas, as reguas e a
   // guia de encaixe. Tudo produzido pelas ferramentas de verdade, e nao montado a
   // mao, para a foto mostrar o que o usuario veria.
-  reset();
-  app.selection.clear();
-  app.history.clear();
-  app.doc.clear();
-  app.doc.setPrefs({ snapToGrid: false, unit: 'px' });
-  app.doc.add(scene());
-  paintSampleStrokes(host, app);
-  paintSampleShapes(host, app);
-  app.setTool('select');
-  app.history.clear();
-  if (!app.rulersEnabled) app.toggleRulers();
-  snapAgainstNeighbor(host, app);
+  await block('cena da foto', () => {
+    reset();
+    app.selection.clear();
+    app.history.clear();
+    app.doc.clear();
+    app.doc.setPrefs({ snapToGrid: false, unit: 'px' });
+    app.doc.add(scene());
+    paintSampleStrokes(host, app);
+    paintSampleShapes(host, app);
+    writeSampleText(host, app);
+    app.setTool('select');
+    app.history.clear();
+    if (!app.rulersEnabled) app.toggleRulers();
+    snapAgainstNeighbor(host, app);
+  });
   // Sem isto o quadro fica marcado como sujo, o guarda de `beforeunload`
   // recusa o fechamento e a execucao automatizada nunca termina.
   app.markClean();
@@ -281,6 +313,40 @@ function paintSampleShapes(host: HTMLElement, app: App): void {
   app.drawStyle.setShapeKind('arrow');
   app.drawStyle.setShapeFilled(false);
   drag(host, 0, 560 + box.left, 560 + box.top, -180, -90);
+}
+
+/**
+ * Uma caixa de texto e um post-it com alerta, para a foto do QB_SHOT.
+ *
+ * Escritos pelas ferramentas de verdade, passando pelo editor: e a unica forma
+ * de a foto mostrar o texto como ele fica DEPOIS de a edicao terminar -- que e
+ * o momento em que o canvas volta a desenhar e onde um erro de layout apareceria.
+ */
+function writeSampleText(host: HTMLElement, app: App): void {
+  const box = host.getBoundingClientRect();
+
+  app.setTool('text');
+  click(host, 120 + box.left, 480 + box.top);
+  // Em HTML porque e assim que o negrito chega do editor de verdade (Ctrl+B):
+  // a foto tem de mostrar formatacao real, e nao asterisco desenhado.
+  typeInEditor('Fase 5: <b>texto</b> com <u>formatacao</u>,<br>quebra de linha e cursor.', {
+    html: true,
+  });
+
+  app.setTool('select');
+  const listado = [...app.doc.all()].find((o) => o.type === 'text');
+  if (listado) {
+    app.selection.set([listado.id]);
+    app.toggleBulletList();
+    app.selection.clear();
+  }
+
+  app.setTool('note');
+  app.drawStyle.setNoteBg('#ffdeeb');
+  app.drawStyle.setNoteAlert('importante');
+  click(host, 900 + box.left, 120 + box.top);
+  typeInEditor('Post-it com alerta.');
+  app.drawStyle.setNoteAlert(null);
 }
 
 /**
@@ -959,6 +1025,34 @@ function clickWorld(host: HTMLElement, box: DOMRect, w: Vec2, mod: Modifiers = {
   click(host, w.x + box.left, w.y + box.top, mod);
 }
 
+/** Duplo clique, o gesto que abre uma caixa de texto sem trocar de ferramenta. */
+function doubleClick(host: HTMLElement, x: number, y: number): void {
+  click(host, x, y);
+  host.dispatchEvent(
+    new MouseEvent('dblclick', { clientX: x, clientY: y, button: 0, bubbles: true, cancelable: true }),
+  );
+}
+
+function editorEl(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('.qb-text-edit');
+}
+
+/**
+ * Escreve na caixa aberta e sai dela.
+ *
+ * Escrever aqui e mexer no DOM do `contentEditable`, que e exatamente o que o
+ * navegador faz quando alguem digita -- e o caminho de volta (DOM -> spans) e o
+ * que este teste exercita. `Escape` no proprio editor e como se fecha a caixa.
+ */
+function typeInEditor(text: string, { commit = true, html = false } = {}): void {
+  const el = editorEl();
+  if (!el) return;
+  if (html) el.innerHTML = text;
+  else el.textContent = text;
+  if (!commit) return;
+  el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+}
+
 // ----------------------------------------------------------- formas e encaixe
 
 function runShapeAndSnapTests(
@@ -1206,4 +1300,300 @@ function runShapeAndSnapTests(
   );
 
   app.setTool('select');
+}
+
+// --------------------------------------------------------- texto e post-its
+
+function runTextTests(host: HTMLElement, app: App, check: Check, reset: () => void): void {
+  const { doc, selection, history, drawStyle } = app;
+  const box = host.getBoundingClientRect();
+
+  const setup = (tool: 'select' | 'text' | 'note'): void => {
+    reset();
+    selection.clear();
+    history.clear();
+    doc.clear();
+    doc.setPrefs({ snapToGrid: false, unit: 'px' });
+    doc.add(scene());
+    app.setTool(tool);
+  };
+
+  const madeText = (): TextObject | undefined =>
+    [...doc.all()].find((o): o is TextObject => o.type === 'text');
+  const madeNote = (): NoteObject | undefined =>
+    [...doc.all()].find((o): o is NoteObject => o.type === 'note');
+
+  const estilo = (width: number, align: 'left' | 'right', list: 'none' | 'bullet') => ({
+    width,
+    fontSize: 16,
+    fontFamily: "'Segoe UI', sans-serif",
+    lineHeight: 1.35,
+    align,
+    list,
+  });
+
+  // --- clicar abre a caixa, mas ainda nao cria objeto
+  setup('text');
+  clickWorld(host, box, { x: 700, y: 300 });
+  check(
+    'clicar com a ferramenta de texto abre a caixa sem criar objeto',
+    app.isEditingText && doc.size === 4,
+    `editando=${app.isEditingText} objetos=${doc.size} esperado=(true, 4)`,
+  );
+
+  // --- o texto digitado vira objeto ao sair da caixa
+  typeInEditor('Resumo da aula');
+  const criado = madeText();
+  check(
+    'o texto digitado vira objeto em um passo de undo, ja selecionado',
+    criado !== undefined &&
+      plainText(criado.content) === 'Resumo da aula' &&
+      history.depth === 1 &&
+      selection.has(criado.id) &&
+      app.activeTool === 'select',
+    `conteudo="${criado ? plainText(criado.content) : '-'}" passos=${history.depth} ` +
+      `rotulo=${history.undoLabel} objetos=${doc.size} ` +
+      `ferramenta=${app.activeTool} esperado=("Resumo da aula", 1 passo, select)`,
+  );
+
+  key('z', { ctrl: true });
+  check(
+    'Ctrl+Z desfaz a caixa recem-criada inteira',
+    doc.size === 4 && madeText() === undefined,
+    `objetos=${doc.size} esperado=4`,
+  );
+
+  // --- caixa aberta e abandonada em branco nao deixa rastro
+  // Ela nunca chegou a entrar no documento: nao ha objeto invisivel para o laco
+  // pegar depois, nem passo de undo para atravessar.
+  setup('text');
+  clickWorld(host, box, { x: 700, y: 300 });
+  typeInEditor('   ');
+  check(
+    'caixa aberta e deixada em branco nao cria objeto nem passo de undo',
+    doc.size === 4 && history.depth === 0 && !app.isEditingText,
+    `objetos=${doc.size} passos=${history.depth} editando=${app.isEditingText} esperado=(4, 0, false)`,
+  );
+
+  // --- duplo clique abre a caixa existente sem trocar de ferramenta
+  setup('text');
+  clickWorld(host, box, { x: 700, y: 300 });
+  typeInEditor('primeiro');
+  const alvo = madeText()!;
+  history.clear();
+  app.setTool('select');
+  doubleClick(host, alvo.transform.x + 10 + box.left, alvo.transform.y + 8 + box.top);
+  const editandoId = app.editingObjectId;
+  check(
+    'duplo clique abre a caixa existente, que sai do canvas enquanto se edita',
+    app.isEditingText && editandoId === alvo.id,
+    `editando=${app.isEditingText} oculto=${editandoId ?? 'nenhum'} esperado=(true, o proprio objeto)`,
+  );
+
+  // --- editar grava o conteudo novo; Ctrl+Z devolve o anterior
+  typeInEditor('segundo texto');
+  const depoisDaEdicao = doc.get(alvo.id) as TextObject | undefined;
+  key('z', { ctrl: true });
+  const desfeito = doc.get(alvo.id) as TextObject | undefined;
+  check(
+    'editar troca o conteudo, e Ctrl+Z devolve o texto anterior',
+    plainText(depoisDaEdicao?.content ?? []) === 'segundo texto' &&
+      plainText(desfeito?.content ?? []) === 'primeiro' &&
+      app.editingObjectId === null,
+    `depois="${plainText(depoisDaEdicao?.content ?? [])}" ` +
+      `desfeito="${plainText(desfeito?.content ?? [])}" esperado=("segundo texto", "primeiro")`,
+  );
+
+  // --- esvaziar uma caixa existente a remove
+  // Uma caixa sem texto e invisivel e inclicavel; deixa-la no quadro criaria
+  // objetos fantasma que so aparecem no laco e no Ctrl+A.
+  history.clear();
+  app.setTool('select');
+  doubleClick(host, alvo.transform.x + 10 + box.left, alvo.transform.y + 8 + box.top);
+  typeInEditor('');
+  const sumiu = doc.get(alvo.id) === undefined;
+  key('z', { ctrl: true });
+  check(
+    'esvaziar uma caixa existente a remove, e Ctrl+Z devolve',
+    sumiu && doc.get(alvo.id) !== undefined,
+    `removida=${sumiu} devolvida=${doc.get(alvo.id) !== undefined} esperado=(true, true)`,
+  );
+
+  // --- arrastar define a largura; a altura vem do texto
+  setup('text');
+  drawStyle.setWidth('text', 16);
+  drag(host, 0, 700 + box.left, 300 + box.top, 120, 0);
+  typeInEditor('uma frase longa o bastante para quebrar em varias linhas dentro desta caixa estreita');
+  const alta = madeText();
+  const linhas = alta ? layoutOf(alta).lines.length : 0;
+  check(
+    'a caixa arrastada guarda a largura, e a altura acompanha as linhas',
+    alta !== undefined &&
+      near(alta.w, 120, 1) &&
+      linhas > 3 &&
+      near(alta.h, layoutOf(alta).height, 0.001),
+    `largura=${alta?.w.toFixed(1)} linhas=${linhas} altura=${alta?.h.toFixed(1)} ` +
+      `esperado=(120, mais de 3 linhas)`,
+  );
+
+  // --- a propriedade em que a importacao se apoia
+  // Encolher a caixa ate a maior linha nao pode mudar a quebra: e ela que
+  // permite gravar a largura do TEXTO em vez do teto de quebra do original.
+  const frase = [{ text: 'palavras curtas e outras nem tanto para quebrar isto em varias linhas' }];
+  const largo = layoutText(frase, estilo(400, 'left', 'none'));
+  const encolhido = layoutText(frase, estilo(largo.width, 'left', 'none'));
+  const mesmaQuebra =
+    largo.lines.length === encolhido.lines.length &&
+    largo.lines.every((l, i) => textOf(l) === textOf(encolhido.lines[i]!));
+  check(
+    'encolher a caixa ate a maior linha preserva a quebra',
+    largo.lines.length > 1 && mesmaQuebra && near(largo.height, encolhido.height, 0.001),
+    `linhas ${largo.lines.length}->${encolhido.lines.length} maior linha=${largo.width.toFixed(1)} ` +
+      `mesma quebra=${mesmaQuebra}`,
+  );
+
+  // --- formatacao por trecho
+  const misto = layoutText(
+    [
+      { text: 'normal ' },
+      { text: 'negrito', bold: true },
+      { text: ' e ' },
+      { text: 'sublinhado', underline: true },
+    ],
+    estilo(600, 'left', 'none'),
+  );
+  const runs = misto.lines[0]?.runs ?? [];
+  check(
+    'cada formatacao vira um trecho proprio na mesma linha',
+    misto.lines.length === 1 &&
+      runs.length === 4 &&
+      runs[1]?.bold === true &&
+      runs[3]?.underline === true,
+    `linhas=${misto.lines.length} trechos=${runs.length} negrito=${runs[1]?.bold} ` +
+      `sublinhado=${runs[3]?.underline} esperado=(1, 4, true, true)`,
+  );
+
+  // --- lista e alinhamento
+  const comLista = layoutText([{ text: 'item' }], estilo(300, 'left', 'bullet'));
+  const aDireita = layoutText([{ text: 'fim' }], estilo(300, 'right', 'none'));
+  const linhaDireita = aDireita.lines[0]!;
+  check(
+    'a lista recua o texto e o alinhamento a direita encosta na borda',
+    comLista.indent > 0 &&
+      near(comLista.lines[0]!.x, comLista.indent, 0.001) &&
+      near(linhaDireita.x + linhaDireita.width, 300, 0.5),
+    `recuo=${comLista.indent.toFixed(1)} fim da linha a direita=` +
+      `${(linhaDireita.x + linhaDireita.width).toFixed(1)} esperado=300.0`,
+  );
+
+  // --- marcadores de lista mexem no recuo e, com ele, na altura
+  setup('text');
+  clickWorld(host, box, { x: 700, y: 300 });
+  typeInEditor('primeiro item do resumo que ocupa mais de uma linha nesta largura');
+  const paraLista = madeText()!;
+  app.selection.set([paraLista.id]);
+  history.clear();
+  app.toggleBulletList();
+  const comMarcador = doc.get(paraLista.id) as TextObject | undefined;
+  key('z', { ctrl: true });
+  const semMarcador = doc.get(paraLista.id) as TextObject | undefined;
+  check(
+    'marcadores recuam o texto e a altura segue o layout; Ctrl+Z devolve',
+    comMarcador?.list === 'bullet' &&
+      layoutOf(comMarcador).indent > 0 &&
+      near(comMarcador.h, layoutOf(comMarcador).height, 0.001) &&
+      semMarcador?.list === 'none' &&
+      near(semMarcador.h, paraLista.h, 0.001),
+    `lista=${comMarcador?.list} recuo=${comMarcador ? layoutOf(comMarcador).indent.toFixed(1) : '-'} ` +
+      `altura ${paraLista.h.toFixed(1)}->${comMarcador?.h.toFixed(1)}->${semMarcador?.h.toFixed(1)}`,
+  );
+
+  // --- post-it com papel e alerta escolhidos na barra
+  setup('note');
+  drawStyle.setNoteBg('#d0ebff');
+  drawStyle.setNoteAlert('revisar');
+  clickWorld(host, box, { x: 700, y: 300 });
+  typeInEditor('conferir depois');
+  const postit = madeNote();
+  drawStyle.setNoteAlert(null);
+  check(
+    'o post-it nasce com o papel e o alerta escolhidos na barra',
+    postit !== undefined &&
+      postit.bg === '#d0ebff' &&
+      postit.alert?.level === 'revisar' &&
+      plainText(postit.content) === 'conferir depois',
+    `papel=${postit?.bg} alerta=${postit?.alert?.level ?? 'nenhum'} ` +
+      `conteudo="${postit ? plainText(postit.content) : '-'}" esperado=(#d0ebff, revisar)`,
+  );
+
+  // --- os mesmos botoes reestilizam o que ja existe
+  app.setTool('select');
+  selection.set([postit!.id]);
+  history.clear();
+  app.restyleSelectedNotes({ bg: '#fff3bf' });
+  const trocado = doc.get(postit!.id) as NoteObject | undefined;
+  key('z', { ctrl: true });
+  const voltou = doc.get(postit!.id) as NoteObject | undefined;
+  check(
+    'a barra reestiliza o post-it selecionado, e Ctrl+Z devolve o papel',
+    trocado?.bg === '#fff3bf' && voltou?.bg === '#d0ebff',
+    `depois=${trocado?.bg} desfeito=${voltou?.bg} esperado=(#fff3bf, #d0ebff)`,
+  );
+
+  // --- fixar so mostra ficha quando o post-it esta FORA da tela
+  app.togglePinSelectedNotes();
+  const aVista = offscreenPinnedNotes(doc, app.camera, 1200, 800).length;
+  app.camera.x = 20000;
+  app.camera.y = 20000;
+  const foraDaTela = offscreenPinnedNotes(doc, app.camera, 1200, 800).length;
+  reset();
+  check(
+    'post-it fixado ganha ficha no canto so quando esta fora da tela',
+    aVista === 0 && foraDaTela === 1,
+    `a vista=${aVista} fora da tela=${foraDaTela} esperado=(0, 1)`,
+  );
+
+  // --- atalhos das duas ferramentas novas
+  setup('select');
+  key('t');
+  const depoisDoT = app.activeTool;
+  key('n');
+  const depoisDoN = app.activeTool;
+  key('v');
+  check(
+    'T escolhe texto e N escolhe post-it',
+    depoisDoT === 'text' && depoisDoN === 'note' && app.activeTool === 'select',
+    `T=${depoisDoT} N=${depoisDoN} V=${app.activeTool}`,
+  );
+
+  // --- o texto formatado sobrevive ao arquivo
+  setup('text');
+  clickWorld(host, box, { x: 700, y: 300 });
+  typeInEditor('comum <b>negrito</b>', { html: true });
+  const antesDoArquivo = madeText();
+  const gravadoTexto = JSON.parse(
+    JSON.stringify(serializeBoard(doc, app.camera, app.assets)),
+  ) as WbdDocument;
+  applyBoard(doc, app.camera, gravadoTexto);
+  const depoisDoArquivo = antesDoArquivo
+    ? (doc.get(antesDoArquivo.id) as TextObject | undefined)
+    : undefined;
+  check(
+    'o texto formatado sobrevive ao formato do .wbd',
+    antesDoArquivo !== undefined &&
+      depoisDoArquivo !== undefined &&
+      plainText(depoisDoArquivo.content) === plainText(antesDoArquivo.content) &&
+      depoisDoArquivo.content.length === 2 &&
+      depoisDoArquivo.content[1]?.bold === true &&
+      near(depoisDoArquivo.h, antesDoArquivo.h, 0.001),
+    `trechos=${depoisDoArquivo?.content.length} negrito no segundo=` +
+      `${depoisDoArquivo?.content[1]?.bold} conteudo="${plainText(depoisDoArquivo?.content ?? [])}"`,
+  );
+
+  app.setTool('select');
+}
+
+/** Texto de uma linha do layout, para comparar quebras. */
+function textOf(line: { runs: ReadonlyArray<{ text: string }> }): string {
+  return line.runs.map((r) => r.text).join('');
 }

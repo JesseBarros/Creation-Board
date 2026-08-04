@@ -287,6 +287,67 @@
   background: var(--accent);
 }
 
+/* Sem alerta + os tres niveis, numa fila so. */
+.qb-tools__alerts {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.qb-tools__alert {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.qb-tools__alert:hover {
+  background: var(--panel-2);
+}
+
+.qb-tools__alert--active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+/* --------------------------------------------------------- edicao de texto */
+
+/*
+  A caixa editavel fica SOBRE o canvas, no lugar exato do objeto (ver
+  features/text/TextEditor.ts). Tudo aqui e medido em unidades de MUNDO: a
+  transformacao aplicada pelo editor ja leva zoom, rotacao e escala do objeto.
+
+  Sem borda nem fundo de proposito: o que se ve enquanto se digita tem de ser o
+  texto no quadro, e nao um formulario por cima dele. O unico cromo e o anel
+  tenue, que responde "e aqui que a tecla vai cair".
+*/
+.qb-text-edit {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  /* Preserva os espacos digitados e quebra por palavra, como o layout do canvas. */
+  white-space: pre-wrap;
+  overflow-wrap: normal;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
+  caret-color: var(--accent);
+  z-index: 3;
+}
+
 /* ------------------------------------------------------- painel de debug */
 
 .qb-debug {

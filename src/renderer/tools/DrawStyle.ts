@@ -1,4 +1,4 @@
-import type { ShapeKind } from '@shared/model/types';
+import type { AlertLevel, ShapeKind } from '@shared/model/types';
 import type { StyleToolId } from './types';
 
 /**
@@ -47,12 +47,36 @@ export const HIGHLIGHTER_COLORS = [
   '#d0bfff',
 ] as const;
 
-/** Espessuras em unidades de MUNDO. Tres degraus por ferramenta. */
+/**
+ * Cores de papel dos post-its. Sao SUPERFICIES, como o marca-texto: nao passam
+ * pelo adaptador de tema, e quem garante a leitura e `readableTextOn`, que
+ * escolhe texto claro ou escuro conforme o papel.
+ */
+export const NOTE_COLORS = ['#fff3bf', '#d3f9d8', '#d0ebff', '#ffdeeb', '#e9ecef'] as const;
+
+/**
+ * Simbolo de cada nivel de alerta.
+ *
+ * Glifos simples, e nao emoji: no canvas o emoji entra pela fonte colorida do
+ * sistema, que ignora `fillStyle` -- o simbolo sairia sempre da mesma cor,
+ * quando a cor e justamente o que distingue os tres niveis.
+ */
+export const ALERT_ICONS: Record<AlertLevel, string> = {
+  importante: '!',
+  duvida: '?',
+  revisar: '↻',
+};
+
+/**
+ * Espessuras em unidades de MUNDO. Tres degraus por ferramenta.
+ * No texto o degrau e o corpo da fonte.
+ */
 const WIDTHS: Record<StyleToolId, readonly number[]> = {
   pen: [2, 4, 7],
   highlighter: [12, 20, 30],
   pencil: [1.5, 3, 5],
   shape: [2, 4, 7],
+  text: [16, 24, 40],
 };
 
 const DEFAULTS: Record<StyleToolId, { color: string; width: number }> = {
@@ -60,6 +84,7 @@ const DEFAULTS: Record<StyleToolId, { color: string; width: number }> = {
   highlighter: { color: HIGHLIGHTER_COLORS[0], width: WIDTHS.highlighter[1]! },
   pencil: { color: INK_COLORS[0], width: WIDTHS.pencil[1]! },
   shape: { color: INK_COLORS[0], width: WIDTHS.shape[0]! },
+  text: { color: INK_COLORS[0], width: WIDTHS.text[0]! },
 };
 
 /** Formas oferecidas na barra, na ordem em que aparecem. */
@@ -80,6 +105,8 @@ export class DrawStyle {
   #state: State;
   #shapeKind: ShapeKind;
   #shapeFilled: boolean;
+  #noteBg: string;
+  #noteAlert: AlertLevel | null;
   #listeners = new Set<() => void>();
 
   constructor() {
@@ -87,6 +114,8 @@ export class DrawStyle {
     this.#state = { ...DEFAULTS, ...stored.tools };
     this.#shapeKind = stored.shapeKind ?? DEFAULT_SHAPE_KIND;
     this.#shapeFilled = stored.shapeFilled ?? false;
+    this.#noteBg = stored.noteBg ?? NOTE_COLORS[0];
+    this.#noteAlert = stored.noteAlert ?? null;
   }
 
   colorsFor(id: StyleToolId): readonly string[] {
@@ -118,6 +147,28 @@ export class DrawStyle {
    */
   get shapeFilled(): boolean {
     return this.#shapeFilled;
+  }
+
+  /** Cor do papel do proximo post-it. */
+  get noteBg(): string {
+    return this.#noteBg;
+  }
+
+  /** Nivel de alerta do proximo post-it; null = post-it comum. */
+  get noteAlert(): AlertLevel | null {
+    return this.#noteAlert;
+  }
+
+  setNoteBg(bg: string): void {
+    if (this.#noteBg === bg) return;
+    this.#noteBg = bg;
+    this.#commit();
+  }
+
+  setNoteAlert(level: AlertLevel | null): void {
+    if (this.#noteAlert === level) return;
+    this.#noteAlert = level;
+    this.#commit();
   }
 
   setShapeKind(kind: ShapeKind): void {
@@ -175,6 +226,8 @@ export class DrawStyle {
           ...this.#state,
           shapeKind: this.#shapeKind,
           shapeFilled: this.#shapeFilled,
+          noteBg: this.#noteBg,
+          noteAlert: this.#noteAlert,
         }),
       );
     } catch {
@@ -195,6 +248,8 @@ function readStored(): {
   tools: Partial<State>;
   shapeKind?: ShapeKind;
   shapeFilled?: boolean;
+  noteBg?: string;
+  noteAlert?: AlertLevel | null;
 } {
   let raw: unknown;
   try {
@@ -221,6 +276,8 @@ function readStored(): {
   }
 
   const kind = obj['shapeKind'];
+  const bg = obj['noteBg'];
+  const alert = obj['noteAlert'];
   return {
     tools,
     shapeKind:
@@ -228,5 +285,10 @@ function readStored(): {
         ? (kind as ShapeKind)
         : undefined,
     shapeFilled: typeof obj['shapeFilled'] === 'boolean' ? obj['shapeFilled'] : undefined,
+    noteBg: typeof bg === 'string' && (NOTE_COLORS as readonly string[]).includes(bg) ? bg : undefined,
+    noteAlert:
+      alert === null || (typeof alert === 'string' && alert in ALERT_ICONS)
+        ? (alert as AlertLevel | null)
+        : undefined,
   };
 }

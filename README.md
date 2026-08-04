@@ -5,9 +5,9 @@ rodando 100% offline no Windows: sem login, sem nuvem, sem servidor.
 
 **Status:** canvas infinito, lobby, importação do Whiteboard, **seleção completa**
 (mover, redimensionar, girar, duplicar, excluir, ordem de camadas, undo/redo), **desenho
-à mão** (caneta, marca-texto, lápis e borracha) e **formas com encaixe e réguas**. Dá
-para importar um resumo do Whiteboard, reorganizá-lo com alinhamento assistido e escrever
-em cima dele. Falta edição de texto.
+à mão** (caneta, marca-texto, lápis e borracha), **formas com encaixe e réguas** e
+**texto, post-its e alertas**. Dá para importar um resumo do Whiteboard, reorganizá-lo com
+alinhamento assistido, escrever à mão e digitar em cima dele.
 
 > Retomando o desenvolvimento depois de uma pausa? Comece por **[RETOMAR.md](RETOMAR.md)**:
 > em que pé está e o que fazer a seguir.
@@ -36,8 +36,10 @@ teclas — se o atalho aparece na ajuda, ele funciona.
 |---|---|
 | Salvar | `Ctrl+S` |
 | Voltar ao lobby | `Ctrl+O` |
-| Ferramentas | `V` selecionar · `P` caneta · `M` marca-texto · `L` lápis · `F` formas · `E` borracha |
-| Espessura do traço | `[` mais fino · `]` mais grosso |
+| Ferramentas | `V` selecionar · `P` caneta · `M` marca-texto · `L` lápis · `T` texto · `N` post-it · `F` formas · `E` borracha |
+| Espessura do traço | `[` mais fino · `]` mais grosso (no texto, corpo da fonte) |
+| Editar texto | `F2` (ou `Enter`) na seleção · duplo clique na caixa |
+| Formatar (dentro da caixa) | `Ctrl+B` · `Ctrl+I` · `Ctrl+U` · `Esc` sai mantendo o texto |
 | Encaixe | Automático ao arrastar · `Ctrl` ignora · `A` liga a grade magnética |
 | Réguas | `R` liga/desliga · `U` troca px ↔ cm |
 | Selecionar | Clique · Shift+clique soma · arrastar no vazio faz laço |
@@ -66,9 +68,9 @@ ainda conta como clique, para a tremida natural da mão não cancelar o menu.
 
 ## Desenhar
 
-Seis ferramentas na barra vertical à esquerda: seleção, caneta, marca-texto, lápis,
-formas e borracha. Com uma delas que produza marca ativa, o painel ao lado traz cor e
-espessura (e o tipo de forma, quando for o caso) — e
+Oito ferramentas na barra vertical à esquerda: seleção, caneta, marca-texto, lápis,
+texto, post-it, formas e borracha. Com uma delas que produza marca ativa, o painel ao lado
+traz cor e espessura (e o tipo de forma ou o papel do post-it, quando for o caso) — e
 lembra a escolha **por ferramenta**, porque quem grifa de amarelo e volta para a caneta
 espera a caneta de antes, não uma caneta amarela grossa.
 
@@ -147,6 +149,47 @@ marcador seguindo o cursor — que é o que responde "onde eu estou" num quadro 
 onde não há borda de página para servir de referência. Elas são desenhadas no overlay, e
 não como elementos de DOM: mudam a cada movimento de câmera, e um DOM reposicionado a
 60Hz custaria layout a cada frame.
+
+## Texto, post-its e alertas
+
+**Texto** (`T`): clicar cria uma caixa de largura padrão que cresce em altura conforme se
+escreve; arrastar define a largura, e a quebra de linha acompanha. Clicar sobre uma caixa
+que já existe **abre ela** em vez de criar outra por cima — é o erro que esse gesto
+cometeria com mais frequência, já que a mira do texto é justamente onde há texto. Quem
+está manipulando o quadro chega no mesmo lugar por **duplo clique** ou `F2`.
+
+**Post-it** (`N`) funciona igual, mas tem tamanho próprio e não cresce com o conteúdo: é
+um papel, e um papel cheio demais é sinal de que o assunto merecia outro lugar. Papel e
+**alerta** (importante, dúvida, revisar) saem da barra lateral — e os mesmos botões
+reestilizam o post-it que estiver selecionado, para não existirem dois lugares diferentes
+de escolher a mesma coisa. Um post-it **fixado** (menu de contexto) vira uma ficha no
+canto direito da tela **enquanto estiver fora da vista**: num quadro de 80 mil unidades de
+largura, um lembrete que só aparece quando você já chegou onde ele estava não lembra nada.
+
+Cinco decisões que o código não conta sozinho:
+
+- **A edição é um `contentEditable` sobre o canvas, não um editor desenhado dentro dele.**
+  Cursor, seleção por arraste, acentuação, IME, navegação por teclado e área de
+  transferência saem prontos do Chromium. Reimplementar isso no canvas seria reescrever um
+  motor de texto. Enquanto a caixa está aberta o objeto **não é desenhado** na camada
+  estática (`Renderer.hiddenId`) — senão o texto sairia duplicado, meio pixel fora.
+- **A caixa nova só entra no documento se receber texto.** Enquanto se digita ela é apenas
+  o `<div>`; uma caixa aberta por engano não deixa objeto invisível nem passo de undo.
+  Esvaziar uma caixa que já existia a remove, pelo mesmo motivo. Uma sessão de edição
+  inteira é **um** passo de undo.
+- **`Esc` sai da caixa mantendo o texto.** O texto já está na tela e sumir com ele seria
+  perda de trabalho; quem quer descartar usa `Ctrl+Z`, que desfaz a sessão inteira.
+- **Colar dentro da caixa cola texto puro.** Colar de um site traria fonte, corpo e cor da
+  origem, e o resumo viraria uma colcha de retalhos.
+- **A altura de linha vem da fonte, com piso no multiplicador.** `fontSize × lineHeight`
+  sozinho quebra em dois casos reais aqui: emoji e fonte substituta. Medindo
+  `fontBoundingBox` **e** `actualBoundingBox` por linha, a caixa acompanha o que vai ser
+  desenhado — que é o mesmo critério do motor de CSS.
+
+O layout ([render/text/layout.ts](src/renderer/render/text/layout.ts)) é ponto único de
+verdade para **três** consumidores que precisam concordar: o painter que desenha, o
+importador que grava o tamanho da caixa no `.wbd` e o editor. Cada um medindo por conta
+própria foi exatamente a divergência que a importação carregou da Fase 2 até aqui.
 
 ## Selecionar e manipular
 
@@ -264,12 +307,24 @@ que monta o export num iframe fora da tela (com `sandbox="allow-same-origin"`, s
 `getBoundingClientRect()` de cada elemento. O importador é conferido contra esse gabarito
 a cada execução de `QB_IMPORT`.
 
-Uma diferença que **permanece de propósito**: o tamanho da caixa de texto não fecha com
-o medido. A largura gravada é o *teto de quebra* do original (`max-width`), não a largura
-que o texto ocupou — são grandezas diferentes, e gravar a medida por nós congelaria no
-arquivo um valor da fonte substituta. A altura difere porque a caixa de linha do
-navegador cresce com emoji e com a fonte substituta (medido: 78px de altura para uma
-fonte de 34px). A Fase 5, com layout de texto de verdade, é onde isso se resolve.
+**O tamanho da caixa de texto** era a divergência aberta desde a Fase 2, e a Fase 5
+resolveu a parte que era escolha nossa. Gravávamos como largura o *teto de quebra* do
+original (`max-width`), e não a largura que o texto ocupou: uma linha curta num teto largo
+produzia uma caixa até **3.295px** mais larga que o texto — uma área enorme de nada que
+respondia ao clique. Hoje a caixa é medida pelo layout real, quebrando no teto do original
+e **encolhendo para o que o texto ocupou**. Encolher preserva a quebra, e é isso que torna
+a troca segura: numa quebra gulosa cada linha já cabe na maior delas, e a palavra que não
+coube no teto também não cabe aqui. O erro médio de tamanho caiu de **136px para 85px**, e
+o máximo de 3.295px para 734px (`Cybersec resumão`, 642 caixas).
+
+O que sobrou **não é decisão, é limite de medição**: o navegador monta a caixa de linha
+com a métrica da fonte que realmente desenhou cada glifo — inclusive a substituta que
+entra num emoji (medido no oráculo: caixa de linha de 62px para uma fonte de 34px) — e
+essa métrica não aparece no `measureText` do canvas. Medimos mais estreito que o motor de
+CSS nas linhas com emoji. Efeito colateral do mesmo limite: nos **dois textos girados a
+45°** do resumo, a diferença de tamanho vira diferença de AABB (`pos_max` de `PlainText`
+chega a 80px) — a origem do objeto continua exata, são os cantos do retângulo que chegam
+mais perto.
 
 Duas decisões que valem saber:
 
@@ -354,7 +409,7 @@ npm run selftest
 
 Abre o app, dispara eventos de ponteiro e de teclado direto no app e imprime o
 resultado no terminal — sem depender da janela estar em primeiro plano e sem
-capturar a tela. **60 verificações**, em seis frentes:
+capturar a tela. **77 verificações**, em sete frentes:
 
 - **Navegação:** pan com botão direito e com o do meio, o limiar que separa arrastar
   de clicar, o botão esquerdo permanecendo livre para as ferramentas, o zoom ancorado
@@ -378,8 +433,16 @@ capturar a tela. **60 verificações**, em seis frentes:
   encaixe: alinhar com a borda do vizinho, `Ctrl` ignorando, a grade magnética agindo só
   quando ligada, a guia saindo junto com a correção, e — o que mais importa — o encaixe
   agindo **durante** o arraste e não só ao soltar.
-- **Persistência:** copiar, recortar, colar no cursor, o traço desenhado sobrevivendo à
-  ida e volta pelo formato gravado, e um teste que move e
+- **Texto e post-its:** clicar abrindo a caixa **sem** criar objeto, o texto digitado
+  virando objeto num passo de undo, a caixa deixada em branco não deixando rastro,
+  esvaziar removendo a caixa existente, duplo clique abrindo a caixa e tirando-a do
+  canvas, editar e desfazer, a largura vindo do arraste com a altura vindo do texto,
+  marcadores de lista, o post-it nascendo com o papel e o alerta da barra, a barra
+  reestilizando o que já existe, a ficha do post-it fixado aparecendo só fora da tela, e
+  `T`/`N`. Inclui a propriedade em que a importação se apoia: **encolher a caixa até a
+  maior linha preserva a quebra**.
+- **Persistência:** copiar, recortar, colar no cursor, o traço desenhado e o texto
+  formatado sobrevivendo à ida e volta pelo formato gravado, e um teste que move e
   redimensiona um objeto e passa o documento pelo mesmo JSON que vai para dentro do
   `.wbd`. Sem ele, um `transform` que não sobrevivesse à gravação devolveria o quadro
   reorganizado às posições originais na próxima abertura — e só se descobriria isso
@@ -393,12 +456,17 @@ Como o teste exercita `ToolManager` e o registro de atalhos de ponta a ponta, el
 regressão de fiação, não só de matemática — foi assim que apareceu, por exemplo, um
 gesto de mover que nunca chegava a promover o arraste.
 
+Um bloco que **explode** vira FALHA com a mensagem, e não uma execução pendurada: sem
+isso, uma exceção aborta o relatório antes do `markClean()`, o guarda de `beforeunload`
+recusa o fechamento e a janela fica aberta esperando alguém no teclado.
+
 O que ele **não** cobre: a tradução que o Windows faz do botão físico para
 `PointerEvent.button` (padrão, não varia) nem os pixels desenhados. Para os pixels, o
-teste termina montando uma cena com a seleção ativa e **um traço de cada variante,
-desenhado pela ferramenta de verdade** — então `QB_SHOT=<arquivo.png> npm run selftest`
-fotografa só a janela do app e mostra o contorno, as alças, a alça de rotação, o grifo
-passando por baixo da tinta e a espessura do lápis variando com a pressão.
+teste termina montando uma cena com a seleção ativa e **tudo produzido pelas ferramentas
+de verdade** — então `QB_SHOT=<arquivo.png> npm run selftest` fotografa só a janela do app
+e mostra o contorno, as alças, a alça de rotação, o grifo passando por baixo da tinta, a
+espessura do lápis variando com a pressão, as formas, as réguas, uma caixa de texto com
+negrito, sublinhado e marcadores, e um post-it com alerta.
 
 ## Requisitos
 
@@ -505,8 +573,10 @@ src/
    ├─ core/           Document, SpatialIndex, Camera, Scheduler, History
    ├─ commands/       um comando por mutação (base do undo/redo)
    ├─ render/         Renderer, camadas, painters, bitmap cache
+   │  └─ text/           layout de texto (medida, quebra, linhas) — usado por
+   │                     painter, importador e editor
    ├─ tools/          uma ferramenta por arquivo, interface Tool comum
-   ├─ features/       search, snapping, clipboard, images, export
+   ├─ features/       text, snapping, clipboard, images, import, storage
    ├─ ui/             toolbar, painéis, modais
    ├─ state/          preferências, tema, favoritos
    └─ styles/
@@ -632,7 +702,7 @@ serve para migrar.
 - [x] **Fase 3** — Seleção e manipulação: mover, redimensionar, rotacionar, excluir, duplicar, ordem de camadas, undo/redo
 - [x] **Fase 4** — Caneta, marca-texto, lápis, borracha, cores e espessura
 - [x] **Fase 4.5** — Formas geométricas, régua e snap
-- [ ] **Fase 5** — Texto, post-its e alertas
+- [x] **Fase 5** — Texto, post-its e alertas
 - [ ] **Fase 6** — Busca Ctrl+F
 - [ ] **Fase 7** — Imagens
 - [ ] **Fase 7.5** — Transcrever imagem em texto (OCR). Viabilidade confirmada:

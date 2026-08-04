@@ -3,8 +3,10 @@ import type { Camera } from '../core/Camera';
 import type { DrawStyle } from './DrawStyle';
 import { DrawTool } from './DrawTool';
 import { EraserTool } from './EraserTool';
+import { NoteTool } from './NoteTool';
 import { SelectTool } from './SelectTool';
 import { ShapeTool } from './ShapeTool';
+import { TextTool } from './TextTool';
 import type { Tool, ToolContext, ToolId, ToolPointer } from './types';
 
 /**
@@ -38,6 +40,8 @@ export class ToolManager {
       pencil: new DrawTool('pencil', ctx, style),
       eraser: new EraserTool(ctx),
       shape: new ShapeTool(ctx, style),
+      text: new TextTool(ctx, style),
+      note: new NoteTool(ctx, style),
     };
     this.#rect = host.getBoundingClientRect();
     this.#bind();
@@ -148,6 +152,15 @@ export class ToolManager {
     on<PointerEvent>(this.host, 'pointerup', end);
     on<PointerEvent>(this.host, 'pointercancel', end);
 
+    // Duplo clique nao e um gesto de ponteiro a mais: e um evento proprio do
+    // navegador, que ja resolve a janela de tempo e a tolerancia de movimento
+    // entre os dois cliques. Reimplementar isso a partir dos pointerdown daria
+    // um limiar diferente do que o sistema usa em todo o resto da interface.
+    on<MouseEvent>(this.host, 'dblclick', (e) => {
+      if (e.button !== 0) return;
+      this.active.onDoubleClick?.(this.#toPointer(e));
+    });
+
     // Perder o foco no meio de um arraste nunca entrega o pointerup: sem isto o
     // gesto ficaria pendurado e o proximo clique continuaria de onde parou.
     on(window, 'blur', () => {
@@ -159,17 +172,19 @@ export class ToolManager {
     on(window, 'resize', () => this.remeasure());
   }
 
-  #toPointer(e: PointerEvent): ToolPointer {
+  #toPointer(e: PointerEvent | MouseEvent): ToolPointer {
     const screen: Vec2 = { x: e.clientX - this.#rect.left, y: e.clientY - this.#rect.top };
     const world = this.ctx.camera.screenToWorld(screen);
     this.#lastWorld = world;
+    const pressure = e instanceof PointerEvent ? e.pressure : 0;
     return {
       screen,
       world,
       // Mesa digitalizadora entrega a pressao real; mouse manda sempre 0,5. Zero
-      // chega de dois jeitos -- evento sintetico do autoteste e alguns drivers no
-      // pointerup -- e um traco de pressao zero sairia sem espessura no lapis.
-      pressure: e.pressure > 0 ? e.pressure : 0.5,
+      // chega de tres jeitos -- evento sintetico do autoteste, alguns drivers no
+      // pointerup e o duplo clique, que nao e um PointerEvent -- e um traco de
+      // pressao zero sairia sem espessura no lapis.
+      pressure: pressure > 0 ? pressure : 0.5,
       shift: e.shiftKey,
       alt: e.altKey,
       ctrl: e.ctrlKey || e.metaKey,

@@ -53,9 +53,16 @@ const PALETTE = [
   { color: '#ffc9c9', kind: 'superficie', desc: 'marca-texto rosa' },
   { color: '#d0bfff', kind: 'superficie', desc: 'marca-texto roxo' },
   { color: '#fff3bf', kind: 'superficie', desc: 'post-it amarelo' },
+  { color: '#d3f9d8', kind: 'superficie', desc: 'post-it verde' },
   { color: '#d0ebff', kind: 'superficie', desc: 'post-it azul' },
+  { color: '#ffdeeb', kind: 'superficie', desc: 'post-it rosa' },
   { color: '#e9ecef', kind: 'superficie', desc: 'post-it cinza' },
   { color: '#e0313122', kind: 'superficie', desc: 'preenchimento translucido' },
+  // Barras de alerta do post-it: sao MARCA sobre o papel, e e o contraste delas
+  // que distingue os tres niveis a distancia.
+  { color: '#e03131', kind: 'marca', desc: 'alerta importante' },
+  { color: '#1971c2', kind: 'marca', desc: 'alerta duvida' },
+  { color: '#f08c00', kind: 'marca', desc: 'alerta revisar' },
 ];
 
 const MIN_OK = 2.0;
@@ -99,7 +106,7 @@ for (const [themeName, bg] of Object.entries(THEMES)) {
   }
 
   console.log('\ntexto sobre post-it:');
-  for (const bgNote of ['#fff3bf', '#d0ebff', '#e9ecef']) {
+  for (const bgNote of ['#fff3bf', '#d3f9d8', '#d0ebff', '#ffdeeb', '#e9ecef']) {
     console.log(`  ${bgNote} -> texto ${readableTextOn(bgNote)}`);
   }
 }

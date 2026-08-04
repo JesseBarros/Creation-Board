@@ -7,11 +7,12 @@ import type {
   ImageObject,
   NoteObject,
   PathObject,
+  RichSpan,
   TextObject,
   Transform,
 } from '@shared/model/types';
 import type { ImportReport } from '@shared/importer';
-import { textFont, wrap } from '../../render/painters/text';
+import { layoutText } from '../../render/text/layout';
 import type { AssetStore } from '../images/AssetStore';
 import { dataUriToBlob } from '../images/dataUri';
 
@@ -252,23 +253,29 @@ function readText(anchor: HTMLElement, z: string): TextObject | null {
 
   const bold = (parseInt(core.style.fontWeight, 10) || 400) >= 600;
   const italic = core.style.fontStyle === 'italic';
+  const spans: RichSpan[] = [
+    { text: content, ...(bold ? { bold } : {}), ...(italic ? { italic } : {}) },
+  ];
 
-  // Tamanho medido com a MESMA quebra de linha que o renderer vai aplicar.
+  // A caixa e medida pelo MESMO layout que vai desenhar (Fase 5), quebrando no
+  // teto do original e encolhendo para o que o texto ocupou.
   //
-  // A versao anterior contava paragrafos (`split('\n')`) para achar a altura.
-  // Um paragrafo que quebra em duas linhas contava como um, a caixa saia com
-  // metade da altura necessaria e o painter descartava a linha que passava do
-  // limite -- texto sumia da tela. Medir aqui e a unica forma de a altura
-  // corresponder ao que sera desenhado.
-  // A largura gravada e o TETO DE QUEBRA do original, nao a largura que o texto
-  // acabou ocupando. Sao coisas diferentes, e a distincao importa: a fonte real
-  // (Aptos) costuma faltar nesta maquina, e a substituta mede cerca de 1,5x mais
-  // estreito. Gravar a largura medida por nos congelaria no arquivo um valor que
-  // nao e do original, e o texto passaria a quebrar errado no dia em que a fonte
-  // certa estivesse instalada. O teto de quebra vale para qualquer fonte.
-  const w = maxWidth;
-  const { lines } = measureText(content, w, fontSize, fontFamily, bold, italic);
-  const h = fontSize * lineHeight * lines;
+  // Encolher preserva a quebra: numa quebra gulosa, cada linha ja cabe na maior
+  // delas, e a palavra que nao coube no teto tambem nao cabe aqui -- refazer o
+  // layout com esta largura da exatamente as mesmas linhas. E o que corrige a
+  // divergencia que a importacao carregava desde a Fase 2: gravavamos o teto de
+  // quebra como largura da caixa, e uma linha curta num teto largo produzia uma
+  // caixa ate 3.295px mais larga que o texto (medido contra o oraculo).
+  const layout = layoutText(spans, {
+    width: maxWidth,
+    fontSize,
+    fontFamily,
+    lineHeight,
+    align: 'left',
+    list: 'none',
+  });
+  const w = Math.min(maxWidth, Math.max(1, layout.width));
+  const h = layout.height;
 
   return finish<TextObject>({
     ...baseFields(z),
@@ -277,7 +284,7 @@ function readText(anchor: HTMLElement, z: string): TextObject | null {
     w,
     h,
     autoHeight: true,
-    content: [{ text: content, ...(bold ? { bold } : {}), ...(italic ? { italic } : {}) }],
+    content: spans,
     fontFamily,
     fontSize,
     lineHeight,
@@ -285,44 +292,6 @@ function readText(anchor: HTMLElement, z: string): TextObject | null {
     color: core.style.color || '#000000',
     list: 'none',
   } as TextObject);
-}
-
-/**
- * Contexto 2D so para medir texto, sem canvas visivel.
- *
- * Criado uma vez e reaproveitado: um resumo tem centenas de caixas de texto, e
- * alocar um canvas por caixa seria desperdicio puro.
- */
-let measureCtx: CanvasRenderingContext2D | null = null;
-
-function measuringContext(): CanvasRenderingContext2D {
-  if (!measureCtx) {
-    const ctx = document.createElement('canvas').getContext('2d');
-    if (!ctx) throw new Error('Contexto 2D indisponivel para medir texto');
-    measureCtx = ctx;
-  }
-  return measureCtx;
-}
-
-/**
- * Quantas linhas o texto ocupa depois de quebrado.
- *
- * Usa a MESMA funcao de quebra e a MESMA montagem de fonte que o painter -- por
- * isso as duas sao importadas dele em vez de reescritas aqui. Se divergirem, a
- * altura gravada deixa de corresponder ao que e desenhado e o painter volta a
- * cortar linha.
- */
-function measureText(
-  text: string,
-  maxWidth: number,
-  fontSize: number,
-  fontFamily: string,
-  bold: boolean,
-  italic: boolean,
-): { lines: number } {
-  const ctx = measuringContext();
-  ctx.font = textFont(fontSize, fontFamily, bold, italic);
-  return { lines: Math.max(1, wrap(ctx, text, maxWidth).length) };
 }
 
 function readNote(anchor: HTMLElement, z: string): NoteObject | null {

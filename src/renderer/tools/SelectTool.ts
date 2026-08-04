@@ -202,6 +202,23 @@ export class SelectTool implements Tool {
     this.ctx.invalidate();
   }
 
+  /**
+   * Duplo clique numa caixa de texto ou post-it abre a edicao.
+   *
+   * E o caminho de quem esta manipulando o quadro e quer corrigir uma palavra
+   * sem trocar de ferramenta -- o mesmo gesto de qualquer editor. O clique
+   * simples que veio antes ja selecionou o objeto, entao a caixa que abre e
+   * sempre a que esta destacada.
+   */
+  onDoubleClick(p: ToolPointer): void {
+    const hit = hitTest(this.ctx.doc, p.world, this.ctx.camera.zoom);
+    if (!hit || (hit.type !== 'text' && hit.type !== 'note')) return;
+    // O clique que precedeu o duplo deixou um gesto pendente; sem abortar, o
+    // pointerup seguinte reduziria a selecao com a caixa ja aberta.
+    this.#reset();
+    this.ctx.beginEdit(hit, { selectAll: false });
+  }
+
   cancel(): boolean {
     if (this.#mode === 'idle') return false;
     // Devolve os objetos ao estado do inicio do gesto. O historico nunca chegou

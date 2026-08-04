@@ -36,6 +36,9 @@ export type ShortcutId =
   | 'toolPencil'
   | 'toolEraser'
   | 'toolShape'
+  | 'toolText'
+  | 'toolNote'
+  | 'editText'
   | 'thinner'
   | 'thicker'
   | 'snapToGrid'
@@ -101,12 +104,25 @@ export const SHORTCUTS: ShortcutDef[] = [
   { id: 'toolPen', group: 'Ferramentas', keys: 'P', label: 'Caneta', scope: 'board' },
   { id: 'toolHighlighter', group: 'Ferramentas', keys: 'M', label: 'Marca-texto (entra por baixo do conteudo)', scope: 'board' },
   { id: 'toolPencil', group: 'Ferramentas', keys: 'L', label: 'Lapis (a espessura acompanha a pressao)', scope: 'board' },
+  { id: 'toolText', group: 'Ferramentas', keys: 'T', label: 'Texto (clique cria; arrastar define a largura)', scope: 'board' },
+  { id: 'toolNote', group: 'Ferramentas', keys: 'N', label: 'Post-it (papel e alerta se escolhem na barra)', scope: 'board' },
   { id: 'toolShape', group: 'Ferramentas', keys: 'F', label: 'Formas (o tipo se escolhe na barra)', scope: 'board' },
   { id: 'toolEraser', group: 'Ferramentas', keys: 'E', label: 'Borracha (apaga o traco inteiro)', scope: 'board' },
-  { id: 'thinner', group: 'Ferramentas', keys: '[', label: 'Traco mais fino', scope: 'board' },
-  { id: 'thicker', group: 'Ferramentas', keys: ']', label: 'Traco mais grosso', scope: 'board' },
+  { id: 'thinner', group: 'Ferramentas', keys: '[', label: 'Traco mais fino (no texto, fonte menor)', scope: 'board' },
+  { id: 'thicker', group: 'Ferramentas', keys: ']', label: 'Traco mais grosso (no texto, fonte maior)', scope: 'board' },
   { group: 'Ferramentas', keys: 'Arrastar', label: 'Formas: Shift trava quadrado/circulo/angulo, Alt cresce do centro' },
   { group: 'Ferramentas', keys: 'Botao direito + arrastar', label: 'Mover o quadro sem cortar o traco' },
+
+  {
+    id: 'editText',
+    group: 'Texto',
+    keys: 'F2|Enter',
+    label: 'Editar a caixa de texto ou o post-it selecionado',
+    scope: 'board',
+  },
+  { group: 'Texto', keys: 'Duplo clique', label: 'Editar a caixa sob o cursor, sem trocar de ferramenta' },
+  { group: 'Texto', keys: 'Ctrl+B / Ctrl+I / Ctrl+U', label: 'Negrito, italico e sublinhado (dentro da caixa)' },
+  { group: 'Texto', keys: 'Escape', label: 'Sair da caixa mantendo o texto (Ctrl+Z desfaz a edicao inteira)' },
 
   { group: 'Encaixe', keys: 'Arrastar', label: 'Guias aparecem ao alinhar com as bordas e o centro dos vizinhos' },
   { group: 'Encaixe', keys: 'Ctrl + arrastar', label: 'Ignorar o encaixe neste gesto' },

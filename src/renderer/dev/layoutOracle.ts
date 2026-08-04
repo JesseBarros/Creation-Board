@@ -25,6 +25,13 @@ export interface MeasuredRect {
   y: number;
   w: number;
   h: number;
+  /**
+   * Como o navegador resolveu o texto desta ancora: alinhamento, fonte e altura
+   * de linha JA COMPUTADAS. E o que transforma "a caixa nao fecha" em "a caixa
+   * nao fecha porque a fonte que entrou nao e a que o importador assumiu" --
+   * sem isto, so o desvio numerico e todo diagnostico vira palpite.
+   */
+  detail?: string;
 }
 
 /**
@@ -102,12 +109,18 @@ export async function measureLayout(html: string): Promise<MeasuredRect[]> {
       const targets = sel ? [...anchor.querySelectorAll<Element>(sel)] : [];
       const r = unionRects(targets.length > 0 ? targets : [anchor]);
 
+      const detail =
+        kind === 'PlainText' || kind === 'Note'
+          ? describeText(frame.contentWindow, anchor, scale)
+          : undefined;
+
       out.push({
         kind,
         x: (r.left - base.left) / scale,
         y: (r.top - base.top) / scale,
         w: r.width / scale,
         h: r.height / scale,
+        ...(detail ? { detail } : {}),
       });
     }
 
@@ -115,6 +128,51 @@ export async function measureLayout(html: string): Promise<MeasuredRect[]> {
   } finally {
     frame.remove();
   }
+}
+
+/**
+ * Estilo de texto ja resolvido pelo navegador, mais o teto de quebra declarado.
+ *
+ * O `max-width` vem do estilo inline (e o que o importador le); a fonte e a
+ * altura de linha vem do estilo COMPUTADO, que e onde a heranca e a fonte
+ * substituta aparecem.
+ */
+function describeText(win: Window | null, anchor: HTMLElement, scale: number): string {
+  const box = anchor.querySelector<HTMLElement>('.textbox');
+  const core = anchor.querySelector<HTMLElement>('.textBoxCore');
+  if (!box) return '';
+  const cs = (win ?? window).getComputedStyle(core ?? box);
+  const r = box.getBoundingClientRect();
+  return (
+    `ancora=${anchor.className || '(sem classe)'} ` +
+    `maxW=${box.style.maxWidth || '-'} fonte=${cs.fontFamily} ${cs.fontSize} ` +
+    `peso=${cs.fontWeight} entrelinha=${cs.lineHeight} ` +
+    `caixa=${(r.width / scale).toFixed(1)}x${(r.height / scale).toFixed(1)}` +
+    // O que o IMPORTADOR le e o estilo inline, nao o computado. Sao coisas
+    // diferentes quando o valor vem de heranca, de classe ou de variavel CSS --
+    // e e nessa diferenca que a fonte usada para medir deixa de ser a fonte
+    // usada para desenhar.
+    ` | inline: familia=${core?.style.fontFamily || '-'} ` +
+    `peso=${core?.style.fontWeight || '-'} tamanho=${box.style.fontSize || '-'}` +
+    ` | espacamento=${cs.letterSpacing}/${cs.wordSpacing} caixaAlta=${cs.textTransform}` +
+    ` linhas=${lineBoxes(core ?? box)} chars=${(core ?? box).textContent?.length ?? 0}`
+  );
+}
+
+/**
+ * Quantas linhas o navegador realmente formou.
+ *
+ * Um `Range` sobre o conteudo devolve um retangulo por caixa de linha; contar
+ * retangulos distintos por altura da o numero de linhas sem depender de
+ * interpretar o HTML. E o dado que separa "medimos a fonte errada" de "quebramos
+ * em lugares diferentes".
+ */
+function lineBoxes(el: Element): number {
+  const range = el.ownerDocument.createRange();
+  range.selectNodeContents(el);
+  const tops = new Set<number>();
+  for (const r of range.getClientRects()) tops.add(Math.round(r.top));
+  return tops.size;
 }
 
 /** Retangulo que envolve todos os elementos, em coordenadas de tela do iframe. */

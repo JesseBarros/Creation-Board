@@ -109,17 +109,27 @@ export function formatGeometry(errors: readonly GeometryError[]): string[] {
     if (e.sizeMax > 1) lines.push(`      PIOR tam ${e.kind}: ${e.worstSize}`);
   }
 
-  // A posicao tem que fechar em zero. O tamanho da caixa de texto NAO fecha, e
-  // isso e esperado -- investigado e explicado para nao virar caca ao fantasma a
-  // cada execucao:
-  //   largura: gravamos o teto de quebra do original (`max-width`), nao a
-  //     largura que o texto ocupou. Sao grandezas diferentes de proposito.
-  //   altura: a caixa de linha do navegador cresce com a fonte substituta e com
-  //     emoji (medido: 78px de altura para uma fonte de 34px numa linha com
-  //     emoji), enquanto usamos `fontSize * lineHeight`.
-  // Some quando a Fase 5 trouxer layout de texto de verdade.
+  // A posicao tem que fechar em zero, com UMA excecao conhecida (abaixo).
+  //
+  // O tamanho da caixa de texto ainda nao fecha, e a causa esta medida: o
+  // navegador monta a caixa de linha com a metrica da fonte que REALMENTE
+  // desenhou cada glifo, inclusive a substituta que entra num emoji (medido no
+  // oraculo: 62px de caixa de linha para uma fonte de 34px), e essa metrica nao
+  // aparece no `measureText` do canvas. Medimos mais estreito e mais baixo que
+  // o motor de CSS nas linhas com emoji, e dai a diferenca de tamanho.
+  //
+  // A Fase 5 tirou daqui a parte que era escolha nossa: a largura gravada era o
+  // teto de quebra (`max-width`), o que deixava caixas ate 3.295px mais largas
+  // que o texto. Hoje a caixa encolhe para o que o texto ocupou. O que sobrou e
+  // limite de medicao, nao decisao.
   if (errors.some((e) => e.kind === 'PlainText' && e.sizeMax > 1)) {
-    lines.push('      (tamanho de PlainText diverge por metrica de fonte; ver comentario)');
+    lines.push('      (tamanho de PlainText: metrica de emoji do canvas != do DOM; ver comentario)');
+    // Texto GIRADO transforma diferenca de tamanho em diferenca de posicao: o
+    // AABB de uma caixa a 45 graus depende dos dois lados dela. A origem do
+    // objeto continua exata -- sao os cantos do retangulo que chegam mais perto.
+    // Por isso `pos_max` de PlainText pode passar de 1px enquanto todo o resto
+    // fecha em zero; ha dois textos a 45 graus neste export.
+    lines.push('      (pos de PlainText girado carrega a diferenca de tamanho; origem segue exata)');
   }
   return lines;
 }
@@ -129,7 +139,8 @@ function describe(want: MeasuredRect, got: Rect): string {
     `medido x=${f(want.x)} y=${f(want.y)} ${f(want.w)}x${f(want.h)} | ` +
     `importado x=${f(got.x)} y=${f(got.y)} ${f(got.w)}x${f(got.h)} | ` +
     `desvio dx=${f(got.x - want.x)} dy=${f(got.y - want.y)} ` +
-    `dw=${f(got.w - want.w)} dh=${f(got.h - want.h)}`
+    `dw=${f(got.w - want.w)} dh=${f(got.h - want.h)}` +
+    (want.detail ? `\n        ${want.detail}` : '')
   );
 }
 
