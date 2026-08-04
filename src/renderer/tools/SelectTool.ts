@@ -22,7 +22,9 @@ import {
   rotateObjects,
   scaleObjects,
 } from '../features/selection/transformOps';
+import { snapPoint, snapRect, type SnapGuide } from '../features/snapping/snap';
 import { paintSelection } from '../render/SelectionOverlay';
+import { paintSnapGuides } from '../render/SnapGuides';
 import { DRAG_THRESHOLD_PX, screenDistance, type Tool, type ToolContext, type ToolPointer } from './types';
 
 /**
@@ -71,6 +73,13 @@ export class SelectTool implements Tool {
   #marquee: Rect | null = null;
   /** Selecao anterior ao laco, preservada quando ele soma com Shift. */
   #marqueeBase: ObjectId[] = [];
+
+  /** AABB da selecao no inicio do gesto; base do encaixe ao mover. */
+  #startBounds: Rect | null = null;
+  /** Ids que estao se movendo: nao podem servir de referencia para si mesmos. */
+  #moving: Set<ObjectId> = new Set();
+  /** Guias do encaixe do frame corrente, desenhadas no overlay. */
+  #guides: SnapGuide[] = [];
 
   /** Clique registrado no pointerdown, resolvido no pointerup se nao virou arraste. */
   #clickId: ObjectId | null = null;
@@ -225,6 +234,8 @@ export class SelectTool implements Tool {
     this.#before = new Map(
       objects.map((o) => [o.id, { transform: { ...o.transform } } as ObjectPatch]),
     );
+    this.#moving = new Set(objects.map((o) => o.id));
+    this.#startBounds = boundsOf(objects);
 
     if (this.#intent === 'move') {
       // Mover nao precisa de mais nada: o delta e medido contra `#startWorld`.
@@ -259,10 +270,33 @@ export class SelectTool implements Tool {
     let dx = p.world.x - this.#startWorld.x;
     let dy = p.world.y - this.#startWorld.y;
     // Shift trava no eixo dominante, para arrastar reto sem depender do pulso.
-    if (p.shift) {
-      if (Math.abs(dx) >= Math.abs(dy)) dy = 0;
-      else dx = 0;
+    const lockY = p.shift && Math.abs(dx) >= Math.abs(dy);
+    const lockX = p.shift && !lockY;
+    if (lockY) dy = 0;
+    if (lockX) dx = 0;
+
+    // O encaixe age sobre o AABB da selecao ja deslocado, e devolve so a
+    // correcao -- o delta continua sendo medido contra o inicio do gesto, senao
+    // a selecao perderia o vinculo com o cursor. Ctrl desliga o encaixe.
+    const bounds = this.#startBounds;
+    if (bounds && !p.ctrl) {
+      const moved: Rect = { x: bounds.x + dx, y: bounds.y + dy, w: bounds.w, h: bounds.h };
+      const snap = snapRect(moved, {
+        doc: this.ctx.doc,
+        zoom: this.ctx.camera.zoom,
+        exclude: this.#moving,
+        snapToGrid: this.ctx.doc.prefs.snapToGrid,
+        gridSize: this.ctx.doc.prefs.grid.size,
+        // Um eixo travado pelo Shift nao pode ser destravado pelo encaixe.
+        axes: { x: !lockX, y: !lockY },
+      });
+      dx += snap.dx;
+      dy += snap.dy;
+      this.#guides = snap.guides;
+    } else {
+      this.#guides = [];
     }
+
     this.#apply(moveObjects(this.#originals, dx, dy));
   }
 
@@ -273,8 +307,34 @@ export class SelectTool implements Tool {
 
     const dir = handleDirection(handle);
     const cur = worldToFrame(frame, p.world.x, p.world.y);
-    const targetX = cur.x - this.#grab.x;
-    const targetY = cur.y - this.#grab.y;
+    let targetX = cur.x - this.#grab.x;
+    let targetY = cur.y - this.#grab.y;
+
+    // Encaixe da borda arrastada. So com o quadro alinhado aos eixos: girado, a
+    // borda do objeto nao e paralela as linhas-guia e "alinhar" nao quer dizer
+    // nada. Proporcao travada tambem fica de fora -- o encaixe de um eixo
+    // mudaria o outro pela regra da proporcao e a borda sairia do lugar
+    // encaixado.
+    const forcedUniform = requiresUniformScale(this.#originals, frame);
+    const corner = dir.dx !== 0 && dir.dy !== 0;
+    const locked = forcedUniform || (p.shift && corner);
+    if (!p.ctrl && !locked && frame.rotation === 0) {
+      const snap = snapPoint(frame.x + targetX, frame.y + targetY, {
+        doc: this.ctx.doc,
+        zoom: this.ctx.camera.zoom,
+        exclude: this.#moving,
+        snapToGrid: this.ctx.doc.prefs.snapToGrid,
+        gridSize: this.ctx.doc.prefs.grid.size,
+        // Uma alca de lado so mexe num eixo; encaixar o outro moveria uma borda
+        // que o usuario nao esta arrastando.
+        axes: { x: dir.dx !== 0, y: dir.dy !== 0 },
+      });
+      targetX += snap.dx;
+      targetY += snap.dy;
+      this.#guides = snap.guides;
+    } else {
+      this.#guides = [];
+    }
 
     // Alt ancora no centro: os dois lados se afastam juntos.
     const anchor = p.alt ? { x: frame.w / 2, y: frame.h / 2 } : this.#anchor;
@@ -283,10 +343,9 @@ export class SelectTool implements Tool {
     let fy = dir.dy === 0 ? 1 : ratio(targetY - anchor.y, this.#handleAt.y - anchor.y);
 
     // Proporcao travada: pelo Shift num canto, ou por obrigacao quando a
-    // selecao tem objetos girados (ver requiresUniformScale).
-    const forced = requiresUniformScale(this.#originals, frame);
-    const corner = dir.dx !== 0 && dir.dy !== 0;
-    if (forced || (p.shift && corner)) {
+    // selecao tem objetos girados (ver requiresUniformScale). E a mesma condicao
+    // que ja desligou o encaixe acima.
+    if (locked) {
       const f = Math.max(dir.dx === 0 ? 0 : Math.abs(fx), dir.dy === 0 ? 0 : Math.abs(fy));
       fx = f * (fx < 0 ? -1 : 1);
       fy = f * (fy < 0 ? -1 : 1);
@@ -346,6 +405,9 @@ export class SelectTool implements Tool {
     this.#handle = null;
     this.#clickId = null;
     this.#marqueeBase = [];
+    this.#startBounds = null;
+    this.#moving = new Set();
+    this.#guides = [];
   }
 
   // ---------------------------------------------------------------- visual
@@ -379,7 +441,25 @@ export class SelectTool implements Tool {
       showHandles: this.#mode === 'idle' || this.#mode === 'pending',
       showRotate: members.length > 0,
     });
+    paintSnapGuides(ctx, camera, this.#guides);
   }
+}
+
+/** AABB de um conjunto de objetos. Base do encaixe ao mover a selecao. */
+function boundsOf(objects: readonly BoardObject[]): Rect | null {
+  if (objects.length === 0) return null;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const o of objects) {
+    const b = o.bbox;
+    if (b.x < minX) minX = b.x;
+    if (b.y < minY) minY = b.y;
+    if (b.x + b.w > maxX) maxX = b.x + b.w;
+    if (b.y + b.h > maxY) maxY = b.y + b.h;
+  }
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
 }
 
 /**

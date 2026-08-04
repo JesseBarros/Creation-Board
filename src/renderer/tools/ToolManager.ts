@@ -4,6 +4,7 @@ import type { DrawStyle } from './DrawStyle';
 import { DrawTool } from './DrawTool';
 import { EraserTool } from './EraserTool';
 import { SelectTool } from './SelectTool';
+import { ShapeTool } from './ShapeTool';
 import type { Tool, ToolContext, ToolId, ToolPointer } from './types';
 
 /**
@@ -36,6 +37,7 @@ export class ToolManager {
       highlighter: new DrawTool('highlighter', ctx, style),
       pencil: new DrawTool('pencil', ctx, style),
       eraser: new EraserTool(ctx),
+      shape: new ShapeTool(ctx, style),
     };
     this.#rect = host.getBoundingClientRect();
     this.#bind();
@@ -130,6 +132,10 @@ export class ToolManager {
       if (this.#captured !== null && e.pointerId !== this.#captured) return;
       this.active.onPointerMove(this.#toPointer(e));
       this.#updateCursor(e);
+      // O cromo que segue o cursor -- marcador das reguas, circulo da borracha --
+      // precisa de um frame a cada movimento. E so a camada de cima: o conteudo
+      // do quadro nao e redesenhado por causa disto.
+      this.ctx.invalidateOverlay();
     });
 
     const end = (e: PointerEvent): void => {

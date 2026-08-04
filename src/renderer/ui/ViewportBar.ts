@@ -4,6 +4,8 @@ export interface ViewportBarActions {
   zoomTo(zoom: number): void;
   fitToContent(): void;
   toggleGrid(): void;
+  toggleSnap(): void;
+  toggleRulers(): void;
   toggleTheme(): void;
   save(): void;
   backToLobby(): void;
@@ -20,6 +22,8 @@ export class ViewportBar {
   #zoomLabel: HTMLButtonElement;
   #menu: HTMLElement;
   #gridBtn: HTMLButtonElement;
+  #snapBtn: HTMLButtonElement;
+  #rulerBtn: HTMLButtonElement;
   #nameLabel: HTMLElement;
   #undoBtn: HTMLButtonElement;
   #redoBtn: HTMLButtonElement;
@@ -46,6 +50,10 @@ export class ViewportBar {
     this.setHistory(false, false);
 
     this.#gridBtn = iconButton('grade', 'Grade de fundo (G)', () => this.actions.toggleGrid());
+    this.#snapBtn = iconButton('ímã', 'Grade magnética: encaixar na grade (A)', () =>
+      this.actions.toggleSnap(),
+    );
+    this.#rulerBtn = iconButton('régua', 'Réguas nas bordas (R)', () => this.actions.toggleRulers());
     const fitBtn = iconButton('ajustar', 'Ajustar a tela (Ctrl+1)', () =>
       this.actions.fitToContent(),
     );
@@ -91,6 +99,8 @@ export class ViewportBar {
       this.#redoBtn,
       divider(),
       this.#gridBtn,
+      this.#snapBtn,
+      this.#rulerBtn,
       fitBtn,
       themeBtn,
       helpBtn,
@@ -110,6 +120,14 @@ export class ViewportBar {
 
   setGridEnabled(on: boolean): void {
     this.#gridBtn.classList.toggle('qb-bar__btn--active', on);
+  }
+
+  setSnap(on: boolean): void {
+    this.#snapBtn.classList.toggle('qb-bar__btn--active', on);
+  }
+
+  setRulers(on: boolean): void {
+    this.#rulerBtn.classList.toggle('qb-bar__btn--active', on);
   }
 
   setHistory(canUndo: boolean, canRedo: boolean): void {

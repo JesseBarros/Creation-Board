@@ -1,5 +1,6 @@
-import type { DrawStyle } from '../tools/DrawStyle';
-import { isDrawTool, type DrawToolId, type ToolId } from '../tools/types';
+import type { ShapeKind } from '@shared/model/types';
+import { SHAPE_KINDS, type DrawStyle } from '../tools/DrawStyle';
+import { hasStyle, type StyleToolId, type ToolId } from '../tools/types';
 
 /**
  * Barra vertical de ferramentas, na lateral esquerda do quadro.
@@ -28,14 +29,28 @@ const TOOLS: ToolDef[] = [
   { id: 'pen', icon: '🖊', label: 'Caneta', key: 'P' },
   { id: 'highlighter', icon: '▬', label: 'Marca-texto', key: 'M' },
   { id: 'pencil', icon: '✎', label: 'Lapis', key: 'L' },
+  { id: 'shape', icon: '◻', label: 'Formas', key: 'F' },
   { id: 'eraser', icon: '⌫', label: 'Borracha', key: 'E' },
 ];
+
+/** Icone e nome de cada forma no seletor. */
+const SHAPE_LABELS: Record<ShapeKind, { icon: string; label: string }> = {
+  rect: { icon: '▭', label: 'Retangulo (Shift: quadrado)' },
+  square: { icon: '◻', label: 'Quadrado' },
+  ellipse: { icon: '⬭', label: 'Elipse (Shift: circulo)' },
+  circle: { icon: '◯', label: 'Circulo' },
+  triangle: { icon: '△', label: 'Triangulo' },
+  diamond: { icon: '◇', label: 'Losango' },
+  line: { icon: '╱', label: 'Linha (Shift: 15 em 15 graus)' },
+  arrow: { icon: '↗', label: 'Seta (Shift: 15 em 15 graus)' },
+};
 
 export class ToolBar {
   readonly el: HTMLElement;
 
   #buttons = new Map<ToolId, HTMLButtonElement>();
   #options: HTMLElement;
+  #shapeRow: HTMLElement;
   #colorRow: HTMLElement;
   #widthRow: HTMLElement;
   #active: ToolId = 'select';
@@ -61,6 +76,8 @@ export class ToolBar {
       rail.append(b);
     }
 
+    this.#shapeRow = document.createElement('div');
+    this.#shapeRow.className = 'qb-tools__shapes';
     this.#colorRow = document.createElement('div');
     this.#colorRow.className = 'qb-tools__colors';
     this.#widthRow = document.createElement('div');
@@ -69,7 +86,7 @@ export class ToolBar {
     this.#options = document.createElement('div');
     this.#options.className = 'qb-tools__options';
     this.#options.hidden = true;
-    this.#options.append(this.#colorRow, this.#widthRow);
+    this.#options.append(this.#shapeRow, this.#colorRow, this.#widthRow);
 
     this.el.append(rail, this.#options);
 
@@ -88,16 +105,48 @@ export class ToolBar {
 
   #renderOptions(): void {
     const id = this.#active;
-    if (!isDrawTool(id)) {
+    if (!hasStyle(id)) {
       this.#options.hidden = true;
       return;
     }
     this.#options.hidden = false;
+    // O seletor de forma so existe para a ferramenta de formas; para as de tinta
+    // a linha inteira sai do fluxo em vez de ficar como um espaco vazio.
+    this.#shapeRow.hidden = id !== 'shape';
+    if (id === 'shape') this.#renderShapes();
     this.#renderColors(id);
     this.#renderWidths(id);
   }
 
-  #renderColors(id: DrawToolId): void {
+  #renderShapes(): void {
+    const current = this.style.shapeKind;
+    this.#shapeRow.replaceChildren();
+
+    for (const kind of SHAPE_KINDS) {
+      const meta = SHAPE_LABELS[kind];
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'qb-tools__shape';
+      b.classList.toggle('qb-tools__shape--active', kind === current);
+      b.textContent = meta.icon;
+      b.title = meta.label;
+      b.setAttribute('aria-label', meta.label);
+      b.addEventListener('click', () => this.style.setShapeKind(kind));
+      this.#shapeRow.append(b);
+    }
+
+    const fill = document.createElement('button');
+    fill.type = 'button';
+    fill.className = 'qb-tools__shape qb-tools__shape--fill';
+    fill.classList.toggle('qb-tools__shape--active', this.style.shapeFilled);
+    fill.textContent = this.style.shapeFilled ? '◼' : '◻';
+    fill.title = 'Preencher a forma (translucido, na cor do contorno)';
+    fill.setAttribute('aria-label', 'Preencher a forma');
+    fill.addEventListener('click', () => this.style.setShapeFilled(!this.style.shapeFilled));
+    this.#shapeRow.append(fill);
+  }
+
+  #renderColors(id: StyleToolId): void {
     const current = this.style.color(id);
     this.#colorRow.replaceChildren();
     for (const color of this.style.colorsFor(id)) {
@@ -115,7 +164,7 @@ export class ToolBar {
     }
   }
 
-  #renderWidths(id: DrawToolId): void {
+  #renderWidths(id: StyleToolId): void {
     const current = this.style.width(id);
     const steps = this.style.widthsFor(id);
     const biggest = steps[steps.length - 1] ?? 1;

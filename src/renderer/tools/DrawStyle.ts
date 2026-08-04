@@ -1,9 +1,11 @@
-import type { DrawToolId } from './types';
+import type { ShapeKind } from '@shared/model/types';
+import type { StyleToolId } from './types';
 
 /**
- * Cor e espessura correntes das ferramentas de tinta.
+ * Cor e espessura correntes das ferramentas que produzem marca: as tres de
+ * tinta e a de formas.
  *
- * O estado e POR VARIANTE, e nao global: quem grifa de amarelo com 20px de
+ * O estado e POR FERRAMENTA, e nao global: quem grifa de amarelo com 20px de
  * marca-texto e volta para a caneta espera a caneta preta e fina de antes, nao
  * uma caneta amarela grossa. Um estado unico obrigaria a reescolher cor a cada
  * troca de ferramenta.
@@ -46,51 +48,97 @@ export const HIGHLIGHTER_COLORS = [
 ] as const;
 
 /** Espessuras em unidades de MUNDO. Tres degraus por ferramenta. */
-const WIDTHS: Record<DrawToolId, readonly number[]> = {
+const WIDTHS: Record<StyleToolId, readonly number[]> = {
   pen: [2, 4, 7],
   highlighter: [12, 20, 30],
   pencil: [1.5, 3, 5],
+  shape: [2, 4, 7],
 };
 
-const DEFAULTS: Record<DrawToolId, { color: string; width: number }> = {
+const DEFAULTS: Record<StyleToolId, { color: string; width: number }> = {
   pen: { color: INK_COLORS[0], width: WIDTHS.pen[1]! },
   highlighter: { color: HIGHLIGHTER_COLORS[0], width: WIDTHS.highlighter[1]! },
   pencil: { color: INK_COLORS[0], width: WIDTHS.pencil[1]! },
+  shape: { color: INK_COLORS[0], width: WIDTHS.shape[0]! },
 };
 
-type State = Record<DrawToolId, { color: string; width: number }>;
+/** Formas oferecidas na barra, na ordem em que aparecem. */
+export const SHAPE_KINDS: readonly ShapeKind[] = [
+  'rect',
+  'ellipse',
+  'triangle',
+  'diamond',
+  'line',
+  'arrow',
+];
+
+const DEFAULT_SHAPE_KIND: ShapeKind = 'rect';
+
+type State = Record<StyleToolId, { color: string; width: number }>;
 
 export class DrawStyle {
   #state: State;
+  #shapeKind: ShapeKind;
+  #shapeFilled: boolean;
   #listeners = new Set<() => void>();
 
   constructor() {
-    this.#state = { ...DEFAULTS, ...readStored() };
+    const stored = readStored();
+    this.#state = { ...DEFAULTS, ...stored.tools };
+    this.#shapeKind = stored.shapeKind ?? DEFAULT_SHAPE_KIND;
+    this.#shapeFilled = stored.shapeFilled ?? false;
   }
 
-  colorsFor(id: DrawToolId): readonly string[] {
+  colorsFor(id: StyleToolId): readonly string[] {
     return id === 'highlighter' ? HIGHLIGHTER_COLORS : INK_COLORS;
   }
 
-  widthsFor(id: DrawToolId): readonly number[] {
+  widthsFor(id: StyleToolId): readonly number[] {
     return WIDTHS[id];
   }
 
-  color(id: DrawToolId): string {
+  color(id: StyleToolId): string {
     return this.#state[id].color;
   }
 
-  width(id: DrawToolId): number {
+  width(id: StyleToolId): number {
     return this.#state[id].width;
   }
 
-  setColor(id: DrawToolId, color: string): void {
+  get shapeKind(): ShapeKind {
+    return this.#shapeKind;
+  }
+
+  /**
+   * Preenchimento das formas fechadas.
+   *
+   * Guardado como um booleano, e nao como uma cor: o preenchimento e sempre uma
+   * versao translucida do proprio contorno. Duas cores independentes dobrariam a
+   * paleta na barra para um ganho que um quadro de estudos nao pede.
+   */
+  get shapeFilled(): boolean {
+    return this.#shapeFilled;
+  }
+
+  setShapeKind(kind: ShapeKind): void {
+    if (this.#shapeKind === kind) return;
+    this.#shapeKind = kind;
+    this.#commit();
+  }
+
+  setShapeFilled(on: boolean): void {
+    if (this.#shapeFilled === on) return;
+    this.#shapeFilled = on;
+    this.#commit();
+  }
+
+  setColor(id: StyleToolId, color: string): void {
     if (this.#state[id].color === color) return;
     this.#state[id] = { ...this.#state[id], color };
     this.#commit();
   }
 
-  setWidth(id: DrawToolId, width: number): void {
+  setWidth(id: StyleToolId, width: number): void {
     if (this.#state[id].width === width) return;
     this.#state[id] = { ...this.#state[id], width };
     this.#commit();
@@ -103,7 +151,7 @@ export class DrawStyle {
    * espessura corrente pode ter vindo do arquivo de preferencias com um valor
    * que nao esta na lista, e a partida e sempre o degrau mais proximo.
    */
-  stepWidth(id: DrawToolId, direction: -1 | 1): void {
+  stepWidth(id: StyleToolId, direction: -1 | 1): void {
     const steps = WIDTHS[id];
     const current = this.#state[id].width;
     let nearest = 0;
@@ -121,7 +169,14 @@ export class DrawStyle {
 
   #commit(): void {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.#state));
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          ...this.#state,
+          shapeKind: this.#shapeKind,
+          shapeFilled: this.#shapeFilled,
+        }),
+      );
     } catch {
       // Sem localStorage o app continua funcionando; so nao lembra a escolha.
     }
@@ -136,28 +191,42 @@ export class DrawStyle {
  * saiu da paleta ou uma espessura absurda nao pode derrubar o app nem produzir
  * um traco invisivel.
  */
-function readStored(): Partial<State> {
+function readStored(): {
+  tools: Partial<State>;
+  shapeKind?: ShapeKind;
+  shapeFilled?: boolean;
+} {
   let raw: unknown;
   try {
     const text = localStorage.getItem(STORAGE_KEY);
-    if (!text) return {};
+    if (!text) return { tools: {} };
     raw = JSON.parse(text);
   } catch {
-    return {};
+    return { tools: {} };
   }
-  if (typeof raw !== 'object' || raw === null) return {};
+  if (typeof raw !== 'object' || raw === null) return { tools: {} };
+  const obj = raw as Record<string, unknown>;
 
-  const out: Partial<State> = {};
-  for (const id of Object.keys(DEFAULTS) as DrawToolId[]) {
-    const entry = (raw as Record<string, unknown>)[id];
+  const tools: Partial<State> = {};
+  for (const id of Object.keys(DEFAULTS) as StyleToolId[]) {
+    const entry = obj[id];
     if (typeof entry !== 'object' || entry === null) continue;
     const { color, width } = entry as { color?: unknown; width?: unknown };
     const palette: readonly string[] = id === 'highlighter' ? HIGHLIGHTER_COLORS : INK_COLORS;
-    out[id] = {
+    tools[id] = {
       color: typeof color === 'string' && palette.includes(color) ? color : DEFAULTS[id].color,
       width:
         typeof width === 'number' && width > 0 && width <= 200 ? width : DEFAULTS[id].width,
     };
   }
-  return out;
+
+  const kind = obj['shapeKind'];
+  return {
+    tools,
+    shapeKind:
+      typeof kind === 'string' && (SHAPE_KINDS as readonly string[]).includes(kind)
+        ? (kind as ShapeKind)
+        : undefined,
+    shapeFilled: typeof obj['shapeFilled'] === 'boolean' ? obj['shapeFilled'] : undefined,
+  };
 }

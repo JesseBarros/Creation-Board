@@ -59,6 +59,17 @@ export class Renderer {
     this.#adapt = createColorAdapter(t.boardBg);
   }
 
+  /**
+   * O adaptador de cor do tema atual.
+   *
+   * Exposto para quem desenha previa de gesto no overlay: a previa tem de usar a
+   * mesma traducao dos painters, senao ela mostra uma cor e o objeto criado sai
+   * com outra.
+   */
+  get adapt(): ColorAdapter {
+    return this.#adapt;
+  }
+
   /** Resolvedor de bitmaps, injetado para o Renderer nao depender do AssetStore. */
   resolveImage: ((assetId: string) => ImageBitmap | undefined) | undefined;
 
