@@ -219,11 +219,27 @@ Virou **"Importar arquivo"**. No lobby vazio o rótulo ficou mais longo de prop�
 primeiro, e não mais um botão numa fila.
 
 ### M3 — Redesenhar a barra de ferramentas inferior
-`aberto` · `médio`
+`corrigido` · `médio` · 04/08/2026
 
-A barra acumulou doze controles ao longo de oito fases — já estava anotada no RETOMAR como
-candidata a polimento. **Falta decidir a direção**: agrupar em menus, esconder o que é
-raro, ou separar em duas barras.
+
+**O que mudou:** os doze rótulos escritos viraram **ícones**, agrupados por assunto com
+filetes discretos, sobre fundo translúcido com desfoque (o "acrílico" do Windows 11), com
+cantos mais generosos e o destaque de "ligado" numa barrinha sob o ícone.
+
+**O que continua escrito, de propósito:** o nome do quadro (com o ponto de alterações não
+salvas) e o nível de zoom. Os dois são **informação**, não rótulo de comando — virar ícone
+esconderia justamente o que se precisa ler.
+
+**Os ícones são SVG, não glifos de fonte.** Um `▦` ou um `⌗` depende da fonte instalada e
+do fallback do sistema: muda de máquina para máquina e às vezes vira um retângulo vazio.
+Em SVG a forma é a mesma em qualquer lugar, acompanha a cor do texto e escala sem
+serrilhar.
+
+**Consequência que virou melhoria de teste:** sem texto visível, o nome do botão passou a
+viver no `aria-label` — que é o que um leitor de tela anuncia. E o auto-teste deixou de
+procurar os botões pelo texto (que quebrava a cada renomeação, como aconteceu quando o `?`
+virou "comandos") e passou a procurar por `data-action`, exigindo que **todos** tenham
+ícone e nome acessível.
 
 ### M4 — Renomear o ícone de interrogação para "comandos"
 `corrigido` · `baixo` · 04/08/2026
