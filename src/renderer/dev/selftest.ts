@@ -36,6 +36,8 @@ interface Modifiers {
   shift?: boolean;
   alt?: boolean;
   ctrl?: boolean;
+  /** Pressao da caneta, 0..1. Sem isto o evento sintetico chega com 0. */
+  pressure?: number;
 }
 
 function pointer(
@@ -54,6 +56,7 @@ function pointer(
       button,
       // `buttons` e um bitmask: 1=esquerdo, 2=direito, 4=meio.
       buttons: type === 'pointerup' ? 0 : button === 2 ? 2 : button === 1 ? 4 : 1,
+      pressure: mod.pressure ?? 0.5,
       shiftKey: mod.shift ?? false,
       altKey: mod.alt ?? false,
       ctrlKey: mod.ctrl ?? false,
@@ -78,6 +81,29 @@ function drag(
     pointer(host, 'pointermove', fromX + (dx * i) / 4, fromY + (dy * i) / 4, button, mod);
   }
   pointer(host, 'pointerup', fromX + dx, fromY + dy, button, mod);
+}
+
+/**
+ * Traco a mao livre, com pressao variando ao longo do gesto.
+ *
+ * Diferente de `drag`: mais passos e pressao, porque o que se exercita aqui e a
+ * captura de pontos da caneta, nao o limiar de arrasto.
+ */
+function freehand(
+  host: HTMLElement,
+  fromX: number,
+  fromY: number,
+  dx: number,
+  dy: number,
+  steps = 6,
+  pressureAt: (t: number) => number = () => 0.5,
+): void {
+  pointer(host, 'pointerdown', fromX, fromY, 0, { pressure: pressureAt(0) });
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    pointer(host, 'pointermove', fromX + dx * t, fromY + dy * t, 0, { pressure: pressureAt(t) });
+  }
+  pointer(host, 'pointerup', fromX + dx, fromY + dy, 0, { pressure: pressureAt(1) });
 }
 
 /** Clique sem arrasto: fica abaixo do limiar de propósito. */
@@ -183,16 +209,22 @@ export async function runSelfTest(host: HTMLElement, app: App): Promise<void> {
 
   runCameraTests(host, camera, check, reset);
   await runSelectionTests(host, app, check, reset);
+  runDrawingTests(host, app, check, reset);
 
-  // Deixa o cenario montado e selecionado no fim. Com QB_SHOT a janela nao
-  // fecha ao terminar, entao a foto vira a conferencia do cromo de selecao --
-  // contorno, alcas e alca de rotacao -- que nenhum numero daqui verifica.
+  // Deixa o cenario montado no fim. Com QB_SHOT a janela nao fecha ao terminar,
+  // entao a foto vira a conferencia do que nenhum numero daqui verifica: o cromo
+  // de selecao -- contorno, alcas e alca de rotacao -- e a aparencia das tres
+  // variantes de traco. Os tracos sao desenhados pela ferramenta de verdade, e
+  // nao montados a mao, para a foto mostrar o que o usuario veria.
   reset();
   app.selection.clear();
   app.history.clear();
   app.doc.clear();
   app.doc.add(scene());
+  paintSampleStrokes(host, app);
+  app.setTool('select');
   app.selection.set(['A', 'B']);
+  app.history.clear();
   app.fitToContent();
   // Sem isto o quadro fica marcado como sujo, o guarda de `beforeunload`
   // recusa o fechamento e a execucao automatizada nunca termina.
@@ -204,6 +236,34 @@ export async function runSelfTest(host: HTMLElement, app: App): Promise<void> {
 }
 
 type Check = (nome: string, ok: boolean, detalhe: string) => void;
+
+/**
+ * Um traco de cada variante, para a foto do QB_SHOT.
+ *
+ * O marca-texto passa por cima do texto de propósito: e ali que se ve se ele
+ * entrou por baixo (grifo) ou por cima (borrao). O lapis vai com pressao
+ * crescente, que e a unica forma de ver a modulacao de espessura.
+ */
+function paintSampleStrokes(host: HTMLElement, app: App): void {
+  const box = host.getBoundingClientRect();
+  const draw = (
+    tool: 'pen' | 'highlighter' | 'pencil',
+    x: number,
+    y: number,
+    dx: number,
+    dy: number,
+    pressureAt?: (t: number) => number,
+  ): void => {
+    app.setTool(tool);
+    freehand(host, x + box.left, y + box.top, dx, dy, 24, pressureAt);
+  };
+
+  draw('pen', 700, 140, 160, 90);
+  // Cruza o traco preto da cena: e ali que se ve o grifo passando POR BAIXO da
+  // tinta que ja estava no quadro, em vez de borra-la.
+  draw('highlighter', 110, 400, 420, 0);
+  draw('pencil', 700, 320, 170, 60, (t) => 0.15 + 0.85 * t);
+}
 
 function runCameraTests(host: HTMLElement, camera: Camera, check: Check, reset: () => void): void {
   // --- pan com o botao direito
@@ -621,4 +681,244 @@ async function runSelectionTests(
     `antes=(${antes.x.toFixed(1)}, ${antes.y.toFixed(1)}, escala ${antes.scaleX.toFixed(2)}) ` +
       `depois=(${depois?.x.toFixed(1)}, ${depois?.y.toFixed(1)}, escala ${depois?.scaleX.toFixed(2)})`,
   );
+}
+
+// ---------------------------------------------------------------- desenho
+
+function runDrawingTests(host: HTMLElement, app: App, check: Check, reset: () => void): void {
+  const { doc, selection, history } = app;
+
+  const setup = (tool: 'select' | 'pen' | 'highlighter' | 'pencil' | 'eraser'): void => {
+    reset();
+    selection.clear();
+    history.clear();
+    doc.clear();
+    doc.add(scene());
+    app.setTool(tool);
+  };
+
+  // Camera zerada: mundo e tela coincidem, so falta o canto do host.
+  const box = host.getBoundingClientRect();
+  const drawAt = (
+    w: Vec2,
+    dx: number,
+    dy: number,
+    steps = 6,
+    pressureAt?: (t: number) => number,
+  ): void => {
+    freehand(host, w.x + box.left, w.y + box.top, dx, dy, steps, pressureAt);
+  };
+  /** O traco criado agora: o unico do tipo alem do INK do cenario. */
+  const drawn = (): StrokeObject | undefined =>
+    [...doc.all()].find((o): o is StrokeObject => o.type === 'stroke' && o.id !== 'INK');
+
+  // --- a caneta produz um traco na geometria certa
+  setup('pen');
+  drawAt({ x: 700, y: 200 }, 120, 80);
+  const traco = drawn();
+  const ultimoX = traco ? traco.points[traco.points.length - 3] : NaN;
+  const ultimoY = traco ? traco.points[traco.points.length - 2] : NaN;
+  check(
+    'a caneta cria um traco ancorado onde o gesto comecou',
+    traco !== undefined &&
+      traco.variant === 'pen' &&
+      near(traco.transform.x, 700) &&
+      near(traco.transform.y, 200) &&
+      near(ultimoX ?? NaN, 120) &&
+      near(ultimoY ?? NaN, 80),
+    `objetos=${doc.size} ancora=(${traco?.transform.x.toFixed(1)}, ${traco?.transform.y.toFixed(1)}) ` +
+      `ultimo ponto local=(${ultimoX?.toFixed(1)}, ${ultimoY?.toFixed(1)}) esperado=(700, 200) e (120, 80)`,
+  );
+
+  // --- um traco = um passo de undo
+  const antesDoUndo = doc.size;
+  const passos = history.depth;
+  key('z', { ctrl: true });
+  check(
+    'um traco = um passo de undo',
+    passos === 1 && antesDoUndo === 5 && doc.size === 4,
+    `passos=${passos} objetos antes=${antesDoUndo} depois do Ctrl+Z=${doc.size} esperado=(1, 5, 4)`,
+  );
+
+  // --- o AABB do traco inclui a espessura
+  // Sem isso o culling corta o traco cedo demais na borda da tela e o clique na
+  // extremidade dele nao pega.
+  setup('pen');
+  drawAt({ x: 700, y: 200 }, 120, 80);
+  const comEspessura = drawn();
+  const meia = (comEspessura?.width ?? 0) / 2;
+  check(
+    'o AABB do traco inclui a espessura',
+    comEspessura !== undefined &&
+      meia > 0 &&
+      near(comEspessura.bbox.x, 700 - meia) &&
+      near(comEspessura.bbox.w, 120 + meia * 2),
+    `bbox=(${comEspessura?.bbox.x.toFixed(1)}, largura ${comEspessura?.bbox.w.toFixed(1)}) ` +
+      `espessura=${comEspessura?.width} esperado=(${(700 - meia).toFixed(1)}, ${(120 + meia * 2).toFixed(1)})`,
+  );
+
+  // --- o traco recem-criado responde ao clique onde foi desenhado
+  app.setTool('select');
+  click(host, 760 + box.left, 240 + box.top);
+  check(
+    'o traco desenhado e clicavel no lugar onde foi feito',
+    selection.size === 1 && selection.ids()[0] === comEspessura?.id,
+    `selecao=[${selection.ids().join(',')}] esperado=[${comEspessura?.id ?? '?'}]`,
+  );
+
+  // --- ferramenta de desenho nao seleciona
+  setup('pen');
+  clickWorld(host, box, { x: 150, y: 150 });
+  check(
+    'com a caneta ativa, clicar num objeto nao o seleciona (faz um pingo)',
+    selection.isEmpty && doc.size === 5,
+    `selecao=[${selection.ids().join(',')}] objetos=${doc.size} esperado=([], 5)`,
+  );
+
+  // --- marca-texto entra por baixo do que ja estava
+  setup('highlighter');
+  drawAt({ x: 120, y: 150 }, 400, 0);
+  const grifo = drawn();
+  const aZ = doc.get('A')?.z ?? '';
+  check(
+    'o marca-texto entra por baixo do conteudo, para grifar em vez de cobrir',
+    grifo !== undefined && grifo.variant === 'highlighter' && grifo.z < aZ,
+    `z do grifo=${grifo?.z} z do objeto grifado=${aZ} esperado=grifo menor`,
+  );
+
+  // --- a pressao chega ao traco (e o que o lapis usa para variar a espessura)
+  setup('pencil');
+  drawAt({ x: 700, y: 200 }, 120, 0, 8, (t) => 0.2 + 0.6 * t);
+  const lapis = drawn();
+  const primeira = lapis?.points[2] ?? NaN;
+  const ultima = lapis?.points[lapis.points.length - 1] ?? NaN;
+  check(
+    'a pressao da caneta chega ao traco',
+    lapis !== undefined && lapis.variant === 'pencil' && ultima > primeira + 0.3,
+    `pressao inicial=${primeira?.toFixed(2)} final=${ultima?.toFixed(2)} esperado=crescente`,
+  );
+
+  // --- pan com o botao direito no meio do traco
+  // E a fronteira de botoes que justifica a divisao inteira: quem esta
+  // escrevendo perto da borda precisa puxar o quadro sem largar o traco.
+  setup('pen');
+  const p0 = { x: 700 + box.left, y: 200 + box.top };
+  pointer(host, 'pointerdown', p0.x, p0.y, 0);
+  pointer(host, 'pointermove', p0.x + 40, p0.y + 20, 0);
+  drag(host, 2, p0.x + 40, p0.y + 20, 100, 60); // pan no meio do traco
+  pointer(host, 'pointermove', p0.x + 60, p0.y + 30, 0);
+  pointer(host, 'pointerup', p0.x + 60, p0.y + 30, 0);
+  const durantePan = drawn();
+  check(
+    'arrastar o quadro com o botao direito nao corta o traco em andamento',
+    durantePan !== undefined &&
+      history.depth === 1 &&
+      near(durantePan.transform.x, 700) &&
+      near(app.camera.x, -100) &&
+      near(app.camera.y, -60),
+    `tracos criados=${doc.size - 4} passos=${history.depth} ancora.x=${durantePan?.transform.x.toFixed(1)} ` +
+      `camera=(${app.camera.x.toFixed(1)}, ${app.camera.y.toFixed(1)}) esperado=(1, 1, 700.0, -100.0, -60.0)`,
+  );
+
+  // --- a borracha apaga tinta e desfazer devolve
+  setup('eraser');
+  // O traco INK vai de (100,300) a (300,500); a borracha cruza o meio dele.
+  drawAt({ x: 150, y: 420 }, 120, -60, 10);
+  // Os totais vao para variaveis pelo mesmo motivo do teste de Delete: lidos
+  // direto, o compilador estreita o segundo pelo primeiro e acusa que 3 e 4
+  // nunca coincidem.
+  const depoisDaBorracha = doc.size;
+  const apagou = doc.get('INK') === undefined && depoisDaBorracha === 3;
+  key('z', { ctrl: true });
+  const depoisDoUndoDaBorracha = doc.size;
+  check(
+    'a borracha apaga o traco inteiro e Ctrl+Z devolve',
+    apagou && depoisDoUndoDaBorracha === 4 && doc.get('INK') !== undefined,
+    `apagou=${apagou} depois do Ctrl+Z=${depoisDoUndoDaBorracha} objetos esperado=4`,
+  );
+
+  // --- a borracha nao come texto, post-it nem imagem
+  setup('eraser');
+  drawAt({ x: 110, y: 150 }, 400, 0, 12);
+  check(
+    'a borracha passa por cima de forma e texto sem apaga-los',
+    doc.size === 4 && doc.get('A') !== undefined && doc.get('C') !== undefined,
+    `objetos=${doc.size} esperado=4 (so tinta e apagavel)`,
+  );
+
+  // --- objeto travado sobrevive a borracha
+  setup('eraser');
+  doc.replace({ ...doc.get('INK')!, locked: true });
+  drawAt({ x: 150, y: 420 }, 120, -60, 10);
+  check(
+    'objeto travado nao pode ser apagado',
+    doc.get('INK') !== undefined,
+    `INK=${doc.get('INK') === undefined ? 'apagado' : 'intacto'} esperado=intacto`,
+  );
+
+  // --- as teclas trocam de ferramenta
+  setup('select');
+  key('p');
+  const depoisDoP = app.activeTool;
+  key('m');
+  const depoisDoM = app.activeTool;
+  key('e');
+  const depoisDoE = app.activeTool;
+  key('v');
+  check(
+    'V, P, M e E trocam a ferramenta ativa',
+    depoisDoP === 'pen' &&
+      depoisDoM === 'highlighter' &&
+      depoisDoE === 'eraser' &&
+      app.activeTool === 'select',
+    `P=${depoisDoP} M=${depoisDoM} E=${depoisDoE} V=${app.activeTool}`,
+  );
+
+  // --- a espessura anda pelos degraus e volta
+  setup('pen');
+  const larguraInicial = app.drawStyle.width('pen');
+  key(']');
+  const maisGrosso = app.drawStyle.width('pen');
+  key('[');
+  key('[');
+  const maisFino = app.drawStyle.width('pen');
+  app.drawStyle.setWidth('pen', larguraInicial);
+  check(
+    '] engrossa e [ afina o traco',
+    maisGrosso > larguraInicial && maisFino < larguraInicial,
+    `inicial=${larguraInicial} depois de ]=${maisGrosso} depois de [[=${maisFino}`,
+  );
+
+  // --- o traco desenhado sobrevive ao formato gravado
+  setup('pen');
+  drawAt({ x: 700, y: 200 }, 120, 80, 8, (t) => 0.3 + 0.5 * t);
+  const original = drawn();
+  const gravado = JSON.parse(
+    JSON.stringify(serializeBoard(doc, app.camera, app.assets)),
+  ) as WbdDocument;
+  applyBoard(doc, app.camera, gravado);
+  const recuperado = original ? doc.get(original.id) : undefined;
+  const iguais =
+    original !== undefined &&
+    recuperado !== undefined &&
+    recuperado.type === 'stroke' &&
+    recuperado.variant === original.variant &&
+    recuperado.color === original.color &&
+    recuperado.width === original.width &&
+    recuperado.points.length === original.points.length &&
+    recuperado.points.every((v, i) => near(v, original.points[i]!, 0.001));
+  check(
+    'o traco desenhado sobrevive ao formato do .wbd',
+    iguais,
+    `pontos gravados=${original?.points.length} recuperados=${
+      recuperado?.type === 'stroke' ? recuperado.points.length : 'nenhum'
+    } cor/espessura preservadas=${iguais}`,
+  );
+
+  app.setTool('select');
+}
+
+/** Clique num ponto de MUNDO, com a camera zerada. */
+function clickWorld(host: HTMLElement, box: DOMRect, w: Vec2, mod: Modifiers = {}): void {
+  click(host, w.x + box.left, w.y + box.top, mod);
 }
