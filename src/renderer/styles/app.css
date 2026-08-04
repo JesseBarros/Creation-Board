@@ -440,6 +440,52 @@
   border-radius: 2px;
 }
 
+/* ------------------------------------------------------ opcoes de dialogo */
+
+.qb-dialog__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.qb-dialog__row-label {
+  color: var(--fg-muted);
+  font-size: 13px;
+}
+
+/* Botoes segmentados: uma escolha por linha, sem o peso visual de um select. */
+.qb-seg {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.qb-seg__btn {
+  padding: 5px 12px;
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+}
+
+.qb-seg__btn + .qb-seg__btn {
+  border-left: 1px solid var(--border);
+}
+
+.qb-seg__btn:hover {
+  background: var(--panel-2);
+}
+
+.qb-seg__btn--active {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
 /* --------------------------------------------------------- edicao de texto */
 
 /*

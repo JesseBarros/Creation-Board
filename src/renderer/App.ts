@@ -35,7 +35,9 @@ import { ViewportBar } from './ui/ViewportBar';
 import { ContextMenu, type MenuEntry } from './ui/ContextMenu';
 import { Lobby } from './ui/Lobby';
 import { ShortcutsModal } from './ui/ShortcutsModal';
-import { confirmDialog, promptText, toast } from './ui/dialogs';
+import { confirmDialog, exportDialog, promptText, toast } from './ui/dialogs';
+import { exportBounds, renderPng } from './features/export/exportBoard';
+import { renderSvg } from './features/export/exportSvg';
 import {
   applyBoard,
   renderThumbnail,
@@ -43,6 +45,7 @@ import {
   usedAssetIds,
 } from './features/storage/boardIO';
 import { AssetStore } from './features/images/AssetStore';
+import { autosaveVerdict } from './features/storage/autosave';
 import { imageFilesFrom, insertImages } from './features/images/insert';
 import { uncropPatch } from './tools/CropTool';
 import type { ImageObject } from '@shared/model/types';
@@ -69,6 +72,13 @@ const RULER_THEMES: Record<'light' | 'dark', RulerTheme> = {
   light: { bg: '#f5f7fa', fg: '#667085', line: '#d9dee8', cursor: '#3b6ff0' },
   dark: { bg: '#1d2027', fg: '#8b93a3', line: '#333947', cursor: '#5b87f5' },
 };
+
+/** Margem em volta do conteudo exportado, em unidades de mundo. */
+const EXPORT_PADDING = 24;
+
+/** Ocioso antes de gravar sozinho, e o teto para quem nao para de desenhar. */
+const AUTOSAVE_IDLE_MS = 3_000;
+const AUTOSAVE_MAX_MS = 30_000;
 
 const THEME_KEY = 'qb.theme';
 const RULERS_KEY = 'qb.rulers';
@@ -129,6 +139,8 @@ export class App {
   #benchPhase = 0;
   /** O evento `paste` do sistema ja resolveu esta tecla? Ver `#pasteFromKeyboard`. */
   #systemPasteHandled = false;
+  #autosaveIdle = 0;
+  #autosaveDeadline = 0;
 
   constructor(root: HTMLElement) {
     root.replaceChildren();
@@ -169,6 +181,7 @@ export class App {
       toggleRulers: () => this.toggleRulers(),
       toggleTheme: () => this.toggleTheme(),
       save: () => void this.save(),
+      exportBoard: () => void this.exportBoard(),
       backToLobby: () => void this.goToLobby(),
       showShortcuts: () => this.#help.toggle(),
       undo: () => this.undo(),
@@ -317,6 +330,11 @@ export class App {
       this.#enterBoard();
       void import('./dev/importCheck').then((m) =>
         m.runImportCheck(importPath, this, params.get('save') === '1'),
+      );
+    } else if (params.get('export')) {
+      this.#enterBoard();
+      void import('./dev/exportCheck').then((m) =>
+        m.runExportCheck(params.get('export') ?? '', this),
       );
     } else if (params.get('selftest')) {
       // Precisa do quadro montado e medido para os eventos caírem no canvas.
@@ -587,9 +605,69 @@ export class App {
   }
 
   #markDirty(): void {
+    this.#scheduleAutosave();
     if (this.#session.dirty) return;
     this.#session.dirty = true;
     this.#updateTitle();
+  }
+
+  // --------------------------------------------------------------- autosave
+
+  /**
+   * Salvamento automatico.
+   *
+   * Duas condicoes, e as duas importam:
+   *
+   * 1. **So depois do primeiro salvamento manual.** Um quadro sem caminho nao
+   *    tem nome, e inventar um encheria a pasta de "Quadro sem nome (3)" toda
+   *    vez que alguem rabiscasse para experimentar. Ate o primeiro `Ctrl+S`,
+   *    quem protege o trabalho e o aviso ao fechar a janela.
+   * 2. **So com o usuario parado.** O gatilho e ocioso (3s sem mexer), com um
+   *    teto de 30s para quem desenha sem parar. Gravar no meio de um arraste
+   *    disputaria CPU com o gesto -- e o `.wbd` e reescrito por inteiro, nao em
+   *    pedacos.
+   */
+  #scheduleAutosave(): void {
+    if (!this.#session.path) return;
+
+    clearTimeout(this.#autosaveIdle);
+    this.#autosaveIdle = window.setTimeout(() => void this.#autosave(), AUTOSAVE_IDLE_MS);
+    // O teto so e armado uma vez por rajada: rearma-lo a cada alteracao faria
+    // ele nunca disparar enquanto o usuario continuasse desenhando.
+    if (this.#autosaveDeadline === 0) {
+      this.#autosaveDeadline = window.setTimeout(() => void this.#autosave(), AUTOSAVE_MAX_MS);
+    }
+  }
+
+  async #autosave(): Promise<void> {
+    clearTimeout(this.#autosaveIdle);
+    clearTimeout(this.#autosaveDeadline);
+    this.#autosaveIdle = 0;
+    this.#autosaveDeadline = 0;
+
+    const path = this.#session.path;
+    const verdict = autosaveVerdict({
+      hasPath: path !== null,
+      dirty: this.#session.dirty,
+      saving: this.#saving,
+      editing: this.#editor.isEditing,
+    });
+    if (verdict === 'nao' || !path) return;
+    if (verdict === 'adiar') {
+      this.#scheduleAutosave();
+      return;
+    }
+
+    this.#saving = true;
+    try {
+      const result = await this.#writeBoard(path, this.#session.name);
+      if (!result) return; // `#writeBoard` ja avisou
+      this.#session = { path: result.path, name: result.name, dirty: false };
+      this.#updateTitle();
+      this.#bar.setAutosaved(new Date());
+    } finally {
+      this.#saving = false;
+    }
   }
 
   /**
@@ -748,6 +826,88 @@ export class App {
   #searchBbox(): Rect | null {
     const hit = this.#search.isOpen ? this.#search.current : null;
     return hit ? (this.doc.get(hit.id)?.bbox ?? null) : null;
+  }
+
+  // ------------------------------------------------------------- exportacao
+
+  /**
+   * Exporta o quadro (ou a selecao) para PNG, SVG ou PDF.
+   *
+   * Nao entra nada de cromo: regua, alcas, guias, destaque de busca e ficha de
+   * post-it fixado sao respostas do app a quem edita, e nao conteudo do quadro.
+   */
+  async exportBoard(): Promise<void> {
+    if (this.doc.size === 0) {
+      toast('O quadro esta vazio: nao ha o que exportar.', 'error');
+      return;
+    }
+
+    const choice = await exportDialog({ hasSelection: this.selection.size > 0 });
+    if (!choice) return;
+
+    const ids = choice.scope === 'selection' ? this.selection.ids() : [];
+    const area = exportBounds(this.doc, ids);
+    if (!area || area.w <= 0 || area.h <= 0) {
+      toast('Nao foi possivel medir a area a exportar.', 'error');
+      return;
+    }
+
+    const theme = THEMES[this.#theme];
+    const background = choice.background ? theme.boardBg : null;
+    const name = this.#session.name === 'Quadro sem nome' ? 'quadro' : this.#session.name;
+
+    this.#showProgress(`Exportando ${choice.format.toUpperCase()}…`, 0.4);
+    try {
+      let data: Uint8Array;
+      let widthPx: number | undefined;
+      let heightPx: number | undefined;
+      let aviso = '';
+
+      if (choice.format === 'svg') {
+        const svg = renderSvg(this.doc, this.assets, area, ids, {
+          padding: EXPORT_PADDING,
+          background,
+          // As marcas sao adaptadas contra o fundo QUE VAI PARA O ARQUIVO. Num
+          // SVG transparente, o fundo de referencia continua sendo o do tema:
+          // e sobre ele que o quadro foi desenhado.
+          adaptAgainst: background ?? theme.boardBg,
+        });
+        data = new TextEncoder().encode(svg);
+      } else {
+        const png = await renderPng(this.doc, this.assets, area, ids, {
+          scale: choice.scale,
+          padding: EXPORT_PADDING,
+          // Um PDF transparente e branco na pratica; deixar o fundo do tema
+          // evita um arquivo que parece certo na tela e sai errado no papel.
+          background: choice.format === 'pdf' ? (background ?? theme.boardBg) : background,
+          theme,
+        });
+        data = png.bytes;
+        widthPx = png.width;
+        heightPx = png.height;
+        if (png.scale < choice.scale - 0.001) {
+          aviso = ` (reduzido para ${png.scale.toFixed(2)}x: o tamanho pedido estourava o limite)`;
+        }
+      }
+
+      const result = await window.quadro.exporter.save({
+        name,
+        format: choice.format,
+        // `slice()` desanexa a visao do buffer original: o canal estruturado
+        // transfere um ArrayBuffer inteiro, e mandar a visao levaria junto o
+        // que estiver ao redor dela.
+        data: data.slice().buffer,
+        ...(widthPx !== undefined ? { widthPx, heightPx } : {}),
+      });
+
+      if (result.path) {
+        toast(`Exportado para ${result.path}${aviso}`);
+      }
+    } catch (err) {
+      toast(`Falha ao exportar: ${String(err)}`, 'error');
+    } finally {
+      this.#hideProgress();
+    }
   }
 
   // --------------------------------------------------------------- imagens
@@ -1353,6 +1513,7 @@ export class App {
   #bindShortcuts(): void {
     const handlers: Record<ShortcutId, (e: KeyboardEvent) => void> = {
       save: () => void this.save(),
+      export: () => void this.exportBoard(),
       lobby: () => void this.goToLobby(),
       help: () => this.#help.toggle(),
       debug: () => this.#debug.toggle(),

@@ -10,6 +10,7 @@
 export type ShortcutId =
   | 'save'
   | 'lobby'
+  | 'export'
   | 'help'
   | 'debug'
   | 'benchmark'
@@ -73,6 +74,12 @@ export interface ShortcutDef {
 export const SHORTCUTS: ShortcutDef[] = [
   { id: 'save', group: 'Arquivo', keys: 'Ctrl+S', label: 'Salvar quadro', scope: 'board' },
   { id: 'lobby', group: 'Arquivo', keys: 'Ctrl+O', label: 'Voltar ao lobby (meus quadros)', scope: 'board' },
+  { id: 'export', group: 'Arquivo', keys: 'Ctrl+E', label: 'Exportar PNG, SVG ou PDF', scope: 'board' },
+  {
+    group: 'Arquivo',
+    keys: 'Automatico',
+    label: 'Salva sozinho 3s depois da ultima alteracao (so depois do primeiro Ctrl+S)',
+  },
 
   { group: 'Navegacao', keys: 'Botao direito + arrastar', label: 'Mover o quadro (pan)' },
   { group: 'Navegacao', keys: 'Botao do meio', label: 'Mover o quadro (pan)' },

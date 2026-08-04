@@ -8,6 +8,7 @@ export interface ViewportBarActions {
   toggleRulers(): void;
   toggleTheme(): void;
   save(): void;
+  exportBoard(): void;
   backToLobby(): void;
   showShortcuts(): void;
   undo(): void;
@@ -42,6 +43,10 @@ export class ViewportBar {
 
     const saveBtn = iconButton('salvar', 'Salvar (Ctrl+S)', () => this.actions.save());
     saveBtn.classList.add('qb-bar__btn--primary');
+
+    const exportBtn = iconButton('exportar', 'Exportar PNG, SVG ou PDF (Ctrl+E)', () =>
+      this.actions.exportBoard(),
+    );
 
     this.#undoBtn = iconButton('↶', 'Desfazer (Ctrl+Z)', () => this.actions.undo());
     this.#undoBtn.classList.add('qb-bar__btn--icon');
@@ -94,6 +99,7 @@ export class ViewportBar {
       backBtn,
       this.#nameLabel,
       saveBtn,
+      exportBtn,
       divider(),
       this.#undoBtn,
       this.#redoBtn,
@@ -139,8 +145,24 @@ export class ViewportBar {
   setBoardName(name: string, dirty: boolean): void {
     this.#nameLabel.textContent = dirty ? `• ${name}` : name;
     this.#nameLabel.classList.toggle('qb-bar__name--dirty', dirty);
-    this.#nameLabel.title = dirty ? 'Alteracoes nao salvas' : name;
+    this.#nameLabel.title = dirty ? 'Alteracoes nao salvas' : this.#savedTitle || name;
   }
+
+  /**
+   * Marca o horario do ultimo salvamento automatico.
+   *
+   * Fica na dica do nome, e nao como aviso na tela: autosave que anuncia a cada
+   * gravacao vira ruido -- o que importa e poder conferir quando quiser.
+   */
+  setAutosaved(at: Date): void {
+    const hora = at.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    this.#savedTitle = `Salvo automaticamente as ${hora}`;
+    if (!this.#nameLabel.classList.contains('qb-bar__name--dirty')) {
+      this.#nameLabel.title = this.#savedTitle;
+    }
+  }
+
+  #savedTitle = '';
 
   #toggleMenu(): void {
     this.#menu.hidden = !this.#menu.hidden;
