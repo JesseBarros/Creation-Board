@@ -118,17 +118,63 @@ export class ToolBar {
 
     this.el.append(rail, this.#options);
 
-    // Mudanca vinda de fora (atalho `[`/`]`) tem de aparecer aqui tambem.
-    this.style.onChange(() => this.#renderOptions());
+    // Mudanca vinda de fora (atalho `[`/`]`, ou a barra reestilizando um
+    // post-it) tem de aparecer aqui tambem -- mas so o DESTAQUE muda, e nao a
+    // lista de botoes: ver `#syncActive`.
+    this.style.onChange(() => this.#syncActive());
     this.setActive('select');
   }
 
   setActive(id: ToolId): void {
+    const trocou = this.#active !== id;
     this.#active = id;
     for (const [toolId, btn] of this.#buttons) {
       btn.classList.toggle('qb-tools__btn--active', toolId === id);
     }
-    this.#renderOptions();
+    // Reconstroi o painel so quando a FERRAMENTA muda -- e a unica coisa que
+    // muda quais botoes existem. Trocar de cor ou de espessura mexe apenas em
+    // qual deles esta destacado.
+    if (trocou) this.#renderOptions();
+    else this.#syncActive();
+  }
+
+  /**
+   * Atualiza o destaque sem recriar nada.
+   *
+   * Antes, qualquer mudanca de estilo reconstruia as quatro linhas de opcao --
+   * cerca de vinte botoes -- e isso acontecia a cada clique numa cor. Cada
+   * elemento novo obriga o navegador a recalcular estilo e layout, e era parte
+   * do atraso sentido no seletor.
+   */
+  #syncActive(): void {
+    const id = this.#active;
+    const marcar = (row: HTMLElement, cls: string, valor: string | null): void => {
+      for (const el of row.children) {
+        if (!(el instanceof HTMLElement)) continue;
+        el.classList.toggle(cls, el.dataset['value'] === valor);
+      }
+    };
+
+    if (id === 'note') {
+      marcar(this.#colorRow, 'qb-tools__color--active', this.style.noteBg);
+      marcar(this.#alertRow, 'qb-tools__alert--active', this.style.noteAlert ?? 'nenhum');
+      return;
+    }
+    if (!hasStyle(id)) return;
+
+    if (id === 'shape') {
+      marcar(this.#shapeRow, 'qb-tools__shape--active', this.style.shapeKind);
+      // O preenchimento nao e uma forma: ele acende sozinho.
+      const fill = this.#shapeRow.querySelector<HTMLElement>('.qb-tools__shape--fill');
+      if (fill) {
+        fill.classList.toggle('qb-tools__shape--active', this.style.shapeFilled);
+        fill.textContent = this.style.shapeFilled ? '◼' : '◻';
+      }
+    }
+    if (id === 'eraser') marcar(this.#alertRow, 'qb-tools__alert--active', this.style.eraserMode);
+    else marcar(this.#colorRow, 'qb-tools__color--active', this.style.color(id));
+
+    marcar(this.#widthRow, 'qb-tools__width--active', String(this.style.width(id)));
   }
 
   #renderOptions(): void {
@@ -175,6 +221,7 @@ export class ToolBar {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'qb-tools__alert';
+      b.dataset['value'] = mode;
       b.classList.toggle('qb-tools__alert--active', mode === current);
       b.textContent = icon;
       b.title = label;
@@ -194,6 +241,7 @@ export class ToolBar {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'qb-tools__color';
+      b.dataset['value'] = color;
       b.classList.toggle('qb-tools__color--active', color === current);
       b.style.background = color;
       b.title = `Papel ${color}`;
@@ -214,6 +262,7 @@ export class ToolBar {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'qb-tools__alert';
+      b.dataset['value'] = level ?? 'nenhum';
       b.classList.toggle('qb-tools__alert--active', level === current);
       b.textContent = level ? ALERT_ICONS[level] : '–';
       if (level) b.style.color = ALERT_COLORS[level];
@@ -240,6 +289,9 @@ export class ToolBar {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'qb-tools__shape';
+      // O valor fica no proprio elemento: e o que permite atualizar o destaque
+      // depois sem recriar o botao (ver `#syncActive`).
+      b.dataset['value'] = kind;
       b.classList.toggle('qb-tools__shape--active', kind === current);
       b.textContent = meta.icon;
       b.title = meta.label;
@@ -266,6 +318,7 @@ export class ToolBar {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'qb-tools__color';
+      b.dataset['value'] = color;
       b.classList.toggle('qb-tools__color--active', color === current);
       // A amostra e a propria cor do documento, sem passar pelo adaptador de
       // tema: e ela que fica gravada no .wbd e que o usuario esta escolhendo.
@@ -292,6 +345,7 @@ export class ToolBar {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'qb-tools__width';
+      b.dataset['value'] = String(width);
       b.classList.toggle('qb-tools__width--active', width === current);
       b.title = `${noun} ${width}px ([ e ])`;
       b.setAttribute('aria-label', `${noun} ${width}`);

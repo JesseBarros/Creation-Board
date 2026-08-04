@@ -52,7 +52,7 @@ export class Lobby {
     const helpBtn = textButton('Atalhos', () => this.actions.showShortcuts());
     helpBtn.title = 'F1';
     const themeBtn = textButton('Tema', () => this.actions.toggleTheme());
-    const importBtn = textButton('Importar do Whiteboard', () => this.actions.importWhiteboard());
+    const importBtn = textButton('Importar arquivo', () => this.actions.importWhiteboard());
     importBtn.title = 'Abrir a exportacao (.zip ou .html) do Microsoft Whiteboard';
     const newBtn = textButton('+ Novo quadro', () => this.actions.newBoard());
     newBtn.classList.add('qb-btn--primary');
@@ -76,7 +76,9 @@ export class Lobby {
       'Crie um quadro novo e salve com Ctrl+S — ele aparece aqui com uma miniatura.';
     const emptyActions = document.createElement('div');
     emptyActions.className = 'qb-lobby__empty-actions';
-    const importCta = textButton('Importar do Microsoft Whiteboard', () =>
+    // No lobby vazio o rotulo diz de onde vem, porque ali ele e a explicacao do
+    // que fazer primeiro -- e nao mais um botao numa fila.
+    const importCta = textButton('Importar arquivo do Microsoft Whiteboard', () =>
       this.actions.importWhiteboard(),
     );
     importCta.classList.add('qb-btn--primary');

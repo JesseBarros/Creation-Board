@@ -5,6 +5,7 @@ O [RETOMAR.md](RETOMAR.md) diz em que pé o projeto está; este arquivo diz **o 
 errado e o que falta**. Some quando a lista zerar.
 
 
+
 Vale registrar o padrão, porque ele se repete: **medir antes de corrigir devolveu mais
 resultado que corrigir teria devolvido.** Nenhuma linha de correção foi escrita, e três
 dos cinco bugs fecharam ou encolheram.
@@ -27,7 +28,14 @@ dos cinco bugs fecharam ou encolheram.
 ## Bugs
 
 ### B1 — Lapsos visuais ao alternar rápido entre o lobby e o quadro
-`a investigar` · `médio`
+`corrigido` · `médio` · 04/08/2026
+
+**Correção:** `#enterBoard()` passou a pintar as duas camadas **na hora**, em vez de
+esperar o próximo frame de animação. Até o `requestAnimationFrame` chegar, o canvas ainda
+tinha os pixels do quadro anterior — e era isso que aparecia.
+
+<details>
+<summary>Investigação</summary>
 
 Navegando rapidamente entre as abas e o quadro, aparecem falhas visuais.
 
@@ -41,6 +49,8 @@ tela mostra o quadro antigo. Nada limpa as duas camadas na troca.
 
 **Correção provável:** limpar (ou redesenhar de forma síncrona) antes de mostrar a view.
 Um frame em branco incomoda muito menos que o quadro de outra pessoa.
+
+</details>
 
 ### B2 — A régua: decisão da Fase 4.5 **mantida**
 `fechado — não é bug` · 04/08/2026
@@ -82,14 +92,21 @@ clicados e **os três fizeram efeito**. O caminho do botão funciona — o que c
 problema estava no *comportamento esperado*, e não na fiação.
 
 ### B3 — Lentidão ao trocar de cor
-`a investigar` · `médio`
+`corrigido` · `médio` · 04/08/2026
 
-O seletor de cores responde com atraso.
+O seletor de cores respondia com atraso. Eram **duas** causas somadas, e as duas na mesma
+linha de código — o `#commit()` do `DrawStyle`:
 
-**Suspeita inicial:** cada troca chama `DrawStyle.#commit()`, que grava em `localStorage`
-(síncrono) e dispara os ouvintes, e o ouvinte da barra **reconstrói todas as linhas de
-opção** (cores, espessuras, formas) a cada mudança. Provavelmente a mesma família de causa
-do B5.
+1. **Gravava em disco a cada clique.** `localStorage.setItem` é síncrono, então cada cor
+   escolhida punha uma ida ao disco no meio do gesto. Agora a gravação é adiada 400 ms; o
+   estado em memória muda na hora, e quem desenha nunca vê o valor velho.
+2. **Reconstruía o painel inteiro.** O ouvinte da barra recriava as quatro linhas de opção
+   — cerca de vinte botões — a cada mudança, e cada elemento novo obriga o navegador a
+   recalcular estilo e layout. Agora o painel só é reconstruído quando a **ferramenta**
+   muda; trocar cor ou espessura apenas move o destaque.
+
+**Verificação:** o auto-teste guarda a referência de um botão de cor, troca a cor e exige
+que **seja o mesmo elemento** — com o destaque no lugar certo.
 
 ### B4 — Cursor de cruz é feio nas ferramentas de desenho
 `aberto` · `baixo`
@@ -195,10 +212,11 @@ O que falta é o controle visível — o recurso existe e ninguém descobre. A c
 descoberta, não de capacidade: uma linha **B / I / U** no painel da ferramenta de texto.
 
 ### M2 — Renomear o botão de importação do Whiteboard
-`aberto` · `baixo`
+`corrigido` · `baixo` · 04/08/2026
 
-O botão do lobby diz "Importar do Whiteboard". Novo nome, decidido:
-**"Importar arquivo"**.
+Virou **"Importar arquivo"**. No lobby vazio o rótulo ficou mais longo de propósito —
+"Importar arquivo do Microsoft Whiteboard" —, porque ali ele é a explicação do que fazer
+primeiro, e não mais um botão numa fila.
 
 ### M3 — Redesenhar a barra de ferramentas inferior
 `aberto` · `médio`
@@ -208,10 +226,10 @@ candidata a polimento. **Falta decidir a direção**: agrupar em menus, esconder
 raro, ou separar em duas barras.
 
 ### M4 — Renomear o ícone de interrogação para "comandos"
-`aberto` · `baixo`
+`corrigido` · `baixo` · 04/08/2026
 
-O `?` da barra inferior abre a tela de atalhos. Trocar por um rótulo escrito. Faz par com
-o M3: é o mesmo arquivo.
+O `?` virou **"comandos"** escrito. Coberto pelo auto-teste (o botão é procurado pelo
+rótulo).
 
 ### M5 — Trocar os três degraus de espessura por uma barra de 0 a 100%
 `aberto` · `médio`
@@ -258,10 +276,8 @@ com ele reproduzindo de `F3` aberto, o travamento geral se dissolveu: **três do
 bugs fecharam ou encolheram sem uma linha de correção**, e as duas verificações novas
 ficaram no auto-teste.
 
-### Etapa 1 — Resíduo e cliques (B1, B3, B5)
-B1 tem causa e correção: limpar as camadas antes de mostrar a view. B3 e B5 são a mesma
-família — clicar num controle da interface reconstrói DOM e manda repintar o quadro por
-uma mudança que só afeta a interface.
+
+Entraram de carona os dois renomes de uma linha: M2 e M4.
 
 ### Etapa 3 — Barra inferior e nomes (M3, M4, M2)
 Mesmo arquivo (`ViewportBar`), mais o rótulo do lobby (M2). Fazer junto evita mexer duas
