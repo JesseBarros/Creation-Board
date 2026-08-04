@@ -1,3 +1,4 @@
+import type { Rect } from '@shared/geometry/rect';
 import { computeBbox } from '@shared/model/bbox';
 import type { BoardObject, ObjectId, RichSpan, Transform } from '@shared/model/types';
 import type { Document } from '../core/Document';
@@ -21,6 +22,12 @@ export interface ObjectPatch {
   content?: readonly RichSpan[];
   /** Marcadores de lista da caixa de texto -- muda o recuo e, com ele, a altura. */
   list?: 'none' | 'bullet';
+  /**
+   * Recorte da imagem, normalizado 0..1 sobre o arquivo original.
+   * `null` remove o recorte. Anda junto de `w`/`h` e do `transform`: recortar
+   * muda o pedaco visivel E o retangulo que ele ocupa no quadro.
+   */
+  crop?: Rect | null;
 }
 
 /** Le do objeto os campos que um patch tocaria, para poder desfazer depois. */
@@ -32,6 +39,7 @@ export function snapshotPatch(obj: BoardObject, fields: ObjectPatch): ObjectPatc
   if (fields.z !== undefined) out.z = obj.z;
   if (fields.content !== undefined && 'content' in obj) out.content = obj.content;
   if (fields.list !== undefined && obj.type === 'text') out.list = obj.list;
+  if (fields.crop !== undefined && obj.type === 'image') out.crop = obj.crop ?? null;
   return out;
 }
 
@@ -58,6 +66,7 @@ export function applyPatches(
       h?: number;
       content?: RichSpan[];
       list?: 'none' | 'bullet';
+      crop?: Rect | undefined;
     };
     if (patch.transform) next.transform = { ...patch.transform };
     if (patch.w !== undefined && 'w' in obj) next.w = patch.w;
@@ -65,6 +74,11 @@ export function applyPatches(
     if (patch.z !== undefined) next.z = patch.z;
     if (patch.content !== undefined && 'content' in obj) next.content = [...patch.content];
     if (patch.list !== undefined && obj.type === 'text') next.list = patch.list;
+    // `null` no patch significa "sem recorte", e o campo do objeto e opcional:
+    // guardar o null cru deixaria `crop` presente e falso ao mesmo tempo.
+    if (patch.crop !== undefined && obj.type === 'image') {
+      next.crop = patch.crop === null ? undefined : { ...patch.crop };
+    }
 
     next.rev = obj.rev + 1;
     next.updatedAt = now;

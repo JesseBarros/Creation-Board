@@ -212,11 +212,18 @@ export class SelectTool implements Tool {
    */
   onDoubleClick(p: ToolPointer): void {
     const hit = hitTest(this.ctx.doc, p.world, this.ctx.camera.zoom);
-    if (!hit || (hit.type !== 'text' && hit.type !== 'note')) return;
+    if (!hit) return;
     // O clique que precedeu o duplo deixou um gesto pendente; sem abortar, o
     // pointerup seguinte reduziria a selecao com a caixa ja aberta.
     this.#reset();
-    this.ctx.beginEdit(hit, { selectAll: false });
+
+    if (hit.type === 'text' || hit.type === 'note') {
+      this.ctx.beginEdit(hit, { selectAll: false });
+      return;
+    }
+    // Numa imagem, o duplo clique abre o recorte: e o mesmo gesto de "entrar no
+    // objeto" que a caixa de texto usa.
+    if (hit.type === 'image') this.ctx.beginCrop(hit);
   }
 
   cancel(): boolean {

@@ -1,5 +1,5 @@
 import type { Vec2 } from '@shared/geometry/vec2';
-import type { NoteObject, TextObject } from '@shared/model/types';
+import type { ImageObject, NoteObject, TextObject } from '@shared/model/types';
 import type { Camera } from '../core/Camera';
 import type { Document } from '../core/Document';
 import type { History } from '../core/History';
@@ -25,7 +25,9 @@ export type ToolId =
   | 'eraser'
   | 'shape'
   | 'text'
-  | 'note';
+  | 'note'
+  /** Modo, e nao ferramenta de barra: entra por duplo clique numa imagem. */
+  | 'crop';
 
 /** Ferramentas que produzem tinta a mao livre. */
 export const DRAW_TOOLS = ['pen', 'highlighter', 'pencil'] as const;
@@ -96,6 +98,8 @@ export interface ToolContext {
    * deixa nem objeto invisivel nem passo de undo.
    */
   beginEdit(obj: EditableObject, opts?: { isNew?: boolean; selectAll?: boolean }): void;
+  /** Abre o modo de recorte sobre uma imagem. */
+  beginCrop(obj: ImageObject): void;
 }
 
 export interface Tool {

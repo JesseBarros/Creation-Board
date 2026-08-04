@@ -12,7 +12,7 @@ import { ToolManager } from './tools/ToolManager';
 import { ALERT_ICONS, DrawStyle } from './tools/DrawStyle';
 import { hasStyle, type EditableObject, type ToolContext, type ToolId } from './tools/types';
 import { TextEditor } from './features/text/TextEditor';
-import { EditText, RestyleNotes, type NoteStyle } from './commands';
+import { PatchObjects, RestyleNotes, type NoteStyle } from './commands';
 import type { ObjectPatch } from './commands/patch';
 import type { Rect } from '@shared/geometry/rect';
 import { contentHeight, styleOf } from './render/text/layout';
@@ -43,6 +43,10 @@ import {
   usedAssetIds,
 } from './features/storage/boardIO';
 import { AssetStore } from './features/images/AssetStore';
+import { imageFilesFrom, insertImages } from './features/images/insert';
+import { uncropPatch } from './tools/CropTool';
+import type { ImageObject } from '@shared/model/types';
+import type { Vec2 } from '@shared/geometry/vec2';
 import { importWhiteboardHtml } from './features/import/whiteboard';
 import type { ImportReport, ImportSource } from '@shared/importer';
 import type { SaveBoardResult } from '@shared/wbd';
@@ -123,6 +127,8 @@ export class App {
   #session: Session = { path: null, name: 'Quadro sem nome', dirty: false };
   #saving = false;
   #benchPhase = 0;
+  /** O evento `paste` do sistema ja resolveu esta tecla? Ver `#pasteFromKeyboard`. */
+  #systemPasteHandled = false;
 
   constructor(root: HTMLElement) {
     root.replaceChildren();
@@ -256,6 +262,7 @@ export class App {
       invalidateOverlay: () => this.#scheduler.invalidateOverlay(),
       markDirty: () => this.#markDirty(),
       beginEdit: (obj, opts) => this.#editor.begin(obj, opts),
+      beginCrop: (obj) => this.beginCrop(obj),
     };
 
     this.#editor = new TextEditor(this.#host, this.#toolCtx, {
@@ -290,6 +297,7 @@ export class App {
 
     this.#observeSize();
     this.#bindShortcuts();
+    this.#bindImageInput();
     this.#guardUnsavedOnClose();
 
     // Loop de atualizacao do painel, separado do loop de render: o painel nao
@@ -742,6 +750,77 @@ export class App {
     return hit ? (this.doc.get(hit.id)?.bbox ?? null) : null;
   }
 
+  // --------------------------------------------------------------- imagens
+
+  /**
+   * Insere arquivos de imagem no ponto indicado (ou no centro da tela).
+   *
+   * Assincrono porque decodificar imagem grande fora da thread principal e o
+   * que evita a janela travar; quem chama nao precisa esperar.
+   */
+  async insertImageFiles(files: readonly File[], at?: Vec2): Promise<void> {
+    if (files.length === 0) return;
+    const world =
+      at ??
+      this.#tools.cursorWorld ??
+      this.camera.screenToWorld({
+        x: this.#renderer.viewportW / 2,
+        y: this.#renderer.viewportH / 2,
+      });
+
+    const { objects, rejected } = await insertImages(this.#toolCtx, this.assets, files, world);
+    if (objects.length > 0 && this.#tools.activeId !== 'select') this.setTool('select');
+    if (rejected.length > 0) {
+      toast(
+        rejected.length === files.length
+          ? `Nao foi possivel inserir: ${rejected.map((r) => r.name).join(', ')}`
+          : `${rejected.length} arquivo(s) recusado(s): ${rejected.map((r) => r.name).join(', ')}`,
+        'error',
+      );
+    }
+  }
+
+  /** Abre o recorte sobre uma imagem. Duplo clique ou menu de contexto. */
+  beginCrop(obj: ImageObject): void {
+    if (obj.locked) return;
+    this.setTool('crop');
+    this.#tools.crop.begin(obj);
+  }
+
+  /** Confirma o recorte em curso e volta para a selecao. */
+  commitCrop(): void {
+    if (this.#tools.activeId !== 'crop') return;
+    this.#tools.crop.commit();
+    this.setTool('select');
+  }
+
+  get isCropping(): boolean {
+    return this.#tools.activeId === 'crop' && this.#tools.crop.targetId !== null;
+  }
+
+  /** Devolve a imagem selecionada ao arquivo inteiro. */
+  removeCrop(): void {
+    const alvos = this.selection
+      .objects(this.doc)
+      .filter((o): o is ImageObject => o.type === 'image' && !o.locked && o.crop !== undefined);
+    if (alvos.length === 0) return;
+
+    const before = new Map<string, ObjectPatch>();
+    const after = new Map<string, ObjectPatch>();
+    for (const obj of alvos) {
+      const patch = uncropPatch(obj);
+      if (!patch) continue;
+      before.set(obj.id, patch.before);
+      after.set(obj.id, patch.after);
+    }
+    if (after.size === 0) return;
+
+    this.history.push(new PatchObjects(this.doc, before, after, 'Remover recorte'));
+    this.history.seal();
+    this.#markDirty();
+    this.#scheduler.invalidate();
+  }
+
   // ------------------------------------------------------------------ busca
 
   /** `Ctrl+F`. Reabrir com a busca ja aberta apenas devolve o foco ao campo. */
@@ -873,7 +952,9 @@ export class App {
       });
     }
 
-    this.history.push(new EditText(this.doc, before, after, ligar ? 'Marcadores' : 'Sem marcadores'));
+    this.history.push(
+      new PatchObjects(this.doc, before, after, ligar ? 'Marcadores' : 'Sem marcadores'),
+    );
     this.history.seal();
     this.#markDirty();
     this.#scheduler.invalidate();
@@ -970,6 +1051,13 @@ export class App {
       this.closeSearch();
       return;
     }
+    // Recorte aberto: Esc descarta e devolve a imagem como estava. O gesto ja
+    // esta todo na ferramenta, entao basta cancelar e voltar para a selecao.
+    if (this.isCropping) {
+      this.#tools.cancel();
+      this.setTool('select');
+      return;
+    }
     if (this.#tools.cancel()) return;
     this.selection.clear();
   }
@@ -993,6 +1081,12 @@ export class App {
       n === 1 && (selecionados[0]?.type === 'text' || selecionados[0]?.type === 'note');
     const notas = selecionados.filter((o) => o.type === 'note');
     const todosFixados = notas.length > 0 && notas.every((o) => o.type === 'note' && o.pinned);
+    // Recortar age sobre UMA imagem: o gesto e um retangulo sobre um objeto, e
+    // nao existe recorte comum a duas fotos de tamanhos diferentes.
+    const imagem =
+      n === 1 && selecionados[0]?.type === 'image' && !selecionados[0].locked
+        ? selecionados[0]
+        : null;
 
     const entries: MenuEntry[] = [
       ...(editavel
@@ -1022,6 +1116,19 @@ export class App {
               label: todosFixados ? 'Desafixar da tela' : 'Fixar na tela',
               onSelect: () => this.togglePinSelectedNotes(),
             },
+            'separator',
+          ] as MenuEntry[])
+        : []),
+      ...(imagem
+        ? ([
+            {
+              label: 'Recortar imagem',
+              hint: 'Duplo clique',
+              onSelect: () => this.beginCrop(imagem),
+            },
+            ...(imagem.crop
+              ? [{ label: 'Remover recorte', onSelect: () => this.removeCrop() }]
+              : []),
             'separator',
           ] as MenuEntry[])
         : []),
@@ -1176,6 +1283,67 @@ export class App {
     }
   }
 
+  /**
+   * Entrada de imagem: colar e arrastar arquivo.
+   *
+   * As duas portas ficam juntas porque compartilham o mesmo perigo: um arquivo
+   * solto na janela do Electron, sem `preventDefault`, faz a janela NAVEGAR ate
+   * ele -- o app inteiro some e vira um visualizador de imagem, sem volta.
+   */
+  #bindImageInput(): void {
+    window.addEventListener('paste', (e) => {
+      if (this.#view !== 'board') return;
+      // Dentro de uma caixa de texto o colar pertence ao editor (que cola texto
+      // puro); interceptar aqui colaria a imagem por cima da digitacao.
+      const target = e.target as HTMLElement | null;
+      if (target?.isContentEditable || target instanceof HTMLInputElement) return;
+
+      const files = imageFilesFrom(e.clipboardData);
+      if (files.length === 0) return;
+      e.preventDefault();
+      this.#systemPasteHandled = true;
+      void this.insertImageFiles(files);
+    });
+
+    // Fora do quadro, arrastar arquivo nao faz nada -- mas precisa ser barrado.
+    for (const type of ['dragover', 'drop']) {
+      window.addEventListener(type, (e) => e.preventDefault());
+    }
+
+    this.#host.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    });
+
+    this.#host.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (this.#view !== 'board') return;
+      const files = imageFilesFrom(e.dataTransfer);
+      if (files.length === 0) return;
+      // A imagem entra ONDE foi solta, e nao no centro da tela: quem arrastou
+      // ate um ponto do quadro escolheu esse ponto.
+      const rect = this.#host.getBoundingClientRect();
+      const at = this.camera.screenToWorld({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+      void this.insertImageFiles(files, at);
+    });
+  }
+
+  /**
+   * `Ctrl+V`: decide entre a area de transferencia INTERNA e a do sistema.
+   *
+   * O evento `paste` do sistema chega logo depois desta tecla e pode trazer uma
+   * imagem. O salto de macrotarefa deixa ele decidir primeiro; sem isso, colar
+   * uma imagem copiada de fora colaria TAMBEM o que estava na area interna, e o
+   * quadro receberia duas coisas por um comando so.
+   */
+  #pasteFromKeyboard(): void {
+    this.#systemPasteHandled = false;
+    setTimeout(() => {
+      if (this.#systemPasteHandled) return;
+      void this.pasteClipboard();
+    }, 0);
+  }
+
   #observeSize(): void {
     new ResizeObserver(() => this.#measure()).observe(this.#host);
     // devicePixelRatio muda ao arrastar a janela entre monitores de DPI diferente.
@@ -1201,7 +1369,7 @@ export class App {
       duplicate: () => void duplicateSelection(this.#toolCtx),
       copy: () => this.copySelection(),
       cut: () => this.cutSelection(),
-      paste: () => void this.pasteClipboard(),
+      paste: () => this.#pasteFromKeyboard(),
       deleteSelection: () => void deleteSelection(this.#toolCtx),
       deselect: () => this.#escape(),
       bringToFront: () => void reorderSelection(this.#toolCtx, 'front'),
@@ -1214,7 +1382,12 @@ export class App {
       toolShape: () => this.setTool('shape'),
       toolText: () => this.setTool('text'),
       toolNote: () => this.setTool('note'),
-      editText: () => this.editSelection(),
+      // Enter confirma o recorte quando ele esta aberto: e a mesma tecla de
+      // "terminei aqui" que fecha a caixa de texto.
+      editText: () => {
+        if (this.isCropping) this.commitCrop();
+        else this.editSelection();
+      },
       thinner: () => this.stepStrokeWidth(-1),
       thicker: () => this.stepStrokeWidth(1),
       snapToGrid: () => this.toggleSnapToGrid(),
