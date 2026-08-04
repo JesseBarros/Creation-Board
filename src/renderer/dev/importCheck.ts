@@ -56,9 +56,63 @@ export async function runImportCheck(path: string, app: App, save = false): Prom
         : '  extensao do quadro: vazio',
     );
     lines.push(`  tempo total: ${ms.toFixed(0)} ms`);
+    lines.push(...(await measureInteraction(app)));
   } catch (err) {
     lines.push(`  ERRO ${String(err)}`);
   }
 
   console.log(`IMPORTCHECK\n${lines.join('\n')}\nIMPORTCHECK_FIM`);
+}
+
+/**
+ * Quanto custa MEXER no quadro real.
+ *
+ * Existe por causa de um relato de travamento ao alternar ferramentas e views.
+ * As medicoes do auto-teste usam carga sintetica -- tracos gerados, baratos de
+ * desenhar. O quadro de verdade tem centenas de caixas de texto, cada uma com
+ * layout, e centenas de caminhos de tinta. Sem medir AQUI, "trocar de ferramenta
+ * custa 1,6 ms" e uma conta sobre outro quadro.
+ *
+ * O que se mede: o preco de uma repintura completa da camada estatica -- que e
+ * exatamente o que a interface manda fazer a cada troca de ferramenta.
+ */
+async function measureInteraction(app: App): Promise<string[]> {
+  const bounds = app.doc.contentBounds();
+  if (!bounds) return [];
+
+  const out: string[] = ['  custo de interacao (repintura completa da camada estatica):'];
+
+  for (const [nome, preparar] of [
+    ['tudo na tela', (): void => app.fitToContent()],
+    ['zoom 100%', (): void => app.setZoom(1)],
+  ] as const) {
+    preparar();
+    await nextFrame();
+
+    const REPS = 8;
+    const t0 = performance.now();
+    for (let i = 0; i < REPS; i++) {
+      app.invalidateForMeasurement();
+      await nextFrame();
+    }
+    const comRepintura = (performance.now() - t0) / REPS;
+
+    // Linha de base: os mesmos frames sem mandar repintar nada.
+    const t1 = performance.now();
+    for (let i = 0; i < REPS; i++) await nextFrame();
+    const ocioso = (performance.now() - t1) / REPS;
+
+    const stats = app.frameStats;
+    out.push(
+      `    ${nome.padEnd(14)} frame ${comRepintura.toFixed(1)} ms · ocioso ${ocioso.toFixed(1)} ms · ` +
+        `custo ${(comRepintura - ocioso).toFixed(1)} ms · ` +
+        `render ${stats.renderMs.toFixed(1)} ms · visiveis ${stats.visible}`,
+    );
+  }
+
+  return out;
+}
+
+function nextFrame(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
 }

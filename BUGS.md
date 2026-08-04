@@ -57,27 +57,41 @@ tela mostra o quadro antigo. Nada limpa as duas camadas na troca.
 **Correção provável:** limpar (ou redesenhar de forma síncrona) antes de mostrar a view.
 Um frame em branco incomoda muito menos que o quadro de outra pessoa.
 
-### B2 — Botões de grade, ímã e régua não funcionam direito
-`a investigar` · `alto`
+### B2 — A régua não é o que ele quer que ela seja
+`decisão a revisar` · `alto`
 
-Relato dele: **"não acontece nada"** ao clicar nos três.
+**O relato mudou de natureza quando ele explicou.** Os botões não estão quebrados: a
+régua *funciona*, mas o que ela faz não é o que ele quer. Hoje ela são duas **faixas
+graduadas nas bordas** da tela (topo e esquerda), em px ou cm.
+
+O que ele quer é a régua do Microsoft Whiteboard: **um objeto físico no meio do quadro,
+que se gira 360°** e serve de apoio para riscar linhas retas — a tinta encosta na borda
+dela e sai reta.
+
+**Isto reverte uma decisão da Fase 4.5**, registrada no RETOMAR: *"régua = réguas nas
+bordas em px/cm, não a régua-transferidor do Whiteboard"*. Foi escolha dele na época; a
+documentação precisa mudar junto, senão a próxima sessão lê a decisão e "conserta" de
+volta.
+
+**Falta decidir:** as faixas das bordas **saem** ou **ficam** convivendo com a régua nova
+(elas respondem "onde eu estou", que é outra pergunta)? E se ficarem, qual das duas leva a
+tecla `R`.
+
+**Tamanho real:** isto não é correção, é funcionalidade — do porte de uma fase. Precisa de
+objeto com posição e ângulo, gesto de girar com trava em ângulos redondos, indicação do
+ângulo enquanto gira, e **encaixe da tinta na borda**, que é a parte que a torna útil.
+
+### B2b — Grade e ímã: confirmar se há defeito
+`a investigar` · `médio`
+
+Os outros dois botões do relato original. A medição mostrou que **fazem efeito** quando
+clicados por código, e o problema relatado era a régua. Fica aberto até ele confirmar se
+grade e ímã também incomodam — pode ser só que o efeito seja difícil de ver (a grade são
+pontos de 1px; o ímã só se percebe arrastando perto de uma linha).
 
 **Medido em 04/08/2026 (novo no auto-teste):** os três botões foram procurados no DOM,
-clicados e **os três fizeram efeito** — `grid.enabled`, `snapToGrid` e as réguas mudaram
-de estado. Numa instância nova do app, o caminho do botão funciona.
-
-Isso descarta as hipóteses fáceis (handler não ligado, clique engolido por um elemento por
-cima) e deixa três em pé:
-
-1. o efeito acontece mas **não se vê** no contexto dele — a grade é de pontos de 1px, e o
-   ímã só se percebe arrastando perto de uma linha da grade;
-2. a instância que ele testou estava velha (o servidor de dev recarrega a página a cada
-   alteração minha, e várias entraram durante o teste);
-3. o clique real (com hit-test do mouse) esbarra em algo que o `.click()` sintético do
-   teste não vê.
-
-**Como separar em um gesto:** apertar `R` no teclado e depois clicar no botão "régua". Se
-a tecla mostra a régua e o botão não, é (3). Se os dois mostram, é (1) ou (2).
+clicados e **os três fizeram efeito**. O caminho do botão funciona — o que confirma que o
+problema estava no *comportamento esperado*, e não na fiação.
 
 ### B3 — Lentidão ao trocar de cor
 `a investigar` · `médio`
@@ -120,11 +134,41 @@ tempo parado.
 Ou seja: o repaint que a troca dispara **cabe folgado num frame**. Trocar de ferramenta,
 sozinho, não explica o engasgo.
 
-**O que sobra como suspeito, e depende de uma pergunta:** se "alternar os ícones" for
-alternar entre o **lobby e o quadro**, o caminho é outro e é caro de verdade — voltar ao
-lobby lista os arquivos do disco e decodifica as miniaturas, e abrir um quadro
-**descompacta o `.wbd` e decodifica os assets**. Repetir isso rápido engasga, e explicaria
-o B1 pelo mesmo motivo.
+**Ele confirmou: são os DOIS caminhos** — alternar ferramentas na barra lateral *e* ir e
+voltar entre o lobby e o quadro. E a intuição dele é que o problema está "na engine que
+criou as HUDs".
+
+Isso derruba a explicação mais simples (um caminho caro específico) e deixa o suspeito
+mais desconfortável: **algo comum aos dois** é lento. O que os dois compartilham é a
+reconstrução de DOM da interface e o `invalidate()` que força repintura completa.
+
+**Medido sobre o quadro REAL (resumo importado, 1.063 objetos), em 04/08/2026:**
+
+| Situação | Custo da repintura completa | Render |
+|---|---|---|
+| Tudo na tela (1.063 objetos visíveis) | **0,1 ms** acima do frame ocioso | 1,7 ms |
+| Zoom 100% (1 objeto visível) | 0,1 ms | 0,6 ms |
+
+**Repintar o quadro inteiro não custa nada perceptível, nem no material dele.** Somando às
+medições anteriores, todos os suspeitos caíram:
+
+| Suspeito | Veredito |
+|---|---|
+| Autosave gerando miniatura | Descartado — sintoma preso à troca, não ao tempo parado |
+| Repintura ao trocar de ferramenta | Descartado — 0,1 ms no quadro real |
+| DOM do painel de opções | Descartado — 0,11 ms por troca |
+| Clique não chegando ao botão | Descartado — os botões respondem |
+
+**A hipótese que sobra é sobre o ambiente, não sobre o código:** ele testou enquanto eu
+editava o projeto. O servidor de desenvolvimento recarrega a página a cada alteração, e
+umas vinte entraram durante a sessão de testes. Recarga no meio do uso produz exatamente
+os três sintomas juntos — engasgo, resíduo do frame anterior e botão que "não responde"
+(porque a página estava trocando).
+
+**Como separar, e é a única coisa que ainda falta:** ele reproduzir com o **`F3` aberto**
+(o painel mostra fps e ms por frame) enquanto eu não mexo em nada. Se os números caírem no
+momento do engasgo, é o app. Se ficarem firmes e o engasgo acontecer mesmo assim, é fora
+do loop de render — e aí o alvo passa a ser a interface em DOM, que é a intuição dele.
 
 ---
 
@@ -197,16 +241,21 @@ Sobrou uma pergunta que decide a etapa seguinte: o que exatamente é "alternar o
 O auto-teste ganhou as duas verificações que faltavam — os botões da barra pelo **clique**
 (o teclado já era coberto) e o custo da troca de ferramenta com o quadro cheio.
 
-### Etapa 1 — B1 (resíduo do frame) e o que a pergunta do B5 apontar
-O B1 já tem causa e correção provável: limpar as camadas antes de mostrar a view. Se o B5
-for a troca lobby↔quadro, ele é da mesma família — a transição é o caminho caro (listar
-disco, descompactar `.wbd`, decodificar assets) — e as duas correções andam juntas.
+### Etapa 0b — Medir sobre o quadro REAL (B5)
+Ele confirmou que engasga nos dois caminhos e desconfia da "engine das HUDs". Tudo que
+medi até aqui foi com carga sintética; o quadro dele é o resumo importado, com 642 caixas
+de texto e 380 caminhos de tinta. **Repintar isso não custa o mesmo.** Sem esse número,
+qualquer correção de desempenho é chute.
 
-### Etapa 2 — B2 e B3, depois de saber o que o gesto real faz
-O B2 depende do teste de um gesto (tecla `R` contra o botão "régua"). O B3 (lentidão do
-seletor de cor) tem causa provável já lida no código: cada troca grava em `localStorage` e
-**reconstrói todas as linhas do painel**. Vêm antes do M3 porque redesenhar uma barra com
-defeito dentro só esconderia o defeito.
+### Etapa 1 — B1 (resíduo do frame) e o que a Etapa 0b apontar (B5, B3)
+O B1 já tem causa e correção: limpar as camadas antes de mostrar a view. B3 tem causa
+provável já lida no código — cada troca de cor grava em `localStorage` e **reconstrói
+todas as linhas do painel**. Se a Etapa 0b apontar a repintura como culpada, os três se
+resolvem juntos, porque a raiz é a mesma: **a interface manda repintar o quadro inteiro
+por mudanças que só afetam a interface**.
+
+### Etapa 2 — B2b (grade e ímã), se ele confirmar que incomodam
+Pequeno e independente. A régua saiu daqui — virou funcionalidade nova (abaixo).
 
 ### Etapa 3 — Barra inferior e nomes (M3, M4, M2)
 Mesmo arquivo (`ViewportBar`), mais o rótulo do lobby (M2). Fazer junto evita mexer duas
@@ -219,3 +268,18 @@ cor (M6) e a linha B/I/U do texto (M1). O cursor (B4) entra junto por ser da mes
 
 Última de propósito: é a etapa que mais mexe em interface, e vai partir de uma barra já
 redesenhada e de um app que não trava mais.
+
+### Fora da rodada — Régua giratória (B2)
+
+**Não cabe num patch de correções.** É funcionalidade do porte de uma fase, e entra
+depois — ou no lugar da Fase 9, se ele preferir. O que ela precisa:
+
+1. Um instrumento com posição e ângulo, desenhado no overlay. **Não é objeto do quadro**:
+   régua não se salva no `.wbd` nem entra na exportação, do mesmo jeito que a grade e as
+   guias de encaixe não entram.
+2. Gesto de girar 360°, com trava em ângulos redondos (0/15/30/45/90) e o ângulo escrito
+   na tela enquanto gira — sem ler o número, alinhar vira tentativa e erro.
+3. **A parte que a torna útil:** a tinta encosta na borda e sai reta. Isso é encaixe, e o
+   projeto já tem a peça — `features/snapping/snap.ts` devolve uma *correção*, não uma
+   posição, que é exatamente o que um traço em andamento precisa.
+4. Decidir o convívio com as faixas das bordas (ficam? saem? quem leva o `R`?).
