@@ -4,9 +4,13 @@ Registro do que apareceu usando o app de verdade, antes da Fase 9 (polimento).
 O [RETOMAR.md](RETOMAR.md) diz em que pé o projeto está; este arquivo diz **o que está
 errado e o que falta**. Some quando a lista zerar.
 
-**Última atualização: 04/08/2026.** 11 itens abertos (5 bugs, 6 melhorias), vindos da
-primeira rodada de testes dele. B1, B2 e B5 já passaram por medição — e **duas suspeitas
-minhas caíram**, o que mudou a ordem de correção.
+**Última atualização: 04/08/2026.** **8 itens abertos** (3 bugs, 6 melhorias) — a lista
+começou com 11 e encolheu na triagem: dois relatos não eram defeito e o maior deles
+(travamento geral) era o ambiente de desenvolvimento, não o app.
+
+Vale registrar o padrão, porque ele se repete: **medir antes de corrigir devolveu mais
+resultado que corrigir teria devolvido.** Nenhuma linha de correção foi escrita, e três
+dos cinco bugs fecharam ou encolheram.
 
 ---
 
@@ -57,8 +61,19 @@ tela mostra o quadro antigo. Nada limpa as duas camadas na troca.
 **Correção provável:** limpar (ou redesenhar de forma síncrona) antes de mostrar a view.
 Um frame em branco incomoda muito menos que o quadro de outra pessoa.
 
-### B2 — A régua não é o que ele quer que ela seja
-`decisão a revisar` · `alto`
+### B2 — A régua: decisão da Fase 4.5 **mantida**
+`fechado — não é bug` · 04/08/2026
+
+Ele avaliou a régua-instrumento do Whiteboard contra a que existe e **decidiu ficar com a
+atual**: *"não vamos alterar, essa régua não está ruim"*. A decisão da Fase 4.5 continua
+valendo, e a documentação não muda.
+
+Fica registrado o que ele descreveu, caso volte à mesa algum dia: uma régua física no meio
+do quadro, girável 360°, com a tinta encaixando na borda para sair reta. O texto completo
+do que ela precisaria está no histórico deste arquivo (commit `d502ef9`).
+
+<details>
+<summary>Descrição original do relato</summary>
 
 **O relato mudou de natureza quando ele explicou.** Os botões não estão quebrados: a
 régua *funciona*, mas o que ela faz não é o que ele quer. Hoje ela são duas **faixas
@@ -81,13 +96,13 @@ tecla `R`.
 objeto com posição e ângulo, gesto de girar com trava em ângulos redondos, indicação do
 ângulo enquanto gira, e **encaixe da tinta na borda**, que é a parte que a torna útil.
 
-### B2b — Grade e ímã: confirmar se há defeito
-`a investigar` · `médio`
+</details>
 
-Os outros dois botões do relato original. A medição mostrou que **fazem efeito** quando
-clicados por código, e o problema relatado era a régua. Fica aberto até ele confirmar se
-grade e ímã também incomodam — pode ser só que o efeito seja difícil de ver (a grade são
-pontos de 1px; o ímã só se percebe arrastando perto de uma linha).
+### B2b — Grade e ímã
+`fechado — não é bug` · 04/08/2026
+
+Ele esclareceu que o incômodo era só a régua. A medição já mostrava que os dois botões
+fazem efeito.
 
 **Medido em 04/08/2026 (novo no auto-teste):** os três botões foram procurados no DOM,
 clicados e **os três fizeram efeito**. O caminho do botão funciona — o que confirma que o
@@ -112,11 +127,22 @@ Ele quer um cursor com cara de caneta no lugar do `crosshair`.
 A borracha já faz diferente e serve de modelo: ela esconde o cursor do sistema e desenha o
 próprio círculo no overlay.
 
-### B5 — HUD lenta e travamentos gerais
-`a investigar` · `crítico`
+### B5 — Queda breve de fps ao clicar num ícone da barra inferior
+`aberto` · `baixo`
 
-Relato dele: **engasga ao alternar os ícones rapidamente** — "como se não tivesse
-desempenho suficiente para a tarefa, ou o processo de troca gerasse um bug".
+**O relato encolheu depois de ele medir com o `F3` aberto**, com o projeto parado: não há
+travamento geral. A única diferença de fps que ele sentiu é **ao clicar num ícone da barra
+inferior**, e **estabiliza rápido**.
+
+Isso confirma que os sintomas maiores da primeira rodada eram do ambiente — ele testava
+enquanto o servidor de desenvolvimento recarregava a página a cada alteração minha.
+
+O que sobra é pequeno e provavelmente da mesma família do B3: clicar num botão da barra
+troca classes e dispara recálculo de estilo, e o app manda repintar junto. Vale corrigir
+com o B3, não sozinho.
+
+<details>
+<summary>Investigação original (relato de travamento geral)</summary>
 
 **A suspeita inicial caiu.** Eu apostava no autosave da Fase 8 (grava 3s depois de cada
 alteração e gera miniatura do quadro inteiro). Não é: o sintoma está preso à troca, não ao
@@ -165,10 +191,10 @@ umas vinte entraram durante a sessão de testes. Recarga no meio do uso produz e
 os três sintomas juntos — engasgo, resíduo do frame anterior e botão que "não responde"
 (porque a página estava trocando).
 
-**Como separar, e é a única coisa que ainda falta:** ele reproduzir com o **`F3` aberto**
-(o painel mostra fps e ms por frame) enquanto eu não mexo em nada. Se os números caírem no
-momento do engasgo, é o app. Se ficarem firmes e o engasgo acontecer mesmo assim, é fora
-do loop de render — e aí o alvo passa a ser a interface em DOM, que é a intuição dele.
+**Como separar:** ele reproduzir com o `F3` aberto, com o projeto parado. **Feito** — ver
+o resumo acima.
+
+</details>
 
 ---
 
@@ -241,21 +267,16 @@ Sobrou uma pergunta que decide a etapa seguinte: o que exatamente é "alternar o
 O auto-teste ganhou as duas verificações que faltavam — os botões da barra pelo **clique**
 (o teclado já era coberto) e o custo da troca de ferramenta com o quadro cheio.
 
-### Etapa 0b — Medir sobre o quadro REAL (B5)
-Ele confirmou que engasga nos dois caminhos e desconfia da "engine das HUDs". Tudo que
-medi até aqui foi com carga sintética; o quadro dele é o resumo importado, com 642 caixas
-de texto e 380 caminhos de tinta. **Repintar isso não custa o mesmo.** Sem esse número,
-qualquer correção de desempenho é chute.
+### Etapa 0b — Medir sobre o quadro REAL · **feita**
+Repintar o resumo importado inteiro custa **0,1 ms** acima do frame ocioso. Com isso, e
+com ele reproduzindo de `F3` aberto, o travamento geral se dissolveu: **três dos cinco
+bugs fecharam ou encolheram sem uma linha de correção**, e as duas verificações novas
+ficaram no auto-teste.
 
-### Etapa 1 — B1 (resíduo do frame) e o que a Etapa 0b apontar (B5, B3)
-O B1 já tem causa e correção: limpar as camadas antes de mostrar a view. B3 tem causa
-provável já lida no código — cada troca de cor grava em `localStorage` e **reconstrói
-todas as linhas do painel**. Se a Etapa 0b apontar a repintura como culpada, os três se
-resolvem juntos, porque a raiz é a mesma: **a interface manda repintar o quadro inteiro
-por mudanças que só afetam a interface**.
-
-### Etapa 2 — B2b (grade e ímã), se ele confirmar que incomodam
-Pequeno e independente. A régua saiu daqui — virou funcionalidade nova (abaixo).
+### Etapa 1 — Resíduo e cliques (B1, B3, B5)
+B1 tem causa e correção: limpar as camadas antes de mostrar a view. B3 e B5 são a mesma
+família — clicar num controle da interface reconstrói DOM e manda repintar o quadro por
+uma mudança que só afeta a interface.
 
 ### Etapa 3 — Barra inferior e nomes (M3, M4, M2)
 Mesmo arquivo (`ViewportBar`), mais o rótulo do lobby (M2). Fazer junto evita mexer duas
@@ -269,17 +290,12 @@ cor (M6) e a linha B/I/U do texto (M1). O cursor (B4) entra junto por ser da mes
 Última de propósito: é a etapa que mais mexe em interface, e vai partir de uma barra já
 redesenhada e de um app que não trava mais.
 
-### Fora da rodada — Régua giratória (B2)
+---
 
-**Não cabe num patch de correções.** É funcionalidade do porte de uma fase, e entra
-depois — ou no lugar da Fase 9, se ele preferir. O que ela precisa:
+## Fechados nesta rodada
 
-1. Um instrumento com posição e ângulo, desenhado no overlay. **Não é objeto do quadro**:
-   régua não se salva no `.wbd` nem entra na exportação, do mesmo jeito que a grade e as
-   guias de encaixe não entram.
-2. Gesto de girar 360°, com trava em ângulos redondos (0/15/30/45/90) e o ângulo escrito
-   na tela enquanto gira — sem ler o número, alinhar vira tentativa e erro.
-3. **A parte que a torna útil:** a tinta encosta na borda e sai reta. Isso é encaixe, e o
-   projeto já tem a peça — `features/snapping/snap.ts` devolve uma *correção*, não uma
-   posição, que é exatamente o que um traço em andamento precisa.
-4. Decidir o convívio com as faixas das bordas (ficam? saem? quem leva o `R`?).
+| Id | Desfecho |
+|---|---|
+| B2 | Não é bug — a régua atual fica, decisão da Fase 4.5 mantida |
+| B2b | Não é bug — grade e ímã respondem; o incômodo era só a régua |
+| B5 (parte maior) | Travamento geral era o servidor de dev recarregando a página durante o teste; sobrou só uma queda breve ao clicar |
