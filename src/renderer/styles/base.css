@@ -54,7 +54,10 @@ body {
   font-family: var(--font-ui);
   /* O canvas gerencia a propria selecao; a selecao nativa so atrapalha. */
   user-select: none;
-  overflow: hidden;
+  /* `clip` e nao `hidden`: ver o porquê em app.css, na regra do `.qb-app`.
+     Em resumo -- `hidden` ainda rola por programa, e a rolagem automatica do
+     cursor de texto entortava a janela inteira. */
+  overflow: clip;
   /* Impede o zoom por pinca do proprio Chromium sobre a pagina. */
   touch-action: none;
 }
