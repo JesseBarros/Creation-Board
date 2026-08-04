@@ -18,6 +18,7 @@ import { moveObjects } from '../features/selection/transformOps';
 import { snapRect } from '../features/snapping/snap';
 import { applyBoard, serializeBoard } from '../features/storage/boardIO';
 import { plainText } from '../features/text/spans';
+import { searchBoard } from '../features/search/search';
 import { layoutOf, layoutText } from '../render/text/layout';
 import { offscreenPinnedNotes } from '../render/PinnedNotes';
 import { generateStressObjects } from './stress';
@@ -261,6 +262,7 @@ export async function runSelfTest(host: HTMLElement, app: App): Promise<void> {
   await block('desenho', () => runDrawingTests(host, app, check, reset));
   await block('formas e encaixe', () => runShapeAndSnapTests(host, app, check, reset));
   await block('texto e post-its', () => runTextTests(host, app, check, reset));
+  await block('busca', () => runSearchTests(app, check, reset));
 
   // Deixa o cenario montado no fim. Com QB_SHOT a janela nao fecha ao terminar,
   // entao a foto vira a conferencia do que nenhum numero daqui verifica: o cromo
@@ -281,6 +283,10 @@ export async function runSelfTest(host: HTMLElement, app: App): Promise<void> {
     app.history.clear();
     if (!app.rulersEnabled) app.toggleRulers();
     snapAgainstNeighbor(host, app);
+    // A busca aberta com um resultado destacado entra na foto: o painel, o
+    // trecho com o pedaco marcado e o contorno roxo em volta do objeto sao
+    // justamente o que numero nenhum verifica.
+    showSearchForShot(app);
   });
   // Sem isto o quadro fica marcado como sujo, o guarda de `beforeunload`
   // recusa o fechamento e a execucao automatizada nunca termina.
@@ -375,6 +381,20 @@ function writeSampleText(host: HTMLElement, app: App): void {
   click(host, 900 + box.left, 120 + box.top);
   typeInEditor('Post-it com alerta.');
   app.drawStyle.setNoteAlert(null);
+}
+
+/**
+ * Deixa a busca aberta, com resultado, para a foto do QB_SHOT.
+ *
+ * A camera NAO e movida: o enquadramento da cena e o que mostra o resto das
+ * fases, e levar a camera ate o resultado esvaziaria a foto.
+ */
+function showSearchForShot(app: App): void {
+  app.openSearch();
+  const campo = document.querySelector<HTMLInputElement>('.qb-search__input');
+  if (!campo) return;
+  campo.value = 'texto';
+  campo.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
 /**
@@ -1725,4 +1745,200 @@ function runTextTests(host: HTMLElement, app: App, check: Check, reset: () => vo
 /** Texto de uma linha do layout, para comparar quebras. */
 function textOf(line: { runs: ReadonlyArray<{ text: string }> }): string {
   return line.runs.map((r) => r.text).join('');
+}
+
+// -------------------------------------------------------------------- busca
+
+function runSearchTests(app: App, check: Check, reset: () => void): void {
+  const { doc, selection, history } = app;
+
+  /** Caixa de texto pronta, sem passar pelas ferramentas. */
+  const textBox = (id: string, x: number, y: number, texto: string, z: string): TextObject => {
+    const o: TextObject = {
+      ...BASE,
+      id,
+      type: 'text',
+      z,
+      transform: { x, y, rotation: 0, scaleX: 1, scaleY: 1 },
+      bbox: { x: 0, y: 0, w: 0, h: 0 },
+      w: 300,
+      h: 40,
+      autoHeight: true,
+      content: [{ text: texto }],
+      fontFamily: "'Segoe UI', sans-serif",
+      fontSize: 16,
+      lineHeight: 1.35,
+      align: 'left',
+      color: '#1f2933',
+      list: 'none',
+    };
+    o.bbox = computeBbox(o);
+    return o;
+  };
+
+  const setup = (): void => {
+    reset();
+    selection.clear();
+    history.clear();
+    doc.clear();
+    doc.setPrefs({ snapToGrid: false, unit: 'px' });
+    doc.add([
+      textBox('T1', 200, 600, 'A matriz de revisão precisa de atenção', 'a1'),
+      textBox('T2', 200, 200, 'Teorema da matriz inversa', 'a2'),
+      textBox('T3', 900, 200, 'Nada a ver com o resto', 'a3'),
+    ]);
+    app.setTool('select');
+  };
+
+  // --- acha por trecho, ignorando acento e caixa
+  // Num resumo em portugues escrito a duas maos -- digitado aqui e importado do
+  // Whiteboard -- procurar "revisao" e nao achar "revisão" seria inutilizavel.
+  setup();
+  const semAcento = searchBoard(doc, 'REVISAO');
+  check(
+    'a busca ignora acento e caixa',
+    semAcento.length === 1 && semAcento[0]?.id === 'T1',
+    `resultados=${semAcento.length} primeiro=${semAcento[0]?.id ?? 'nenhum'} esperado=(1, T1)`,
+  );
+
+  // --- ordem de leitura do quadro, e nao ordem de criacao
+  const doisHits = searchBoard(doc, 'matriz');
+  check(
+    'os resultados saem na ordem de leitura do quadro (de cima para baixo)',
+    doisHits.length === 2 && doisHits[0]?.id === 'T2' && doisHits[1]?.id === 'T1',
+    `ordem=${doisHits.map((h) => h.id).join(', ')} esperado=T2, T1 (T2 esta acima)`,
+  );
+
+  // --- o trecho traz o contexto com o casamento marcado
+  const hit = doisHits[0];
+  const marcado = hit ? hit.snippet.slice(hit.at, hit.at + hit.length) : '';
+  check(
+    'o trecho do resultado marca o pedaco que casou',
+    hit !== undefined && marcado.toLowerCase() === 'matriz' && hit.snippet.includes('Teorema'),
+    `trecho="${hit?.snippet}" marcado="${marcado}" esperado=marcar "matriz" com contexto`,
+  );
+
+  // --- Ctrl+F abre, Esc fecha
+  setup();
+  key('f', { ctrl: true });
+  const abriu = app.isSearchOpen;
+  const campo = document.querySelector<HTMLInputElement>('.qb-search__input');
+  if (campo) {
+    campo.value = 'matriz';
+    campo.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  const achouPelaTela = app.searchHit?.id;
+  check(
+    'Ctrl+F abre a busca e digitar ja lista os resultados',
+    abriu && achouPelaTela === 'T2',
+    `aberta=${abriu} primeiro resultado=${achouPelaTela ?? 'nenhum'} esperado=(true, T2)`,
+  );
+
+  // --- Enter leva a camera ate o resultado e seleciona
+  // Zoom em 100% ou o que fizer caber, o que for menor: manter o zoom de onde se
+  // estava resolveria "centralizar" e nao "encontrar".
+  app.camera.zoom = 0.08;
+  app.camera.x = 40000;
+  app.camera.y = 40000;
+  campo?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+  const alvo = doc.get('T2')!;
+  const centroX = app.camera.x + 1200 / 2 / app.camera.zoom;
+  const perto =
+    Math.abs(centroX - (alvo.bbox.x + alvo.bbox.w / 2)) < alvo.bbox.w &&
+    app.camera.zoom > 0.5;
+  check(
+    'Enter leva a camera ate o resultado, com zoom legivel, e o seleciona',
+    perto && selection.has('T2'),
+    `zoom=${app.camera.zoom.toFixed(2)} selecionado=${selection.has('T2')} ` +
+      `esperado=(zoom acima de 0.5, T2 selecionado)`,
+  );
+
+  // --- Enter de novo anda para o proximo, e da a volta
+  app.stepSearch(1);
+  const segundo = app.searchHit?.id;
+  app.stepSearch(1);
+  const voltou = app.searchHit?.id;
+  check(
+    'os resultados andam com Enter e dao a volta no fim da lista',
+    segundo === 'T1' && voltou === 'T2',
+    `segundo=${segundo} depois da volta=${voltou} esperado=(T1, T2)`,
+  );
+
+  // --- Esc fecha e o destaque some junto
+  key('Escape');
+  check(
+    'Escape fecha a busca e o destaque some',
+    !app.isSearchOpen && app.searchHit === null,
+    `aberta=${app.isSearchOpen} destaque=${app.searchHit === null ? 'nenhum' : 'ainda ha'}`,
+  );
+
+  // --- o post-it tambem entra na busca
+  setup();
+  doc.add([
+    {
+      ...BASE,
+      id: 'N1',
+      type: 'note',
+      z: 'a4',
+      transform: { x: 1400, y: 200, rotation: 0, scaleX: 1, scaleY: 1 },
+      bbox: { x: 1400, y: 200, w: 180, h: 180 },
+      w: 180,
+      h: 180,
+      bg: '#fff3bf',
+      content: [{ text: 'conferir a integral depois' }],
+      alert: null,
+      pinned: false,
+    } as NoteObject,
+  ]);
+  const noPostit = searchBoard(doc, 'integral');
+  check(
+    'a busca acha texto dentro de post-it',
+    noPostit.length === 1 && noPostit[0]?.id === 'N1' && noPostit[0]?.kind === 'note',
+    `resultados=${noPostit.length} tipo=${noPostit[0]?.kind ?? '-'} esperado=(1, note)`,
+  );
+
+  // --- MEDICAO: a varredura aguenta sem indice invertido?
+  //
+  // E a medicao que decidiu o desenho do modulo. Dobrar o texto de todos os
+  // objetos a cada tecla custava 20,8 ms -- mais que um frame. Com o texto
+  // dobrado em cache por `id:rev`, a primeira busca ainda paga a dobra e as
+  // seguintes (que sao a experiencia real de quem digita) ficam baratas.
+  //
+  // As duas saem separadas de proposito: uma media escondendo a primeira daria
+  // um numero bonito e mentiroso.
+  const N = 10_000;
+  doc.clear();
+  doc.add(generateStressObjects(N));
+
+  const t0 = performance.now();
+  const encontrados = searchBoard(doc, 'matriz', 100_000).length;
+  const msFria = performance.now() - t0;
+
+  const REPS = 8;
+  // Consultas diferentes a cada volta: repetir a mesma mediria o cache de uma
+  // busca so, e nao o de todos os objetos.
+  const termos = ['matri', 'matriz', 'teorema', 'revis', 'revisar', 'integral', 'limite', 'prova'];
+
+  // Piso: varrer tudo sem casar com nada. Separa o custo de PROCURAR do custo
+  // de MONTAR o resultado -- sem isso, "10 ms" nao diz onde otimizar.
+  const t1 = performance.now();
+  for (let i = 0; i < REPS; i++) searchBoard(doc, `zzz${i}`, 100_000);
+  const msVarredura = (performance.now() - t1) / REPS;
+
+  // O caminho de verdade da interface, que para no teto de resultados.
+  const t2 = performance.now();
+  for (let i = 0; i < REPS; i++) searchBoard(doc, termos[i % termos.length]!);
+  const msInterface = (performance.now() - t2) / REPS;
+
+  check(
+    `buscar em ${N.toLocaleString('pt-BR')} objetos custa menos que um frame`,
+    msInterface < 16,
+    `${msInterface.toFixed(1)} ms por tecla (varredura pura ${msVarredura.toFixed(1)} ms, ` +
+      `primeira busca ${msFria.toFixed(1)} ms com ${encontrados} acertos), teto 16 ms — ` +
+      `e o numero que justifica varrer sem indice invertido`,
+  );
+
+  reset();
+  doc.clear();
+  app.setTool('select');
 }

@@ -4,15 +4,16 @@ Ponto de retomada do **Creation Board**. O [README](README.md) explica o que o a
 como cada parte funciona; este arquivo responde outra pergunta: *em que pé isso está e
 o que fazer a seguir*. Some quando o projeto acabar.
 
-**Última sessão: 04/08/2026.** Fases 5 e 5.5 concluídas.
+**Última sessão: 04/08/2026.** Fases 5, 5.5 e 6 concluídas.
 
 ---
 
 ## Estado em uma linha
 
-Fases 0 a 5.5 prontas. Dá para importar um resumo do Microsoft Whiteboard, **reorganizá-lo
+Fases 0 a 6 prontas. Dá para importar um resumo do Microsoft Whiteboard, **reorganizá-lo
 com alinhamento assistido, escrever à mão, desenhar formas, digitar texto e post-its em
-cima dele e apagar tinta por peça**. Falta busca.
+cima dele, apagar tinta por peça e achar qualquer palavra com `Ctrl+F`**. Faltam imagens
+(colar/arrastar), exportação e autosave.
 
 ## O que existe hoje
 
@@ -27,7 +28,8 @@ cima dele e apagar tinta por peça**. Falta busca.
 | 4.5 | Formas, encaixe com guias, grade magnética, réguas | pronta |
 | 5 | Texto, post-its e alertas | pronta |
 | 5.5 | Borracha progressiva (apagar por peça) | pronta |
-| **6** | **Busca `Ctrl+F`** | **próxima** |
+| 6 | Busca `Ctrl+F` | pronta |
+| **7** | **Imagens: colar, arrastar e recortar** | **próxima** |
 
 A ordem diverge do plano original **de propósito**: o objetivo é migrar os resumos do
 Whiteboard, e para isso importar e manipular vieram antes de desenhar.
@@ -35,8 +37,8 @@ Whiteboard, e para isso importar e manipular vieram antes de desenhar.
 A Fase 5.5 nasceu de um pedido dele ao testar a Fase 5 — a borracha apagando o traço
 inteiro não servia — e **reverteu a decisão da Fase 4**. Está resolvida.
 
-**A `main` foi até a Fase 5** (mesclada em 04/08/2026, em avanço rápido). A Fase 5.5 está
-na branch **`fase-5-5-borracha`**, ainda sem mesclar — ele não pediu.
+**A `main` foi até a Fase 5.5** (mesclada em 04/08/2026, em avanço rápido). A Fase 6 está
+na branch **`fase-6-busca`**, ainda sem mesclar — ele não pediu.
 
 ---
 
@@ -46,17 +48,23 @@ Sempre por terminal — nunca por captura de tela cheia (ver o *porquê* no READ
 
 ```
 npm run typecheck     # tsc nos dois projetos, strict
-npm run selftest      # 83 verificações, deve terminar com "tudo passou"
+npm run selftest      # 92 verificações, deve terminar com "tudo passou"
 npm run check:colors  # contraste das cores nos dois temas
 ```
 
-⚠️ **Uma das 83 mede a máquina, não o código:** "arrastar 10.000 objetos selecionados
+⚠️ **Duas das 92 medem a máquina, não o código.** A primeira: "arrastar 10.000 objetos selecionados
 fica acima de 30fps", com teto de 33 ms por frame. Ela reprova com o computador ocupado —
 em 04/08/2026 reprovou com **50–62 ms** simplesmente porque o **CS2 estava aberto**, e a
 `main` sem nenhuma mudança reprovou pior que a branch nova. O sinal de que é a máquina, e
 não uma regressão, está na própria linha do resultado: se o custo de `bbox` (matemática
 pura, que quase nunca muda) subiu junto, é carga externa. Rodar de novo com o jogo
 fechado antes de investigar qualquer coisa.
+
+A segunda é da Fase 6: **"buscar em 10.000 objetos custa menos que um frame"**, teto de
+16 ms. Ela é o que sustenta não haver índice invertido, e a linha do resultado traz a
+repartição — em 04/08/2026: **4,0 ms por tecla, dos quais 0,9 ms é varrer tudo**. Se um
+dia ela reprovar, olhe primeiro a varredura pura: se ela continuar perto de 1 ms, o
+problema não é procurar, é montar os trechos, e índice nenhum resolve isso.
 
 E, ao tocar em `Document`, `SpatialIndex`, no importador ou no **layout de texto**,
 conferir a geometria contra o oráculo:
@@ -91,8 +99,9 @@ regressão. **O texto é o caso com história** (leia antes de suspeitar de bug)
 Para ver renderização, `QB_SHOT=<arquivo.png> npm run selftest` fotografa **só a janela
 do app** e deixa na tela a cena de conferência: seleção com alças, um traço de cada
 variante, duas formas, as réguas ligadas, um objeto encostado noutro pelo encaixe, uma
-caixa de texto com negrito, sublinhado e marcadores, um post-it com alerta e um buraco de
-borracha no meio de um traço — tudo produzido pelas ferramentas de verdade. Atenção: com `QB_SHOT` a janela **não fecha
+caixa de texto com negrito, sublinhado e marcadores, um post-it com alerta, um buraco de
+borracha no meio de um traço e a busca aberta com o achado destacado — tudo produzido
+pelas ferramentas de verdade. Atenção: com `QB_SHOT` a janela **não fecha
 sozinha** — o processo fica aberto até você encerrá-lo.
 
 **A guia de encaixe não sai na foto**, e não é bug: ela existe só enquanto o botão está
@@ -106,21 +115,21 @@ com tudo estável.
 
 ---
 
-## Como começar a Fase 6
+## Como começar a Fase 7
 
-Busca `Ctrl+F`: achar uma palavra num resumo de mil objetos e levar a câmera até ela.
+Imagens: colar do clipboard, arrastar arquivo para dentro do quadro e recortar.
 
-1. O texto a indexar já está pronto e em um lugar só: `RichSpan[]` em `TextObject` e
-   `NoteObject`, com `plainText()` em `features/text/spans.ts` para achatar. `BaseObject`
-   já tem `name`, pensado desde a Fase 1 para entrar no mesmo índice.
-2. O que **não** existe é índice de texto. Varrer 642 caixas por tecla digitada é
-   provavelmente rápido o bastante para começar — **medir antes de construir índice**, que
-   é a regra que já evitou otimização errada duas vezes neste projeto.
-3. Navegar até o resultado é `camera.fitTo` no `bbox` do objeto, e destacar é seleção —
-   as duas peças já existem.
-4. A tela de busca entra como as outras em `ui/`, e o atalho como linha em
-   `shortcuts.ts`. Teclas livres: `O`, `S`, `C`.
-5. Cobrir no `selftest` junto — ver a nota abaixo.
+1. `ImageObject`, `AssetStore` e o painter **já existem** e já são usados pela importação
+   — inclusive com os bytes indo para dentro do `.wbd` e a cópia entre quadros levando o
+   binário junto (Fase 3). O que falta é *entrar* imagem pelo app.
+2. Colar: o evento `paste` do sistema traz `File`/`Blob` em `e.clipboardData.files`. A
+   área de transferência **interna** do app é outra coisa e continua sendo a dos objetos
+   — ver a decisão no README antes de misturar as duas.
+3. Arrastar arquivo pede `dragover` e `drop` no host, com `preventDefault` nos dois.
+4. `crop` já está no tipo (`Rect` normalizado 0..1) e o painter ainda não lê — recortar é
+   ler `crop` no painter e escrever o gesto na ferramenta de seleção.
+5. Cobrir no `selftest` junto — ver a nota abaixo. Dá para montar um `ImageBitmap` pequeno
+   dentro do próprio teste, sem depender de arquivo em disco.
 
 ---
 
@@ -179,7 +188,13 @@ Busca `Ctrl+F`: achar uma palavra num resumo de mil objetos e levar a câmera at
     que produziu a divergência de tamanho que a importação carregou da Fase 2 à 5.
 14. **A altura de linha vem da fonte, com piso no multiplicador** — `fontBoundingBox` e
     `actualBoundingBox`, a maior das duas. `fontSize × lineHeight` sozinho corta emoji.
-15. **Funcionalidade nova entra com cobertura no `selftest`.** Ele despacha eventos de
+15. **A busca não tem índice invertido, e isso foi medido.** Varrer 10.000 objetos sem
+    casar com nada custa 0,9 ms: procurar nunca foi o gargalo. O que estava caro era
+    dobrar o texto (tirar acento e caixa) de tudo a cada tecla — 20,8 ms —, resolvido com
+    um `WeakMap` chaveado pelo próprio objeto, já que toda mutação o substitui e a
+    invalidação sai de graça. Antes de "otimizar a busca", ler a repartição na linha do
+    autoteste.
+16. **Funcionalidade nova entra com cobertura no `selftest`.** Ele despacha eventos de
     ponteiro e teclado no app real, então pega regressão de fiação, não só de matemática.
     Foi ele que achou, na Fase 5, um `commit()` que lia `#isNew` **depois** de fechar o
     editor — toda caixa nova virava "edição" de um objeto inexistente. Armadilha ao mexer
@@ -200,13 +215,16 @@ src/renderer/
 ├─ features/
 │  ├─ selection/  hitTest, frame, transformOps, actions, clipboard
 │  ├─ snapping/   snap (guias de alinhamento + grade)
+│  ├─ search/     busca por texto, sem índice invertido (ver a medição)
 │  ├─ text/       TextEditor (contentEditable), spans (DOM ↔ RichSpan)
 │  ├─ import/     leitor do export do Whiteboard
 │  ├─ images/     AssetStore
 │  └─ storage/    boardIO
 ├─ render/      Renderer (estática + overlay), painters (+ erase: máscara da borracha),
-│               text/layout, SelectionOverlay, SnapGuides, Rulers, PinnedNotes
-├─ ui/          ToolBar, Lobby, ViewportBar, ContextMenu, ShortcutsModal, DebugPanel
+│               text/layout, SelectionOverlay, SnapGuides, Rulers, PinnedNotes,
+│               SearchHighlight
+├─ ui/          ToolBar, SearchBar, Lobby, ViewportBar, ContextMenu, ShortcutsModal,
+│               DebugPanel
 └─ dev/         selftest, layoutOracle, importCheck, stress  ← ferramentas de medição
 ```
 

@@ -45,6 +45,7 @@ teclas — se o atalho aparece na ajuda, ele funciona.
 | Réguas | `R` liga/desliga · `U` troca px ↔ cm |
 | Selecionar | Clique · Shift+clique soma · arrastar no vazio faz laço |
 | Selecionar tudo / limpar | `Ctrl+A` / `Esc` |
+| Buscar | `Ctrl+F` · `Enter` próximo · `Shift+Enter` anterior · `Esc` fecha |
 | Mover · redimensionar · girar | Arrastar a seleção · uma alça · a alça de cima |
 | Desfazer / refazer | `Ctrl+Z` / `Ctrl+Shift+Z` (ou `Ctrl+Y`) |
 | Duplicar / excluir | `Ctrl+D` / `Delete` |
@@ -203,6 +204,36 @@ O layout ([render/text/layout.ts](src/renderer/render/text/layout.ts)) é ponto 
 verdade para **três** consumidores que precisam concordar: o painter que desenha, o
 importador que grava o tamanho da caixa no `.wbd` e o editor. Cada um medindo por conta
 própria foi exatamente a divergência que a importação carregou da Fase 2 até aqui.
+
+## Buscar
+
+`Ctrl+F` abre uma barra no topo com os resultados listados, cada um com o **trecho em
+volta do casamento** — num resumo com dezenas de ocorrências de "matriz", o que distingue
+uma da outra é a frase em volta. `Enter` vai para o resultado destacado e, de novo, para o
+próximo; `Shift+Enter` volta; `Esc` fecha.
+
+Quatro decisões:
+
+- **Ignora acento e caixa.** Num resumo em português escrito a duas mãos — digitado aqui
+  e importado do Whiteboard — procurar "revisao" e não achar "revisão" seria inutilizável.
+- **Ordem de leitura do quadro**, de cima para baixo e da esquerda para a direita. A ordem
+  de camada (`z`) seria arbitrária para quem lê, e a de criação não descreve o que se vê.
+- **Ir para o resultado leva o zoom a 100%** (ou ao que fizer o objeto caber, o que for
+  menor). Manter o zoom de onde se estava resolveria "centralizar" e não "encontrar": num
+  quadro visto a 8%, o resultado chegaria centralizado e ilegível.
+- **O destaque não depende da ferramenta ativa.** O quadro de seleção só aparece com a
+  seleção ativa; buscar no meio de um desenho não deve obrigar a trocar de ferramenta para
+  ver o que foi encontrado. Por isso o achado ganha contorno próprio, em roxo — cor
+  distinta do azul da seleção e do laranja das guias, que são outras três respostas do
+  sistema.
+
+**Não há índice invertido, e isso foi medido.** Com 10.000 objetos: varrer todos sem casar
+com nada custa **0,9 ms** — procurar nunca foi o gargalo. O custo real é montar o trecho
+de cada acerto, limitado pelo teto de resultados, e o total por tecla fica em **4,0 ms**.
+Um índice otimizaria justamente a parte de 0,9 ms, em troca de mantê-lo sincronizado a
+cada edição, undo e importação. O que *estava* caro era dobrar o texto de tudo a cada
+tecla (20,8 ms); resolveu-se guardando o texto dobrado num `WeakMap` chaveado pelo próprio
+objeto — como toda mutação substitui o objeto, a invalidação sai de graça.
 
 ## Selecionar e manipular
 
@@ -422,7 +453,7 @@ npm run selftest
 
 Abre o app, dispara eventos de ponteiro e de teclado direto no app e imprime o
 resultado no terminal — sem depender da janela estar em primeiro plano e sem
-capturar a tela. **83 verificações**, em sete frentes:
+capturar a tela. **92 verificações**, em oito frentes:
 
 - **Navegação:** pan com botão direito e com o do meio, o limiar que separa arrastar
   de clicar, o botão esquerdo permanecendo livre para as ferramentas, o zoom ancorado
@@ -458,6 +489,11 @@ capturar a tela. **83 verificações**, em sete frentes:
   reestilizando o que já existe, a ficha do post-it fixado aparecendo só fora da tela, e
   `T`/`N`. Inclui a propriedade em que a importação se apoia: **encolher a caixa até a
   maior linha preserva a quebra**.
+- **Busca:** achar ignorando acento e caixa, a ordem de leitura do quadro, o trecho
+  marcando o pedaço que casou, `Ctrl+F` abrindo e listando ao digitar, `Enter` levando a
+  câmera com zoom legível e selecionando, a volta no fim da lista, `Esc` fechando junto com
+  o destaque, e post-it entrando na busca. Mais a **medição** que sustenta não haver índice
+  invertido, com a repartição do custo.
 - **Persistência:** copiar, recortar, colar no cursor, o traço desenhado e o texto
   formatado sobrevivendo à ida e volta pelo formato gravado, e um teste que move e
   redimensiona um objeto e passa o documento pelo mesmo JSON que vai para dentro do
@@ -483,9 +519,10 @@ teste termina montando uma cena com a seleção ativa e **tudo produzido pelas f
 de verdade** — então `QB_SHOT=<arquivo.png> npm run selftest` fotografa só a janela do app
 e mostra o contorno, as alças, a alça de rotação, o grifo passando por baixo da tinta, a
 espessura do lápis variando com a pressão, as formas, as réguas, uma caixa de texto com
-negrito, sublinhado e marcadores, um post-it com alerta e **um buraco de borracha no meio
+negrito, sublinhado e marcadores, um post-it com alerta, **um buraco de borracha no meio
 de um traço** — nenhum número prova que o pedaço sumiu com a borda certa e sem deixar
-mancha da cor do fundo.
+mancha da cor do fundo — e a **busca aberta** com o trecho marcado e o contorno roxo em
+volta do achado.
 
 ## Requisitos
 
@@ -595,7 +632,7 @@ src/
    │  └─ text/           layout de texto (medida, quebra, linhas) — usado por
    │                     painter, importador e editor
    ├─ tools/          uma ferramenta por arquivo, interface Tool comum
-   ├─ features/       text, snapping, clipboard, images, import, storage
+   ├─ features/       text, search, snapping, clipboard, images, import, storage
    ├─ ui/             toolbar, painéis, modais
    ├─ state/          preferências, tema, favoritos
    └─ styles/
@@ -723,7 +760,7 @@ serve para migrar.
 - [x] **Fase 4.5** — Formas geométricas, régua e snap
 - [x] **Fase 5** — Texto, post-its e alertas
 - [x] **Fase 5.5** — Borracha progressiva (apagar por peça)
-- [ ] **Fase 6** — Busca Ctrl+F
+- [x] **Fase 6** — Busca Ctrl+F
 - [ ] **Fase 7** — Imagens
 - [ ] **Fase 7.5** — Transcrever imagem em texto (OCR). Viabilidade confirmada:
       motor nativo do Windows (`Windows.Media.Ocr`), pt-BR já instalado, offline,

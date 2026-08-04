@@ -319,6 +319,127 @@
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 
+/* ----------------------------------------------------------------- busca */
+
+/*
+  Painel flutuante no topo, e nao um modal: procurar uma palavra e uma acao
+  SOBRE o quadro, e escurecer o fundo esconderia justamente o que se procura.
+  Estreito pelo mesmo motivo -- o resultado precisa de tela.
+*/
+.qb-search {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(520px, calc(100% - 140px));
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  z-index: 4;
+  overflow: hidden;
+}
+
+.qb-search__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 8px 8px 12px;
+}
+
+.qb-search__input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+}
+
+.qb-search__counter {
+  color: var(--fg-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.qb-search__btn {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg-muted);
+  font-size: 15px;
+  line-height: 1;
+}
+
+.qb-search__btn:hover {
+  background: var(--panel-2);
+  color: var(--fg);
+}
+
+.qb-search__list {
+  max-height: 264px;
+  overflow-y: auto;
+  border-top: 1px solid var(--border);
+}
+
+.qb-search__list:empty {
+  display: none;
+}
+
+.qb-search__hit {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+}
+
+.qb-search__hit:hover {
+  background: var(--panel-2);
+}
+
+/* O resultado atual e o mesmo que esta destacado no quadro; a cor e a mesma. */
+.qb-search__hit--active {
+  background: color-mix(in srgb, #7048e8 14%, transparent);
+  box-shadow: inset 2px 0 0 #7048e8;
+}
+
+.qb-search__kind {
+  flex: none;
+  width: 16px;
+  color: var(--fg-muted);
+  font-size: 11px;
+  text-align: center;
+}
+
+.qb-search__snippet {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qb-search__snippet mark {
+  background: color-mix(in srgb, #7048e8 28%, transparent);
+  color: inherit;
+  border-radius: 2px;
+}
+
 /* --------------------------------------------------------- edicao de texto */
 
 /*
