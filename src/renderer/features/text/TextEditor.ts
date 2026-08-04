@@ -1,6 +1,6 @@
 import type { NoteObject, ObjectId, RichSpan, TextObject } from '@shared/model/types';
 import { computeBbox } from '@shared/model/bbox';
-import { AddObjects, EditText, RemoveObjects } from '../../commands';
+import { AddObjects, PatchObjects, RemoveObjects } from '../../commands';
 import type { ObjectPatch } from '../../commands/patch';
 import type { ToolContext } from '../../tools/types';
 import {
@@ -168,7 +168,7 @@ export class TextEditor {
     const after: ObjectPatch = { content, h: this.#heightFor(obj, content) };
     const before: ObjectPatch = { content: obj.content, h: obj.h };
     history.push(
-      new EditText(doc, new Map([[obj.id, before]]), new Map([[obj.id, after]])),
+      new PatchObjects(doc, new Map([[obj.id, before]]), new Map([[obj.id, after]]), 'Editar texto'),
     );
     history.seal();
     this.#ctx.markDirty();

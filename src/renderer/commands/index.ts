@@ -176,22 +176,27 @@ export class TransformObjects implements Command {
 }
 
 /**
- * Uma sessao de edicao de texto inteira, em um passo de undo.
+ * Troca campos de conteudo de objetos, em um passo de undo.
  *
- * O delta e o conteudo mais a altura: com `autoHeight` a caixa cresce enquanto
- * se digita, e desfazer precisa devolver as duas coisas juntas -- restaurar so
- * o texto deixaria uma caixa alta com duas palavras dentro.
+ * Serve a tres usos hoje, e o que eles tem em comum e mudarem conteudo E
+ * geometria juntos -- por isso um comando so, e nao um por campo:
  *
- * Nao se funde com o comando seguinte de proposito: uma sessao de edicao ja
- * comeca e termina em pontos claros (entrar e sair da caixa), e fundir duas
- * faria Ctrl+Z pular o conteudo de duas caixas de uma vez.
+ *   - editar texto: conteudo + altura, porque com `autoHeight` a caixa cresce
+ *     enquanto se digita e restaurar so o texto deixaria uma caixa alta com
+ *     duas palavras dentro;
+ *   - marcadores de lista: o recuo estreita a coluna e muda a altura;
+ *   - recortar imagem: `crop` + `w`/`h` + a origem, que se deslocam juntos.
+ *
+ * Nao se funde com o comando seguinte de proposito: cada um destes ja comeca e
+ * termina em pontos claros, e fundir dois faria Ctrl+Z desfazer duas edicoes
+ * separadas de uma vez.
  */
-export class EditText implements Command {
+export class PatchObjects implements Command {
   constructor(
     private readonly doc: Document,
     private readonly before: ReadonlyMap<ObjectId, ObjectPatch>,
     private readonly after: ReadonlyMap<ObjectId, ObjectPatch>,
-    readonly label = 'Editar texto',
+    readonly label = 'Editar',
   ) {}
 
   apply(): void {

@@ -2,6 +2,7 @@ import type { Vec2 } from '@shared/geometry/vec2';
 import { computeBbox } from '@shared/model/bbox';
 import type {
   BoardObject,
+  ImageObject,
   NoteObject,
   PathObject,
   ShapeKind,
@@ -263,13 +264,14 @@ export async function runSelfTest(host: HTMLElement, app: App): Promise<void> {
   await block('formas e encaixe', () => runShapeAndSnapTests(host, app, check, reset));
   await block('texto e post-its', () => runTextTests(host, app, check, reset));
   await block('busca', () => runSearchTests(app, check, reset));
+  await block('imagens', () => runImageTests(host, app, check, reset));
 
   // Deixa o cenario montado no fim. Com QB_SHOT a janela nao fecha ao terminar,
   // entao a foto vira a conferencia do que nenhum numero daqui verifica: o cromo
   // de selecao, a aparencia das tres variantes de traco, as formas, as reguas e a
   // guia de encaixe. Tudo produzido pelas ferramentas de verdade, e nao montado a
   // mao, para a foto mostrar o que o usuario veria.
-  await block('cena da foto', () => {
+  await block('cena da foto', async () => {
     reset();
     app.selection.clear();
     app.history.clear();
@@ -283,6 +285,9 @@ export async function runSelfTest(host: HTMLElement, app: App): Promise<void> {
     app.history.clear();
     if (!app.rulersEnabled) app.toggleRulers();
     snapAgainstNeighbor(host, app);
+    // Uma imagem com o recorte ABERTO: a sombra por fora, as linhas de terco e
+    // as alcas laranja sao exatamente o que nenhum numero verifica.
+    await showCropForShot(host, app);
     // A busca aberta com um resultado destacado entra na foto: o painel, o
     // trecho com o pedaco marcado e o contorno roxo em volta do objeto sao
     // justamente o que numero nenhum verifica.
@@ -381,6 +386,22 @@ function writeSampleText(host: HTMLElement, app: App): void {
   click(host, 900 + box.left, 120 + box.top);
   typeInEditor('Post-it com alerta.');
   app.drawStyle.setNoteAlert(null);
+}
+
+/**
+ * Insere uma imagem e deixa o recorte aberto sobre ela, para a foto do QB_SHOT.
+ */
+async function showCropForShot(host: HTMLElement, app: App): Promise<void> {
+  const box = host.getBoundingClientRect();
+  await app.insertImageFiles([await fakeImageFile(300, 200, 'foto.png')], { x: 1010, y: 470 });
+  const img = [...app.doc.all()].find((o): o is ImageObject => o.type === 'image');
+  if (!img) return;
+
+  app.beginCrop(img);
+  // Puxa a alca do canto superior esquerdo para dentro, para a sombra do que
+  // ficaria de fora aparecer na foto.
+  drag(host, 0, img.transform.x + box.left, img.transform.y + box.top, 46, 34);
+  app.history.clear();
 }
 
 /**
@@ -1745,6 +1766,225 @@ function runTextTests(host: HTMLElement, app: App, check: Check, reset: () => vo
 /** Texto de uma linha do layout, para comparar quebras. */
 function textOf(line: { runs: ReadonlyArray<{ text: string }> }): string {
   return line.runs.map((r) => r.text).join('');
+}
+
+// ------------------------------------------------------------------ imagens
+
+/**
+ * Um PNG de verdade, gerado na hora.
+ *
+ * Melhor que embutir bytes de um arquivo: o teste exercita o mesmo caminho de
+ * decodificacao do app (`createImageBitmap` sobre um Blob real) sem depender de
+ * nada no disco.
+ */
+async function fakeImageFile(w: number, h: number, name = 'teste.png'): Promise<File> {
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#1971c2';
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = '#ffd43b';
+  ctx.fillRect(0, 0, w / 2, h / 2);
+
+  const blob = await new Promise<Blob | null>((r) => canvas.toBlob((b) => r(b), 'image/png'));
+  if (!blob) throw new Error('nao foi possivel gerar o PNG de teste');
+  return new File([blob], name, { type: 'image/png' });
+}
+
+async function runImageTests(
+  host: HTMLElement,
+  app: App,
+  check: Check,
+  reset: () => void,
+): Promise<void> {
+  const { doc, selection, history } = app;
+  const box = host.getBoundingClientRect();
+
+  const setup = (): void => {
+    reset();
+    selection.clear();
+    history.clear();
+    doc.clear();
+    app.assets.clear();
+    doc.setPrefs({ snapToGrid: false, unit: 'px' });
+    app.setTool('select');
+  };
+
+  const madeImage = (): ImageObject | undefined =>
+    [...doc.all()].find((o): o is ImageObject => o.type === 'image');
+
+  // --- arrastar um arquivo para dentro do quadro insere a imagem onde caiu
+  setup();
+  const arquivo = await fakeImageFile(400, 200);
+  const dt = new DataTransfer();
+  dt.items.add(arquivo);
+  host.dispatchEvent(
+    new DragEvent('drop', {
+      dataTransfer: dt,
+      clientX: 700 + box.left,
+      clientY: 400 + box.top,
+      bubbles: true,
+      cancelable: true,
+    }),
+  );
+  // A insercao decodifica fora da thread principal; esperar o proximo tique e o
+  // que o app tambem faz.
+  await settle();
+  const solta = madeImage();
+  check(
+    'arrastar um arquivo insere a imagem onde ela foi solta',
+    solta !== undefined &&
+      near(solta.transform.x + solta.w / 2, 700, 2) &&
+      near(solta.transform.y + solta.h / 2, 400, 2) &&
+      solta.naturalW === 400 &&
+      history.depth === 1,
+    `centro=(${solta ? (solta.transform.x + solta.w / 2).toFixed(0) : '-'}, ` +
+      `${solta ? (solta.transform.y + solta.h / 2).toFixed(0) : '-'}) ` +
+      `natural=${solta?.naturalW}x${solta?.naturalH} passos=${history.depth} esperado=(700, 400)`,
+  );
+
+  // --- imagem grande entra em tamanho de tela, e pequena entra no tamanho dela
+  setup();
+  await app.insertImageFiles([await fakeImageFile(3840, 2160)], { x: 0, y: 0 });
+  const grande = madeImage();
+  setup();
+  await app.insertImageFiles([await fakeImageFile(64, 48)], { x: 0, y: 0 });
+  const pequena = madeImage();
+  check(
+    'imagem grande entra reduzida e imagem pequena nao e ampliada',
+    grande !== undefined &&
+      grande.w === 720 &&
+      near(grande.h, 405, 1) &&
+      pequena !== undefined &&
+      pequena.w === 64 &&
+      pequena.h === 48,
+    `grande=${grande?.w}x${grande?.h} (arquivo 3840x2160) pequena=${pequena?.w}x${pequena?.h} ` +
+      `(arquivo 64x48) esperado=(720x405, 64x48)`,
+  );
+
+  // --- colar do sistema insere imagem, e nao passa pela area interna
+  setup();
+  const colado = new DataTransfer();
+  colado.items.add(await fakeImageFile(200, 200, 'colado.png'));
+  window.dispatchEvent(
+    new ClipboardEvent('paste', { clipboardData: colado, bubbles: true, cancelable: true }),
+  );
+  await settle();
+  check(
+    'colar uma imagem do sistema insere a imagem no quadro',
+    madeImage() !== undefined && doc.size === 1,
+    `objetos=${doc.size} tipo=${[...doc.all()][0]?.type ?? '-'} esperado=(1, image)`,
+  );
+
+  // --- recorte: compoe, encolhe a caixa e desloca a origem
+  setup();
+  await app.insertImageFiles([await fakeImageFile(400, 200)], { x: 500, y: 500 });
+  const paraRecortar = madeImage()!;
+  const x0 = paraRecortar.transform.x;
+  const y0 = paraRecortar.transform.y;
+  app.beginCrop(paraRecortar);
+  const abriuRecorte = app.isCropping;
+  // Puxa a alca do canto superior esquerdo em 25% da largura e 25% da altura.
+  const nw = { x: x0, y: y0 };
+  drag(host, 0, nw.x + box.left, nw.y + box.top, paraRecortar.w / 4, paraRecortar.h / 4);
+  app.commitCrop();
+  const recortada = doc.get(paraRecortar.id) as ImageObject | undefined;
+  check(
+    'recortar encolhe a caixa, desloca a origem e compoe o recorte normalizado',
+    abriuRecorte &&
+      recortada !== undefined &&
+      near(recortada.w, paraRecortar.w * 0.75, 2) &&
+      near(recortada.transform.x, x0 + paraRecortar.w / 4, 2) &&
+      recortada.crop !== undefined &&
+      near(recortada.crop.x, 0.25, 0.02) &&
+      near(recortada.crop.w, 0.75, 0.02),
+    `caixa=${recortada?.w.toFixed(0)}x${recortada?.h.toFixed(0)} ` +
+      `origem.x=${recortada?.transform.x.toFixed(0)} (era ${x0.toFixed(0)}) ` +
+      `crop=(${recortada?.crop?.x.toFixed(2)}, ${recortada?.crop?.w.toFixed(2)}) esperado=(0.25, 0.75)`,
+  );
+
+  // --- Ctrl+Z devolve a imagem inteira
+  key('z', { ctrl: true });
+  const desfeita = doc.get(paraRecortar.id) as ImageObject | undefined;
+  check(
+    'Ctrl+Z desfaz o recorte inteiro, incluindo a caixa e a origem',
+    desfeita !== undefined &&
+      desfeita.crop === undefined &&
+      near(desfeita.w, paraRecortar.w, 0.01) &&
+      near(desfeita.transform.x, x0, 0.01),
+    `crop=${desfeita?.crop ? 'ainda ha' : 'nenhum'} caixa=${desfeita?.w.toFixed(0)} ` +
+      `origem.x=${desfeita?.transform.x.toFixed(0)} esperado=(nenhum, ${paraRecortar.w}, ${x0.toFixed(0)})`,
+  );
+
+  // --- dois recortes seguidos compoem em vez de reiniciar
+  // Sem a composicao, o segundo corte voltaria a medir sobre o arquivo inteiro
+  // e pularia para outro pedaco da foto.
+  setup();
+  await app.insertImageFiles([await fakeImageFile(400, 400)], { x: 500, y: 500 });
+  const duplo = madeImage()!;
+  for (let i = 0; i < 2; i++) {
+    const atual = doc.get(duplo.id) as ImageObject;
+    app.beginCrop(atual);
+    drag(
+      host,
+      0,
+      atual.transform.x + box.left,
+      atual.transform.y + box.top,
+      atual.w / 2,
+      atual.h / 2,
+    );
+    app.commitCrop();
+  }
+  const duasVezes = doc.get(duplo.id) as ImageObject | undefined;
+  check(
+    'recortar duas vezes compoe os recortes em vez de reiniciar',
+    duasVezes?.crop !== undefined &&
+      near(duasVezes.crop.x, 0.75, 0.03) &&
+      near(duasVezes.crop.w, 0.25, 0.03),
+    `crop=(x=${duasVezes?.crop?.x.toFixed(2)}, w=${duasVezes?.crop?.w.toFixed(2)}) ` +
+      `esperado=(0.75, 0.25) — metade da metade`,
+  );
+
+  // --- remover o recorte devolve o arquivo inteiro
+  selection.set([duplo.id]);
+  app.removeCrop();
+  const inteira = doc.get(duplo.id) as ImageObject | undefined;
+  check(
+    'remover o recorte devolve a imagem inteira e o tamanho proporcional',
+    inteira?.crop === undefined && near(inteira?.w ?? 0, duplo.w, 1),
+    `crop=${inteira?.crop ? 'ainda ha' : 'nenhum'} largura=${inteira?.w.toFixed(0)} ` +
+      `esperado=(nenhum, ${duplo.w})`,
+  );
+
+  // --- a imagem e seus bytes sobrevivem ao formato gravado
+  setup();
+  await app.insertImageFiles([await fakeImageFile(120, 90, 'guardada.png')], { x: 0, y: 0 });
+  const antesDoArquivo = madeImage()!;
+  const gravado = JSON.parse(
+    JSON.stringify(serializeBoard(doc, app.camera, app.assets)),
+  ) as WbdDocument;
+  const bytes = app.assets.serialize(new Set([antesDoArquivo.assetId]));
+  applyBoard(doc, app.camera, gravado);
+  const depoisDoArquivo = doc.get(antesDoArquivo.id) as ImageObject | undefined;
+  check(
+    'a imagem inserida sobrevive ao formato do .wbd, com os bytes originais',
+    depoisDoArquivo !== undefined &&
+      depoisDoArquivo.assetId === antesDoArquivo.assetId &&
+      bytes.length === 1 &&
+      bytes[0]!.data.byteLength > 0 &&
+      bytes[0]!.mime === 'image/png',
+    `assets gravados=${bytes.length} mime=${bytes[0]?.mime} ` +
+      `bytes=${bytes[0]?.data.byteLength ?? 0} esperado=(1, image/png, mais de 0)`,
+  );
+
+  setup();
+  app.assets.clear();
+}
+
+/** Espera o navegador terminar o trabalho assincrono pendente (decodificacao). */
+function settle(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 60));
 }
 
 // -------------------------------------------------------------------- busca

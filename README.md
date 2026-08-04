@@ -5,9 +5,10 @@ rodando 100% offline no Windows: sem login, sem nuvem, sem servidor.
 
 **Status:** canvas infinito, lobby, importação do Whiteboard, **seleção completa**
 (mover, redimensionar, girar, duplicar, excluir, ordem de camadas, undo/redo), **desenho
-à mão** (caneta, marca-texto, lápis e borracha), **formas com encaixe e réguas** e
-**texto, post-its e alertas**. Dá para importar um resumo do Whiteboard, reorganizá-lo com
-alinhamento assistido, escrever à mão e digitar em cima dele.
+à mão** (caneta, marca-texto, lápis e borracha progressiva), **formas com encaixe e
+réguas**, **texto, post-its e alertas**, **busca `Ctrl+F`** e **imagens** (colar, arrastar
+e recortar). Dá para importar um resumo do Whiteboard e trabalhar em cima dele por
+inteiro. Faltam exportação, autosave e o polimento final.
 
 > Retomando o desenvolvimento depois de uma pausa? Comece por **[RETOMAR.md](RETOMAR.md)**:
 > em que pé está e o que fazer a seguir.
@@ -46,6 +47,8 @@ teclas — se o atalho aparece na ajuda, ele funciona.
 | Selecionar | Clique · Shift+clique soma · arrastar no vazio faz laço |
 | Selecionar tudo / limpar | `Ctrl+A` / `Esc` |
 | Buscar | `Ctrl+F` · `Enter` próximo · `Shift+Enter` anterior · `Esc` fecha |
+| Imagens | `Ctrl+V` cola · arrastar o arquivo solta onde você soltou |
+| Recortar imagem | Duplo clique (ou menu de contexto) · `Enter` confirma · `Esc` descarta |
 | Mover · redimensionar · girar | Arrastar a seleção · uma alça · a alça de cima |
 | Desfazer / refazer | `Ctrl+Z` / `Ctrl+Shift+Z` (ou `Ctrl+Y`) |
 | Duplicar / excluir | `Ctrl+D` / `Delete` |
@@ -204,6 +207,39 @@ O layout ([render/text/layout.ts](src/renderer/render/text/layout.ts)) é ponto 
 verdade para **três** consumidores que precisam concordar: o painter que desenha, o
 importador que grava o tamanho da caixa no `.wbd` e o editor. Cada um medindo por conta
 própria foi exatamente a divergência que a importação carregou da Fase 2 até aqui.
+
+## Imagens
+
+Entram de duas formas: **colar** (`Ctrl+V` com uma imagem na área de transferência do
+sistema) e **arrastar o arquivo** para dentro do quadro — nesse caso ela cai exatamente
+onde foi solta, porque quem arrastou até um ponto escolheu esse ponto. Várias de uma vez
+entram lado a lado, e não empilhadas: empilhar esconderia todas menos a de cima.
+
+Uma imagem entra em **tamanho de tela** (720px no maior lado), não no tamanho do arquivo:
+um print de 3840×2160 colado em 1:1 cobriria o quadro inteiro. Imagem menor que o teto
+entra no tamanho natural — ampliar só borraria.
+
+**Recortar** é duplo clique na imagem (ou o menu de contexto). A área de fora fica
+escurecida em vez de sumir, porque um recorte se escolhe olhando o que vai embora; as
+linhas de terço são a mesma referência de qualquer editor de foto. `Enter` confirma, `Esc`
+descarta, e "Remover recorte" devolve o arquivo inteiro.
+
+Três decisões:
+
+- **O recorte só aperta para dentro.** Arrastar para fora exigiria desenhar a imagem
+  inteira além das bordas do objeto, com o quadro aparecendo por baixo no meio do gesto —
+  para um ganho que "Remover recorte" já entrega: voltar ao original e recomeçar.
+- **A composição é no espaço normalizado do arquivo** (0..1), não em pixels. Assim
+  recortar duas vezes seguidas não acumula erro de arredondamento e nunca depende do
+  tamanho em que a imagem está no quadro. Sem compor, o segundo corte voltaria a medir
+  sobre o arquivo inteiro e pularia para outro pedaço da foto.
+- **O arquivo original é preservado byte a byte**, e o recorte é só um retângulo por cima.
+  É o que permite desfazer, e é o que mantém a imagem legível quando você der zoom — o
+  `AssetStore` já guardava assim desde a importação.
+
+Um detalhe que morde: um arquivo solto na janela do Electron **sem `preventDefault` faz a
+janela navegar até ele** — o app inteiro some e vira um visualizador de imagem, sem volta.
+Por isso `dragover` e `drop` são barrados na janela toda, e não só no canvas.
 
 ## Buscar
 
@@ -453,7 +489,7 @@ npm run selftest
 
 Abre o app, dispara eventos de ponteiro e de teclado direto no app e imprime o
 resultado no terminal — sem depender da janela estar em primeiro plano e sem
-capturar a tela. **92 verificações**, em oito frentes:
+capturar a tela. **100 verificações**, em nove frentes:
 
 - **Navegação:** pan com botão direito e com o do meio, o limiar que separa arrastar
   de clicar, o botão esquerdo permanecendo livre para as ferramentas, o zoom ancorado
@@ -494,6 +530,12 @@ capturar a tela. **92 verificações**, em oito frentes:
   câmera com zoom legível e selecionando, a volta no fim da lista, `Esc` fechando junto com
   o destaque, e post-it entrando na busca. Mais a **medição** que sustenta não haver índice
   invertido, com a repartição do custo.
+- **Imagens:** arrastar um arquivo inserindo onde ele caiu, imagem grande entrando
+  reduzida e pequena não sendo ampliada, colar do sistema, o recorte encolhendo a caixa e
+  deslocando a origem, `Ctrl+Z` desfazendo tudo junto, **dois recortes seguidos compondo**
+  em vez de reiniciar, "remover recorte" devolvendo o arquivo inteiro, e a imagem com seus
+  bytes sobrevivendo ao `.wbd`. O PNG do teste é gerado na hora, então nada depende de
+  arquivo em disco.
 - **Persistência:** copiar, recortar, colar no cursor, o traço desenhado e o texto
   formatado sobrevivendo à ida e volta pelo formato gravado, e um teste que move e
   redimensiona um objeto e passa o documento pelo mesmo JSON que vai para dentro do
@@ -521,8 +563,9 @@ e mostra o contorno, as alças, a alça de rotação, o grifo passando por baixo
 espessura do lápis variando com a pressão, as formas, as réguas, uma caixa de texto com
 negrito, sublinhado e marcadores, um post-it com alerta, **um buraco de borracha no meio
 de um traço** — nenhum número prova que o pedaço sumiu com a borda certa e sem deixar
-mancha da cor do fundo — e a **busca aberta** com o trecho marcado e o contorno roxo em
-volta do achado.
+mancha da cor do fundo —, a **busca aberta** com o trecho marcado e o contorno roxo em
+volta do achado, e uma **imagem com o recorte aberto**, mostrando a sombra do que ficaria
+de fora, as linhas de terço e as alças.
 
 ## Requisitos
 
@@ -761,7 +804,7 @@ serve para migrar.
 - [x] **Fase 5** — Texto, post-its e alertas
 - [x] **Fase 5.5** — Borracha progressiva (apagar por peça)
 - [x] **Fase 6** — Busca Ctrl+F
-- [ ] **Fase 7** — Imagens
+- [x] **Fase 7** — Imagens: colar, arrastar e recortar
 - [ ] **Fase 7.5** — Transcrever imagem em texto (OCR). Viabilidade confirmada:
       motor nativo do Windows (`Windows.Media.Ocr`), pt-BR já instalado, offline,
       0 MB no instalador, ~355 ms por imagem. Prosa com acentos sai perfeita;

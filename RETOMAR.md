@@ -4,16 +4,16 @@ Ponto de retomada do **Creation Board**. O [README](README.md) explica o que o a
 como cada parte funciona; este arquivo responde outra pergunta: *em que pé isso está e
 o que fazer a seguir*. Some quando o projeto acabar.
 
-**Última sessão: 04/08/2026.** Fases 5, 5.5 e 6 concluídas.
+**Última sessão: 04/08/2026.** Fases 5, 5.5, 6 e 7 concluídas.
 
 ---
 
 ## Estado em uma linha
 
-Fases 0 a 6 prontas. Dá para importar um resumo do Microsoft Whiteboard, **reorganizá-lo
-com alinhamento assistido, escrever à mão, desenhar formas, digitar texto e post-its em
-cima dele, apagar tinta por peça e achar qualquer palavra com `Ctrl+F`**. Faltam imagens
-(colar/arrastar), exportação e autosave.
+Fases 0 a 7 prontas. Dá para importar um resumo do Microsoft Whiteboard e **trabalhar em
+cima dele por inteiro**: reorganizar com alinhamento assistido, escrever à mão, desenhar
+formas, digitar texto e post-its, apagar tinta por peça, achar qualquer palavra com
+`Ctrl+F` e colar/arrastar/recortar imagens. Faltam exportação, autosave e polimento.
 
 ## O que existe hoje
 
@@ -29,7 +29,8 @@ cima dele, apagar tinta por peça e achar qualquer palavra com `Ctrl+F`**. Falta
 | 5 | Texto, post-its e alertas | pronta |
 | 5.5 | Borracha progressiva (apagar por peça) | pronta |
 | 6 | Busca `Ctrl+F` | pronta |
-| **7** | **Imagens: colar, arrastar e recortar** | **próxima** |
+| 7 | Imagens: colar, arrastar e recortar | pronta |
+| **8** | **Exportar (PNG/SVG/PDF) e autosave** | **próxima** |
 
 A ordem diverge do plano original **de propósito**: o objetivo é migrar os resumos do
 Whiteboard, e para isso importar e manipular vieram antes de desenhar.
@@ -37,8 +38,11 @@ Whiteboard, e para isso importar e manipular vieram antes de desenhar.
 A Fase 5.5 nasceu de um pedido dele ao testar a Fase 5 — a borracha apagando o traço
 inteiro não servia — e **reverteu a decisão da Fase 4**. Está resolvida.
 
-**A `main` foi até a Fase 5.5** (mesclada em 04/08/2026, em avanço rápido). A Fase 6 está
-na branch **`fase-6-busca`**, ainda sem mesclar — ele não pediu.
+**A `main` foi até a Fase 6** (mesclada em 04/08/2026, em avanço rápido). A Fase 7 está
+na branch **`fase-7-imagens`**, ainda sem mesclar — ele não pediu.
+
+Há uma fase **7.5 no plano** (OCR: transcrever imagem em texto) que não foi feita — ela
+vem depois desta, não antes; ver a lista no README.
 
 ---
 
@@ -48,11 +52,11 @@ Sempre por terminal — nunca por captura de tela cheia (ver o *porquê* no READ
 
 ```
 npm run typecheck     # tsc nos dois projetos, strict
-npm run selftest      # 92 verificações, deve terminar com "tudo passou"
+npm run selftest      # 100 verificações, deve terminar com "tudo passou"
 npm run check:colors  # contraste das cores nos dois temas
 ```
 
-⚠️ **Duas das 92 medem a máquina, não o código.** A primeira: "arrastar 10.000 objetos selecionados
+⚠️ **Duas das 100 medem a máquina, não o código.** A primeira: "arrastar 10.000 objetos selecionados
 fica acima de 30fps", com teto de 33 ms por frame. Ela reprova com o computador ocupado —
 em 04/08/2026 reprovou com **50–62 ms** simplesmente porque o **CS2 estava aberto**, e a
 `main` sem nenhuma mudança reprovou pior que a branch nova. O sinal de que é a máquina, e
@@ -100,8 +104,8 @@ Para ver renderização, `QB_SHOT=<arquivo.png> npm run selftest` fotografa **s�
 do app** e deixa na tela a cena de conferência: seleção com alças, um traço de cada
 variante, duas formas, as réguas ligadas, um objeto encostado noutro pelo encaixe, uma
 caixa de texto com negrito, sublinhado e marcadores, um post-it com alerta, um buraco de
-borracha no meio de um traço e a busca aberta com o achado destacado — tudo produzido
-pelas ferramentas de verdade. Atenção: com `QB_SHOT` a janela **não fecha
+borracha no meio de um traço, a busca aberta com o achado destacado e uma imagem com o
+recorte aberto (sombra, terços e alças) — tudo produzido pelas ferramentas de verdade. Atenção: com `QB_SHOT` a janela **não fecha
 sozinha** — o processo fica aberto até você encerrá-lo.
 
 **A guia de encaixe não sai na foto**, e não é bug: ela existe só enquanto o botão está
@@ -115,21 +119,25 @@ com tudo estável.
 
 ---
 
-## Como começar a Fase 7
+## Como começar a Fase 8
 
-Imagens: colar do clipboard, arrastar arquivo para dentro do quadro e recortar.
+Exportar (PNG/SVG/PDF) e autosave.
 
-1. `ImageObject`, `AssetStore` e o painter **já existem** e já são usados pela importação
-   — inclusive com os bytes indo para dentro do `.wbd` e a cópia entre quadros levando o
-   binário junto (Fase 3). O que falta é *entrar* imagem pelo app.
-2. Colar: o evento `paste` do sistema traz `File`/`Blob` em `e.clipboardData.files`. A
-   área de transferência **interna** do app é outra coisa e continua sendo a dos objetos
-   — ver a decisão no README antes de misturar as duas.
-3. Arrastar arquivo pede `dragover` e `drop` no host, com `preventDefault` nos dois.
-4. `crop` já está no tipo (`Rect` normalizado 0..1) e o painter ainda não lê — recortar é
-   ler `crop` no painter e escrever o gesto na ferramenta de seleção.
-5. Cobrir no `selftest` junto — ver a nota abaixo. Dá para montar um `ImageBitmap` pequeno
-   dentro do próprio teste, sem depender de arquivo em disco.
+1. **Exportar PNG já tem quase tudo pronto:** `renderThumbnail` em
+   `features/storage/boardIO.ts` desenha o quadro inteiro num canvas fora da tela, com o
+   mesmo caminho de LOD e adaptação de cor do renderer. Exportar é o mesmo código com
+   outro tamanho e sem o teto da miniatura — e decidir entre "tudo" e "só a seleção".
+2. **SVG é outro bicho:** não existe caminho de SVG hoje. Traço vira `<polyline>`, tinta
+   importada já É um caminho SVG (`PathObject.d`), texto precisa do layout de
+   `render/text/layout.ts` para virar `<text>` por linha, e a máscara da borracha vira
+   `<mask>`. Medir o tamanho do arquivo antes de prometer: um resumo tem 1.063 objetos.
+3. **PDF:** o caminho mais curto é o `printToPDF` do próprio Electron sobre uma página com
+   o PNG, e não uma biblioteca nova. Confirmar antes se a qualidade serve.
+4. **Autosave** encosta em coisa delicada: hoje o guarda de `beforeunload` é o que impede
+   perder trabalho, e o `.wbd` é gravado por inteiro a cada save. Com autosave, gravar um
+   quadro de 50 MB a cada 30s custa I/O — medir antes de escolher o intervalo, e pensar em
+   gravar só quando `dirty` e o usuário estiver parado.
+5. Cobrir no `selftest` junto — ver a nota abaixo.
 
 ---
 
@@ -194,7 +202,17 @@ Imagens: colar do clipboard, arrastar arquivo para dentro do quadro e recortar.
     um `WeakMap` chaveado pelo próprio objeto, já que toda mutação o substitui e a
     invalidação sai de graça. Antes de "otimizar a busca", ler a repartição na linha do
     autoteste.
-16. **Funcionalidade nova entra com cobertura no `selftest`.** Ele despacha eventos de
+16. **Arquivo solto na janela do Electron NAVEGA** se ninguém chamar `preventDefault` —
+    o app some e a janela vira um visualizador de imagem, sem volta. Por isso `dragover` e
+    `drop` são barrados na `window` inteira, e não só no canvas.
+17. **O recorte de imagem só aperta para dentro, e compõe no espaço normalizado** (0..1)
+    do arquivo. Compor é o que faz o segundo corte continuar de onde o primeiro parou;
+    medir em pixels acumularia erro e dependeria do tamanho no quadro. "Remover recorte"
+    é o caminho de volta, e por isso arrastar para fora não precisa existir.
+18. **`PatchObjects` é o comando genérico de conteúdo+geometria** (texto, marcadores,
+    recorte). Ele nasceu como `EditText` e foi renomeado na Fase 7, quando o terceiro uso
+    apareceu — se você procurar `EditText` no histórico, é ele.
+19. **Funcionalidade nova entra com cobertura no `selftest`.** Ele despacha eventos de
     ponteiro e teclado no app real, então pega regressão de fiação, não só de matemática.
     Foi ele que achou, na Fase 5, um `commit()` que lia `#isNew` **depois** de fechar o
     editor — toda caixa nova virava "edição" de um objeto inexistente. Armadilha ao mexer
@@ -211,18 +229,18 @@ src/renderer/
 ├─ core/        Document, SpatialIndex, Camera, Scheduler, History, Selection
 ├─ commands/    um comando por mutação — é a base do undo/redo
 ├─ tools/       Tool, ToolManager, SelectTool, DrawTool, EraserTool, ShapeTool,
-│               TextTool, NoteTool, DrawStyle
+│               TextTool, NoteTool, CropTool (modo, não fica na barra), DrawStyle
 ├─ features/
 │  ├─ selection/  hitTest, frame, transformOps, actions, clipboard
 │  ├─ snapping/   snap (guias de alinhamento + grade)
 │  ├─ search/     busca por texto, sem índice invertido (ver a medição)
 │  ├─ text/       TextEditor (contentEditable), spans (DOM ↔ RichSpan)
 │  ├─ import/     leitor do export do Whiteboard
-│  ├─ images/     AssetStore
+│  ├─ images/     AssetStore, insert (colar e arrastar arquivo)
 │  └─ storage/    boardIO
 ├─ render/      Renderer (estática + overlay), painters (+ erase: máscara da borracha),
 │               text/layout, SelectionOverlay, SnapGuides, Rulers, PinnedNotes,
-│               SearchHighlight
+│               SearchHighlight, CropOverlay
 ├─ ui/          ToolBar, SearchBar, Lobby, ViewportBar, ContextMenu, ShortcutsModal,
 │               DebugPanel
 └─ dev/         selftest, layoutOracle, importCheck, stress  ← ferramentas de medição

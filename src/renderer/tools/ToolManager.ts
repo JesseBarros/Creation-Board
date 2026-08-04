@@ -1,6 +1,7 @@
 import type { Vec2 } from '@shared/geometry/vec2';
 import type { Camera } from '../core/Camera';
 import type { DrawStyle } from './DrawStyle';
+import { CropTool } from './CropTool';
 import { DrawTool } from './DrawTool';
 import { EraserTool } from './EraserTool';
 import { NoteTool } from './NoteTool';
@@ -42,6 +43,7 @@ export class ToolManager {
       shape: new ShapeTool(ctx, style),
       text: new TextTool(ctx, style),
       note: new NoteTool(ctx, style),
+      crop: new CropTool(ctx),
     };
     this.#rect = host.getBoundingClientRect();
     this.#bind();
@@ -53,6 +55,11 @@ export class ToolManager {
 
   get activeId(): ToolId {
     return this.#active;
+  }
+
+  /** A ferramenta de recorte, para o App abri-la sobre uma imagem. */
+  get crop(): CropTool {
+    return this.#tools.crop as CropTool;
   }
 
   /**
