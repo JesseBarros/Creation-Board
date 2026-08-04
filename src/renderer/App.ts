@@ -8,6 +8,7 @@ import { ViewportInput } from './input/ViewportInput';
 import { Renderer, type RenderTheme } from './render/Renderer';
 import { paintRulers, RULER_PX, type RulerTheme } from './render/Rulers';
 import { paintPinnedNotes } from './render/PinnedNotes';
+import { displayedAs } from './render/colorAdapt';
 import { ToolManager } from './tools/ToolManager';
 import { ALERT_ICONS, DrawStyle } from './tools/DrawStyle';
 import { hasStyle, type EditableObject, type ToolContext, type ToolId } from './tools/types';
@@ -194,6 +195,8 @@ export class App {
         setTool: (id) => this.setTool(id),
         // A barra fala em nivel de alerta; o objeto guarda nivel e simbolo. A
         // traducao mora aqui para o simbolo sair de um lugar so (DrawStyle).
+        warnIfLowContrast: (color) => this.warnIfLowContrast(color),
+        toggleTextFormat: (what) => this.toggleTextFormat(what),
         restyleNotes: ({ bg, alert }) =>
           this.restyleSelectedNotes({
             ...(bg !== undefined ? { bg } : {}),
@@ -1095,6 +1098,77 @@ export class App {
     this.history.seal();
     this.#markDirty();
     this.#scheduler.invalidate();
+  }
+
+  /**
+   * Negrito, italico e sublinhado pelos botoes da barra.
+   *
+   * Dois destinos, conforme o que esta acontecendo:
+   *
+   * - **digitando**: vale para a selecao dentro da caixa, e quem aplica e o
+   *   proprio navegador (`execCommand`), o mesmo caminho do `Ctrl+B`;
+   * - **com uma caixa selecionada**: vale para a caixa inteira.
+   *
+   * Sem o segundo caso, o botao ficaria inerte justamente quando a pessoa
+   * acabou de clicar num texto para muda-lo.
+   */
+  toggleTextFormat(what: 'bold' | 'italic' | 'underline'): void {
+    if (this.#editor.isEditing) {
+      document.execCommand(what);
+      return;
+    }
+
+    const alvos = this.selection
+      .objects(this.doc)
+      .filter((o): o is TextObject => o.type === 'text' && !o.locked);
+    if (alvos.length === 0) return;
+
+    const before = new Map<string, ObjectPatch>();
+    const after = new Map<string, ObjectPatch>();
+    for (const obj of alvos) {
+      // Se TUDO ja esta formatado, o botao tira; senao, aplica em tudo. E a
+      // mesma regra do negrito de qualquer editor.
+      const todos = obj.content.every((s) => s[what] === true);
+      const content = obj.content.map((s) => ({ ...s, [what]: !todos }));
+      before.set(obj.id, { content: obj.content, h: obj.h });
+      after.set(obj.id, {
+        content,
+        h: obj.autoHeight ? contentHeight(content, styleOf(obj)) : obj.h,
+      });
+    }
+
+    this.history.push(new PatchObjects(this.doc, before, after, 'Formatar texto'));
+    this.history.seal();
+    this.#markDirty();
+    this.#scheduler.invalidate();
+  }
+
+  /**
+   * Avisa quando a cor escolhida a mao nao vai aparecer como escolhida.
+   *
+   * A pergunta util nao e "ela some?" -- o adaptador de tema impede isso --, e
+   * sim "ela vai ser exibida diferente?". Um cinza bem claro e resgatado por
+   * inversao e aparece escuro; descobrir isso ao trocar de tema, dias depois,
+   * seria pior que ler um aviso agora. Avisa e nao impede: a paleta e conferida
+   * por `npm run check:colors`, mas a escolha livre e dele.
+   */
+  warnIfLowContrast(color: string): void {
+    const trocada = (['light', 'dark'] as const).filter(
+      (t) => displayedAs(color, THEMES[t].boardBg).toLowerCase() !== color.toLowerCase(),
+    );
+    if (trocada.length === 0) return;
+
+    const onde =
+      trocada.length === 2
+        ? 'nos dois temas'
+        : trocada[0] === 'light'
+          ? 'no tema claro'
+          : 'no tema escuro';
+    const exibida = displayedAs(color, THEMES[trocada[0]!].boardBg);
+    toast(
+      `${color} tem contraste baixo ${onde} e sera exibida como ${exibida}, para nao sumir.`,
+      'error',
+    );
   }
 
   /**

@@ -21,6 +21,7 @@ import { applyBoard, serializeBoard } from '../features/storage/boardIO';
 import { plainText } from '../features/text/spans';
 import { searchBoard } from '../features/search/search';
 import { paintObject } from '../render/painters';
+import { displayedAs } from '../render/colorAdapt';
 import { exportBounds, renderPng } from '../features/export/exportBoard';
 import { renderSvg } from '../features/export/exportSvg';
 import { autosaveVerdict } from '../features/storage/autosave';
@@ -302,6 +303,10 @@ export async function runSelfTest(host: HTMLElement, app: App): Promise<void> {
     // rotulo de zoom fica com o valor do ultimo `fitToContent`. Passar pelo
     // caminho normal acerta o numero -- a foto nao pode mentir sobre o estado.
     app.setZoom(1);
+    // Termina na ferramenta de texto: e com ela que o painel lateral mostra
+    // tudo o que ele tem -- paleta com o seletor de cor livre, a linha B/I/U e
+    // a barra de espessura. Nada disso aparece com o recorte ativo.
+    app.setTool('text');
   });
   // Sem isto o quadro fica marcado como sujo, o guarda de `beforeunload`
   // recusa o fechamento e a execucao automatizada nunca termina.
@@ -1181,28 +1186,43 @@ function runDrawingTests(host: HTMLElement, app: App, check: Check, reset: () =>
     `P=${depoisDoP} M=${depoisDoM} E=${depoisDoE} V=${app.activeTool}`,
   );
 
-  // --- a espessura anda pelos degraus e volta
+  // --- a espessura anda de 10 em 10% e respeita a faixa
   setup('pen');
-  // Parte do degrau do MEIO, e nao do que estiver gravado: `DrawStyle` persiste
+  // Parte do MEIO da faixa, e nao do que estiver gravado: `DrawStyle` persiste
   // em localStorage, entao a preferencia deixada por quem usou o app antes
-  // entrava no teste. Com a caneta ja no degrau mais grosso, `]` nao tinha para
-  // onde subir e a verificacao reprovava sem nada estar quebrado.
-  const degraus = app.drawStyle.widthsFor('pen');
+  // entrava no teste -- com a caneta no maximo, `]` nao tinha para onde subir e
+  // a verificacao reprovava sem nada estar quebrado.
   const anterior = app.drawStyle.width('pen');
-  app.drawStyle.setWidth('pen', degraus[1]!);
+  app.drawStyle.setPercent('pen', 50);
   const larguraInicial = app.drawStyle.width('pen');
   key(']');
   const maisGrosso = app.drawStyle.width('pen');
   key('[');
   key('[');
   const maisFino = app.drawStyle.width('pen');
-  // Devolve o que era do usuario, e nao o degrau que o teste escolheu.
+
+  // Nas pontas a barra para, em vez de sair da faixa: 0% ainda desenha, e o
+  // maximo nao pode passar do que o AABB do traco comporta.
+  app.drawStyle.setPercent('pen', 0);
+  const noMinimo = app.drawStyle.width('pen');
+  app.drawStyle.stepWidth('pen', -1);
+  const abaixoDoMinimo = app.drawStyle.width('pen');
+  app.drawStyle.setPercent('pen', 100);
+  app.drawStyle.stepWidth('pen', 1);
+  const acimaDoMaximo = app.drawStyle.width('pen');
+  const faixa = app.drawStyle.range('pen');
   app.drawStyle.setWidth('pen', anterior);
+
   check(
-    '] engrossa e [ afina o traco',
-    maisGrosso > larguraInicial && maisFino < larguraInicial,
-    `inicial=${larguraInicial} depois de ]=${maisGrosso} depois de [[=${maisFino} ` +
-      `(preferencia do usuario preservada: ${anterior})`,
+    '] e [ andam de 10 em 10% e a barra para nas pontas da faixa',
+    maisGrosso > larguraInicial &&
+      maisFino < larguraInicial &&
+      noMinimo === faixa.min &&
+      abaixoDoMinimo === faixa.min &&
+      acimaDoMaximo === faixa.max &&
+      noMinimo > 0,
+    `meio=${larguraInicial} depois de ]=${maisGrosso} depois de [[=${maisFino} · ` +
+      `faixa=${faixa.min}..${faixa.max} minimo=${noMinimo} (nunca zero) maximo=${acimaDoMaximo}`,
   );
 
   // --- o traco desenhado sobrevive ao formato gravado
@@ -1755,6 +1775,48 @@ function runTextTests(host: HTMLElement, app: App, check: Check, reset: () => vo
       near(semMarcador.h, paraLista.h, 0.001),
     `lista=${comMarcador?.list} recuo=${comMarcador ? layoutOf(comMarcador).indent.toFixed(1) : '-'} ` +
       `altura ${paraLista.h.toFixed(1)}->${comMarcador?.h.toFixed(1)}->${semMarcador?.h.toFixed(1)}`,
+  );
+
+  // --- o botao de negrito age sobre a caixa selecionada
+  // O `Ctrl+B` ja funcionava DENTRO da caixa desde a Fase 5; o que faltava era
+  // o controle visivel, e ele tambem precisa valer para quem so selecionou o
+  // texto -- senao o botao fica inerte justamente no gesto mais comum.
+  setup('text');
+  clickWorld(host, box, { x: 700, y: 300 });
+  typeInEditor('negrito pelo botao');
+  const paraNegrito = madeText()!;
+  selection.set([paraNegrito.id]);
+  history.clear();
+  app.toggleTextFormat('bold');
+  const negrito = doc.get(paraNegrito.id) as TextObject | undefined;
+  app.toggleTextFormat('bold');
+  const semNegrito = doc.get(paraNegrito.id) as TextObject | undefined;
+  key('z', { ctrl: true });
+  key('z', { ctrl: true });
+  const desfeitoNegrito = doc.get(paraNegrito.id) as TextObject | undefined;
+  check(
+    'o botao de negrito liga e desliga na caixa selecionada, e o Ctrl+Z desfaz',
+    negrito?.content.every((s) => s.bold === true) === true &&
+      semNegrito?.content.every((s) => s.bold === true) === false &&
+      desfeitoNegrito?.content.every((s) => s.bold === true) === false,
+    `ligado=${negrito?.content[0]?.bold} desligado=${semNegrito?.content[0]?.bold} ` +
+      `depois do Ctrl+Z=${desfeitoNegrito?.content[0]?.bold}`,
+  );
+
+  // --- cor livre: aceita, e o app sabe dizer quando ela sera exibida trocada
+  const corLivre = '#7f5af0';
+  drawStyle.setColor('pen', corLivre);
+  const aceitou = drawStyle.color('pen') === corLivre;
+  // Um cinza bem claro no tema claro e resgatado por inversao -- ele NAO some,
+  // aparece escuro. E disso que o aviso trata.
+  const clara = displayedAs('#f2f2f2', '#ffffff');
+  const escura = displayedAs('#1f2933', '#ffffff');
+  drawStyle.setColor('pen', '#1f2933');
+  check(
+    'o seletor aceita cor fora da paleta, e o app sabe quando ela sera exibida trocada',
+    aceitou && clara.toLowerCase() !== '#f2f2f2' && escura.toLowerCase() === '#1f2933',
+    `aceitou ${corLivre}=${aceitou} · cinza claro exibido como ${clara} (trocado) · ` +
+      `quase preto exibido como ${escura} (intacto)`,
   );
 
   // --- post-it com papel e alerta escolhidos na barra

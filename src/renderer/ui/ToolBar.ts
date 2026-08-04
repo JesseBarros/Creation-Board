@@ -30,6 +30,15 @@ export interface ToolBarActions {
    * qual deles ela estava.
    */
   restyleNotes(style: { bg?: string; alert?: AlertLevel | null }): void;
+  /**
+   * Avisa se a cor escolhida a mao ficar ilegivel em algum tema.
+   *
+   * Avisa, e nao impede: a paleta e conferida por `npm run check:colors`, mas a
+   * escolha livre e do usuario -- ele pode querer um cinza claro de propósito.
+   */
+  warnIfLowContrast(color: string): void;
+  /** Liga/desliga negrito, italico ou sublinhado. Ver `App.toggleTextFormat`. */
+  toggleTextFormat(what: 'bold' | 'italic' | 'underline'): void;
 }
 
 interface ToolDef {
@@ -54,6 +63,21 @@ const TOOLS: ToolDef[] = [
   { id: 'shape', icon: 'formas', label: 'Formas', key: 'F' },
   { id: 'eraser', icon: 'borracha', label: 'Borracha', key: 'E' },
 ];
+
+/**
+ * `<input type="color">` so aceita `#rrggbb`.
+ *
+ * A tinta importada do Whiteboard chega como `rgba(...)`, e a paleta tem cores
+ * de tres digitos; sem normalizar, o seletor abriria no preto em vez de abrir
+ * na cor que esta em uso.
+ */
+function normalizeHex(color: string): string {
+  if (/^#[0-9a-f]{6}$/i.test(color)) return color;
+  if (/^#[0-9a-f]{3}$/i.test(color)) {
+    return `#${color[1]!}${color[1]!}${color[2]!}${color[2]!}${color[3]!}${color[3]!}`;
+  }
+  return '#1f2933';
+}
 
 /** Rotulo de cada nivel de alerta, mais o "sem alerta". */
 const ALERT_LABELS: Record<AlertLevel, string> = {
@@ -83,6 +107,7 @@ export class ToolBar {
   #colorRow: HTMLElement;
   #widthRow: HTMLElement;
   #alertRow: HTMLElement;
+  #formatRow: HTMLElement;
   #active: ToolId = 'select';
 
   constructor(
@@ -115,11 +140,19 @@ export class ToolBar {
     this.#widthRow.className = 'qb-tools__widths';
     this.#alertRow = document.createElement('div');
     this.#alertRow.className = 'qb-tools__alerts';
+    this.#formatRow = document.createElement('div');
+    this.#formatRow.className = 'qb-tools__formats';
 
     this.#options = document.createElement('div');
     this.#options.className = 'qb-tools__options';
     this.#options.hidden = true;
-    this.#options.append(this.#shapeRow, this.#colorRow, this.#widthRow, this.#alertRow);
+    this.#options.append(
+      this.#shapeRow,
+      this.#colorRow,
+      this.#formatRow,
+      this.#widthRow,
+      this.#alertRow,
+    );
 
     this.el.append(rail, this.#options);
 
@@ -178,7 +211,7 @@ export class ToolBar {
     if (id === 'eraser') marcar(this.#alertRow, 'qb-tools__alert--active', this.style.eraserMode);
     else marcar(this.#colorRow, 'qb-tools__color--active', this.style.color(id));
 
-    marcar(this.#widthRow, 'qb-tools__width--active', String(this.style.width(id)));
+    this.#refreshWidth();
   }
 
   #renderOptions(): void {
@@ -190,6 +223,7 @@ export class ToolBar {
       this.#options.hidden = false;
       this.#shapeRow.hidden = true;
       this.#widthRow.hidden = true;
+      this.#formatRow.hidden = true;
       this.#alertRow.hidden = false;
       this.#renderNoteColors();
       this.#renderAlerts();
@@ -201,6 +235,9 @@ export class ToolBar {
       return;
     }
     this.#options.hidden = false;
+    // A linha B/I/U so faz sentido escrevendo.
+    this.#formatRow.hidden = id !== 'text';
+    if (id === 'text') this.#renderTextFormat();
     // O seletor de forma so existe para a ferramenta de formas; para as de tinta
     // a linha inteira sai do fluxo em vez de ficar como um espaco vazio.
     this.#shapeRow.hidden = id !== 'shape';
@@ -215,6 +252,34 @@ export class ToolBar {
     else this.#renderColors(id);
 
     this.#renderWidths(id);
+  }
+
+  /**
+   * Negrito, italico e sublinhado.
+   *
+   * As tres teclas ja funcionavam dentro da caixa desde a Fase 5, e ninguem
+   * descobria: recurso sem controle visivel e recurso que nao existe. Os botoes
+   * valem tanto para o texto que esta sendo digitado quanto para a caixa que
+   * estiver selecionada.
+   */
+  #renderTextFormat(): void {
+    if (this.#formatRow.childElementCount > 0) return;
+
+    const add = (what: 'bold' | 'italic' | 'underline', letra: string, label: string): void => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `qb-tools__format qb-tools__format--${what}`;
+      b.dataset['value'] = what;
+      b.textContent = letra;
+      b.title = label;
+      b.setAttribute('aria-label', label);
+      b.addEventListener('click', () => this.actions.toggleTextFormat(what));
+      this.#formatRow.append(b);
+    };
+
+    add('bold', 'B', 'Negrito (Ctrl+B)');
+    add('italic', 'I', 'Italico (Ctrl+I)');
+    add('underline', 'U', 'Sublinhado (Ctrl+U)');
   }
 
   #renderEraserModes(): void {
@@ -332,39 +397,128 @@ export class ToolBar {
       b.addEventListener('click', () => this.style.setColor(id, color));
       this.#colorRow.append(b);
     }
-  }
 
-  #renderWidths(id: StyleToolId): void {
-    const current = this.style.width(id);
-    const steps = this.style.widthsFor(id);
-    const biggest = steps[steps.length - 1] ?? 1;
-    // O mesmo eixo significa coisas diferentes por ferramenta; o rotulo
-    // acompanha, senao a dica diria "espessura" para quem escolhe corpo de letra
-    // ou diametro de borracha.
-    const noun =
-      id === 'text' ? 'Tamanho da fonte' : id === 'eraser' ? 'Diametro' : 'Espessura';
-    this.#widthRow.replaceChildren();
-
-    for (const width of steps) {
+    // A cor escolhida a mao entra como mais uma amostra, para poder ser
+    // reescolhida com um clique depois de passar por outra da paleta.
+    const custom = this.style.color(id);
+    if (!this.style.colorsFor(id).includes(custom)) {
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'qb-tools__width';
-      b.dataset['value'] = String(width);
-      b.classList.toggle('qb-tools__width--active', width === current);
-      b.title = `${noun} ${width}px ([ e ])`;
-      b.setAttribute('aria-label', `${noun} ${width}`);
-
-      const dot = document.createElement('span');
-      dot.className = 'qb-tools__width-dot';
-      // A amostra e proporcional a maior espessura da ferramenta, com um piso
-      // para o degrau mais fino continuar clicavel e visivel.
-      const size = Math.max(4, Math.round((width / biggest) * 18));
-      dot.style.width = `${size}px`;
-      dot.style.height = `${size}px`;
-      b.append(dot);
-
-      b.addEventListener('click', () => this.style.setWidth(id, width));
-      this.#widthRow.append(b);
+      b.className = 'qb-tools__color';
+      b.dataset['value'] = custom;
+      b.classList.add('qb-tools__color--active');
+      b.style.background = custom;
+      b.title = `${custom} (escolhida)`;
+      b.setAttribute('aria-label', `Cor ${custom}`);
+      b.addEventListener('click', () => this.style.setColor(id, custom));
+      this.#colorRow.append(b);
     }
+
+    this.#colorRow.append(this.#customColorButton(id));
   }
+
+  /**
+   * Botao que abre o seletor de cor do sistema.
+   *
+   * O `<input type="color">` fica escondido atras do botao em vez de aparecer
+   * cru: o controle nativo tem tamanho e forma proprios, e destoaria da fila de
+   * amostras redondas.
+   *
+   * Criado UMA vez e reaproveitado. Recria-lo a cada troca de ferramenta custou
+   * caro e foi pego pela medicao: o controle nativo de cor e pesado de
+   * instanciar, e sozinho levou o custo da troca de 1,6 ms para 5,3 ms.
+   */
+  #customColorButton(id: StyleToolId): HTMLElement {
+    this.#customTool = id;
+
+    if (!this.#customColor) {
+      const wrap = document.createElement('label');
+      wrap.className = 'qb-tools__color qb-tools__color--custom';
+      wrap.title = 'Escolher outra cor';
+      wrap.setAttribute('aria-label', 'Escolher outra cor');
+
+      const input = document.createElement('input');
+      input.type = 'color';
+      input.className = 'qb-tools__color-input';
+
+      input.addEventListener('input', () => {
+        if (this.#customTool) this.style.setColor(this.#customTool, input.value);
+      });
+      // O aviso so sai quando a escolha termina: durante o arraste do seletor a
+      // cor passa por dezenas de valores, e avisar em cada um seria ruido.
+      input.addEventListener('change', () => this.actions.warnIfLowContrast(input.value));
+
+      wrap.append(input, icon('mais', 15));
+      this.#customColor = wrap;
+      this.#customInput = input;
+    }
+
+    if (this.#customInput) this.#customInput.value = normalizeHex(this.style.color(id));
+    return this.#customColor;
+  }
+
+  #customColor: HTMLElement | null = null;
+  #customInput: HTMLInputElement | null = null;
+  /** Para qual ferramenta o seletor esta apontando agora. */
+  #customTool: StyleToolId | null = null;
+
+  /**
+   * Barra de 0 a 100% no lugar dos tres degraus fixos.
+   *
+   * O numero ao lado mostra a porcentagem, que e o que a barra controla; a
+   * dica traz o valor real em px, que e o que sai no papel.
+   */
+  #renderWidths(id: StyleToolId): void {
+    this.#widthTool = id;
+
+    if (!this.#slider) {
+      const slider = document.createElement('input');
+      slider.type = 'range';
+      slider.className = 'qb-tools__slider';
+      slider.min = '0';
+      slider.max = '100';
+      slider.step = '1';
+
+      const readout = document.createElement('span');
+      readout.className = 'qb-tools__pct';
+
+      // `input`, e nao `change`: o traco tem de acompanhar o arraste da barra.
+      // So ficou viavel depois que trocar o estilo deixou de reconstruir o
+      // painel e de gravar em disco a cada mudanca (ver B3 no BUGS.md).
+      slider.addEventListener('input', () => {
+        if (!this.#widthTool) return;
+        this.style.setPercent(this.#widthTool, Number(slider.value));
+        readout.textContent = `${slider.value}%`;
+      });
+
+      this.#slider = slider;
+      this.#pctLabel = readout;
+      this.#widthRow.append(slider, readout);
+    }
+
+    this.#refreshWidth();
+  }
+
+  /**
+   * Reaplica o valor da barra quando a espessura muda por fora (`[` e `]`).
+   *
+   * O controle e criado UMA vez e so atualizado: recriar `input type="range"` e
+   * `type="color"` a cada troca de ferramenta levou o custo da troca de 1,6 ms
+   * para 5,3 ms -- pego pela medicao do proprio auto-teste.
+   */
+  #refreshWidth(): void {
+    const id = this.#widthTool;
+    if (!id || !this.#slider || !this.#pctLabel) return;
+    const noun = id === 'text' ? 'Tamanho da fonte' : id === 'eraser' ? 'Diametro' : 'Espessura';
+    const pct = this.style.percent(id);
+    this.#slider.value = String(pct);
+    this.#slider.setAttribute('aria-label', noun);
+    this.#slider.title = `${noun}: ${this.style.width(id)}px ([ e ] andam de 10 em 10%)`;
+    this.#pctLabel.textContent = `${pct}%`;
+  }
+
+  #slider: HTMLInputElement | null = null;
+  #pctLabel: HTMLElement | null = null;
+  #widthTool: StyleToolId | null = null;
+
 }

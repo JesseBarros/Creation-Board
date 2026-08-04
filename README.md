@@ -39,7 +39,8 @@ teclas — se o atalho aparece na ajuda, ele funciona.
 | Exportar | `Ctrl+E` — PNG, SVG ou PDF; quadro todo ou seleção |
 | Voltar ao lobby | `Ctrl+O` |
 | Ferramentas | `V` selecionar · `P` caneta · `M` marca-texto · `T` texto · `N` post-it · `F` formas · `E` borracha |
-| Espessura do traço | `[` mais fino · `]` mais grosso (no texto, corpo da fonte; na borracha, diâmetro) |
+| Espessura do traço | Barra de 0 a 100% na lateral · `[` e `]` andam de 10 em 10% (no texto é o corpo da fonte; na borracha, o diâmetro) |
+| Cor | Paleta na lateral · **+** abre o seletor do sistema para cor livre |
 | Borracha | `E` · apaga **por peça** (padrão) ou o traço inteiro — escolha na barra |
 | Editar texto | `F2` (ou `Enter`) na seleção · duplo clique na caixa |
 | Formatar (dentro da caixa) | `Ctrl+B` · `Ctrl+I` · `Ctrl+U` · `Esc` sai mantendo o texto |
@@ -76,9 +77,16 @@ ainda conta como clique, para a tremida natural da mão não cancelar o menu.
 
 Sete ferramentas na barra vertical à esquerda: seleção, caneta, marca-texto, texto,
 post-it, formas e borracha. Com uma delas que produza marca ativa, o painel ao lado
-traz cor e espessura (e o tipo de forma ou o papel do post-it, quando for o caso) — e
-lembra a escolha **por ferramenta**, porque quem grifa de amarelo e volta para a caneta
-espera a caneta de antes, não uma caneta amarela grossa.
+traz cor e espessura (e o tipo de forma, o papel do post-it ou a linha **B / I / U**,
+quando for o caso) — e lembra a escolha **por ferramenta**, porque quem grifa de amarelo
+e volta para a caneta espera a caneta de antes, não uma caneta amarela grossa.
+
+A **espessura é uma barra de 0 a 100%**, e 0% não é zero: um traço de espessura zero seria
+invisível, e uma barra cujo começo não desenha nada tem um pedaço inútil. Cada ferramenta
+tem sua faixa (a caneta vai de 1 a 14px; o corpo da fonte, de 10 a 72). A **cor** vem da
+paleta ou do seletor do sistema pelo **+** — e cor livre sai da garantia do
+`npm run check:colors`, então o app avisa na hora quando a escolhida vai ser **exibida
+trocada** para não sumir num dos temas (é o adaptador agindo, não um erro).
 
 As ferramentas de tinta produzem o mesmo `StrokeObject`, que já existia desde a Fase 1 — é
 o mesmo tipo que a importação e a carga de teste usam. A caneta *produz* esses objetos;
@@ -532,7 +540,7 @@ npm run selftest
 
 Abre o app, dispara eventos de ponteiro e de teclado direto no app e imprime o
 resultado no terminal — sem depender da janela estar em primeiro plano e sem
-capturar a tela. **107 verificações**, em dez frentes:
+capturar a tela. **116 verificações**, em dez frentes:
 
 - **Navegação:** pan com botão direito e com o do meio, o limiar que separa arrastar
   de clicar, o botão esquerdo permanecendo livre para as ferramentas, o zoom ancorado

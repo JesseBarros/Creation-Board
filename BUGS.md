@@ -4,14 +4,14 @@ Registro do que apareceu usando o app de verdade, antes da Fase 9 (polimento).
 O [RETOMAR.md](RETOMAR.md) diz em que pé o projeto está; este arquivo diz **o que está
 errado e o que falta**. Some quando a lista zerar.
 
-**Última atualização: 04/08/2026.** **3 itens abertos** (1 bug, 2 melhorias… e mais 2 do
-grupo final) e **6 corrigidos**. A lista começou com 11: dois relatos não eram defeito, o
-maior deles (travamento geral) era o ambiente de desenvolvimento, um bug novo apareceu no
-meio do caminho (o colar de imagem — real, meu) e as etapas fecharam o resto.
+**Última atualização: 04/08/2026.** **1 item aberto** e **11 fechados**. A lista começou
+com 11 relatos, ganhou dois no caminho (o colar de imagem e a remoção do lápis) e está
+praticamente zerada.
 
-**Ainda em aberto:** B5 (queda breve ao clicar — talvez já resolvida junto do B3, precisa
-de reteste), B4 (cursor de caneta), M1 (botão de negrito), M5 (espessura 0–100%) e M6
-(seletor de cor personalizado). Os quatro últimos mexem no mesmo painel e saem juntos.
+**Ainda em aberto:** só o **B5** — a queda breve de fps ao clicar num controle. Ela tinha a
+mesma raiz do B3 (painel reconstruído a cada clique), que foi corrigida, e a medição de
+troca de ferramenta caiu para 2,5 ms. **Precisa do reteste dele com o `F3` aberto** para
+fechar ou reabrir com número novo.
 
 Vale registrar o padrão, porque ele se repete: **medir antes de corrigir devolveu mais
 resultado que corrigir teria devolvido.** Nenhuma linha de correção foi escrita, e três
@@ -140,13 +140,17 @@ linha de código — o `#commit()` do `DrawStyle`:
 que **seja o mesmo elemento** — com o destaque no lugar certo.
 
 ### B4 — Cursor de cruz é feio nas ferramentas de desenho
-`aberto` · `baixo`
+`corrigido` · `baixo` · 04/08/2026
 
-Ele quer um cursor com cara de caneta no lugar do `crosshair`.
+A caneta e o marca-texto passaram a usar um **cursor de caneta** desenhado em SVG, embutido
+no próprio valor de `cursor` (sem arquivo em disco nem caminho de build). Ele tem contorno
+branco por baixo, porque a caneta escura sumiria justamente sobre tinta escura — que é onde
+ela costuma estar —, e o **ponto quente fica na ponta**: sem isso a tinta sairia deslocada
+do cursor.
 
-**Onde:** `cursorFor()` de cada ferramenta (`DrawTool`, `ShapeTool`, `NoteTool`, `TextTool`).
-A borracha já faz diferente e serve de modelo: ela esconde o cursor do sistema e desenha o
-próprio círculo no overlay.
+**Formas, post-it e texto continuam com o cursor de precisão** (`crosshair` e `text`): ali
+o gesto é posicionar um canto ou um ponto de inserção, e a cruz diz exatamente onde ele
+vai cair. Trocar tudo por caneta seria consistência que atrapalha.
 
 ### B5 — Queda breve de fps ao clicar num ícone da barra inferior
 `aberto` · `baixo`
@@ -272,11 +276,18 @@ mouse continuaria idêntica ao que é hoje.
 ## Melhorias
 
 ### M1 — Botão de negrito na caixa de texto
-`aberto` · `médio`
+`corrigido` · `médio` · 04/08/2026
 
-**Importante:** negrito **já funciona** com `Ctrl+B` dentro da caixa (e `Ctrl+I`, `Ctrl+U`).
-O que falta é o controle visível — o recurso existe e ninguém descobre. A correção é de
-descoberta, não de capacidade: uma linha **B / I / U** no painel da ferramenta de texto.
+Negrito **já funcionava** com `Ctrl+B` dentro da caixa (e `Ctrl+I`, `Ctrl+U`); faltava o
+controle visível — recurso sem botão é recurso que ninguém descobre.
+
+Agora há uma linha **B / I / U** no painel da ferramenta de texto, com **dois destinos**:
+digitando, vale para a seleção dentro da caixa (mesmo caminho do `Ctrl+B`); com uma caixa
+selecionada, vale para a caixa inteira. Sem o segundo caso, o botão ficaria inerte
+justamente quando a pessoa acabou de clicar num texto para mudá-lo.
+
+A regra do estado segue a de qualquer editor: se **tudo** já está formatado, o botão tira;
+senão, aplica em tudo.
 
 ### M2 — Renomear o botão de importação do Whiteboard
 `corrigido` · `baixo` · 04/08/2026
@@ -328,24 +339,42 @@ O `?` virou **"comandos"** escrito. Coberto pelo auto-teste (o botão é procura
 rótulo).
 
 ### M5 — Trocar os três degraus de espessura por uma barra de 0 a 100%
-`aberto` · `médio`
+`corrigido` · `médio` · 04/08/2026
 
-Hoje cada ferramenta tem três degraus fixos. Ele quer controle contínuo.
+Cada ferramenta tinha três degraus fixos; agora é uma barra contínua, com a porcentagem
+escrita ao lado e o valor real em px na dica.
 
-**Consequências a resolver junto:** 0% seria um traço invisível, então a barra precisa
-mapear para uma faixa mínima–máxima por ferramenta (o lápis não pode passar de 100% da
-largura nominal — ver a decisão do AABB no README). E `[` / `]` deixam de andar entre
-degraus e passam a somar/subtrair uma porcentagem.
+**As duas consequências foram resolvidas como combinado:**
+
+- **0% não é zero.** A barra mapeia para uma faixa mínimo–máximo por ferramenta (caneta
+  1–14px, marca-texto 8–44, formas 1–14, fonte 10–72, borracha 8–80 px de tela). Um traço
+  de espessura zero seria invisível, e uma barra cujo começo não desenha nada teria um
+  pedaço inútil.
+- **`[` e `]` andam de 10 em 10%** e param nas pontas da faixa, em vez de pular degraus.
+
+O auto-teste cobre as pontas: no mínimo a espessura ainda é maior que zero, e nem `[` nem
+`]` conseguem sair da faixa.
+
+**Efeito colateral medido, e corrigido:** o `input type="range"` (e mais ainda o
+`type="color"` do M6) é **caro de instanciar**, e recriá-los a cada troca de ferramenta
+levou o custo da troca de 1,6 ms para 5,3 ms — a verificação de desempenho reprovou na
+hora. Os dois controles passaram a ser criados uma vez e reaproveitados: 2,5 ms.
 
 ### M6 — Seletor de cores personalizado
-`aberto` · `médio`
+`corrigido` · `médio` · 04/08/2026
 
-Hoje a paleta é fixa (8 cores de tinta, 5 de marca-texto, 5 de papel).
+A paleta ganhou um **+** que abre o seletor do sistema. A cor escolhida entra como mais uma
+amostra na fila (para ser reescolhida com um clique) e sobrevive ao fechar o app.
 
-**Consequência a registrar:** `npm run check:colors` garante que **toda cor da paleta**
-continua legível nos dois temas. Cor livre sai dessa garantia — o adaptador ainda impede
-que ela suma no tema escuro, mas ninguém conferiu o contraste dela. Vale decidir se o
-seletor avisa quando a cor escolhida tem contraste baixo.
+**O aviso mudou de ideia durante a implementação, e o motivo vale registrar.** A intenção
+era avisar quando a cor tivesse *contraste baixo* — mas a primeira verificação mostrou que
+isso quase nunca acontece: **o adaptador de tema resgata a cor invertendo a luminosidade**,
+então ela não some. A pergunta útil não era "ela some?", e sim **"ela vai aparecer
+diferente do que eu escolhi?"**.
+
+Hoje o aviso diz exatamente isso: *"#f2f2f2 tem contraste baixo no tema claro e será
+exibida como #0d0d0d, para não sumir"*. Avisa e não impede — a paleta é conferida pelo
+`check:colors`, mas a escolha livre é dele.
 
 ---
 

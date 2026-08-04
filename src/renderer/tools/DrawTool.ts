@@ -137,7 +137,7 @@ export class DrawTool implements Tool {
   // ---------------------------------------------------------------- visual
 
   cursorFor(): string {
-    return 'crosshair';
+    return PEN_CURSOR;
   }
 
   /**
@@ -195,3 +195,26 @@ const LABELS: Record<DrawToolId, string> = {
   pen: 'Desenhar',
   highlighter: 'Grifar',
 };
+
+/**
+ * Cursor de caneta, com a PONTA no ponto que vai desenhar.
+ *
+ * A cruz do navegador dizia "aqui" sem dizer "com o quê", e destoava de um app
+ * cujo resto e desenhado. O SVG vai embutido no proprio valor de `cursor`,
+ * entao nao depende de arquivo em disco nem de caminho de build.
+ *
+ * O par de numeros no fim (`2 20`) e o ponto quente: sem ele o sistema usa o
+ * canto superior esquerdo da imagem, e a tinta sairia deslocada do cursor. O
+ * `crosshair` no fim e o plano B para um ambiente que recuse a imagem.
+ */
+const PEN_CURSOR = (() => {
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">` +
+    // Contorno branco por baixo: sem ele a caneta preta sumiria sobre tinta
+    // escura, que e exatamente onde ela costuma estar.
+    `<path d="M3 21l1.6-5.2L16.8 3.6l3.6 3.6L8.2 19.4z" fill="%23fff" stroke="%23fff" stroke-width="3.5" stroke-linejoin="round"/>` +
+    `<path d="M3 21l1.6-5.2L16.8 3.6l3.6 3.6L8.2 19.4z" fill="%231f2933"/>` +
+    `<path d="M14.6 5.8l3.6 3.6" stroke="%23fff" stroke-width="1.4"/>` +
+    `</svg>`;
+  return `url('data:image/svg+xml;utf8,${svg}') 2 20, crosshair`;
+})();

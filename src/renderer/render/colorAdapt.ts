@@ -74,6 +74,19 @@ export function createColorAdapter(boardBg: string): ColorAdapter {
   };
 }
 
+/**
+ * Como esta cor SERA EXIBIDA sobre este fundo.
+ *
+ * Exposto para o seletor de cor livre. A pergunta util nao e "ela some?" -- o
+ * adaptador impede que qualquer cor suma --, e sim **"ela vai aparecer
+ * diferente do que eu escolhi?"**. Um cinza bem claro escolhido no tema claro e
+ * resgatado por inversao e aparece escuro; quem escolheu merece saber disso na
+ * hora, e nao ao trocar de tema.
+ */
+export function displayedAs(color: string, boardBg: string): string {
+  return createColorAdapter(boardBg)(color);
+}
+
 /** Preto ou branco, o que for legivel sobre `bg`. Usado no texto dos post-its. */
 export function readableTextOn(bg: string): string {
   const rgba = parseColor(bg);

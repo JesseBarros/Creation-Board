@@ -71,28 +71,38 @@ export const ALERT_ICONS: Record<AlertLevel, string> = {
 };
 
 /**
- * Espessuras em unidades de MUNDO. Tres degraus por ferramenta.
- * No texto o degrau e o corpo da fonte.
+ * Faixa de espessura de cada ferramenta, do minimo ao maximo.
+ *
+ * Ate 04/08/2026 eram tres degraus fixos; ele pediu controle continuo, e a
+ * barra de 0 a 100% mapeia para esta faixa. **0% nao e zero**: um traco de
+ * espessura zero seria invisivel, e uma barra cujo inicio nao desenha nada e uma
+ * barra com um pedaco inutil. O minimo e a menor espessura que ainda deixa
+ * marca.
+ *
+ * No texto a "espessura" e o corpo da fonte; na borracha, o diametro em px de
+ * TELA -- ela e instrumento de apontar, e o que importa e o quanto cobre do que
+ * se esta vendo. Em unidades de mundo, aproximar o zoom para acertar um detalhe
+ * faria a borracha crescer junto.
  */
-const WIDTHS: Record<StyleToolId, readonly number[]> = {
-  pen: [2, 4, 7],
-  highlighter: [12, 20, 30],
-  shape: [2, 4, 7],
-  text: [16, 24, 40],
-  // Borracha em px de TELA, e nao de mundo: ela e instrumento de apontar, e o
-  // que importa e o quanto cobre do que se esta vendo. Em unidades de mundo,
-  // aproximar o zoom para acertar um detalhe faria a borracha crescer junto.
-  eraser: [12, 28, 56],
+const RANGES: Record<StyleToolId, { min: number; max: number }> = {
+  pen: { min: 1, max: 14 },
+  highlighter: { min: 8, max: 44 },
+  shape: { min: 1, max: 14 },
+  text: { min: 10, max: 72 },
+  eraser: { min: 8, max: 80 },
 };
 
+/** Quanto `[` e `]` andam na barra, em pontos percentuais. */
+const STEP_PERCENT = 10;
+
 const DEFAULTS: Record<StyleToolId, { color: string; width: number }> = {
-  pen: { color: INK_COLORS[0], width: WIDTHS.pen[1]! },
-  highlighter: { color: HIGHLIGHTER_COLORS[0], width: WIDTHS.highlighter[1]! },
-  shape: { color: INK_COLORS[0], width: WIDTHS.shape[0]! },
-  text: { color: INK_COLORS[0], width: WIDTHS.text[0]! },
+  pen: { color: INK_COLORS[0], width: 4 },
+  highlighter: { color: HIGHLIGHTER_COLORS[0], width: 20 },
+  shape: { color: INK_COLORS[0], width: 2 },
+  text: { color: INK_COLORS[0], width: 16 },
   // A cor da borracha nunca e usada; ela entra aqui so para o eixo de tamanho
   // ser o mesmo das outras ferramentas, com `[` e `]` valendo igual.
-  eraser: { color: INK_COLORS[0], width: WIDTHS.eraser[1]! },
+  eraser: { color: INK_COLORS[0], width: 28 },
 };
 
 /**
@@ -103,6 +113,15 @@ const DEFAULTS: Record<StyleToolId, { color: string; width: number }> = {
  * gestos diferentes: corrigir uma letra e limpar uma anotacao inteira.
  */
 export type EraserMode = 'peca' | 'objeto';
+
+/** `#rrggbb` ou `#rgb`. O seletor do sistema devolve sempre a forma longa. */
+export function isHexColor(value: string): boolean {
+  return /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(value);
+}
+
+function clamp(v: number, lo: number, hi: number): number {
+  return v < lo ? lo : v > hi ? hi : v;
+}
 
 /** Formas oferecidas na barra, na ordem em que aparecem. */
 export const SHAPE_KINDS: readonly ShapeKind[] = [
@@ -151,8 +170,22 @@ export class DrawStyle {
     return id === 'highlighter' ? HIGHLIGHTER_COLORS : INK_COLORS;
   }
 
-  widthsFor(id: StyleToolId): readonly number[] {
-    return WIDTHS[id];
+  range(id: StyleToolId): { min: number; max: number } {
+    return RANGES[id];
+  }
+
+  /** A espessura atual como 0..100, que e o que a barra mostra. */
+  percent(id: StyleToolId): number {
+    const { min, max } = RANGES[id];
+    return clamp(Math.round(((this.#state[id].width - min) / (max - min)) * 100), 0, 100);
+  }
+
+  setPercent(id: StyleToolId, percent: number): void {
+    const { min, max } = RANGES[id];
+    const p = clamp(percent, 0, 100);
+    // Uma casa decimal: o suficiente para a barra andar suave sem gravar
+    // numeros como 3.7142857 no arquivo.
+    this.setWidth(id, Math.round((min + ((max - min) * p) / 100) * 10) / 10);
   }
 
   color(id: StyleToolId): string {
@@ -227,19 +260,11 @@ export class DrawStyle {
   /**
    * Passo de espessura para os atalhos `[` e `]`.
    *
-   * Anda pelos degraus declarados em vez de multiplicar por um fator: a
-   * espessura corrente pode ter vindo do arquivo de preferencias com um valor
-   * que nao esta na lista, e a partida e sempre o degrau mais proximo.
+   * Anda em pontos percentuais da barra, e nao entre degraus: com a faixa
+   * continua nao existem mais degraus para pular.
    */
   stepWidth(id: StyleToolId, direction: -1 | 1): void {
-    const steps = WIDTHS[id];
-    const current = this.#state[id].width;
-    let nearest = 0;
-    for (let i = 1; i < steps.length; i++) {
-      if (Math.abs(steps[i]! - current) < Math.abs(steps[nearest]! - current)) nearest = i;
-    }
-    const next = Math.min(steps.length - 1, Math.max(0, nearest + direction));
-    this.setWidth(id, steps[next]!);
+    this.setPercent(id, this.percent(id) + direction * STEP_PERCENT);
   }
 
   onChange(fn: () => void): () => void {
@@ -322,9 +347,11 @@ function readStored(): {
     const entry = obj[id];
     if (typeof entry !== 'object' || entry === null) continue;
     const { color, width } = entry as { color?: unknown; width?: unknown };
-    const palette: readonly string[] = id === 'highlighter' ? HIGHLIGHTER_COLORS : INK_COLORS;
     tools[id] = {
-      color: typeof color === 'string' && palette.includes(color) ? color : DEFAULTS[id].color,
+      // Qualquer cor valida, e nao so as da paleta: desde 04/08/2026 da para
+      // escolher cor livre, e uma cor escolhida a mao nao pode ser descartada
+      // na proxima abertura do app.
+      color: typeof color === 'string' && isHexColor(color) ? color : DEFAULTS[id].color,
       width:
         typeof width === 'number' && width > 0 && width <= 200 ? width : DEFAULTS[id].width,
     };

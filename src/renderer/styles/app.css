@@ -318,10 +318,103 @@
 
 .qb-tools__widths {
   display: flex;
-  justify-content: space-between;
-  gap: 4px;
+  align-items: center;
+  gap: 6px;
   padding-top: 8px;
   border-top: 1px solid var(--border);
+}
+
+/* Barra de 0 a 100%: contínua, no lugar dos três degraus fixos. */
+.qb-tools__slider {
+  flex: 1;
+  width: 74px;
+  height: 4px;
+  margin: 0;
+  appearance: none;
+  background: var(--panel-2);
+  border-radius: 2px;
+}
+
+.qb-tools__slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--panel);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.qb-tools__pct {
+  min-width: 30px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-muted);
+  text-align: right;
+}
+
+/* Negrito, italico e sublinhado: letras, porque e o que todo editor mostra. */
+.qb-tools__formats {
+  display: flex;
+  gap: 3px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.qb-tools__format {
+  flex: 1;
+  height: 26px;
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  color: var(--fg);
+  font-size: 13px;
+  line-height: 1;
+  transition: background-color 0.12s ease;
+}
+
+.qb-tools__format:hover {
+  background: var(--panel-2);
+}
+
+.qb-tools__format--bold {
+  font-weight: 800;
+}
+
+.qb-tools__format--italic {
+  font-style: italic;
+}
+
+.qb-tools__format--underline {
+  text-decoration: underline;
+}
+
+/*
+  O seletor de cor do sistema fica escondido atras da amostra: o controle nativo
+  tem forma propria e destoaria da fila de circulos.
+*/
+.qb-tools__color--custom {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-muted);
+  border-style: dashed;
+  cursor: pointer;
+}
+
+.qb-tools__color--custom:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.qb-tools__color-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  border: none;
+  padding: 0;
+  cursor: pointer;
 }
 
 .qb-tools__width {
