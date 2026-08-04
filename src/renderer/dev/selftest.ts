@@ -20,6 +20,9 @@ import { snapRect } from '../features/snapping/snap';
 import { applyBoard, serializeBoard } from '../features/storage/boardIO';
 import { plainText } from '../features/text/spans';
 import { searchBoard } from '../features/search/search';
+import { exportBounds, renderPng } from '../features/export/exportBoard';
+import { renderSvg } from '../features/export/exportSvg';
+import { autosaveVerdict } from '../features/storage/autosave';
 import { layoutOf, layoutText } from '../render/text/layout';
 import { offscreenPinnedNotes } from '../render/PinnedNotes';
 import { generateStressObjects } from './stress';
@@ -265,6 +268,7 @@ export async function runSelfTest(host: HTMLElement, app: App): Promise<void> {
   await block('texto e post-its', () => runTextTests(host, app, check, reset));
   await block('busca', () => runSearchTests(app, check, reset));
   await block('imagens', () => runImageTests(host, app, check, reset));
+  await block('exportar e autosave', () => runExportTests(app, check, reset));
 
   // Deixa o cenario montado no fim. Com QB_SHOT a janela nao fecha ao terminar,
   // entao a foto vira a conferencia do que nenhum numero daqui verifica: o cromo
@@ -1766,6 +1770,163 @@ function runTextTests(host: HTMLElement, app: App, check: Check, reset: () => vo
 /** Texto de uma linha do layout, para comparar quebras. */
 function textOf(line: { runs: ReadonlyArray<{ text: string }> }): string {
   return line.runs.map((r) => r.text).join('');
+}
+
+// ----------------------------------------------------- exportar e autosave
+
+async function runExportTests(app: App, check: Check, reset: () => void): Promise<void> {
+  const { doc, selection, history } = app;
+  const tema = { boardBg: '#ffffff', gridColor: '#dde2ea' };
+
+  const setup = (): void => {
+    reset();
+    selection.clear();
+    history.clear();
+    doc.clear();
+    app.assets.clear();
+    doc.setPrefs({ snapToGrid: false, unit: 'px' });
+    doc.add(scene());
+    app.setTool('select');
+  };
+
+  // --- PNG: tamanho segue a area, a margem e a escala
+  setup();
+  const area = exportBounds(doc, [])!;
+  const png = await renderPng(doc, app.assets, area, [], {
+    scale: 2,
+    padding: 10,
+    background: '#ffffff',
+    theme: tema,
+  });
+  const esperadoW = Math.round((area.w + 20) * 2);
+  check(
+    'o PNG exportado sai no tamanho da area, com margem e escala aplicadas',
+    png.width === esperadoW && png.bytes.length > 100 && png.scale === 2,
+    `${png.width}x${png.height} px, ${png.bytes.length} bytes, escala=${png.scale} ` +
+      `esperado=largura ${esperadoW}`,
+  );
+
+  // --- exportar so a selecao usa a area da selecao
+  const soUm = exportBounds(doc, ['A'])!;
+  check(
+    'exportar a selecao mede so o que esta selecionado',
+    near(soUm.w, 100, 0.01) && near(soUm.x, 100, 0.01) && soUm.w < area.w,
+    `area da selecao=${soUm.w.toFixed(0)}x${soUm.h.toFixed(0)} em (${soUm.x.toFixed(0)}) ` +
+      `area total=${area.w.toFixed(0)} esperado=100x100 em 100`,
+  );
+
+  // --- o teto de pixels reduz a escala em vez de estourar
+  // Sem isso, um quadro grande a 3x pediria um canvas que o navegador nao aloca
+  // e a exportacao morreria sem explicacao.
+  const enorme = { x: 0, y: 0, w: 40_000, h: 30_000 };
+  const gigante = await renderPng(doc, app.assets, enorme, [], {
+    scale: 3,
+    padding: 0,
+    background: '#ffffff',
+    theme: tema,
+  });
+  check(
+    'o teto de pixels reduz a escala do PNG em vez de estourar o canvas',
+    gigante.scale < 3 && gigante.width * gigante.height <= 64_000_000 && gigante.bytes.length > 0,
+    `escala pedida=3 usada=${gigante.scale.toFixed(3)} ` +
+      `${gigante.width}x${gigante.height} = ${(gigante.width * gigante.height / 1e6).toFixed(1)} MP`,
+  );
+
+  // --- SVG: um elemento por objeto, com a geometria certa
+  setup();
+  const svg = renderSvg(doc, app.assets, area, [], {
+    padding: 10,
+    background: '#ffffff',
+    adaptAgainst: '#ffffff',
+  });
+  check(
+    'o SVG traz os objetos como elementos vetoriais',
+    svg.startsWith('<?xml') &&
+      svg.includes('<svg ') &&
+      svg.includes('<rect') &&
+      svg.includes('<polyline') &&
+      svg.includes('viewBox='),
+    `${svg.length} bytes, tem rect=${svg.includes('<rect')} polyline=${svg.includes('<polyline')} ` +
+      `viewBox=${svg.includes('viewBox=')}`,
+  );
+
+  // --- SVG escapa o conteudo do usuario
+  // Um resumo com "<b>" escrito dentro nao pode virar marcacao no arquivo.
+  setup();
+  doc.add([
+    {
+      ...BASE,
+      id: 'TX',
+      type: 'text',
+      z: 'a9',
+      transform: { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 },
+      // Alta o bastante para caber tudo: o SVG corta o que passa da caixa, como
+      // o painter, e uma caixa baixa esconderia justamente o trecho a conferir.
+      bbox: { x: 0, y: 0, w: 400, h: 200 },
+      w: 400,
+      h: 200,
+      autoHeight: true,
+      content: [{ text: 'a < b & <script>alert(1)</script>' }],
+      fontFamily: "'Segoe UI', sans-serif",
+      fontSize: 16,
+      lineHeight: 1.35,
+      align: 'left',
+      color: '#1f2933',
+      list: 'none',
+    } as TextObject,
+  ]);
+  const comTexto = renderSvg(doc, app.assets, exportBounds(doc, ['TX'])!, ['TX'], {
+    padding: 0,
+    background: null,
+    adaptAgainst: '#ffffff',
+  });
+  check(
+    'o SVG escapa o texto do usuario em vez de virar marcacao',
+    comTexto.includes('&lt;script&gt;') &&
+      !comTexto.includes('<script>') &&
+      comTexto.includes('&amp;'),
+    `${comTexto.length} bytes, tem texto=${comTexto.includes('<text')} ` +
+      `escapado=${comTexto.includes('&lt;script&gt;')} cru=${comTexto.includes('<script>')}`,
+  );
+
+  // --- SVG: o apagamento da borracha vira mascara
+  setup();
+  const tinta = doc.get('INK') as StrokeObject;
+  doc.replace({ ...tinta, erased: [{ points: [40, 40, 120, 120], width: 30 }], rev: tinta.rev + 1 });
+  const comMascara = renderSvg(doc, app.assets, exportBounds(doc, ['INK'])!, ['INK'], {
+    padding: 0,
+    background: null,
+    adaptAgainst: '#ffffff',
+  });
+  check(
+    'o buraco da borracha vira mascara no SVG, e nao mancha da cor do fundo',
+    comMascara.includes('<mask') &&
+      comMascara.includes('mask="url(#') &&
+      comMascara.includes('fill="white"'),
+    `tem mask=${comMascara.includes('<mask')} referencia=${comMascara.includes('mask="url(#')}`,
+  );
+
+  // --- a regra do autosave
+  // Testada como regra, e nao gravando de verdade: um teste que salva encheria
+  // a pasta de quadros do usuario a cada execucao.
+  const semCaminho = autosaveVerdict({ hasPath: false, dirty: true, saving: false, editing: false });
+  const limpo = autosaveVerdict({ hasPath: true, dirty: false, saving: false, editing: false });
+  const digitando = autosaveVerdict({ hasPath: true, dirty: true, saving: false, editing: true });
+  const gravando = autosaveVerdict({ hasPath: true, dirty: true, saving: true, editing: false });
+  const podeSalvar = autosaveVerdict({ hasPath: true, dirty: true, saving: false, editing: false });
+  check(
+    'o autosave so grava quadro ja salvo, sujo, e com o usuario fora da caixa de texto',
+    semCaminho === 'nao' &&
+      limpo === 'nao' &&
+      digitando === 'adiar' &&
+      gravando === 'adiar' &&
+      podeSalvar === 'salvar',
+    `sem caminho=${semCaminho} limpo=${limpo} digitando=${digitando} gravando=${gravando} ` +
+      `pronto=${podeSalvar} esperado=(nao, nao, adiar, adiar, salvar)`,
+  );
+
+  setup();
+  doc.clear();
 }
 
 // ------------------------------------------------------------------ imagens

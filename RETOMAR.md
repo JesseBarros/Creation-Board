@@ -4,16 +4,17 @@ Ponto de retomada do **Creation Board**. O [README](README.md) explica o que o a
 como cada parte funciona; este arquivo responde outra pergunta: *em que pé isso está e
 o que fazer a seguir*. Some quando o projeto acabar.
 
-**Última sessão: 04/08/2026.** Fases 5, 5.5, 6 e 7 concluídas.
+**Última sessão: 04/08/2026.** Fases 5, 5.5, 6, 7 e 8 concluídas.
 
 ---
 
 ## Estado em uma linha
 
-Fases 0 a 7 prontas. Dá para importar um resumo do Microsoft Whiteboard e **trabalhar em
-cima dele por inteiro**: reorganizar com alinhamento assistido, escrever à mão, desenhar
-formas, digitar texto e post-its, apagar tinta por peça, achar qualquer palavra com
-`Ctrl+F` e colar/arrastar/recortar imagens. Faltam exportação, autosave e polimento.
+Fases 0 a 8 prontas. Dá para importar um resumo do Microsoft Whiteboard, **trabalhar em
+cima dele por inteiro** (reorganizar com alinhamento assistido, escrever à mão, desenhar
+formas, digitar texto e post-its, apagar tinta por peça, achar palavra com `Ctrl+F`,
+colar/arrastar/recortar imagens) e **tirar dali um PNG, SVG ou PDF**, com o quadro
+gravando sozinho. Falta o polimento final (Fase 9) e o OCR (7.5), que ficou para depois.
 
 ## O que existe hoje
 
@@ -30,7 +31,9 @@ formas, digitar texto e post-its, apagar tinta por peça, achar qualquer palavra
 | 5.5 | Borracha progressiva (apagar por peça) | pronta |
 | 6 | Busca `Ctrl+F` | pronta |
 | 7 | Imagens: colar, arrastar e recortar | pronta |
-| **8** | **Exportar (PNG/SVG/PDF) e autosave** | **próxima** |
+| 8 | Exportar PNG/SVG/PDF e autosave | pronta |
+| **9** | **Polimento de UI, temas e build final** | **próxima** |
+| 7.5 | OCR: transcrever imagem em texto | adiada, fica para depois da 9 |
 
 A ordem diverge do plano original **de propósito**: o objetivo é migrar os resumos do
 Whiteboard, e para isso importar e manipular vieram antes de desenhar.
@@ -38,11 +41,8 @@ Whiteboard, e para isso importar e manipular vieram antes de desenhar.
 A Fase 5.5 nasceu de um pedido dele ao testar a Fase 5 — a borracha apagando o traço
 inteiro não servia — e **reverteu a decisão da Fase 4**. Está resolvida.
 
-**A `main` foi até a Fase 6** (mesclada em 04/08/2026, em avanço rápido). A Fase 7 está
-na branch **`fase-7-imagens`**, ainda sem mesclar — ele não pediu.
-
-Há uma fase **7.5 no plano** (OCR: transcrever imagem em texto) que não foi feita — ela
-vem depois desta, não antes; ver a lista no README.
+**A `main` foi até a Fase 7** (mesclada em 04/08/2026, em avanço rápido). A Fase 8 está
+na branch **`fase-8-exportar`**, ainda sem mesclar — ele não pediu.
 
 ---
 
@@ -52,11 +52,11 @@ Sempre por terminal — nunca por captura de tela cheia (ver o *porquê* no READ
 
 ```
 npm run typecheck     # tsc nos dois projetos, strict
-npm run selftest      # 100 verificações, deve terminar com "tudo passou"
+npm run selftest      # 107 verificações, deve terminar com "tudo passou"
 npm run check:colors  # contraste das cores nos dois temas
 ```
 
-⚠️ **Duas das 100 medem a máquina, não o código.** A primeira: "arrastar 10.000 objetos selecionados
+⚠️ **Duas das 107 medem a máquina, não o código.** A primeira: "arrastar 10.000 objetos selecionados
 fica acima de 30fps", com teto de 33 ms por frame. Ela reprova com o computador ocupado —
 em 04/08/2026 reprovou com **50–62 ms** simplesmente porque o **CS2 estava aberto**, e a
 `main` sem nenhuma mudança reprovou pior que a branch nova. O sinal de que é a máquina, e
@@ -114,30 +114,37 @@ pressionado, e um gesto deixado em aberto é desfeito pelo guarda de `blur` do
 pode sobreviver). Quem verifica a guia é a checagem numérica sobre `snapRect`; para vê-la
 com os olhos, arraste um objeto perto de outro no app.
 
+E, ao mexer em exportação, conferir os três formatos por terminal — o diálogo de salvar e
+o `printToPDF` não passam pelo auto-teste:
+
+```
+$env:QB_EXPORT = "$env:TEMP\qb-export"; npm run dev
+```
+
+Grava `.png`, `.svg`, `.pdf` e ainda `-svg.png`, que é **o SVG relido pelo navegador**:
+se ele não carregar, o arquivo que geramos não serve. Referência em 04/08/2026, com 120
+objetos: PNG 6432×6130 em ~700ms, SVG 75 KB em 4ms, PDF em ~800ms.
+
 **Rodar sempre por `npm run dev`.** O instalador (`npm run dist`) só quando você pedir,
 com tudo estável.
 
 ---
 
-## Como começar a Fase 8
+## Como começar a Fase 9
 
-Exportar (PNG/SVG/PDF) e autosave.
+Polimento de UI, temas e build final. É a fase que fecha o projeto, e por isso vale
+começar **usando o app por uma hora** e anotando o que incomoda — foi assim que a 5.5
+nasceu, e ela era mais importante que metade do que estava planejado.
 
-1. **Exportar PNG já tem quase tudo pronto:** `renderThumbnail` em
-   `features/storage/boardIO.ts` desenha o quadro inteiro num canvas fora da tela, com o
-   mesmo caminho de LOD e adaptação de cor do renderer. Exportar é o mesmo código com
-   outro tamanho e sem o teto da miniatura — e decidir entre "tudo" e "só a seleção".
-2. **SVG é outro bicho:** não existe caminho de SVG hoje. Traço vira `<polyline>`, tinta
-   importada já É um caminho SVG (`PathObject.d`), texto precisa do layout de
-   `render/text/layout.ts` para virar `<text>` por linha, e a máscara da borracha vira
-   `<mask>`. Medir o tamanho do arquivo antes de prometer: um resumo tem 1.063 objetos.
-3. **PDF:** o caminho mais curto é o `printToPDF` do próprio Electron sobre uma página com
-   o PNG, e não uma biblioteca nova. Confirmar antes se a qualidade serve.
-4. **Autosave** encosta em coisa delicada: hoje o guarda de `beforeunload` é o que impede
-   perder trabalho, e o `.wbd` é gravado por inteiro a cada save. Com autosave, gravar um
-   quadro de 50 MB a cada 30s custa I/O — medir antes de escolher o intervalo, e pensar em
-   gravar só quando `dirty` e o usuário estiver parado.
-5. Cobrir no `selftest` junto — ver a nota abaixo.
+1. **Rodar `npm run dist`** cedo, e não no fim: o instalador foi validado na Fase 0 e
+   nunca mais desde então. Oito fases de código novo entraram depois.
+2. **Reimportar os resumos de verdade** (`QB_IMPORT_SAVE=1`) e abrir cada um: é o teste
+   de aceitação que importa, já que o objetivo do projeto é migrar esses arquivos.
+3. Candidatos de polimento já visíveis: a barra inferior está com doze controles, o painel
+   de opções da barra lateral cresce a cada ferramenta, e não há indicação visual de que o
+   autosave gravou (só a dica do nome).
+4. O tema escuro nunca foi olhado com todas as fases prontas — `npm run check:colors`
+   garante contraste de marca, mas não diz se a interface ficou boa.
 
 ---
 
@@ -212,7 +219,16 @@ Exportar (PNG/SVG/PDF) e autosave.
 18. **`PatchObjects` é o comando genérico de conteúdo+geometria** (texto, marcadores,
     recorte). Ele nasceu como `EditText` e foi renomeado na Fase 7, quando o terceiro uso
     apareceu — se você procurar `EditText` no histórico, é ele.
-19. **Funcionalidade nova entra com cobertura no `selftest`.** Ele despacha eventos de
+19. **Exportar reaproveita os painters no PNG e NÃO no SVG.** No PNG é o mesmo
+    `paintObject` da tela — dois renderizadores divergiriam na primeira funcionalidade
+    nova. No SVG isso é impossível (os painters falam canvas), então o que se reaproveita
+    é o que decide aparência: layout de texto, adaptador de cor, constantes do post-it.
+    Duas perdas assumidas: pressão do lápis vira espessura média, e texto sai como
+    `<text>` (dependente da fonte de quem abrir, mas selecionável).
+20. **O autosave só grava quadro que já tem caminho, e nunca com caixa de texto aberta.**
+    A regra mora em `features/storage/autosave.ts`, separada de quem grava, porque um
+    teste que gravasse de verdade encheria a pasta de quadros a cada execução.
+21. **Funcionalidade nova entra com cobertura no `selftest`.** Ele despacha eventos de
     ponteiro e teclado no app real, então pega regressão de fiação, não só de matemática.
     Foi ele que achou, na Fase 5, um `commit()` que lia `#isNew` **depois** de fechar o
     editor — toda caixa nova virava "edição" de um objeto inexistente. Armadilha ao mexer
@@ -234,16 +250,18 @@ src/renderer/
 │  ├─ selection/  hitTest, frame, transformOps, actions, clipboard
 │  ├─ snapping/   snap (guias de alinhamento + grade)
 │  ├─ search/     busca por texto, sem índice invertido (ver a medição)
+│  ├─ export/     exportBoard (PNG, reusa os painters) e exportSvg (não reusa)
 │  ├─ text/       TextEditor (contentEditable), spans (DOM ↔ RichSpan)
 │  ├─ import/     leitor do export do Whiteboard
 │  ├─ images/     AssetStore, insert (colar e arrastar arquivo)
-│  └─ storage/    boardIO
+│  └─ storage/    boardIO, autosave (a regra, separada de quem grava)
 ├─ render/      Renderer (estática + overlay), painters (+ erase: máscara da borracha),
 │               text/layout, SelectionOverlay, SnapGuides, Rulers, PinnedNotes,
 │               SearchHighlight, CropOverlay
 ├─ ui/          ToolBar, SearchBar, Lobby, ViewportBar, ContextMenu, ShortcutsModal,
 │               DebugPanel
-└─ dev/         selftest, layoutOracle, importCheck, stress  ← ferramentas de medição
+└─ dev/         selftest, layoutOracle, importCheck, exportCheck, stress
+                ← ferramentas de medição
 ```
 
 **Atalhos são registro único:** `src/renderer/shortcuts.ts` alimenta ao mesmo tempo a

@@ -1,5 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { IPC, type AppInfo, type CreationBoardApi } from '@shared/ipc-contract';
+import {
+  IPC,
+  type AppInfo,
+  type CreationBoardApi,
+  type ExportRequest,
+  type ExportResult,
+} from '@shared/ipc-contract';
 import type {
   BoardSummary,
   LoadBoardResult,
@@ -35,6 +41,11 @@ const api: CreationBoardApi = {
       ipcRenderer.invoke(IPC.importPick) as Promise<ImportSource[]>,
     read: (paths: string[]): Promise<ImportSource[]> =>
       ipcRenderer.invoke(IPC.importRead, paths) as Promise<ImportSource[]>,
+  },
+
+  exporter: {
+    save: (req: ExportRequest): Promise<ExportResult> =>
+      ipcRenderer.invoke(IPC.exportSave, req) as Promise<ExportResult>,
   },
 };
 

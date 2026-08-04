@@ -4,6 +4,7 @@ import { writeFile } from 'node:fs/promises';
 import { registerAppIpc } from './ipc/app';
 import { registerBoardIpc } from './ipc/board';
 import { registerImportIpc } from './ipc/importer';
+import { registerExportIpc } from './ipc/exporter';
 
 const isDev = !app.isPackaged;
 
@@ -63,20 +64,34 @@ function createWindow(): void {
   // gravar nada. QB_IMPORT_SAVE=1 grava o .wbd de verdade.
   const importPath = process.env['QB_IMPORT'];
   const importSave = process.env['QB_IMPORT_SAVE'] === '1' ? '&save=1' : '';
+  // QB_EXPORT=<prefixo> exporta uma cena de conferencia nos tres formatos, sem
+  // passar pelo dialogo de salvar -- que e justamente o que nao da para
+  // automatizar. Ferramenta de desenvolvimento apenas.
+  const exportPrefix = process.env['QB_EXPORT'];
   const query = bench
     ? `?bench=${encodeURIComponent(bench)}`
     : selftest
       ? '?selftest=1'
       : importPath
         ? `?import=${encodeURIComponent(importPath)}${importSave}`
-        : '';
+        : exportPrefix
+          ? `?export=${encodeURIComponent(exportPrefix)}`
+          : '';
 
   if (!app.isPackaged) {
     // Os modos de verificacao terminam imprimindo um marcador. Fechar a janela
     // nesse ponto e o que torna `QB_IMPORT`/`--selftest`/`QB_BENCH` utilizaveis
     // dentro de um script: sem isso o processo fica aberto esperando alguem
     // clicar no X, e quem chamou nunca recebe a saida.
-    const done = bench ? 'BENCH_RESULT' : selftest ? 'SELFTEST_FIM' : importPath ? 'IMPORTCHECK_FIM' : null;
+    const done = bench
+      ? 'BENCH_RESULT'
+      : selftest
+        ? 'SELFTEST_FIM'
+        : importPath
+          ? 'IMPORTCHECK_FIM'
+          : exportPrefix
+            ? 'EXPORTCHECK_FIM'
+            : null;
 
     mainWindow.webContents.on('console-message', (_e, _level, message) => {
       console.log(`[renderer] ${message}`);
@@ -128,6 +143,7 @@ if (!gotLock) {
     registerAppIpc();
     registerBoardIpc();
     registerImportIpc();
+    registerExportIpc();
     createWindow();
 
     app.on('activate', () => {

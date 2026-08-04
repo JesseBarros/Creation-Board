@@ -35,7 +35,8 @@ teclas — se o atalho aparece na ajuda, ele funciona.
 
 | Ação | Como |
 |---|---|
-| Salvar | `Ctrl+S` |
+| Salvar | `Ctrl+S` · autosave 3s depois da última alteração (após o 1º save) |
+| Exportar | `Ctrl+E` — PNG, SVG ou PDF; quadro todo ou seleção |
 | Voltar ao lobby | `Ctrl+O` |
 | Ferramentas | `V` selecionar · `P` caneta · `M` marca-texto · `L` lápis · `T` texto · `N` post-it · `F` formas · `E` borracha |
 | Espessura do traço | `[` mais fino · `]` mais grosso (no texto, corpo da fonte; na borracha, diâmetro) |
@@ -207,6 +208,47 @@ O layout ([render/text/layout.ts](src/renderer/render/text/layout.ts)) é ponto 
 verdade para **três** consumidores que precisam concordar: o painter que desenha, o
 importador que grava o tamanho da caixa no `.wbd` e o editor. Cada um medindo por conta
 própria foi exatamente a divergência que a importação carregou da Fase 2 até aqui.
+
+## Exportar e autosave
+
+`Ctrl+E` (ou o botão **exportar**) abre as opções: **PNG**, **SVG** ou **PDF**; o quadro
+todo ou só a seleção; resolução 1x/2x/3x; com fundo ou transparente. O que sai é o
+conteúdo — **nada de cromo**: régua, alças, guias de encaixe, destaque da busca e fichas
+de post-it fixado são respostas do app a quem edita, não parte do quadro.
+
+- **O PNG sai do mesmo caminho de desenho do app** (`paintObject`, os mesmos painters, o
+  mesmo adaptador de cor). Um renderizador separado para exportar significaria manter dois
+  desenhos do mesmo quadro — e eles divergiriam na primeira funcionalidade nova, que foi
+  exatamente o que aconteceu com a medição de texto entre a Fase 2 e a 5. A única
+  diferença deliberada: exporta sempre em **detalhe cheio**, porque LOD existe para
+  segurar 60fps enquanto se navega e um arquivo não tem frame rate.
+- **O SVG não pôde reaproveitar os painters** — eles falam `CanvasRenderingContext2D`. O
+  que se reaproveita é o que decide a aparência: layout de texto, adaptador de cor e as
+  constantes do post-it. Duas perdas conhecidas: a modulação de pressão do lápis vira
+  espessura média (manter exigiria um caminho por segmento, multiplicando o arquivo por
+  dezenas), e o texto sai como `<text>`, dependente da fonte de quem abrir — converter
+  glifo em caminho perderia o texto selecionável, que é metade da razão de exportar vetor.
+  O apagamento da borracha vira `<mask>`, então o buraco continua buraco em outro programa.
+- **O PDF é montado no processo principal**, por uma janela invisível com `printToPDF` —
+  a mesma engine que desenhou o quadro. Escrever o formato à mão significaria manter
+  tabela de referências cruzadas e dicionários de objeto para ganhar o que o Chromium já
+  faz. A página sai do tamanho exato da imagem; com papel fixo, um quadro largo sairia
+  reduzido no meio de uma folha A4 em branco.
+- **O teto de 64 MP reduz a escala em vez de falhar.** Um quadro de 40.000 unidades a 3x
+  pediria um canvas que o navegador não aloca, e a exportação morreria sem explicação; o
+  aviso do arquivo salvo diz a escala que coube.
+
+**O autosave grava sozinho 3 segundos depois da última alteração** (com teto de 30s para
+quem desenha sem parar), e só sob duas condições:
+
+1. **O quadro já foi salvo uma vez.** Sem caminho não há nome, e inventar um encheria a
+   pasta de "Quadro sem nome (3)" a cada rabisco de experiência. Até o primeiro `Ctrl+S`,
+   quem protege o trabalho é o aviso ao fechar a janela.
+2. **Nenhuma caixa de texto aberta.** Durante a edição o conteúdo ainda está no editor e
+   não no documento — gravar ali salvaria a versão anterior do texto.
+
+A regra mora sozinha em [autosave.ts](src/renderer/features/storage/autosave.ts), separada
+de quem grava, para poder ser conferida no auto-teste sem escrever nada no disco.
 
 ## Imagens
 
@@ -489,7 +531,7 @@ npm run selftest
 
 Abre o app, dispara eventos de ponteiro e de teclado direto no app e imprime o
 resultado no terminal — sem depender da janela estar em primeiro plano e sem
-capturar a tela. **100 verificações**, em nove frentes:
+capturar a tela. **107 verificações**, em dez frentes:
 
 - **Navegação:** pan com botão direito e com o do meio, o limiar que separa arrastar
   de clicar, o botão esquerdo permanecendo livre para as ferramentas, o zoom ancorado
@@ -536,6 +578,11 @@ capturar a tela. **100 verificações**, em nove frentes:
   em vez de reiniciar, "remover recorte" devolvendo o arquivo inteiro, e a imagem com seus
   bytes sobrevivendo ao `.wbd`. O PNG do teste é gerado na hora, então nada depende de
   arquivo em disco.
+- **Exportar e autosave:** o PNG saindo no tamanho da área com margem e escala, exportar
+  só a seleção medindo só ela, o teto de pixels **reduzindo a escala em vez de estourar**
+  o canvas, o SVG trazendo os objetos como elementos vetoriais, o SVG **escapando** texto
+  do usuário (um resumo com `<script>` escrito dentro não pode virar marcação), o buraco
+  da borracha virando `<mask>`, e as cinco combinações da regra do autosave.
 - **Persistência:** copiar, recortar, colar no cursor, o traço desenhado e o texto
   formatado sobrevivendo à ida e volta pelo formato gravado, e um teste que move e
   redimensiona um objeto e passa o documento pelo mesmo JSON que vai para dentro do
@@ -733,6 +780,20 @@ Roda três cenários automaticamente e imprime o resultado no terminal. Descarta
 primeiro segundo de cada fase (aquecimento de JIT e cache de fontes) e move a
 câmera durante a coleta, para medir fps sustentado em vez de fps de cena parada.
 
+### Conferir a exportação por terminal
+
+```
+$env:QB_EXPORT = "C:\caminho\prefixo"; npm run dev
+```
+
+Gera uma cena variada e grava `prefixo.png`, `.svg` e `.pdf` **sem passar pelo diálogo de
+salvar** — que é justamente a parte que não se automatiza. Imprime tamanho e tempo de
+cada formato, e faz uma verificação que nenhum outro caminho faz: **devolve o SVG gerado
+ao navegador para ser lido de volta** (`prefixo-svg.png` é o resultado rasterizado). Um
+SVG com marcação inválida ou transform errado simplesmente não carrega — e um SVG que só
+nós sabemos ler não serve para exportar. Medido com 120 objetos: PNG 6432×6130 em ~700ms,
+SVG 75 KB em 4ms, PDF em ~800ms.
+
 ### O que faz o desempenho
 
 - **Culling por viewport** via R-tree: com 50.000 objetos e zoom 100%, apenas ~20
@@ -805,6 +866,7 @@ serve para migrar.
 - [x] **Fase 5.5** — Borracha progressiva (apagar por peça)
 - [x] **Fase 6** — Busca Ctrl+F
 - [x] **Fase 7** — Imagens: colar, arrastar e recortar
+- [x] **Fase 8** — Exportar PNG/SVG/PDF e autosave
 - [ ] **Fase 7.5** — Transcrever imagem em texto (OCR). Viabilidade confirmada:
       motor nativo do Windows (`Windows.Media.Ocr`), pt-BR já instalado, offline,
       0 MB no instalador, ~355 ms por imagem. Prosa com acentos sai perfeita;
