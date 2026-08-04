@@ -3,12 +3,14 @@
 Quadro branco infinito local para estudos. Substituto pessoal do Microsoft Whiteboard,
 rodando 100% offline no Windows: sem login, sem nuvem, sem servidor.
 
-**Status:** canvas infinito, lobby, importação do Whiteboard e **seleção completa**
-(mover, redimensionar, girar, duplicar, excluir, ordem de camadas, undo/redo). O quadro
-importado já se reorganiza. Ainda não há **caneta** — desenhar à mão é a próxima entrega.
+**Status:** canvas infinito, lobby, importação do Whiteboard, **seleção completa**
+(mover, redimensionar, girar, duplicar, excluir, ordem de camadas, undo/redo) e
+**desenho à mão** (caneta, marca-texto, lápis e borracha). Dá para importar um resumo do
+Whiteboard, reorganizá-lo e escrever em cima dele. Faltam formas geométricas e edição de
+texto.
 
 > Retomando o desenvolvimento depois de uma pausa? Comece por **[RETOMAR.md](RETOMAR.md)**:
-> em que pé está, a decisão de merge que ficou pendente e como começar a Fase 4.
+> em que pé está e o que fazer a seguir.
 
 ---
 
@@ -34,6 +36,8 @@ teclas — se o atalho aparece na ajuda, ele funciona.
 |---|---|
 | Salvar | `Ctrl+S` |
 | Voltar ao lobby | `Ctrl+O` |
+| Ferramentas | `V` selecionar · `P` caneta · `M` marca-texto · `L` lápis · `E` borracha |
+| Espessura do traço | `[` mais fino · `]` mais grosso |
 | Selecionar | Clique · Shift+clique soma · arrastar no vazio faz laço |
 | Selecionar tudo / limpar | `Ctrl+A` / `Esc` |
 | Mover · redimensionar · girar | Arrastar a seleção · uma alça · a alça de cima |
@@ -57,6 +61,46 @@ Faixa de zoom: **1% a 6400%**.
 O botão direito acumula dois papéis: **arrastar** move o quadro, **clicar sem
 arrastar** abre o menu de contexto. A distinção é por deslocamento — abaixo de 3px
 ainda conta como clique, para a tremida natural da mão não cancelar o menu.
+
+## Desenhar
+
+Cinco ferramentas na barra vertical à esquerda: seleção, caneta, marca-texto, lápis e
+borracha. Com uma ferramenta de tinta ativa, o painel ao lado traz cor e espessura — e
+lembra a escolha **por ferramenta**, porque quem grifa de amarelo e volta para a caneta
+espera a caneta de antes, não uma caneta amarela grossa.
+
+As três variantes produzem o mesmo `StrokeObject`, que já existia desde a Fase 1 — é o
+mesmo tipo que a importação e a carga de teste usam. A caneta *produz* esses objetos;
+não inventa nada novo.
+
+Quatro decisões que o código não conta sozinho:
+
+- **O marca-texto entra por baixo de tudo.** Grifar é destacar o que já está no quadro;
+  entrando no topo, a faixa translúcida cobriria justamente o texto que se quis
+  destacar. Caneta e lápis entram por cima, que é onde se espera encontrar o que se
+  acabou de escrever. Tudo isso é uma chave de camada (`z`), não ordem de desenho.
+- **O lápis é o único que usa a pressão.** `StrokeObject` guarda pressão por ponto desde
+  a Fase 1 e nada lia esse valor; agora o painter modula a espessura do lápis entre 45%
+  e 100% da largura nominal, segmento a segmento. O teto de 100% não pode subir: o AABB
+  é calculado inflando a linha de centro em `width / 2`, e um pico maior desenharia
+  tinta fora do próprio retângulo do objeto — que o culling corta na borda da tela. Em
+  mesa digitalizadora a variação é real; com mouse, `PointerEvent.pressure` vem sempre
+  0,5 e o traço sai uniforme.
+- **A borracha apaga o objeto inteiro, e só tinta.** Apagar por pedaço exigiria partir a
+  polilinha e recalcular LOD e AABB dos dois cacos; na prática de um resumo, quem erra
+  uma letra refaz a palavra. E ela ignora texto, post-it e imagem: um gesto largo
+  passando por cima de uma caixa de texto apagaria o resumo inteiro sem que ninguém
+  tivesse pedido. Para essas, o caminho é selecionar e `Delete`, que mostra o que vai
+  sumir antes de sumir. Um gesto de borracha é um passo de undo.
+- **O traço em andamento vive na camada de overlay.** O `Scheduler` tem dois níveis de
+  sujeira: conteúdo e overlay. Cada ponto de um traço invalida só o de cima, então
+  desenhar num quadro de 10 mil objetos não repinta os 10 mil por ponto — que é
+  exatamente o custo que a separação em duas camadas do `Renderer` existe para evitar.
+  Só ao soltar o botão o traço vira objeto de verdade, via `AddObjects`.
+
+Escrevendo perto da borda dá para **puxar o quadro com o botão direito sem largar o
+traço**: pan e ferramenta não disputam o mesmo botão (ver abaixo). O traço continua de
+onde parou, no lugar certo do mundo, e sai como um único objeto.
 
 ## Selecionar e manipular
 
@@ -264,7 +308,7 @@ npm run selftest
 
 Abre o app, dispara eventos de ponteiro e de teclado direto no app e imprime o
 resultado no terminal — sem depender da janela estar em primeiro plano e sem
-capturar a tela. **33 verificações**, em três frentes:
+capturar a tela. **47 verificações**, em cinco frentes:
 
 - **Navegação:** pan com botão direito e com o do meio, o limiar que separa arrastar
   de clicar, o botão esquerdo permanecendo livre para as ferramentas, o zoom ancorado
@@ -275,7 +319,15 @@ capturar a tela. **33 verificações**, em três frentes:
   camadas e objeto travado recusando seleção. Inclui a verificação de que **um arraste
   inteiro vira um único passo de undo** e a de que clicar no vazio dentro do retângulo
   de um traço diagonal *não* seleciona.
-- **Persistência:** copiar, recortar, colar no cursor, e um teste que move e
+- **Desenho:** a caneta ancorando o traço onde o gesto começou, o AABB incluindo a
+  espessura, o traço recém-criado respondendo ao clique, a caneta *não* selecionando ao
+  clicar num objeto, o marca-texto entrando por baixo, a pressão chegando ao traço, as
+  teclas de ferramenta, `[` e `]`, a borracha apagando tinta e devolvendo no `Ctrl+Z`,
+  e ela recusando forma, texto e objeto travado. Inclui o caso que justifica a divisão
+  de botões inteira: **arrastar o quadro com o botão direito no meio de um traço** não
+  o corta em dois nem o deixa no lugar errado.
+- **Persistência:** copiar, recortar, colar no cursor, o traço desenhado sobrevivendo à
+  ida e volta pelo formato gravado, e um teste que move e
   redimensiona um objeto e passa o documento pelo mesmo JSON que vai para dentro do
   `.wbd`. Sem ele, um `transform` que não sobrevivesse à gravação devolveria o quadro
   reorganizado às posições originais na próxima abertura — e só se descobriria isso
@@ -290,10 +342,11 @@ regressão de fiação, não só de matemática — foi assim que apareceu, por 
 gesto de mover que nunca chegava a promover o arraste.
 
 O que ele **não** cobre: a tradução que o Windows faz do botão físico para
-`PointerEvent.button` (padrão, não varia) nem o desenho do overlay. Para o desenho,
-o teste termina deixando a cena selecionada na tela, então
-`QB_SHOT=<arquivo.png> npm run selftest` fotografa o contorno, as alças e a alça de
-rotação de verdade.
+`PointerEvent.button` (padrão, não varia) nem os pixels desenhados. Para os pixels, o
+teste termina montando uma cena com a seleção ativa e **um traço de cada variante,
+desenhado pela ferramenta de verdade** — então `QB_SHOT=<arquivo.png> npm run selftest`
+fotografa só a janela do app e mostra o contorno, as alças, a alça de rotação, o grifo
+passando por baixo da tinta e a espessura do lápis variando com a pressão.
 
 ## Requisitos
 
@@ -525,7 +578,7 @@ serve para migrar.
 - [x] **Fase 1.5** — Lobby com miniaturas, salvar `.wbd` (Ctrl+S), tela de atalhos (F1)
 - [x] **Fase 2** — Importação do Microsoft Whiteboard, conferida contra o motor de layout
 - [x] **Fase 3** — Seleção e manipulação: mover, redimensionar, rotacionar, excluir, duplicar, ordem de camadas, undo/redo
-- [ ] **Fase 4** — Caneta, marca-texto, lápis, borracha, cores e espessura
+- [x] **Fase 4** — Caneta, marca-texto, lápis, borracha, cores e espessura
 - [ ] **Fase 4.5** — Formas geométricas, régua e snap
 - [ ] **Fase 5** — Texto, post-its e alertas
 - [ ] **Fase 6** — Busca Ctrl+F
