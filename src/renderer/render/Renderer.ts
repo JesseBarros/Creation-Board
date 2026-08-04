@@ -1,5 +1,5 @@
 import { inflate } from '@shared/geometry/rect';
-import type { BoardObject } from '@shared/model/types';
+import type { BoardObject, ObjectId } from '@shared/model/types';
 import type { Camera } from '../core/Camera';
 import type { Document } from '../core/Document';
 import { paintGrid } from './Grid';
@@ -72,6 +72,13 @@ export class Renderer {
 
   /** Resolvedor de bitmaps, injetado para o Renderer nao depender do AssetStore. */
   resolveImage: ((assetId: string) => ImageBitmap | undefined) | undefined;
+
+  /**
+   * Objeto que NAO deve ser desenhado, porque outra coisa esta desenhando no
+   * lugar dele: e a caixa em edicao, substituida por um `contentEditable`
+   * sobreposto. Sem isto o texto sairia duplicado, meio pixel fora.
+   */
+  hiddenId: ObjectId | null = null;
 
   constructor(
     host: HTMLElement,
@@ -162,6 +169,7 @@ export class Renderer {
 
     for (let i = 0; i < objects.length; i++) {
       const obj = objects[i]!;
+      if (obj.id === this.hiddenId) continue;
       const b = obj.bbox;
       if (b.w < minWorldSize && b.h < minWorldSize) continue;
 

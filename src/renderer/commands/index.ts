@@ -1,5 +1,5 @@
 import { keyBetween } from '@shared/model/fractional';
-import type { BoardObject, ObjectId } from '@shared/model/types';
+import type { AlertLevel, BoardObject, NoteObject, ObjectId } from '@shared/model/types';
 import type { Command } from '../core/History';
 import type { Document } from '../core/Document';
 import { applyPatches, type ObjectPatch } from './patch';
@@ -121,6 +121,93 @@ export class TransformObjects implements Command {
     // Mantem o `before` original e adota o `after` mais recente.
     this.after = next.after;
     return true;
+  }
+}
+
+/**
+ * Uma sessao de edicao de texto inteira, em um passo de undo.
+ *
+ * O delta e o conteudo mais a altura: com `autoHeight` a caixa cresce enquanto
+ * se digita, e desfazer precisa devolver as duas coisas juntas -- restaurar so
+ * o texto deixaria uma caixa alta com duas palavras dentro.
+ *
+ * Nao se funde com o comando seguinte de proposito: uma sessao de edicao ja
+ * comeca e termina em pontos claros (entrar e sair da caixa), e fundir duas
+ * faria Ctrl+Z pular o conteudo de duas caixas de uma vez.
+ */
+export class EditText implements Command {
+  constructor(
+    private readonly doc: Document,
+    private readonly before: ReadonlyMap<ObjectId, ObjectPatch>,
+    private readonly after: ReadonlyMap<ObjectId, ObjectPatch>,
+    readonly label = 'Editar texto',
+  ) {}
+
+  apply(): void {
+    applyPatches(this.doc, this.after);
+  }
+
+  revert(): void {
+    applyPatches(this.doc, this.before);
+  }
+}
+
+/** O que se pode trocar num post-it sem mexer no conteudo nem na geometria. */
+export interface NoteStyle {
+  bg?: string;
+  alert?: { level: AlertLevel; icon: string } | null;
+  pinned?: boolean;
+}
+
+/**
+ * Cor do papel, nivel de alerta e fixar/desafixar.
+ *
+ * Nao passa por `ObjectPatch` porque nada disto e geometria: o AABB nao muda, e
+ * alargar o patch de manipulacao com campos de um unico tipo de objeto o faria
+ * deixar de ser o contrato estreito que ele e. Guarda os objetos inteiros de
+ * antes, que e o que permite reverter os tres campos de uma vez.
+ */
+export class RestyleNotes implements Command {
+  readonly label: string;
+  #before: NoteObject[] = [];
+
+  constructor(
+    private readonly doc: Document,
+    private readonly ids: readonly ObjectId[],
+    private readonly style: NoteStyle,
+    label?: string,
+  ) {
+    this.label = label ?? 'Alterar post-it';
+  }
+
+  apply(): void {
+    const next: NoteObject[] = [];
+    // A captura acontece so na primeira aplicacao: no redo os objetos ja estao
+    // com o valor novo, e recapturar aqui perderia o estado original.
+    const capture = this.#before.length === 0;
+
+    for (const id of this.ids) {
+      const obj = this.doc.get(id);
+      if (!obj || obj.type !== 'note') continue;
+      if (capture) this.#before.push({ ...obj });
+      next.push({
+        ...obj,
+        ...(this.style.bg !== undefined ? { bg: this.style.bg } : {}),
+        ...(this.style.alert !== undefined ? { alert: this.style.alert } : {}),
+        ...(this.style.pinned !== undefined ? { pinned: this.style.pinned } : {}),
+        rev: obj.rev + 1,
+        updatedAt: Date.now(),
+      });
+    }
+    this.doc.replaceMany(next);
+  }
+
+  revert(): void {
+    // `rev` sempre anda para frente, mesmo desfazendo: ele e o que invalida
+    // caches por objeto, e voltar o numero deixaria um desenho velho valendo.
+    this.doc.replaceMany(
+      this.#before.map((o) => ({ ...o, rev: (this.doc.get(o.id)?.rev ?? o.rev) + 1 })),
+    );
   }
 }
 

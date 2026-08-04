@@ -6,10 +6,16 @@ import { Scheduler } from './core/Scheduler';
 import { Selection } from './core/Selection';
 import { ViewportInput } from './input/ViewportInput';
 import { Renderer, type RenderTheme } from './render/Renderer';
-import { paintRulers, type RulerTheme } from './render/Rulers';
+import { paintRulers, RULER_PX, type RulerTheme } from './render/Rulers';
+import { paintPinnedNotes } from './render/PinnedNotes';
 import { ToolManager } from './tools/ToolManager';
-import { DrawStyle } from './tools/DrawStyle';
-import { hasStyle, type ToolContext, type ToolId } from './tools/types';
+import { ALERT_ICONS, DrawStyle } from './tools/DrawStyle';
+import { hasStyle, type EditableObject, type ToolContext, type ToolId } from './tools/types';
+import { TextEditor } from './features/text/TextEditor';
+import { EditText, RestyleNotes, type NoteStyle } from './commands';
+import type { ObjectPatch } from './commands/patch';
+import { contentHeight, styleOf } from './render/text/layout';
+import type { TextObject } from '@shared/model/types';
 import { hitTest } from './features/selection/hitTest';
 import { BoardClipboard } from './features/selection/clipboard';
 import {
@@ -93,6 +99,7 @@ export class App {
   #input: ViewportInput;
   #tools: ToolManager;
   #toolCtx: ToolContext;
+  #editor: TextEditor;
   #toolbar: ToolBar;
   #bar: ViewportBar;
   #debug: DebugPanel;
@@ -158,7 +165,21 @@ export class App {
     });
     this.#boardView.append(this.#bar.el);
 
-    this.#toolbar = new ToolBar({ setTool: (id) => this.setTool(id) }, this.drawStyle);
+    this.#toolbar = new ToolBar(
+      {
+        setTool: (id) => this.setTool(id),
+        // A barra fala em nivel de alerta; o objeto guarda nivel e simbolo. A
+        // traducao mora aqui para o simbolo sair de um lugar so (DrawStyle).
+        restyleNotes: ({ bg, alert }) =>
+          this.restyleSelectedNotes({
+            ...(bg !== undefined ? { bg } : {}),
+            ...(alert !== undefined
+              ? { alert: alert ? { level: alert, icon: ALERT_ICONS[alert] } : null }
+              : {}),
+          }),
+      },
+      this.drawStyle,
+    );
     this.#boardView.append(this.#toolbar.el);
 
     this.#debug = new DebugPanel({
@@ -222,7 +243,23 @@ export class App {
       invalidate: () => this.#scheduler.invalidate(),
       invalidateOverlay: () => this.#scheduler.invalidateOverlay(),
       markDirty: () => this.#markDirty(),
+      beginEdit: (obj, opts) => this.#editor.begin(obj, opts),
     };
+
+    this.#editor = new TextEditor(this.#host, this.#toolCtx, {
+      onEditingChanged: (id) => {
+        this.#renderer.hiddenId = id;
+        this.#scheduler.invalidate();
+      },
+      // Caixa nova confirmada: a ferramenta volta para a selecao com ela
+      // destacada. Continuar no modo texto faria o clique seguinte -- o de quem
+      // so quer conferir o resultado -- abrir outra caixa vazia.
+      onCreated: (obj) => {
+        this.selection.set([obj.id]);
+        this.setTool('select');
+      },
+    });
+
     this.#tools = new ToolManager(this.#host, this.#toolCtx, this.drawStyle);
     // Atalho de teclado tambem troca a ferramenta; a barra precisa acompanhar.
     this.#tools.onToolChange(() => this.#toolbar.setActive(this.#tools.activeId));
@@ -302,6 +339,10 @@ export class App {
    * conteudo de outro arquivo dentro deste.
    */
   #resetEditingState(): void {
+    // A edicao aberta e descartada, e nao gravada: o objeto que ela edita
+    // pertence ao quadro que esta saindo, e gravar agora escreveria num
+    // documento que ja foi trocado.
+    this.#editor.abort();
     this.selection.clear();
     this.history.clear();
     this.#tools.cancel();
@@ -648,8 +689,20 @@ export class App {
   // ------------------------------------------------------- selecao e edicao
 
   #paintOverlay(): void {
+    // A caixa em edicao e um elemento HTML, e nao pixel do canvas: quem a move
+    // com o quadro e este acerto de posicao, no mesmo frame do resto.
+    this.#editor.sync();
+
     const ctx = this.#renderer.beginOverlayScreen();
     this.#tools.paintOverlay(ctx, this.camera);
+    paintPinnedNotes(
+      ctx,
+      this.doc,
+      this.camera,
+      this.#renderer.viewportW,
+      this.#renderer.viewportH,
+      this.#rulers ? RULER_PX : 0,
+    );
     // As reguas vao por ULTIMO: elas sao a moldura da janela, e um traco em
     // andamento passando por cima delas as faria parecer parte do quadro.
     if (this.#rulers) {
@@ -663,6 +716,104 @@ export class App {
         RULER_THEMES[this.#theme],
       );
     }
+  }
+
+  /**
+   * Abre para edicao o objeto selecionado, se ele for de texto.
+   *
+   * E o caminho de teclado (`F2`, `Enter`) para quem chegou ate a caixa pelas
+   * setas ou pelo laco e nao quer voltar ao mouse.
+   */
+  editSelection(): boolean {
+    if (this.selection.size !== 1) return false;
+    const obj = this.selection.objects(this.doc)[0];
+    if (!obj || (obj.type !== 'text' && obj.type !== 'note') || obj.locked) return false;
+    this.#editor.begin(obj as EditableObject);
+    return true;
+  }
+
+  get isEditingText(): boolean {
+    return this.#editor.isEditing;
+  }
+
+  /**
+   * Objeto que a edicao substituiu no canvas, ou null.
+   *
+   * Exposto porque e estado observavel do quadro -- e o que o autoteste usa para
+   * conferir que a caixa em edicao nao esta sendo desenhada duas vezes.
+   */
+  get editingObjectId(): string | null {
+    return this.#renderer.hiddenId;
+  }
+
+  /**
+   * Aplica papel ou alerta aos post-its selecionados.
+   *
+   * Silencioso quando nao ha post-it na selecao: os mesmos botoes servem para
+   * escolher como sera o PROXIMO post-it, e nesse uso nao ha o que reestilizar.
+   */
+  restyleSelectedNotes(style: NoteStyle): void {
+    const ids = this.selection
+      .objects(this.doc)
+      .filter((o) => o.type === 'note' && !o.locked)
+      .map((o) => o.id);
+    if (ids.length === 0) return;
+
+    this.history.push(new RestyleNotes(this.doc, ids, style));
+    this.history.seal();
+    this.#markDirty();
+    this.#scheduler.invalidate();
+  }
+
+  /**
+   * Liga ou desliga marcadores de lista nas caixas de texto selecionadas.
+   *
+   * Mexe na altura junto: o marcador recua o texto, o recuo estreita a coluna e
+   * a coluna mais estreita quebra em mais linhas. Trocar so a chave da lista
+   * deixaria a caixa curta demais para o proprio conteudo.
+   */
+  toggleBulletList(): void {
+    const alvos = this.selection
+      .objects(this.doc)
+      .filter((o): o is TextObject => o.type === 'text' && !o.locked);
+    if (alvos.length === 0) return;
+
+    const ligar = alvos.some((o) => o.list === 'none');
+    const before = new Map<string, ObjectPatch>();
+    const after = new Map<string, ObjectPatch>();
+    for (const obj of alvos) {
+      const list = ligar ? ('bullet' as const) : ('none' as const);
+      before.set(obj.id, { list: obj.list, h: obj.h });
+      after.set(obj.id, {
+        list,
+        h: obj.autoHeight ? contentHeight(obj.content, { ...styleOf(obj), list }) : obj.h,
+      });
+    }
+
+    this.history.push(new EditText(this.doc, before, after, ligar ? 'Marcadores' : 'Sem marcadores'));
+    this.history.seal();
+    this.#markDirty();
+    this.#scheduler.invalidate();
+  }
+
+  /** Fixa ou solta os post-its selecionados; ver render/PinnedNotes.ts. */
+  togglePinSelectedNotes(): void {
+    const notes = this.selection.objects(this.doc).filter((o) => o.type === 'note' && !o.locked);
+    if (notes.length === 0) return;
+    // Se algum ainda nao esta fixado, o comando fixa todos -- assim o botao faz
+    // o que o rotulo promete mesmo com a selecao misturada.
+    const pinned = notes.every((o) => o.type === 'note' && o.pinned);
+    this.history.push(
+      new RestyleNotes(
+        this.doc,
+        notes.map((o) => o.id),
+        { pinned: !pinned },
+        pinned ? 'Desafixar post-it' : 'Fixar post-it',
+      ),
+    );
+    this.history.seal();
+    this.#markDirty();
+    this.#scheduler.invalidate();
   }
 
   /** Troca a ferramenta ativa, pelo botao da barra ou pelo atalho. */
@@ -750,7 +901,43 @@ export class App {
 
     const n = this.selection.size;
     const nada = n === 0;
+    const selecionados = this.selection.objects(this.doc);
+    const editavel =
+      n === 1 && (selecionados[0]?.type === 'text' || selecionados[0]?.type === 'note');
+    const notas = selecionados.filter((o) => o.type === 'note');
+    const todosFixados = notas.length > 0 && notas.every((o) => o.type === 'note' && o.pinned);
+
     const entries: MenuEntry[] = [
+      ...(editavel
+        ? ([
+            {
+              label: 'Editar texto',
+              hint: 'F2',
+              onSelect: () => this.editSelection(),
+            },
+            ...(selecionados[0]?.type === 'text'
+              ? [
+                  {
+                    label:
+                      selecionados[0].list === 'bullet'
+                        ? 'Tirar os marcadores'
+                        : 'Lista com marcadores',
+                    onSelect: () => this.toggleBulletList(),
+                  },
+                ]
+              : []),
+            'separator',
+          ] as MenuEntry[])
+        : []),
+      ...(notas.length > 0
+        ? ([
+            {
+              label: todosFixados ? 'Desafixar da tela' : 'Fixar na tela',
+              onSelect: () => this.togglePinSelectedNotes(),
+            },
+            'separator',
+          ] as MenuEntry[])
+        : []),
       {
         label: 'Desfazer',
         hint: 'Ctrl+Z',
@@ -937,6 +1124,9 @@ export class App {
       toolPencil: () => this.setTool('pencil'),
       toolEraser: () => this.setTool('eraser'),
       toolShape: () => this.setTool('shape'),
+      toolText: () => this.setTool('text'),
+      toolNote: () => this.setTool('note'),
+      editText: () => this.editSelection(),
       thinner: () => this.stepStrokeWidth(-1),
       thicker: () => this.stepStrokeWidth(1),
       snapToGrid: () => this.toggleSnapToGrid(),
@@ -974,6 +1164,7 @@ export class App {
     this.#scheduler.stop();
     this.#input.dispose();
     this.#tools.dispose();
+    this.#editor.dispose();
   }
 }
 

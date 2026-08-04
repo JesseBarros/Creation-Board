@@ -1,19 +1,26 @@
 import { computeBbox } from '@shared/model/bbox';
-import type { BoardObject, ObjectId, Transform } from '@shared/model/types';
+import type { BoardObject, ObjectId, RichSpan, Transform } from '@shared/model/types';
 import type { Document } from '../core/Document';
 
 /**
  * Campos que uma manipulacao pode alterar num objeto.
  *
- * Deliberadamente estreito: mover, redimensionar, rotacionar e reordenar cobrem
- * tudo que a ferramenta de selecao faz. Edicoes de conteudo (texto, pontos de
- * traco) terao comandos proprios, porque precisam guardar deltas diferentes.
+ * Estreito de proposito: mover, redimensionar, rotacionar, reordenar e editar
+ * texto cobrem tudo que as ferramentas fazem hoje. Os pontos de um traco ficam
+ * de fora porque nada os edita depois de criados -- a borracha apaga o objeto
+ * inteiro.
+ *
+ * `content` anda junto de `h`: mudar o texto muda a altura da caixa, e um patch
+ * que trocasse so um dos dois deixaria o AABB mentindo sobre o objeto.
  */
 export interface ObjectPatch {
   transform?: Transform;
   w?: number;
   h?: number;
   z?: string;
+  content?: readonly RichSpan[];
+  /** Marcadores de lista da caixa de texto -- muda o recuo e, com ele, a altura. */
+  list?: 'none' | 'bullet';
 }
 
 /** Le do objeto os campos que um patch tocaria, para poder desfazer depois. */
@@ -23,6 +30,8 @@ export function snapshotPatch(obj: BoardObject, fields: ObjectPatch): ObjectPatc
   if (fields.w !== undefined && 'w' in obj) out.w = obj.w;
   if (fields.h !== undefined && 'h' in obj) out.h = obj.h;
   if (fields.z !== undefined) out.z = obj.z;
+  if (fields.content !== undefined && 'content' in obj) out.content = obj.content;
+  if (fields.list !== undefined && obj.type === 'text') out.list = obj.list;
   return out;
 }
 
@@ -44,11 +53,18 @@ export function applyPatches(
     const obj = doc.get(id);
     if (!obj) continue;
 
-    const next = { ...obj } as BoardObject & { w?: number; h?: number };
+    const next = { ...obj } as BoardObject & {
+      w?: number;
+      h?: number;
+      content?: RichSpan[];
+      list?: 'none' | 'bullet';
+    };
     if (patch.transform) next.transform = { ...patch.transform };
     if (patch.w !== undefined && 'w' in obj) next.w = patch.w;
     if (patch.h !== undefined && 'h' in obj) next.h = patch.h;
     if (patch.z !== undefined) next.z = patch.z;
+    if (patch.content !== undefined && 'content' in obj) next.content = [...patch.content];
+    if (patch.list !== undefined && obj.type === 'text') next.list = patch.list;
 
     next.rev = obj.rev + 1;
     next.updatedAt = now;
