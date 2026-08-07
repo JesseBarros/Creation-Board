@@ -4,18 +4,27 @@ Registro do que apareceu usando o app de verdade, antes da Fase 9 (polimento).
 O [RETOMAR.md](RETOMAR.md) diz em que pé o projeto está; este arquivo diz **o que está
 errado e o que falta**. Some quando a lista zerar.
 
-**Última atualização: 04/08/2026.** **1 item aberto** e **11 fechados**. A lista começou
-com 11 relatos, ganhou dois no caminho (o colar de imagem e a remoção do lápis) e está
-praticamente zerada.
+**Última atualização: 06/08/2026.** **1 item aberto** e **13 fechados**.
 
-**Ainda em aberto:** só o **B5** — a queda breve de fps ao clicar num controle. Ela tinha a
-mesma raiz do B3 (painel reconstruído a cada clique), que foi corrigida, e a medição de
-troca de ferramenta caiu para 2,5 ms. **Precisa do reteste dele com o `F3` aberto** para
-fechar ou reabrir com número novo.
+Três relatos catalogados como bugs diferentes — **B1, B7 e B8** — eram **um só**: a conta de
+"que pedaço da tela mudou" saindo errada nesta máquina. Enquanto pareciam três, cada um
+ganhou o seu remendo local. Fecharam juntos, com uma correção só, quando pararam de ser
+tratados como três.
+
+**Ainda em aberto:**
+
+- **B5** — a queda breve de fps ao clicar num controle. Tinha a mesma raiz do B3 (painel
+  reconstruído a cada clique), que foi corrigida, e a medição de troca de ferramenta caiu
+  para 2,5 ms. **Precisa do reteste dele com o `F3` aberto** para fechar ou reabrir com
+  número novo. Em 06/08/2026 o `selftest` reprovou essa verificação (`interface 5,4 ms`,
+  teto 3) — **e não é da correção do B8**: medido com e sem ela, deu 5,4 ms *com* e 6,2 ms
+  *sem*. É o teto medindo a máquina, como já aconteceu antes.
 
 Vale registrar o padrão, porque ele se repete: **medir antes de corrigir devolveu mais
-resultado que corrigir teria devolvido.** Nenhuma linha de correção foi escrita, e três
-dos cinco bugs fecharam ou encolheram.
+resultado que corrigir teria devolvido.** Na rodada de 04/08 nenhuma linha de correção foi
+escrita e três dos cinco bugs fecharam ou encolheram; na de 06/08 a correção final tem
+duas linhas, e as outras nove hipóteses caíram por medição — inclusive as minhas favoritas,
+duas vezes.
 
 ---
 
@@ -51,10 +60,18 @@ como a Fase 5.5 nasceu.
 ## Bugs
 
 ### B1 — Lapsos visuais ao alternar rápido entre o lobby e o quadro
-`corrigido` · `médio` · 04/08/2026
+`corrigido pelo B8` · `médio` · 04/08/2026, fechado em 06/08/2026
 
-**Correção:** `#enterBoard()` passou a pintar as duas camadas **na hora**, em vez de
-esperar o próximo frame de animação. Até o `requestAnimationFrame` chegar, o canvas ainda
+**Era o B8.** Ele relatou de novo em 06/08, no sentido contrário: *"se eu for em um quadro e
+voltar rápido fica com rastro na tela do quadro no menu"* — e o sentido que faltava era
+justamente o que a correção de 04/08 não cobria (`#enterBoard()` pintava na hora,
+`goToLobby()` não). Fechou junto com o B8, sem precisar da segunda metade do remendo.
+
+A correção de 04/08 fica: pintar na hora ao entrar é correto por si. Mas o que ela fazia era
+**forçar repintura num gatilho** — e era isso que escondia a falha real em vez de mostrá-la.
+
+**Correção de 04/08/2026:** `#enterBoard()` passou a pintar as duas camadas **na hora**, em
+vez de esperar o próximo frame de animação. Até o `requestAnimationFrame` chegar, o canvas ainda
 tinha os pixels do quadro anterior — e era isso que aparecia.
 
 <details>
@@ -274,7 +291,17 @@ o que permitiria a caneta modular a espessura sozinha, se um dia isso for deseja
 mouse continuaria idêntica ao que é hoje.
 
 ### B7 — Interface "rasgada" ao redimensionar a janela
-`corrigido — aguarda reteste` · `alto` · 04/08/2026
+`corrigido pelo B8` · `alto` · 04/08/2026, fechado em 06/08/2026
+
+**Era o B8.** A leitura de 04/08 — *"a região que já existia manteve os pixels do tamanho
+antigo"* — estava **certa, e era maior do que parecia**: acontece sem redimensionar nada.
+
+Duas coisas ficam do que se fez aqui, e as duas com a etiqueta certa desta vez:
+
+- O `webContents.invalidate()` no resize continua, como proteção — mas é **remendo no
+  gatilho**, e não conserto da causa. Se o B8 voltar, é aqui que se procura primeiro.
+- O `overflow: clip` foi **testado no B8 e não é a causa** de nada. Fica por mérito próprio
+  (a rolagem automática do cursor de texto é real), e não como correção deste bug.
 
 Relato dele em 04/08/2026, com captura: digitando numa caixa de texto, a janela aparece
 **partida ao meio**, com pedaços da interface repetidos embaixo (barra lateral e réguas
@@ -315,6 +342,282 @@ os pixels do tamanho antigo, e só a faixa recém-exposta foi pintada com o layo
 
 **Como confirmar:** redimensionar e maximizar a janela repetidamente, com e sem uma caixa
 de texto aberta. Se não rasgar mais, fecha.
+
+### B8 — A tela pisca preto ao passar o mouse sobre ícones e cartões
+`corrigido` · `alto` · 06/08/2026
+
+**Causa: a conta de região suja.** O Chromium repinta e troca só o pedaço da tela que
+mudou. Nesta máquina essa conta erra: o que ficou de fora mantém os pixels velhos (os
+rastros) e a troca do pedaço aparece como um flash. **Um único defeito produzia os três
+sintomas** — o piscar no hover (B8), o rasgo ao redimensionar (B7) e o rastro ao voltar
+para o menu (B1).
+
+**Correção:** `--ui-disable-partial-swap` e `--disable-partial-raster`, aplicadas por
+padrão. Repinta e troca a tela inteira a cada frame. Confirmado por ele: *"os 2 bugs
+pararam"*.
+
+**O preço foi medido, não estimado.** `QB_BENCH=4000`, duas rodadas com e duas sem:
+
+| Fase | Sem a correção | Com a correção |
+|---|---|---|
+| zoom 100% | 144,0 / 144,0 fps | 144,0 / 144,0 fps |
+| zoom 40% | 136,4 / 132,3 fps | 133,6 / 135,0 fps |
+| ajustado à tela | 111,7 / **108,0** fps | 99,7 / **108,0** fps |
+
+A primeira rodada sugeriu 11% de custo na fase pesada; a segunda deu **9,26 ms de frame
+nos dois casos**. O 99,7 era ruído. **Não há custo mensurável** — e teria sido fácil
+"economizar" a correção por causa de uma amostra só.
+
+**Isto é remédio de sintoma.** A raiz provável está na tabela abaixo, e o conserto de
+verdade virou item da Fase 9:
+
+| | Versão | Chromium |
+|---|---|---|
+| Creation Board | **Electron 33.4.11** | ~130, do fim de 2024 |
+| Último Electron | 43.3.0 | atual |
+| Windows desta máquina | build 26200 | 2026 |
+| Driver NVIDIA | instalado em 14/07/2026 | 2026 |
+
+Dez versões maiores atrás. É a resposta para *"por que só este programa pisca"*: é o único
+Chromium de 2024 rodando numa máquina de 2026. **Dependência de plataforma envelhece
+sozinha, sem ninguém tocar no código.**
+
+`QB_GPU=normal` desliga a correção e reproduz o bug — serve para descobrir o dia em que ela
+virar desnecessária, em vez de carregá-la para sempre por inércia.
+
+**Não dá para cobrir no `selftest`, e vale dizer por quê:** o auto-teste verifica o que o
+app *faz*, e o app fazia tudo certo. O defeito está em como o Chromium entrega pixels
+prontos ao Windows — depois do último ponto que qualquer JavaScript enxerga. Um teste que
+pegasse isto teria que comparar frames apresentados, não estado do documento.
+
+<details>
+<summary>A investigação, e o que cada rodada eliminou</summary>
+
+Relato dele em 06/08/2026: passando o mouse sobre o que é selecionável — **os ícones da
+barra e os cartões do lobby** — a tela **pisca preto milhares de vezes**. Ele desconfia do
+**tema escuro** e diz que o problema é **pior do que parecia** quando abriu o B7.
+
+**Confirmado por ele, e cada ponto elimina uma família de causas:**
+
+- **É só visual.** Selecionar, clicar e interagir continuam funcionando. Nada de estado,
+  documento ou entrada está envolvido.
+- **É só no hover, e sempre.** Todo ícone, toda vez. Não é intermitente nem depende de
+  quanto tempo o app está aberto.
+- **A composição por GPU está ativa** nessa máquina — medido, não suposto. A primeira
+  leitura dizia "tudo em software" e estava errada: o Chromium levanta a GPU num processo
+  separado, e perguntar no `whenReady` responde antes de a resposta existir. Com atraso, o
+  resultado se inverte. Fica o alerta para a próxima vez que alguém for ler isso.
+- **O piscar atrapalha o próprio diagnóstico.** A primeira versão do painel tinha caixas
+  para marcar, e ele não conseguiu usá-las: apontar o mouse para a caixa já disparava o
+  sintoma. A ferramenta produzia o que deveria medir. Agora é tudo por teclado, e o painel
+  não tem um só alvo de hover.
+
+**O que já dá para afirmar sem medir nada:** não é o nosso desenho. Com o ponteiro sobre a
+barra, o `Scheduler` não repinta o canvas — nenhum `invalidate()` sai de um `:hover`, e não
+existe um só ouvinte de `mouseover`/`pointerover` no renderer. O que muda no hover é
+**exclusivamente CSS**. Um piscar de tela inteira com o JavaScript parado é artefato de
+**composição**: o quadro que o Chromium entrega ao Windows sai preto por um instante.
+
+**Os cinco suspeitos**, todos ligados ao que o hover repinta:
+
+1. **`overflow: clip`** — foi o endurecimento do B7, e ficou registrado ali como *não
+   provado como causa*. Ele mudou como o Chromium recorta e invalida a área pintada, e é a
+   última mudança feita perto deste sintoma. O relato de que o problema piorou aponta
+   direto para cá.
+2. **`backdrop-filter: blur(20px)`** nas três barras flutuantes — obriga o compositor a
+   reler o que está atrás da barra a cada repintura, e o hover repinta a cada frame da
+   transição. Ler o fundo errado é o jeito mais comum de sair preto.
+3. **O fundo translúcido** dos painéis, separado do desfoque — para saber qual dos dois é.
+4. **`box-shadow`** — estende a área pintada para fora da caixa; se a invalidação ignora
+   essa sobra, o que fica de fora não é repintado.
+5. **As transições de hover** — cada uma promove o elemento a uma camada própria e o
+   devolve no fim; o `transform: translateY(-2px)` do cartão promove com certeza. Esse
+   sobe-e-desce de camada é o outro jeito clássico de piscar.
+
+E, atrás dos cinco, a **placa de vídeo**: se nenhum resolver, o erro está na composição por
+hardware, e a correção passa a ser desligar o recurso que ela erra.
+
+**A suspeita do tema escuro tem fundamento, mas provavelmente ao contrário:** o piscar deve
+existir nos dois temas — no claro, um flash preto sobre fundo `#eef1f6` seria ainda mais
+visível. O que o tema escuro faz é **mudar o quanto ele incomoda**. Confirmar isso é de
+graça: trocar de tema e olhar.
+
+**Como foi medido.** `QB_DIAG=1 npm run dev` sobe o app normal com um painel de suspeitos
+no canto, **operado só por teclado**: `1` a `5` desligam um suspeito cada, `9` desliga os
+cinco de uma vez, `0` volta ao normal. Cada troca sai no terminal, então o resultado não
+depende de ninguém descrever o que viu.
+
+### Os cinco caíram juntos — e isso vale mais que cair um por um
+
+Ele apertou o `9`, com **os cinco desligados ao mesmo tempo**, e o piscar continuou. Está
+no terminal, repetido cinco vezes. Nenhuma combinação parcial mudou nada.
+
+**A causa não está no CSS.** A lista inteira morreu numa tecla, e a hipótese favorita
+(`overflow: clip`, herdada do B7) morreu junto — o `1` sozinho também não resolveu. O
+endurecimento do B7 fica de pé por mérito próprio, mas não é isto aqui.
+
+### O que a captura dele mostrou, e que vale mais que o piscar
+
+Na captura de 06/08/2026 os **cartões do lobby aparecem desenhados por cima do quadro** —
+uma faixa retangular da janela com pixels de outra tela, parada, tempo suficiente para sair
+numa foto. Não é piscar: é **região que ninguém repintou**. E ele completou: *"se eu for em
+um quadro e voltar rápido fica com rastro na tela do quadro no menu"*.
+
+**Isto une três bugs que estavam catalogados como separados:**
+
+| Id | Sintoma | O que "corrigiu" |
+|---|---|---|
+| B1 | Rastro ao alternar lobby ↔ quadro | Pintar as duas camadas na hora |
+| B7 | Janela rasgada ao redimensionar | `webContents.invalidate()` depois do resize |
+| B8 | Piscar preto no hover, retângulos perdidos | — |
+
+Os três são **a mesma falha vista de três ângulos**: uma região da janela fica com os
+pixels de antes porque ninguém a repintou. As duas correções anteriores funcionaram porque
+**forçaram repintura**, cada uma no seu gatilho — eram sacos de areia, não a barragem. O
+hover não tem gatilho para forçar, e por isso é onde o problema aparece inteiro.
+
+O B1 tem ainda a pista extra de que a correção foi **só num sentido**: `#enterBoard()`
+pinta na hora, `goToLobby()` não. É exatamente o sentido em que ele vê rastro agora.
+
+### Não é o conteúdo salvo — testado, não suposto
+
+Ele levantou a hipótese de que a importação do Whiteboard tivesse deixado resto, e pediu
+para zerar o storage. Feito **sem destruir nada**: `QB_BOARDS=<pasta>` aponta o app para
+outra pasta, e ele abriu com a biblioteca **vazia**, mais `GPUCache`, `DawnGraphiteCache`,
+`DawnWebGPUCache`, `Code Cache`, `Cache`, `Local Storage` e `Session Storage` apagados.
+
+**O piscar continuou.** Sem um único quadro na pasta, não há conteúdo importado para
+culpar. Hipótese fechada, e os 6,6 MB de resumo dele nunca correram risco.
+
+Ficou registrado o método, porque ele serve para a próxima vez: *tirar do caminho não
+precisa significar destruir*.
+
+### Os "quadros fantasmas" eram o próprio bug
+
+Ele relatou 2 quadros a mais no menu, que sumiram sozinhos ao navegar. A captura mostra
+**dois cards com o mesmo nome** ("CURSO 5", 59 objetos, 301 KB cada) e **datas
+diferentes** — 05/08 01:38 e 30/07 21:48.
+
+Na pasta existe **um** arquivo com esse nome, e `listBoards()` lê o diretório na hora, sem
+índice nem cache. Um arquivo não produz duas datas. **Não eram dois quadros: era o mesmo
+card pintado duas vezes**, um deles sobrado do desenho de outra sessão — e por isso sumiram
+quando navegar forçou repintura.
+
+Vale como método: foi a **comparação com o disco** que transformou "acho que tem quadros
+fantasmas" em prova de que a tela mente. Nenhuma quantidade de olhar para a tela daria isso.
+
+### Dois injetores no processo — e os dois inocentados
+
+Medido em 06/08/2026, lendo os módulos carregados no processo do app:
+
+| DLL injetada | Origem | Veredito |
+|---|---|---|
+| `RTSSHooks64.dll` | **RivaTuner Statistics Server** | **inocente** — fechado, o piscar continuou igual |
+| `nvspcap64.dll` | **NVIDIA ShadowPlay** (`nvcontainer`) | ainda dentro; não isolado sozinho |
+
+O RivaTuner era um suspeito forte e caiu do jeito certo: fechado, uma variável de cada vez,
+com o resultado igual. Vale mais registrar o método que o veredito — **medir qual DLL está
+dentro do processo** é uma pergunta que dá para fazer, e ninguém tinha feito.
+
+### O `dc` não curou, mas disse onde dói
+
+Sem DirectComposition, o piscar continuou — **e mudou de cor, de preto para branco**. A cor
+do flash acompanha o caminho de apresentação. Isso prova que o que pisca é a **superfície
+da janela sem nada pintado**, e não conteúdo nosso desenhado errado.
+
+### A hipótese que sobrou: cintilação de taxa variável (VRR)
+
+O vídeo da máquina, medido:
+
+| Achado | Peso |
+|---|---|
+| Dois monitores 1920×1080 | Composição multi-tela erra região suja com mais facilidade |
+| **Parsec Virtual Display Adapter** instalado | Um adaptador de vídeo virtual além da NVIDIA |
+| RTX 3050 a **143 Hz** | 143 e não 144: assinatura de G-SYNC/VRR ativo |
+
+Com G-SYNC em modo janela, o painel segue a taxa de quadros do app em foco. Um app parado
+produz **zero quadros**; o hover dispara as transições e ele produz quadros por uma fração
+de segundo, e para. A taxa do painel salta e volta dezenas de vezes por segundo — e painel
+com taxa saltando pisca.
+
+**Explica o que nenhuma hipótese anterior explicava:** por que é exatamente no hover (único
+momento em que o app sai da imobilidade e volta), por que sobreviveu a apagar CSS, cache,
+biblioteca e RivaTuner (nada disso muda a taxa de quadros), e por que a cor do flash mudou
+com o caminho gráfico.
+
+**E tem uma lição de leitura de relato aqui:** ele escreveu *"a **tela** fica piscando"*
+desde a primeira mensagem. Eu li "janela" e investiguei a janela por várias rodadas. A
+palavra estava certa desde o começo.
+
+### A causa antiga que não era: dois programas injetados no processo
+
+Medido em 06/08/2026, lendo os módulos carregados no processo do app:
+
+| DLL injetada | Origem | O que faz |
+|---|---|---|
+| `RTSSHooks64.dll` | **RivaTuner Statistics Server** (`RTSS` + `RTSSHooksLoader64` ativos) | Engancha a apresentação de todo processo para desenhar o overlay de FPS |
+| `nvspcap64.dll` | **NVIDIA ShadowPlay** (`nvcontainer`, `EncoderServer`) | Engancha a apresentação para capturar vídeo |
+
+O RivaTuner intercepta justamente a camada que decide **qual região da janela está suja**.
+Região suja errada é, literalmente, o sintoma: pedaço de tela com pixels de antes.
+
+E fecha com a única evidência positiva que existia: a sessão que parou de piscar era a que
+rodou **sem DirectComposition** — o caminho que ele engancha.
+
+Isto também explica por que o app parecia ter três bugs de repintura diferentes. Não tinha
+nenhum: o desenho está certo, e quem erra é o andar de baixo.
+
+### O que sobrou: a apresentação
+
+Eliminado o CSS, resta **como o Chromium entrega o quadro pronto ao Windows**. A composição
+por GPU está ativa nessa máquina (medido), então o próximo corte é o caminho de
+apresentação, e não o desenho.
+
+`QB_GPU=<modo>` desce essa escada, do mais barato ao mais caro:
+
+| Modo | O que muda | Custo |
+|---|---|---|
+| `dc` | Sem DirectComposition | nenhum — segue acelerado |
+| `angle` | ANGLE por OpenGL em vez de Direct3D | baixo |
+| `comp` | Composição pela CPU, GPU ainda desenha | médio |
+| `off` | Sem aceleração nenhuma | alto |
+
+Começar pelo `dc` não é ordem arbitrária: é o único que **não abre mão de nada**, e é onde
+programas que se enfiam entre o app e a tela (ReShade, overlays de jogo, gravadores —
+essa máquina tem esse perfil) quebram a conta das regiões sujas. E "região suja errada" é,
+literalmente, "pedaço da tela com pixels de antes".
+
+O `dc` **não curou** — e mudou a cor do flash, de preto para branco. Foi essa mudança de cor
+que provou que o que pisca é a **superfície da janela sem nada pintado**, e não conteúdo
+nosso desenhado errado. Um teste que "falha" e ainda assim entrega a informação decisiva.
+
+### O modo de desenvolvimento também caiu
+
+O próprio B5 já registrava um caso em que **o servidor de dev fabricou um bug** (o
+travamento era a página recarregando durante o teste). Todas as rodadas até aqui eram em
+modo dev, então o app foi construído e rodado em `preview`, sem Vite, sem HMR: **piscou
+igual**, e voltou a piscar preto — porque o DirectComposition estava de volta ao normal.
+
+### Placar final da eliminação
+
+| Suspeito | Como caiu |
+|---|---|
+| Conteúdo importado do Whiteboard | Biblioteca vazia via `QB_BOARDS`, bug igual |
+| Caches gráficos e `Local Storage` | Apagados, bug igual |
+| CSS (desfoque, sombra, `clip`, transições) | Cinco desligados juntos, bug igual |
+| "Quadros fantasmas" | Eram o bug: disco tem 1 arquivo, tela mostrava 2 |
+| RivaTuner (`RTSSHooks64.dll`) | Fechado, bug igual |
+| Modo de desenvolvimento | App construído, bug igual |
+| G-SYNC em modo janela | Trocado para só tela cheia, bug igual |
+| Máquina em geral | **Só este app pisca**; sistema normal e responsivo |
+| DirectComposition | Não curou, mas mudou a cor do flash |
+| **Repintura parcial** | **Desligada: os dois sintomas pararam** |
+
+**A suspeita inicial do tema escuro tinha fundamento, mas ao contrário:** a cor do flash não
+vem do tema, vem do caminho de apresentação — preto com DirectComposition, branco sem ele.
+O tema só mudava o quanto incomodava.
+
+</details>
 
 ## Melhorias
 
@@ -452,6 +755,15 @@ em disco a cada clique e reconstrução do painel inteiro). **B5 pode ter ido ju
 queda de fps ao clicar num controle tinha a mesma raiz. Precisa de reteste dele.
 
 Entraram de carona os dois renomes de uma linha: M2 e M4.
+
+### Etapa 5 — Pixels velhos (B8, com o B1 e o B7 dentro) · **feita em 06/08/2026**
+Três relatos, um buraco, duas linhas de correção — e dez hipóteses derrubadas por medição
+antes de escrever a primeira delas. O placar completo está no B8.
+
+**Fica um item para a Fase 9, e é barato: subir o Electron.** Está em 33.4.11 (Chromium de
+2024) numa máquina com Windows e driver de 2026, e é essa distância que provavelmente cria
+o defeito. `QB_GPU=normal` reproduz o bug: depois de subir, é com ele que se confere se a
+correção ainda é necessária — senão ela fica para sempre, por inércia.
 
 ### Etapa 3 — Barra inferior e nomes (M3, M4, M2)
 Mesmo arquivo (`ViewportBar`), mais o rótulo do lobby (M2). Fazer junto evita mexer duas

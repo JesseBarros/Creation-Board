@@ -8,6 +8,100 @@ import { registerExportIpc } from './ipc/exporter';
 
 const isDev = !app.isPackaged;
 
+/**
+ * REPINTURA COMPLETA -- correcao do B8, e com ele do B7 e do B1.
+ *
+ * Tres sintomas que estavam catalogados como bugs diferentes eram um so: a tela
+ * piscando (preto ou branco) a cada movimento do mouse sobre um botao, a janela
+ * "rasgada" ao redimensionar, e o rastro do quadro anterior ao voltar para o
+ * menu. Em todos, uma regiao da janela ficava com os pixels de antes.
+ *
+ * A causa e a conta de REGIAO SUJA -- "que pedaco da tela mudou" -- saindo
+ * errada. O Chromium repinta e troca so o pedaco que mudou; quando essa conta
+ * erra, o que ficou de fora mantem os pixels velhos, e a troca do pedaco
+ * aparece como um flash. As duas chaves abaixo desligam a otimizacao: repinta e
+ * troca a tela INTEIRA a cada frame.
+ *
+ * Como se chegou aqui, para ninguem refazer o caminho: foram eliminados por
+ * medicao, nesta ordem, o CSS (cinco propriedades desligadas juntas), o
+ * conteudo salvo (biblioteca vazia), os caches, o RivaTuner e o modo de
+ * desenvolvimento. Nenhum mudou nada. Os detalhes estao no B8 do BUGS.md.
+ *
+ * O PRECO FOI MEDIDO, e nao estimado: `QB_BENCH=4000`, duas rodadas com e duas
+ * sem, deram 9,26 ms de frame nos dois casos na fase mais pesada. A diferenca
+ * fica dentro do ruido. Nao ha o que economizar desligando isto.
+ *
+ * Isto e remedio de sintoma, e vale dizer: a raiz provavel e o Electron 33
+ * (Chromium de 2024) compondo num Windows e num driver de 2026. Subir de
+ * Electron e o conserto de verdade, e esta registrado como item da Fase 9.
+ *
+ * `QB_GPU=<modo>` substitui este padrao -- inclusive `QB_GPU=normal`, que nao
+ * aplica nada e serve para reproduzir o bug de novo.
+ *
+ * Precisa vir ANTES do app ficar pronto; depois disso nao tem efeito.
+ */
+const GPU_MODOS: Record<string, { nota: string; aplicar: () => void }> = {
+  // Nada aplicado: e assim que o bug volta. Existe para conferir que a correcao
+  // ainda e necessaria depois de subir de Electron -- sem isso, o dia em que ela
+  // virar desnecessaria passa despercebido e o custo fica para sempre.
+  normal: {
+    nota: 'sem correcao alguma (reproduz o bug de proposito)',
+    aplicar: () => {},
+  },
+  // O caminho do Windows para mostrar o que a GPU desenhou. Testado no B8 e
+  // NAO resolveu -- so mudou a cor do flash, de preto para branco. Fica na
+  // escada porque foi essa mudanca de cor que provou que o que pisca e a
+  // superficie da janela sem nada pintado.
+  dc: {
+    nota: 'sem DirectComposition (mantem a aceleracao inteira)',
+    aplicar: () => {
+      app.commandLine.appendSwitch('disable-direct-composition');
+      app.commandLine.appendSwitch('disable-direct-composition-video-overlays');
+    },
+  },
+  // O MODO PADRAO. Ver o cabecalho deste arquivo para a investigacao inteira.
+  swap: {
+    nota: 'sem repintura parcial: troca a tela inteira a cada frame',
+    aplicar: () => {
+      app.commandLine.appendSwitch('ui-disable-partial-swap');
+      app.commandLine.appendSwitch('disable-partial-raster');
+    },
+  },
+  // Troca o tradutor de OpenGL: mesma placa, outro caminho ate ela. Separa
+  // "driver" de "caminho de apresentacao".
+  angle: {
+    nota: 'ANGLE por OpenGL em vez de Direct3D',
+    aplicar: () => app.commandLine.appendSwitch('use-angle', 'gl'),
+  },
+  // A GPU ainda desenha, mas quem junta as camadas e a CPU.
+  comp: {
+    nota: 'composicao pela CPU (a GPU ainda desenha)',
+    aplicar: () => app.commandLine.appendSwitch('disable-gpu-compositing'),
+  },
+  // Fim da escada: nada de aceleracao. Lento de proposito -- e teste, nao
+  // destino.
+  off: {
+    nota: 'sem aceleracao nenhuma',
+    aplicar: () => app.disableHardwareAcceleration(),
+  },
+};
+
+const gpuModo = process.env['QB_GPU'] ?? (process.env['QB_NOGPU'] === '1' ? 'off' : 'swap');
+const escolhido = GPU_MODOS[gpuModo];
+if (escolhido) {
+  escolhido.aplicar();
+  // So anuncia o que foge do padrao: uma linha por abertura dizendo que esta
+  // tudo normal e ruido no terminal.
+  if (gpuModo !== 'swap') console.log(`[gpu] modo "${gpuModo}": ${escolhido.nota}`);
+} else {
+  // Nome errado cai no padrao, e nao no nada: um QB_GPU com erro de digitacao
+  // faria o bug voltar calado, que e o pior desfecho possivel.
+  GPU_MODOS['swap']!.aplicar();
+  console.log(
+    `[gpu] modo "${gpuModo}" nao existe; usando "swap". Opcoes: ${Object.keys(GPU_MODOS).join(', ')}`,
+  );
+}
+
 let mainWindow: BrowserWindow | null = null;
 
 function createWindow(): void {
@@ -193,6 +287,20 @@ if (!gotLock) {
   });
 
   void app.whenReady().then(() => {
+    // QB_DIAG=1 imprime no terminal quais recursos graficos estao acelerados.
+    // "O que esta em software" e metade da resposta em qualquer problema de
+    // composicao -- foi assim que se descartou "a maquina nao tem GPU" no B8.
+    //
+    // O ATRASO e essencial e nao e folga: o Chromium levanta a GPU num processo
+    // separado e so preenche esse relatorio quando ele responde. Perguntar no
+    // `whenReady` devolve tudo como "software" mesmo numa maquina acelerada, e
+    // essa leitura cedo demais chegou a apontar a investigacao para o lado
+    // errado antes de ser corrigida.
+    if (process.env['QB_DIAG'] === '1') {
+      setTimeout(() => {
+        console.log(`[diag] GPU ${JSON.stringify(app.getGPUFeatureStatus())}`);
+      }, 8000);
+    }
     registerAppIpc();
     registerBoardIpc();
     registerImportIpc();

@@ -33,15 +33,43 @@ import { WBD_SCHEMA_VERSION, type WbdDocument, type WbdManifest } from '@shared/
  */
 const DIR_NAME = 'Resumos-quadrobranco';
 
+/**
+ * QB_BOARDS=<caminho> troca a pasta dos quadros.
+ *
+ * Existe para testar com uma biblioteca VAZIA sem apagar a de verdade. A
+ * pergunta "o problema vem do conteudo salvo?" so se responde tirando o
+ * conteudo do caminho -- e tirar do caminho nao precisa significar destruir
+ * 6,6 MB de resumo. O app nunca sabe a diferenca: e a mesma pasta, noutro
+ * lugar.
+ *
+ * So em desenvolvimento. No app empacotado a variavel e ignorada, para nao
+ * existir jeito de um atalho mal feito apontar os quadros de alguem para o
+ * lugar errado.
+ */
+function overrideDir(): string | null {
+  const custom = process.env['QB_BOARDS'];
+  return custom && !app.isPackaged ? custom : null;
+}
+
 let resolvedDir: string | null = null;
 
 /** Caminho ja resolvido. Chame ensureBoardsDir() antes de depender disto. */
 export function boardsDir(): string {
-  return resolvedDir ?? join(process.env['SystemDrive'] ?? 'C:', '\\', DIR_NAME);
+  return resolvedDir ?? overrideDir() ?? join(process.env['SystemDrive'] ?? 'C:', '\\', DIR_NAME);
 }
 
 export async function ensureBoardsDir(): Promise<string> {
   if (resolvedDir) return resolvedDir;
+
+  const custom = overrideDir();
+  if (custom) {
+    await fs.mkdir(custom, { recursive: true });
+    resolvedDir = custom;
+    // Sem migracao: puxar os quadros antigos para ca desfaria o proposito de
+    // comecar vazio.
+    console.log(`[boards] pasta trocada por QB_BOARDS: ${custom}`);
+    return resolvedDir;
+  }
 
   const primary = join(process.env['SystemDrive'] ?? 'C:', '\\', DIR_NAME);
   const fallback = join(app.getPath('home'), DIR_NAME);
