@@ -52,52 +52,125 @@ function overrideDir(): string | null {
 }
 
 let resolvedDir: string | null = null;
+let resolvendo: Promise<string> | null = null;
 
 /** Caminho ja resolvido. Chame ensureBoardsDir() antes de depender disto. */
 export function boardsDir(): string {
   return resolvedDir ?? overrideDir() ?? join(process.env['SystemDrive'] ?? 'C:', '\\', DIR_NAME);
 }
 
-export async function ensureBoardsDir(): Promise<string> {
-  if (resolvedDir) return resolvedDir;
+/**
+ * Testa se da para ESCREVER na pasta -- `mkdir` pode passar e a escrita nao,
+ * quando politica de grupo ou ACL customizada bloqueiam.
+ *
+ * O nome do arquivo de prova carrega o PID e um sufixo aleatorio, e isso nao e
+ * capricho: com um nome fixo, dois processos do app sondando a mesma pasta ao
+ * mesmo tempo apagam o arquivo um do outro. Medido em 08/08/2026 -- um processo
+ * sozinho falha 0 em 300 tentativas, dois processos falham 120 e 144 em 300,
+ * com ENOENT e EPERM. Era o B11: a sonda dizia "esta pasta nao aceita escrita"
+ * sobre uma pasta perfeitamente gravavel, e a biblioteca do usuario se partia em
+ * duas. Em desenvolvimento isso acontece toda vez que o electron-vite reinicia o
+ * processo principal, porque o velho ainda nao morreu quando o novo ja sonda.
+ */
+async function podeEscrever(dir: string): Promise<true | string> {
+  const probe = join(dir, `.escrita-ok-${process.pid}-${Math.random().toString(36).slice(2, 8)}`);
+  try {
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(probe, '');
+    return true;
+  } catch (err) {
+    return (err as NodeJS.ErrnoException).code ?? String(err);
+  } finally {
+    // Sempre limpa, inclusive quando a escrita passou e o resto falhou. Falhar
+    // aqui nao muda o veredito: o que importava era conseguir escrever.
+    await fs.unlink(probe).catch(() => {});
+  }
+}
 
+/** Ha quadros salvos nesta pasta? */
+async function temQuadros(dir: string): Promise<boolean> {
+  try {
+    const nomes = await fs.readdir(dir);
+    return nomes.some((n) => n.toLowerCase().endsWith(WBD_EXT));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * A resolucao roda UMA vez por processo, e o que se guarda e a PROMESSA, nao o
+ * resultado: guardar so o resultado deixa a porta aberta para duas chamadas
+ * concorrentes entrarem juntas antes da primeira terminar, e cada uma sondar a
+ * pasta por conta propria. Com a sonda de nome fixo, isso era metade do B11.
+ */
+export function ensureBoardsDir(): Promise<string> {
+  if (resolvedDir) return Promise.resolve(resolvedDir);
+  resolvendo ??= resolverDir().then(
+    (dir) => {
+      resolvedDir = dir;
+      return dir;
+    },
+    (err) => {
+      // Deixa tentar de novo na proxima chamada: um erro guardado para sempre
+      // transformaria uma falha temporaria em app inutilizavel ate reiniciar.
+      resolvendo = null;
+      throw err;
+    },
+  );
+  return resolvendo;
+}
+
+async function resolverDir(): Promise<string> {
   const custom = overrideDir();
   if (custom) {
     await fs.mkdir(custom, { recursive: true });
-    resolvedDir = custom;
     // Sem migracao: puxar os quadros antigos para ca desfaria o proposito de
     // comecar vazio.
     console.log(`[boards] pasta trocada por QB_BOARDS: ${custom}`);
-    return resolvedDir;
+    return custom;
   }
 
   const primary = join(process.env['SystemDrive'] ?? 'C:', '\\', DIR_NAME);
   const fallback = join(app.getPath('home'), DIR_NAME);
 
-  // A raiz de C: normalmente permite que um usuario comum crie pastas, mas nem
-  // toda maquina: politica de grupo ou ACL customizada podem bloquear. Testamos
-  // criando e removendo um arquivo, porque `mkdir` pode passar e a escrita nao.
-  for (const candidate of [primary, fallback]) {
-    try {
-      await fs.mkdir(candidate, { recursive: true });
-      const probe = join(candidate, '.escrita-ok');
-      await fs.writeFile(probe, '');
-      await fs.unlink(probe);
-      resolvedDir = candidate;
-      break;
-    } catch {
-      // tenta o proximo
+  let escolhida: string;
+  const veredito = await podeEscrever(primary);
+  if (veredito === true) {
+    escolhida = primary;
+  } else {
+    // Cair para outra pasta CALADO foi o B11: o usuario ficava com metade dos
+    // quadros invisiveis e nenhuma pista do porque. Se a pasta principal ja tem
+    // quadros, mudar de pasta e a pior saida possivel -- some com o trabalho que
+    // esta la. Melhor falhar alto.
+    if (await temQuadros(primary)) {
+      throw new Error(
+        `A pasta de quadros "${primary}" existe e tem quadros salvos, mas nao aceitou ` +
+          `escrita (${veredito}). Os quadros NAO foram movidos: corrija a permissao da ` +
+          `pasta em vez de deixar o app gravar em outro lugar.`,
+      );
     }
+
+    console.warn(`[boards] "${primary}" recusou escrita (${veredito}); tentando "${fallback}"`);
+    const alternativo = await podeEscrever(fallback);
+    if (alternativo !== true) {
+      throw new Error(
+        `Nao foi possivel gravar a pasta de quadros em "${primary}" (${veredito}) ` +
+          `nem em "${fallback}" (${alternativo}).`,
+      );
+    }
+    escolhida = fallback;
   }
 
-  if (!resolvedDir) {
-    throw new Error(
-      `Nao foi possivel criar a pasta de quadros em "${primary}" nem em "${fallback}".`,
-    );
+  // Sempre no terminal, e nao so quando algo foge do padrao: "em que pasta o app
+  // esta gravando" foi a pergunta que faltou responder durante o B8 inteiro, e a
+  // falta dela levou a um diagnostico errado que ficou dias no BUGS.md.
+  console.log(`[boards] pasta: ${escolhida}`);
+  if (escolhida === fallback) {
+    console.warn(`[boards] ATENCAO: usando a pasta alternativa, e nao "${primary}".`);
   }
 
-  await migrateLegacyBoards(resolvedDir);
-  return resolvedDir;
+  await migrateLegacyBoards(escolhida);
+  return escolhida;
 }
 
 /**

@@ -2270,6 +2270,28 @@ async function runExportTests(app: App, check: Check, reset: () => void): Promis
       `pronto=${podeSalvar} esperado=(nao, nao, adiar, adiar, salvar)`,
   );
 
+  // --- B11: a pasta de quadros e UMA so, e ela e a documentada
+  //
+  // Pedir varias vezes DE UMA VEZ e o ponto: o bug nasceu de duas resolucoes
+  // concorrentes discordarem, cada uma sondando a pasta por conta propria e uma
+  // delas apagando o arquivo de prova da outra. Uma chamada de cada vez nunca
+  // teria pego isto -- foi assim que a biblioteca dele se partiu em duas pastas
+  // sem ninguem perceber, entre 30/07 e 08/08/2026.
+  const pastas = await Promise.all([
+    window.quadro.board.folder(),
+    window.quadro.board.folder(),
+    window.quadro.board.folder(),
+    window.quadro.board.folder(),
+  ]);
+  const iguais = pastas.every((p) => p === pastas[0]);
+  const esperada = 'Resumos-quadrobranco';
+  check(
+    'a pasta de quadros e uma so, mesmo pedida por varios caminhos ao mesmo tempo',
+    iguais && (pastas[0] ?? '').endsWith(esperada),
+    `${pastas.length} chamadas concorrentes -> ${iguais ? 'todas iguais' : '*** DIVERGIRAM ***'}: ` +
+      `${[...new Set(pastas)].join(' | ')}`,
+  );
+
   setup();
   doc.clear();
 }
