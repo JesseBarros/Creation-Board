@@ -4,10 +4,13 @@ Registro do que apareceu usando o app de verdade, antes da Fase 9 (polimento).
 O [RETOMAR.md](RETOMAR.md) diz em que pé o projeto está; este arquivo diz **o que está
 errado e o que falta**. Some quando a lista zerar.
 
-**Última atualização: 06/08/2026.** **1 item aberto** e **13 fechados**.
+**Última atualização: 08/08/2026.** **2 itens abertos** (B9 e B10, os dois de desempenho),
+**15 fechados** e **1 decisão a revisar** (**M8**, camadas — vai para a Fase 9).
 
 
 **Ainda em aberto:**
+
+
 
 
 Vale registrar o padrão, porque ele se repete: **medir antes de corrigir devolveu mais
@@ -132,7 +135,11 @@ o gesto é posicionar um canto ou um ponto de inserção, e a cruz diz exatament
 vai cair. Trocar tudo por caneta seria consistência que atrapalha.
 
 ### B5 — Queda breve de fps ao clicar num ícone da barra inferior
-`aberto` · `baixo`
+`não reproduz` · `baixo` · 04/08/2026, fechado em 08/08/2026
+
+
+
+
 
 
 
@@ -187,6 +194,8 @@ os três sintomas juntos — engasgo, resíduo do frame anterior e botão que "n
 
 **Como separar:** ele reproduzir com o `F3` aberto, com o projeto parado. **Feito** — ver
 o resumo acima.
+
+</details>
 
 </details>
 
@@ -406,15 +415,24 @@ culpar. Hipótese fechada, e os 6,6 MB de resumo de teste nunca correram risco.
 Ficou registrado o método, porque ele serve para a próxima vez: *tirar do caminho não
 precisa significar destruir*.
 
-### Os "quadros fantasmas" eram o próprio bug
+### Os "quadros fantasmas" eram o próprio bug — **ERRADO, ver o B11**
+
+> **Corrigido em 08/08/2026.** Esta seção chegou à conclusão errada, e o motivo vale mais
+> que a conclusão: eu comparei com **uma** pasta e concluí que a tela mentia. O app estava
+> lendo **outra**. Os dois cards eram dois arquivos de verdade, e estão em
+> `C:\Users\<usuario>\Resumos-quadrobranco` — com exatamente as duas datas da captura:
+> `Quadro B (2).wbd` criado em **05/08 01:38** e `Quadro B.wbd` criado em **30/07 21:48**,
+> os dois com **59 objetos**. Ver o **B11**.
+>
+> A lição sobrevive à conclusão, só que ao contrário: comparar com o disco **é** o método
+> certo — mas "o disco" não é uma pasta que eu escolhi, e sim a que o app resolveu. Eu não
+> verifiquei qual era, e o app não tinha como dizer.
 
 
 Na pasta existe **um** arquivo com esse nome, e `listBoards()` lê o diretório na hora, sem
 índice nem cache. Um arquivo não produz duas datas. **Não eram dois quadros: era o mesmo
 card pintado duas vezes**, um deles sobrado do desenho de outra sessão — e por isso sumiram
 quando navegar forçou repintura.
-
-Vale como método: foi a **comparação com o disco** que transformou [...] em prova de que a tela mente. Nenhuma quantidade de olhar para a tela daria isso.
 
 ### Dois injetores no processo — e os dois inocentados
 
@@ -526,6 +544,151 @@ O tema só mudava o quanto incomodava.
 
 </details>
 
+### B9 — O quadro crava em 60 fps ao arrastar com o botão direito
+`a investigar` · `médio` · 08/08/2026
+
+
+
+**O que já dá para afirmar sem medir nada, e é o achado que orienta tudo:** o `QB_BENCH` de
+06/08 mediu **144,0 fps** com a câmera varrendo o quadro e **redesenhando todo frame**. O
+motor alcança 144 — quando quem move a câmera é código. O gesto de arrastar move a câmera
+pela **mesma via**, e chega em 60. A diferença entre os dois não está em desenhar.
+
+**Cravar em exatamente 60** também é assinatura, e não número qualquer: custo produz números
+quebrados (17,4; 9,26) e oscilantes. Um valor redondo e estável é **teto**, não preço.
+
+**Três famílias, e cada uma tem uma medição que a mata ou a confirma:**
+
+
+**Evidência que caiu no colo em 08/08, e ela é boa:** a verificação [...] mede `frame com troca − frame sem troca`, e o segundo termo **é o piso do
+vsync**. Três rodadas do mesmo código, no mesmo dia:
+
+| Hora | Piso (só repintura) | Taxa implícita | "Interface" | Veredito |
+|---|---|---|---|---|
+| 14:37 | **16,6 ms** | ~60 Hz | 2,4 ms | passou |
+| 16:0x | 8,1 ms | ~123 Hz | 5,3 ms | reprovou |
+| 16:1x | 8,7 ms | ~115 Hz | 5,0 ms | reprovou |
+
+**Duas coisas saem daqui.** Primeira: o app **não está preso em 60** — ele alterna entre ~60
+e ~120 Hz entre execuções, o que reforça que o B9 é teto de apresentação, e não custo de
+desenho. Segunda: **a verificação está medindo o vsync junto com o que quer medir**, e por
+isso passa quando a máquina está a 60 Hz e reprova quando está a 120. O teto de 3 ms não é
+frouxo nem apertado — a conta é que está contaminada. Isso é da própria verificação e vale
+consertar junto com o B9.
+
+**Um detalhe que vale corrigir junto, se a meta virar 144:** o próprio painel do `F3` trata
+**60 como alvo** — pinta o número de verde a partir de 55 fps (`DebugPanel.ts:111`). Com a
+meta em 144, o medidor está dizendo "ótimo" justamente no número que incomoda.
+
+### B11 — A biblioteca está partida em DUAS pastas
+`corrigido` · `crítico` · 08/08/2026
+
+> **Causa encontrada e corrigida em 08/08/2026: a sonda de escrita usava um nome de arquivo
+> FIXO.** `ensureBoardsDir()` testava se a pasta aceitava escrita criando e apagando
+> `.escrita-ok`. Com dois processos do app sondando a mesma pasta ao mesmo tempo, cada um
+> apaga o arquivo do outro — e o `catch {}` vazio lia isso como *"esta pasta não aceita
+> escrita"* sobre uma pasta perfeitamente gravável, mandando a biblioteca para a pasta
+> alternativa, calado.
+>
+> **Medido, e não deduzido:**
+>
+> | Cenário | Sondas que falharam |
+> |---|---|
+> | Um processo sozinho (controle) | **0 / 300** |
+> | Dois processos, nome de arquivo fixo | **120 / 300** e **144 / 300** (`ENOENT`, `EPERM`) |
+> | Dois processos, nome único por processo (a correção) | **0 / 300** |
+> | Três processos, nome único | **0 / 300** cada |
+>
+> **A correção tem três partes, e só a primeira é o conserto:**
+>
+> 1. **Nome de sonda único por processo** (`.escrita-ok-<pid>-<aleatório>`) — mata a corrida.
+> 2. **Nunca mais cair de pasta calado.** Se a pasta principal já tem quadros e recusa
+>    escrita, o app **falha alto** em vez de gravar noutro lugar: mudar de pasta com trabalho
+>    salvo lá dentro é a pior saída possível. E a pasta resolvida agora sai **sempre** no
+>    terminal (`[boards] pasta: …`), não só quando `QB_BOARDS` a troca — foi a falta dessa
+>    linha que me fez errar o diagnóstico dos "quadros fantasmas" no B8.
+> 3. **A resolução guarda a promessa, não o resultado** — duas chamadas concorrentes dentro
+>    do mesmo processo entravam juntas antes da primeira terminar, e cada uma sondava por
+>    conta própria.
+>
+> **Verificação no `selftest`:** a pasta é pedida **quatro vezes ao mesmo tempo** e as quatro
+> respostas têm de ser idênticas e terminar em `Resumos-quadrobranco`. Uma chamada de cada vez
+> nunca teria pego isto — que é exatamente por que ninguém pegou entre 30/07 e 08/08.
+>
+> **O que ficou sem resposta, e vale dizer:** por que o processo vivo desde as 14:41 gravou
+> em `C:\` às 14:44 e na pasta alternativa às 15:29. A instrumentação existe agora para
+> responder isso na próxima vez; antes dela, qualquer explicação seria invenção.
+>
+> **Consolidado em 08/08/2026, e nada foi perdido.** As três cópias de `Quadro B` eram
+> **três importações independentes do mesmo `.zip`** — 59 objetos cada, ids **todos
+> diferentes** (nenhum em comum entre as cópias), mesma composição (41 textos, 14 traços, 4
+> imagens) e nenhum apagamento aplicado. Ou seja: **nenhum trabalho feito dentro do app
+> estava preso na pasta alternativa** — o que se perderia era só o esforço de reimportar.
+>
+> Duas delas têm geometria idêntica; a terceira difere em **0,5px de altura média de texto**,
+> que é o ruído de medição de fonte já documentado no `RETOMAR`, e não uma versão melhor.
+>
+> As duas cópias da pasta alternativa foram **estacionadas** em
+> `C:\Resumos-quadrobranco\_substituidos-2026-08-08\`, e não apagadas: 0,29 MB cada não
+> justificam uma decisão irreversível. Elas não aparecem no lobby porque `listBoards()` só
+> lista arquivos, nunca subpastas.
+
+
+| Pasta | Conteúdo | Última escrita |
+|---|---|---|
+| `C:\Resumos-quadrobranco` (a documentada) | Continuação (411 obj), Quadro B (59), quadro de referência (1.063), teste (0) | **08/08 14:44** |
+| `C:\Users\<usuario>\Resumos-quadrobranco` (o *fallback*) | Quadro B (59), Quadro B **(2)** (59) | **08/08 15:29** |
+
+**Por que é `crítico` pela régua deste arquivo:** não corrompe e não trava, mas **some com
+trabalho da vista**. Um quadro salvo numa das pastas não aparece no lobby da sessão
+seguinte, se ela resolver a outra — e a pessoa não tem como saber que ele existe. As duas
+cópias de Quadro B já **divergiram**: uma foi atualizada em 07/08 23:04, a outra em 08/08
+15:29.
+
+**Isto explica os "quadros fantasmas" do B8**, e é a mesma dupla de datas da captura
+daquele dia: 05/08 01:38 e 30/07 21:48 são os `createdAt` dos dois arquivos do *fallback*.
+Não eram cards pintados duas vezes. Eram dois arquivos.
+
+**Onde a decisão é tomada** (`src/main/storage/wbdFile.ts:61-101`): `ensureBoardsDir()`
+tenta `C:\Resumos-quadrobranco`; se a escrita de prova falhar, cai **calado** para
+`~\Resumos-quadrobranco`. Um `catch {}` vazio decide onde mora o trabalho do usuário, e
+nada é registrado — nem no terminal, nem na interface.
+
+**O que já foi eliminado por medição, em 08/08:**
+
+
+**O mecanismo ainda não está identificado, e não vou fingir que está.** O que o processo em
+execução mostra é o que mais incomoda: **um único processo** (vivo desde 14:41) gravou em
+`C:\` às 14:44 e no *fallback* às 15:29. Se fosse só [...],
+isso não podia acontecer — `resolvedDir` é resolvido uma vez por processo.
+
+**Primeiro passo, e é o que faltava desde 30/07:** fazer o app **dizer** qual pasta resolveu
+— no terminal ao subir, e visível na interface. Hoje ele só registra quando `QB_BOARDS`
+troca a pasta; no caminho que interessa, o do `catch` silencioso, ele não diz nada. Sem
+isso, toda investigação daqui para frente é adivinhação — foi exatamente o que aconteceu no
+B8.
+
+**Nada foi perdido:** os quatro quadros de `C:\` estão íntegros e legíveis, e as duas cópias
+de Quadro B do *fallback* também. O que falta é decidir qual das duas Quadro B vale, e juntar
+tudo numa pasta só.
+
+### B10 — O custo por frame cresce com o zoom
+`a investigar` · `baixo` · 08/08/2026
+
+
+**Está separado do B9 de propósito:** ali é um teto redondo (60), aqui é preço que sobe
+junto com uma variável. Teto e preço não têm a mesma causa nem a mesma correção, e juntá-los
+num id só foi exatamente o que atrasou o B1/B7/B8.
+
+**A explicação provável é a menos interessante, e por isso precisa de medição antes:** com
+zoom alto, um traço curto vira uma geometria enorme na tela, e rasterizar caminho grande
+custa mais pixels — mesmo com **menos** objetos visíveis, que é o que o culling entrega. Se
+for isso, é o preço correto de desenhar, e o item fecha como `não é bug`.
+
+**O que mediria:** custo de render (não de frame) em três níveis de zoom sobre o mesmo
+quadro real, contra o número de objetos visíveis em cada um. Se o custo sobe **enquanto a
+contagem de objetos cai**, é rasterização, e não travessia de cena.
+
 ## Melhorias
 
 ### M1 — Botão de negrito na caixa de texto
@@ -611,6 +774,39 @@ O auto-teste cobre as pontas: no mínimo a espessura ainda é maior que zero, e 
 levou o custo da troca de 1,6 ms para 5,3 ms — a verificação de desempenho reprovou na
 hora. Os dois controles passaram a ser criados uma vez e reaproveitados: 2,5 ms.
 
+### M8 — Camadas, com cadeado — **e o marca-texto que [...]*
+`decisão a revisar` · `médio` · 08/08/2026 · **para a Fase 9**
+
+Pedido: [...].
+
+**O sintoma bate numa decisão deliberada**, e por isso entra como `decisão a revisar` e não
+como bug (é a triagem que fez nascer a Fase 5.5). A regra está no
+[RETOMAR.md](RETOMAR.md), decisão 5: **o marca-texto entra por baixo de tudo** — por chave
+`z`, não por ordem de desenho — senão grifar cobriria o texto que se quis destacar.
+
+**A regra está certa para texto e errada para imagem, e a diferença é física:** texto é
+tinta escura sobre fundo claro, e o grifo por baixo aparece atrás das letras, como marcador
+de verdade. Uma imagem é **opaca** — não há "atrás" que se veja. O grifo simplesmente
+some. A regra foi escrita quando o app não tinha imagens (Fase 4); as imagens chegaram na
+Fase 7 e ninguém revisitou.
+
+**O que já existe e não precisa ser construído:**
+
+- ordem de camada por objeto (`z`) e os comandos de trazer para frente / mandar para trás;
+- **travar objeto** — já implementado e coberto pelo `selftest` ([...], [...]).
+
+Ou seja, o cadeado que ele pede **já existe por objeto**; o que falta é **enxergá-lo e
+alcançá-lo**, que é justamente o papel de um painel de camadas.
+
+**As duas perguntas de projeto, que valem decidir antes de codar:**
+
+1. **Camada é grupo ou é objeto?** No Photoshop é um grupo com nome, que se cria e se
+   ordena. O que ele descreve resolvido [...] pode ser só um painel
+   listando os objetos do quadro, com olho e cadeado — sem inventar o conceito de grupo.
+2. **O marca-texto sobre imagem:** a saída mais barata é a regra deixar de ser absoluta —
+   grifo vai por baixo de **texto** e por cima de **imagem**. Isso resolve o caso sem
+   painel nenhum, e o painel passa a ser o controle geral, não o remendo.
+
 ### M6 — Seletor de cores personalizado
 `corrigido` · `médio` · 04/08/2026
 
@@ -673,8 +869,3 @@ redesenhada e de um app que não trava mais.
 
 ## Fechados nesta rodada
 
-| Id | Desfecho |
-|---|---|
-| B2 | Não é bug — a régua atual fica, decisão da Fase 4.5 mantida |
-| B2b | Não é bug — grade e ímã respondem; o incômodo era só a régua |
-| B5 (parte maior) | Travamento geral era o servidor de dev recarregando a página durante o teste; sobrou só uma queda breve ao clicar |
