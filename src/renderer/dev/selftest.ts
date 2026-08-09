@@ -2234,6 +2234,21 @@ async function runExportTests(app: App, check: Check, reset: () => void): Promis
       `escapado=${comTexto.includes('&lt;script&gt;')} cru=${comTexto.includes('<script>')}`,
   );
 
+  // --- B14: cada trecho preso a largura que medimos
+  //
+  // Sem isto o arquivo depende da fonte de quem abre: um trecho renderizado mais
+  // largo que o medido invade o proximo, e sai texto por cima de texto. O guarda
+  // e a presenca do par textLength+lengthAdjust, porque e ele que some se alguem
+  // simplificar a emissao do <text>.
+  const trechos = comTexto.match(/<text\b[^>]*>/g) ?? [];
+  const presos = trechos.filter((t) => t.includes('textLength=')).length;
+  check(
+    'cada trecho de texto do SVG e preso a largura medida, para nao invadir o vizinho',
+    trechos.length > 0 && presos === trechos.length && comTexto.includes('spacingAndGlyphs'),
+    `${presos} de ${trechos.length} <text> com textLength ` +
+      `(lengthAdjust=${comTexto.includes('spacingAndGlyphs')})`,
+  );
+
   // --- SVG: o apagamento da borracha vira mascara
   setup();
   const tinta = doc.get('INK') as StrokeObject;

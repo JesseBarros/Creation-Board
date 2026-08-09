@@ -198,6 +198,30 @@ function shapeToSvg(o: ShapeObject, adapt: Adapter): string {
   }
 }
 
+/**
+ * Prende o trecho na largura que NOS medimos.
+ *
+ * Sem isto, cada `<text>` e posicionado no ponto que medimos mas desenhado com a
+ * fonte de quem abre o arquivo. Quando essa fonte e um pouco mais larga, o
+ * trecho transborda e invade o comeco do trecho seguinte -- e o resultado e
+ * texto por cima de texto, que nao existe no quadro original. Relatado por ele
+ * em 08/08/2026 (B14).
+ *
+ * `spacingAndGlyphs` distribui a diferenca no espacamento E na largura dos
+ * glifos. So `spacing` empilharia todo o erro nos espacos, o que aperta ou
+ * espalha as palavras de forma bem mais visivel.
+ *
+ * A alternativa definitiva seria embutir a fonte no arquivo -- fidelidade
+ * perfeita, arquivo muito maior e licenca de fonte para resolver. Isto aqui
+ * custa dois atributos.
+ */
+function medida(largura: number): string {
+  // Largura zero (ou trecho so de espaco) faz o navegador ignorar ou dividir por
+  // zero: nesses casos nao ha o que prender.
+  if (!(largura > 0.01)) return '';
+  return ` textLength="${n(largura)}" lengthAdjust="spacingAndGlyphs"`;
+}
+
 function textToSvg(o: TextObject, adapt: Adapter): string {
   const layout = layoutText(o.content, styleOf(o));
   const color = adapt(o.color);
@@ -210,7 +234,9 @@ function textToSvg(o: TextObject, adapt: Adapter): string {
     if (layout.indent > 0 && line.first) {
       out.push(
         `<text x="${n(line.x - layout.indent)}" y="${n(baseY)}" ` +
-          `font-family="${esc(o.fontFamily)}" font-size="${n(o.fontSize)}" fill="${esc(color)}">${esc(BULLET)}</text>`,
+          `font-family="${esc(o.fontFamily)}" font-size="${n(o.fontSize)}" fill="${esc(color)}"` +
+          medida(layout.indent) +
+          `>${esc(BULLET)}</text>`,
       );
     }
 
@@ -222,6 +248,7 @@ function textToSvg(o: TextObject, adapt: Adapter): string {
           (run.bold ? ' font-weight="bold"' : '') +
           (run.italic ? ' font-style="italic"' : '') +
           (run.underline ? ' text-decoration="underline"' : '') +
+          medida(run.width) +
           `${alpha(o.opacity)}>${esc(run.text)}</text>`,
       );
     }
@@ -250,7 +277,7 @@ function noteToSvg(o: NoteObject, adapt: Adapter): string {
       out.push(
         `<text x="${n(inset + line.x + run.x)}" y="${n(NOTE_PAD + line.y + line.baseline)}" ` +
           `font-family="${esc(NOTE_FONT_FAMILY)}" font-size="${n(NOTE_FONT_SIZE)}" ` +
-          `fill="${esc(color)}">${esc(run.text)}</text>`,
+          `fill="${esc(color)}"${medida(run.width)}>${esc(run.text)}</text>`,
       );
     }
   }
