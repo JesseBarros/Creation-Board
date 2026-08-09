@@ -4,18 +4,23 @@ Ponto de retomada do **Creation Board**. O [README](README.md) explica o que o a
 como cada parte funciona; este arquivo responde outra pergunta: *em que pé isso está e
 o que fazer a seguir*. Some quando o projeto acabar.
 
-**Última sessão: 04/08/2026.** Fases 5, 5.5, 6, 7 e 8 concluídas, mais uma **rodada de
-correção de bugs** vinda do uso real — ver **[BUGS.md](BUGS.md)**.
+**Última sessão: 08/08/2026.** Fases 5 a 8 concluídas, mais duas **rodadas de correção de
+bugs** vindas do uso real — ver **[BUGS.md](BUGS.md)**.
 
-> **Retomar por aqui:** dois itens esperam **reteste dele**, e é a primeira coisa a
-> perguntar:
-> - **B7** — a janela "rasgava" ao redimensionar. Corrigido (repintura forçada no processo
->   principal + repintura síncrona ao medir), mas ele não chegou a testar.
-> - **B5** — queda breve de fps ao clicar num controle. Provavelmente foi junto com o B3;
->   confirmar com o `F3` aberto.
+> **Retomar por aqui:** a Fase 8 está em **teste de aceitação**, feito por ele. Placar:
 >
-> Com esses dois fechados, a lista zera e a **Fase 9** (polimento, temas, build final)
-> começa. E ela começa por `npm run dist`: o instalador não é gerado desde a Fase 0.
+> | Teste | Estado |
+> |---|---|
+> | 3 — exportar PNG | **feito** — achou o B12 (texto virava barra) e o B13 (resolução inerte) |
+> | 3 — SVG, PDF, seleção, fundo transparente | **falta** |
+> | 4 — autosave | **passou** em 08/08: o ponto acende ao editar e apaga sozinho em 3-5 s |
+> | 5 — abrir os três resumos | **falta** |
+>
+> Com o 3 e o 5 fechados, a Fase 8 acaba e começa a **Fase 9**. A lista dela já tem dono:
+> **B13** (exportar em ladrilhos, para o PNG sair legível), **B10**, **M8** (painel de
+> camadas com cadeado), o painel do `F3` mostrando custo de frame em vez de frequência de
+> atualização, e **subir o Electron** (hoje num Chromium de 2024). Mais `npm run dist`, que
+> não roda desde a Fase 0.
 
 ---
 
