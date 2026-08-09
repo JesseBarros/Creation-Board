@@ -397,8 +397,21 @@ pararam"*.
 | ajustado à tela | 111,7 / **108,0** fps | 99,7 / **108,0** fps |
 
 A primeira rodada sugeriu 11% de custo na fase pesada; a segunda deu **9,26 ms de frame
-nos dois casos**. O 99,7 era ruído. **Não há custo mensurável** — e teria sido fácil
-"economizar" a correção por causa de uma amostra só.
+nos dois casos**. O 99,7 era ruído. Conclusão da época: não há custo mensurável.
+
+> **08/08/2026 — e aqui eu quase repeti o erro que este arquivo inteiro alerta.** Duas
+> capturas do `F3` no quadro real, a 2% de zoom, deram frame de **17,8 ms** com a correção e
+> **14,3 ms** sem ela, e eu escrevi que a correção custava ~3,5 ms por frame.
+>
+> **Ele derrubou na hora, e está certo:** *"sem o zoom aplicado a variação de ms é muito alta
+> para considerar esses 3,5, porque ao mesmo tempo que chega num teto maior também chega numa
+> baixa"*. Com o quadro todo na tela o frame oscila bastante, e **uma amostra de cada lado não
+> separa sinal de ruído** — é literalmente o mesmo erro que produziu o "99,7 era ruído" três
+> parágrafos acima, cometido por mim, no mesmo arquivo, dois dias depois.
+>
+> **O custo da correção continua não estabelecido.** Para estabelecer, seria preciso repetir a
+> leitura várias vezes de cada lado e comparar as distribuições, e não os extremos. Ficou sem
+> resposta porque a pergunta perdeu o objeto: a correção saiu (ver abaixo).
 
 **Isto é remédio de sintoma.** A raiz provável está na tabela abaixo, e o conserto de
 verdade virou item da Fase 9:
@@ -416,6 +429,32 @@ sozinha, sem ninguém tocar no código.**
 
 `QB_GPU=normal` desliga a correção e reproduz o bug — serve para descobrir o dia em que ela
 virar desnecessária, em vez de carregá-la para sempre por inércia.
+
+> **08/08/2026 — o sintoma sumiu sozinho, e a correção FICA assim mesmo.**
+>
+> Rodando em `QB_GPU=normal` — o modo que em 06/08 reproduzia o piscar **sempre**, em todo
+> ícone — ele confirmou: *"no aplicativo que está rodando agora não há bug algum de blip de
+> tela"*. Nada no código explica a diferença: o piscar nunca foi nosso, e o que mudou por
+> baixo (driver, Windows, algum overlay injetado) não passa por este repositório.
+>
+> **Decisão dele, e ela é a certa:** manter a correção ligada por padrão, *"pois pode ser um
+> bug sazonal"*. Um defeito de ambiente que sumiu sem ninguém consertar pode voltar do mesmo
+> jeito — e o custo de carregar duas flags é muito menor que o de descobrir o retorno pelo
+> relato de alguém incomodado.
+>
+> **Fica registrado para quando voltar**, que é o objetivo desta anotação:
+>
+> - o sintoma exato — piscar preto ao passar o mouse sobre ícones e cartões, rastros de
+>   região não repintada, rasgo ao redimensionar;
+> - `QB_GPU=normal` é o modo que o reproduzia, e hoje **não reproduz mais**;
+> - se ele voltar mesmo no modo padrão (`swap`), a escada de `QB_GPU` continua montada
+>   (`dc`, `angle`, `comp`, `off`) e o placar de eliminação abaixo continua válido — não é
+>   preciso refazer nenhuma daquelas rodadas;
+> - o item da Fase 9 de **subir o Electron** (hoje num Chromium de 2024) continua sendo o
+>   conserto de raiz, e `QB_GPU=normal` é como se confere se a correção ainda é necessária.
+>
+> **O custo da correção segue não medido**, e agora é assunto encerrado por escolha: ela fica
+> independentemente do preço.
 
 **Não dá para cobrir no `selftest`, e vale dizer por quê:** o auto-teste verifica o que o
 app *faz*, e o app fazia tudo certo. O defeito está em como o Chromium entrega pixels
