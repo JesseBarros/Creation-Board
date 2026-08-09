@@ -72,13 +72,23 @@ npm run selftest      # 107 verificações, deve terminar com "tudo passou"
 npm run check:colors  # contraste das cores nos dois temas
 ```
 
-⚠️ **Duas das 107 medem a máquina, não o código.** A primeira: "arrastar 10.000 objetos selecionados
+⚠️ **Duas delas medem a máquina, não o código.** A primeira: "arrastar 10.000 objetos selecionados
 fica acima de 30fps", com teto de 33 ms por frame. Ela reprova com o computador ocupado —
 em 04/08/2026 reprovou com **50–62 ms** simplesmente porque o **CS2 estava aberto**, e a
 `main` sem nenhuma mudança reprovou pior que a branch nova. O sinal de que é a máquina, e
 não uma regressão, está na própria linha do resultado: se o custo de `bbox` (matemática
 pura, que quase nunca muda) subiu junto, é carga externa. Rodar de novo com o jogo
 fechado antes de investigar qualquer coisa.
+
+**A faixa normal, medida em 09/08/2026 com 8 execuções** (4 em cada commit de um A/B):
+**25,0–26,5 ms**, com `bbox` entre **3,0 e 3,3**. O teto de 33 ms deixa só ~25% de folga,
+e é por isso que ela vira para reprovada com pouca carga externa. Se você vir 36 ou 40 ms
+com `bbox` acima de 3,5, **é a máquina** — no mesmo dia essa verificação reprovou duas
+vezes seguidas e passou nas oito seguintes, sem uma linha de diferença no código.
+
+**E a lição que custou caro:** duas reprovações seguidas parecem sinal. Um A/B de **uma**
+execução contra **uma** não desfaz isso — se as duas estiverem sob carga, ele confirma a
+conclusão errada com ar de rigor. Repetir e comparar faixas é o que separa.
 
 A segunda é da Fase 6: **"buscar em 10.000 objetos custa menos que um frame"**, teto de
 16 ms. Ela é o que sustenta não haver índice invertido, e a linha do resultado traz a
