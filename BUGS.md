@@ -770,6 +770,31 @@ conciliáveis desenhando tudo do zero a cada frame. A saída que não obriga a e
 bitmap e reaproveitar enquanto o objeto não muda — que é como um editor de verdade resolve
 isto. Fica para a Fase 9, e é o item que destrava o B9 junto.
 
+### B14 — Texto por cima de texto no SVG exportado
+`corrigido` · `médio` · 08/08/2026
+
+
+**Causa:** o SVG posiciona cada trecho de texto no ponto que **nós** medimos, mas quem
+desenha os glifos é a fonte de **quem abre o arquivo**. Quando essa fonte é um pouco mais
+larga que a nossa, o trecho transborda e invade o começo do trecho seguinte — que está
+ancorado num ponto fixo e não sai do lugar. O resultado é sobreposição.
+
+Isso não acontece no PNG, e a razão está na decisão 19 do `RETOMAR`: o PNG **reusa os
+painters**, então ele é pixel a pixel o que está na tela. O SVG não pode reusar (os painters
+falam canvas), e é aí que a fonte de terceiros entra na conta.
+
+**Correção:** cada `<text>` passou a carregar `textLength` com a largura que medimos, mais
+`lengthAdjust="spacingAndGlyphs"`. O navegador então **comprime ou estica o trecho para
+caber exatamente** na largura prevista, e ele nunca invade o vizinho. `spacingAndGlyphs`
+distribui a diferença no espaçamento e na largura dos glifos; só `spacing` empilharia todo o
+erro nos espaços, o que salta à vista muito mais.
+
+**A alternativa definitiva seria embutir a fonte no arquivo** — fidelidade perfeita, arquivo
+muito maior e licença de fonte para resolver. Isto custa dois atributos.
+
+**Verificação no `selftest`:** todo `<text>` do SVG tem de sair com `textLength`, e o arquivo
+tem de conter `spacingAndGlyphs`. É o par que some se alguém simplificar a emissão.
+
 ### B13 — Os três botões de resolução da exportação não fazem nada em quadro grande
 `aberto` · `alto` · 08/08/2026
 
