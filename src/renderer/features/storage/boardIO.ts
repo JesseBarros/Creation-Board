@@ -2,7 +2,7 @@ import type { BoardObject } from '@shared/model/types';
 import { WBD_SCHEMA_VERSION, type WbdDocument } from '@shared/model/document';
 import type { Camera } from '../../core/Camera';
 import type { Document } from '../../core/Document';
-import { paintBlocks, paintObject } from '../../render/painters';
+import { paintObject } from '../../render/painters';
 import { lodForZoom } from '../../render/painters/types';
 import { createColorAdapter } from '../../render/colorAdapt';
 import type { RenderTheme } from '../../render/Renderer';
@@ -89,9 +89,7 @@ export async function renderThumbnail(
       h: THUMB_H / zoom,
     });
 
-    if (lod === 'blocks') {
-      paintBlocks(objects, ctx, adapt);
-    } else {
+    {
       for (const obj of objects) {
         const t = obj.transform;
         ctx.save();
