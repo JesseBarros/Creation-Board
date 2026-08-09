@@ -10,10 +10,11 @@ import type { ColorAdapter } from '../colorAdapt';
 export type LodLevel =
   /** Zoom normal: tudo desenhado fielmente. */
   | 'full'
-  /** Afastado: tracos usam a versao simplificada, texto vira barras. */
-  | 'simplified'
-  /** Muito afastado: todo objeto vira um bloco solido do seu AABB. */
-  | 'blocks';
+  /**
+   * Afastado: tracos usam a polilinha simplificada (RDP). Continua sendo o
+   * traco, com menos pontos -- nao troca o objeto por outra coisa.
+   */
+  | 'simplified';
 
 export interface PaintContext {
   ctx: CanvasRenderingContext2D;
@@ -22,8 +23,7 @@ export interface PaintContext {
   lod: LodLevel;
   /**
    * Mundo -> pixels FISICOS da tela (`zoom * dpr`), e a escala do proprio
-   * objeto. Juntos dizem de que tamanho uma unidade do objeto sai na tela --
-   * que e o que decide se um glifo ainda e legivel. Ver `glyphPixels`.
+   * objeto. Juntos dizem de que tamanho uma unidade do objeto sai na tela.
    */
   deviceScale: number;
   objectScale: number;
@@ -38,27 +38,16 @@ export interface PaintContext {
 
 export type Painter<T extends BoardObject> = (obj: T, p: PaintContext) => void;
 
+/**
+ * Nao existe mais um nivel que substitua o objeto por um retangulo solido.
+ *
+ * Existia ate 08/08/2026: abaixo de 12% de zoom todo objeto virava um bloco da
+ * cor dominante, e era o que fazia as imagens e as formas do quadro dele
+ * aparecerem como quadrados coloridos ao afastar. Ele pediu que sumisse,
+ * aceitando o custo -- ver o B12 no BUGS.md, com o antes e o depois medidos.
+ * O unico corte que ficou e a simplificacao da polilinha, que preserva o traco.
+ */
 export function lodForZoom(zoom: number): LodLevel {
-  if (zoom < 0.12) return 'blocks';
   if (zoom < 0.4) return 'simplified';
   return 'full';
 }
-
-/**
- * Altura de fonte em pixels fisicos da tela.
- *
- * O zoom da camera sozinho nao responde se o texto da para ler: um objeto
- * carrega a propria escala, e num resumo importado ela varia bastante -- os
- * titulos chegam a 34 unidades de mundo enquanto o corpo fica em 12,5. A 22% de
- * zoom isso e a diferenca entre 7,5px (legivel) e 2,8px (mancha).
- */
-export function glyphPixels(fontSize: number, p: PaintContext): number {
-  return fontSize * p.objectScale * p.deviceScale;
-}
-
-/**
- * Abaixo disto o glifo nao forma letra: vira mancha de pixels, e a barra cinza
- * comunica melhor "aqui tem texto" por uma fracao do custo. Acima, desenhar de
- * verdade e o que permite reconhecer um titulo com o quadro todo na tela.
- */
-export const MIN_GLYPH_PX = 6;

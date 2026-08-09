@@ -3,8 +3,9 @@ import type { BoardObject, ObjectId } from '@shared/model/types';
 import type { Camera } from '../core/Camera';
 import type { Document } from '../core/Document';
 import { paintGrid } from './Grid';
-import { paintBlocks, paintObject } from './painters';
-import { type LodLevel, lodForZoom } from './painters/types';
+import { paintObject } from './painters';
+import { RASTER_PAD, RasterCache, bucketScale, contextoDeRaster } from './rasterCache';
+import { type LodLevel, type PaintContext, lodForZoom } from './painters/types';
 import { createColorAdapter, type ColorAdapter } from './colorAdapt';
 
 export interface RenderStats {
@@ -46,6 +47,11 @@ export class Renderer {
   #cssH = 0;
   #overlayHasContent = false;
 
+  /**
+   * Objetos ja rasterizados. Ver rasterCache.ts para a medicao que o justifica.
+   */
+  readonly #raster = new RasterCache();
+
   #theme: RenderTheme = { boardBg: '#ffffff', gridColor: '#d7dce5' };
   #adapt: ColorAdapter = (c) => c;
 
@@ -57,6 +63,9 @@ export class Renderer {
   set theme(t: RenderTheme) {
     this.#theme = t;
     this.#adapt = createColorAdapter(t.boardBg);
+    // Os bitmaps guardam a cor JA adaptada: mantidos, o tema novo mostraria a
+    // cor do tema velho.
+    this.#raster.clear();
   }
 
   /**
@@ -150,46 +159,20 @@ export class Renderer {
     const minWorldSize = 0.5 / zoom;
     let drawn = 0;
 
-    if (lod === 'blocks') {
-      // Caminho em lote: agrupa por cor e emite um path por cor.
-      const big: BoardObject[] = [];
-      for (let i = 0; i < objects.length; i++) {
-        const b = objects[i]!.bbox;
-        if (b.w >= minWorldSize || b.h >= minWorldSize) big.push(objects[i]!);
-      }
-      drawn = paintBlocks(big, ctx, this.#adapt);
-      return {
-        total: this.doc.size,
-        visible: objects.length,
-        drawn,
-        renderMs: performance.now() - t0,
-        lod,
-      };
-    }
-
+    // Um caminho so, para qualquer zoom. Ate 08/08/2026 havia um atalho aqui:
+    // abaixo de 12% de zoom todo objeto virava um retangulo solido da cor
+    // dominante, desenhado em lote. Era barato e mentia -- imagem e forma
+    // apareciam como quadrados coloridos, e foi assim que ele viu o quadro ao
+    // afastar. Saiu a pedido dele, com o custo aceito e medido (B12).
     for (let i = 0; i < objects.length; i++) {
       const obj = objects[i]!;
       if (obj.id === this.hiddenId) continue;
       const b = obj.bbox;
+      // Meio pixel de tela e limite FISICO, e nao politica de detalhe: nao ha
+      // como mostrar coisa alguma num objeto menor que um pixel.
       if (b.w < minWorldSize && b.h < minWorldSize) continue;
 
-      const t = obj.transform;
-      ctx.save();
-      ctx.translate(t.x, t.y);
-      if (t.rotation !== 0) ctx.rotate(t.rotation);
-      if (t.scaleX !== 1 || t.scaleY !== 1) ctx.scale(t.scaleX, t.scaleY);
-      paintObject(obj, {
-        ctx,
-        zoom,
-        lod,
-        // `s` ja e zoom * dpr: o painter precisa dele para saber de que tamanho
-        // uma unidade de mundo sai em pixel fisico.
-        deviceScale: s,
-        objectScale: Math.abs(t.scaleY),
-        adapt: this.#adapt,
-        image: this.resolveImage,
-      });
-      ctx.restore();
+      this.#paintOne(obj, ctx, zoom, lod, s);
       drawn++;
     }
 
@@ -200,6 +183,66 @@ export class Renderer {
       renderMs: performance.now() - t0,
       lod,
     };
+  }
+
+  /**
+   * Desenha UM objeto com a sua transformacao aplicada.
+   *
+   * Existe como metodo porque a miniatura do lobby desenha pelo mesmo caminho:
+   * dois trechos iguais lado a lado divergem na primeira mudanca, e ai o quadro
+   * mostraria uma coisa e a miniatura dele outra.
+   */
+  #paintOne(
+    obj: BoardObject,
+    ctx: CanvasRenderingContext2D,
+    zoom: number,
+    lod: LodLevel,
+    s: number,
+  ): void {
+    const t = obj.transform;
+    ctx.save();
+    ctx.translate(t.x, t.y);
+    if (t.rotation !== 0) ctx.rotate(t.rotation);
+    if (t.scaleX !== 1 || t.scaleY !== 1) ctx.scale(t.scaleX, t.scaleY);
+
+    const p: PaintContext = {
+      ctx,
+      zoom,
+      lod,
+      // `s` ja e zoom * dpr: o painter precisa dele para saber de que tamanho
+      // uma unidade de mundo sai em pixel fisico.
+      deviceScale: s,
+      objectScale: Math.abs(t.scaleY),
+      adapt: this.#adapt,
+      image: this.resolveImage,
+    };
+
+    // Texto e post-it passam pelo cache: sao os unicos cujo desenho envolve
+    // medir e montar texto, que e o custo que domina com muitos objetos na tela.
+    if (obj.type === 'text' || obj.type === 'note') {
+      const escala = bucketScale(s * Math.abs(t.scaleY));
+      const bitmap = this.#raster.obter(
+        `${obj.id}:${obj.rev}:${escala}`,
+        obj.w,
+        obj.h,
+        escala,
+        (rctx) => paintObject(obj, contextoDeRaster(rctx, escala, p)),
+      );
+      if (bitmap) {
+        ctx.drawImage(
+          bitmap,
+          -RASTER_PAD,
+          -RASTER_PAD,
+          obj.w + RASTER_PAD * 2,
+          obj.h + RASTER_PAD * 2,
+        );
+        ctx.restore();
+        return;
+      }
+    }
+
+    paintObject(obj, p);
+    ctx.restore();
   }
 
   /** Prepara o overlay para um novo frame de interacao. */

@@ -1,5 +1,5 @@
 import type { AlertLevel, NoteObject, TextObject } from '@shared/model/types';
-import { glyphPixels, MIN_GLYPH_PX, type PaintContext } from './types';
+import { type PaintContext } from './types';
 import { readableTextOn } from '../colorAdapt';
 import {
   BULLET,
@@ -52,16 +52,18 @@ export function paintText(o: TextObject, p: PaintContext): void {
   const { ctx } = p;
   ctx.globalAlpha = o.opacity;
 
-  // A decisao e por OBJETO, e nao pelo zoom da camera: no mesmo quadro e no
-  // mesmo zoom, um titulo pode estar legivel enquanto o corpo do texto nao
-  // esta. Decidir pela camera trataria os dois igual e apagaria justamente os
-  // titulos, que sao o que se procura ao olhar o resumo de longe.
-  if (glyphPixels(o.fontSize, p) < MIN_GLYPH_PX) {
-    paintTextPlaceholder(ctx, o.w, o.h, o.fontSize, o.lineHeight, p.adapt(o.color));
-    ctx.globalAlpha = 1;
-    return;
-  }
-
+  // Texto e SEMPRE desenhado como texto, em qualquer zoom.
+  //
+  // Ate 08/08/2026 havia aqui um corte por legibilidade: abaixo de 6px de glifo
+  // o texto virava uma barra cinza, porque glifo de 3px e mancha e custa caro
+  // para desenhar a cada frame. Ele pediu o contrario, e a razao e boa: num
+  // resumo, ver ONDE estao as palavras nao substitui ver QUAIS sao -- e afastar
+  // o zoom e justamente como se procura algo no quadro inteiro. A troca foi
+  // aceita de olhos abertos: "mesmo que isso signifique consumir mais
+  // processamento ou uso de GPU". Ver o B12 no BUGS.md, com o custo medido.
+  //
+  // Isso conserta a exportacao de graca: o PNG saia com barra cinza no lugar do
+  // texto porque o painter e o mesmo, e a escala do arquivo entrava nesta conta.
   paintLayout(layoutOf(o), 0, 0, o.h, p.adapt(o.color), o.fontFamily, o.fontSize, p);
   ctx.globalAlpha = 1;
 }
@@ -85,13 +87,9 @@ export function paintNote(o: NoteObject, p: PaintContext): void {
     ctx.fill();
   }
 
-  // Mesmo criterio do texto solto: o post-it desenha o conteudo quando ele cabe
-  // como letra, e para no fundo colorido quando nao cabe.
-  if (glyphPixels(NOTE_FONT_SIZE, p) < MIN_GLYPH_PX) {
-    ctx.globalAlpha = 1;
-    return;
-  }
-
+  // Mesmo criterio do texto solto, e pelo mesmo motivo: o conteudo do post-it e
+  // desenhado sempre. Era este corte que fazia o post-it sair como um retangulo
+  // colorido VAZIO no PNG exportado.
   const inset = noteInset(o);
   const layout = layoutCached(`${o.id}:${o.rev}`, o.content, noteStyle(o));
   // O texto acompanha o fundo: num post-it escuro, texto preto sumiria. Nao
@@ -186,22 +184,4 @@ function paintAlertIcon(ctx: CanvasRenderingContext2D, o: NoteObject): void {
   ctx.fillText(icon, o.w - 6, o.h - 6);
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-}
-
-function paintTextPlaceholder(
-  ctx: CanvasRenderingContext2D,
-  w: number,
-  h: number,
-  fontSize: number,
-  lineHeight: number,
-  color: string,
-): void {
-  ctx.fillStyle = color;
-  ctx.globalAlpha *= 0.45;
-  const lineH = fontSize * lineHeight;
-  for (let y = 0; y + fontSize <= h; y += lineH) {
-    // Ultima barra mais curta imita o fim de paragrafo.
-    const barW = y + lineH * 2 > h ? w * 0.6 : w;
-    ctx.fillRect(0, y + fontSize * 0.15, barW, fontSize * 0.62);
-  }
 }

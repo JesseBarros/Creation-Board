@@ -14,8 +14,12 @@ tratados como três.
 
 **Ainda em aberto:**
 
+- **B13** — `alto`. Os **três botões de resolução da exportação produzem o mesmo arquivo**
+  num quadro grande: o teto de 64 MP engole a escolha, calado. É a causa da ilegibilidade
+  que ele relatou no PNG.
 - **B9** — o quadro **crava em 60 fps ao arrastar com o botão direito**, e a meta dele é
-  144. Nasceu do reteste do B5 em 08/08/2026.
+  144. Nasceu do reteste do B5 em 08/08/2026. **Em tensão com o B12**: desenhar todo texto
+  sempre custou fps com o quadro inteiro na tela.
 - **B10** — o custo por frame **cresce com o zoom**. Medido por ele no `F3`; não sentido no
   uso.
 
@@ -698,6 +702,26 @@ isso passa quando a máquina está a 60 Hz e reprova quando está a 120. O teto 
 frouxo nem apertado — a conta é que está contaminada. Isso é da própria verificação e vale
 consertar junto com o B9.
 
+**Em 08/08/2026 o painel foi pego medindo a coisa errada, e isso reenquadra o bug.** Ele
+relatou, no quadro real: *"quanto mais rápido eu movo, maior o fps, chegando a um teto
+próximo a 66; quando movo um pouco fica uns 28-30; parado fica ocioso"*.
+
+**Custo não se comporta assim.** Se desenhar fosse o gargalo, mover mais rápido daria menos
+fps, e não mais. O que o contador mede é o **intervalo entre redesenhos**, e o `Scheduler`
+só redesenha quando algo muda: mover devagar produz menos mudanças de posição, logo menos
+frames, logo um número menor. Ele lê "o app está lento"; o painel está respondendo "a tela
+mudou 30 vezes neste segundo".
+
+O número que importa estava na mesma captura: **render de 6,40 ms com 1.049 objetos
+desenhados a 2% de zoom** — daria 156 fps se houvesse o que desenhar.
+
+**Consequência para este bug:** o teto de 60 (e agora 66) é quase certamente a **taxa de
+entrega dos eventos de ponteiro**, e não um teto de desenho. A medição que separa isso está
+na tabela de suspeitos acima, e continua valendo.
+
+**Consequência para o painel:** o `F3` deve destacar o **custo do frame**, com o fps como
+informação secundária e com nome honesto ("atualizações por segundo"). Item da Fase 9.
+
 **Um detalhe que vale corrigir junto, se a meta virar 144:** o próprio painel do `F3` trata
 **60 como alvo** — pinta o número de verde a partir de 55 fps (`DebugPanel.ts:111`). Com a
 meta em 144, o medidor está dizendo "ótimo" justamente no número que incomoda.
@@ -804,6 +828,101 @@ B8.
 **Nada foi perdido:** os quatro quadros de `C:\` estão íntegros e legíveis, e as duas cópias
 de CURSO 5 do *fallback* também. O que falta é decidir qual das duas CURSO 5 vale, e juntar
 tudo numa pasta só.
+
+### B12 — Texto vira barra cinza: no PNG exportado e na tela afastada
+`corrigido` · `alto` · 08/08/2026
+
+Relato dele, exportando o `Cybersec resumão` para PNG: *"os textos dentro das notas não
+ficam visíveis, eles não aparecem"* e *"alguns textos ficaram quebrados ainda, sem zoom, não
+visível"*. A captura mostra **barras cinzas no lugar das palavras**.
+
+**Causa:** o painter de texto tinha um corte de legibilidade — abaixo de **6px de glifo**
+(`MIN_GLYPH_PX`), o texto virava barra e o conteúdo do post-it não era desenhado. O corte
+faz sentido para a tela e **vazava para o arquivo**, porque exportar reusa os painters (e
+reusar é a decisão certa: dois renderizadores divergiriam). O comentário do `exportBoard`
+até dizia *"sempre em detalhe cheio"* e passava `lod: 'full'` — mas o corte do glifo é um
+**segundo portão**, que não olha o LOD e sim `fontSize × escala do objeto × escala do
+arquivo`.
+
+**Medido no quadro dele:**
+
+| | |
+|---|---|
+| Área real do quadro | **82.967 × 19.274** unidades |
+| Escala usada pedindo 1x, 2x **ou** 3x | **0,199x nos três casos** (ver o B13) |
+| Textos abaixo do corte de 6px | **126 de 642** |
+| Post-its | **todos** sem texto |
+
+**A correção foi além do export, a pedido dele:** *"não sou adepto a essas barras quando
+tira o zoom do texto, não quero que elas existam no aplicativo mesmo que isso signifique
+consumir mais processamento ou uso de GPU; quero que seja possível visualizar mesmo que
+minimamente, sem zoom nenhum ou com zoom negativo, todas as palavras"*.
+
+E a razão dele é boa: num resumo, saber **onde** estão as palavras não substitui saber
+**quais** são — e afastar o zoom é justamente como se procura algo no quadro inteiro.
+
+**A correção saiu em duas rodadas, e a primeira foi curta demais.** Eu isentei texto e
+post-it e deixei o resto no atalho; ele voltou com uma captura: *"as prints presentes no
+quadro e alguns elementos gráficos desenhados viram quadrados e retângulos de cores fixas"*.
+Estava certo — imagem e forma continuavam virando bloco.
+
+**O que mudou, no fim:**
+
+1. O corte por glifo **deixou de existir** — a constante e o desenho da barra saíram do
+   código, para ninguém reintroduzir.
+2. O nível de LOD **`blocks` foi removido inteiro**. Ele trocava *todo* objeto por um
+   retângulo da cor dominante abaixo de 12% de zoom, e era barato justamente porque mentia.
+   Saiu do renderer, da miniatura do lobby e do tipo `LodLevel`.
+3. Sobrou um único nível reduzido, o `simplified`, e ele **não troca o objeto por outra
+   coisa**: usa a polilinha simplificada do traço, que continua sendo o traço.
+
+O único limite que ficou é físico: objeto menor que meio pixel de tela não é desenhado,
+porque não há pixel onde mostrá-lo.
+
+**O preço, medido e não estimado** (`QB_BENCH=4000`):
+
+| Fase | Antes | Só texto | Sem `blocks` |
+|---|---|---|---|
+| zoom 100% | 144 fps | 144 fps | **144 fps** |
+| zoom 40% | 144 fps | 144 fps | **144 fps** |
+| ajustado à tela (4.000 visíveis) | ~108 fps | 45 fps | **23,3 fps** (frame 43 ms) |
+
+**Navegar e desenhar não mudaram nada.** O custo é inteiro do caso "quadro todo na tela" —
+que é exatamente o que ele quis comprar, e disse isso antes de ver a conta. Vale lembrar que
+4.000 objetos é quase quatro vezes o resumo real dele (1.063).
+
+**Isto entra em tensão direta com o B9** (meta de 144 fps), e as duas coisas não são
+conciliáveis desenhando tudo do zero a cada frame. A saída que não obriga a escolher é
+**cachear o objeto rasterizado**: desenhar cada caixa de texto e cada imagem uma vez para um
+bitmap e reaproveitar enquanto o objeto não muda — que é como um editor de verdade resolve
+isto. Fica para a Fase 9, e é o item que destrava o B9 junto.
+
+### B13 — Os três botões de resolução da exportação não fazem nada em quadro grande
+`aberto` · `alto` · 08/08/2026
+
+Relato dele: *"a qualidade é um problema, dificulta ou impossibilita a leitura de textos
+muito pequenos"*.
+
+**Não é impressão, e a causa é diferente da do B12.** A exportação tem um teto de **64
+megapixels** — acima dele a escala é reduzida para o canvas não estourar. No quadro dele,
+que tem **82.967 × 19.274** unidades, o teto engole qualquer escolha:
+
+| Pedido | Usado | Resultado |
+|---|---|---|
+| 1x | **0,199x** | 16.515 × 3.837 px |
+| 2x | **0,199x** | 16.515 × 3.837 px |
+| 3x | **0,199x** | 16.515 × 3.837 px |
+
+Ou seja: **os três botões produzem o mesmo arquivo**, e ninguém avisa. Um controle que não
+faz nada é pior que um controle ausente — ele promete.
+
+**O teto em si está certo** (o navegador não aloca um canvas maior), mas ele é um limite de
+*uma imagem só*. A saída conhecida é **exportar em ladrilhos e costurar**: renderizar o
+quadro em pedaços de até 64 MP e juntá-los no arquivo final. Com isso o 2x volta a
+significar 2x, e o resumo fica legível.
+
+**Enquanto isso não existe, o mínimo honesto é avisar:** mostrar no diálogo o tamanho final
+em pixels e a escala que será realmente usada, antes de exportar.
 
 ### B10 — O custo por frame cresce com o zoom
 `a investigar` · `baixo` · 08/08/2026
