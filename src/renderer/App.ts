@@ -14,7 +14,7 @@ import { ALERT_ICONS, DrawStyle } from './tools/DrawStyle';
 import { hasStyle, type EditableObject, type ToolContext, type ToolId } from './tools/types';
 import { TextEditor } from './features/text/TextEditor';
 import { PatchObjects, RestyleNotes, type NoteStyle } from './commands';
-import type { ObjectPatch } from './commands/patch';
+import { snapshotPatch, type ObjectPatch } from './commands/patch';
 import type { Rect } from '@shared/geometry/rect';
 import { contentHeight, styleOf } from './render/text/layout';
 import type { TextObject } from '@shared/model/types';
@@ -36,6 +36,7 @@ import { ViewportBar } from './ui/ViewportBar';
 import { ContextMenu, type MenuEntry } from './ui/ContextMenu';
 import { Lobby } from './ui/Lobby';
 import { ShortcutsModal } from './ui/ShortcutsModal';
+import { LayersPanel } from './ui/LayersPanel';
 import {
   confirmDialog,
   exportDialog,
@@ -140,6 +141,7 @@ export class App {
   #help: ShortcutsModal;
   #menu: ContextMenu;
   #search: SearchBar;
+  #layers: LayersPanel;
 
   #boardView: HTMLElement;
   #host: HTMLElement;
@@ -194,6 +196,7 @@ export class App {
       toggleGrid: () => this.toggleGrid(),
       toggleSnap: () => this.toggleSnapToGrid(),
       toggleRulers: () => this.toggleRulers(),
+      toggleLayers: () => this.toggleLayers(),
       toggleTheme: () => this.toggleTheme(),
       save: () => void this.save(),
       exportBoard: () => void this.exportBoard(),
@@ -229,6 +232,24 @@ export class App {
       close: () => this.closeSearch(),
     });
     this.#boardView.append(this.#search.el);
+
+    this.#layers = new LayersPanel({
+      // Clicar no nome seleciona MESMO travado: o painel e a unica porta de
+      // volta para um objeto que o cadeado tirou do alcance do clique.
+      select: (id, add) => {
+        if (add) this.selection.toggle(id);
+        else this.selection.set([id]);
+        this.#scheduler.invalidate();
+      },
+      setLocked: (id, locked) => this.#patchOne(id, { locked }, locked ? 'Travar' : 'Destravar'),
+      setHidden: (id, hidden) => this.#patchOne(id, { hidden }, hidden ? 'Esconder' : 'Mostrar'),
+      reorder: (id, dir) => {
+        this.selection.set([id]);
+        void reorderSelection(this.#toolCtx, dir === 'up' ? 'front' : 'back');
+      },
+      close: () => this.toggleLayers(),
+    });
+    this.#boardView.append(this.#layers.root);
 
     this.#debug = new DebugPanel({
       seed: (n) => void this.seed(n),
@@ -319,10 +340,14 @@ export class App {
       // aqui, o quadro de manipulacao continuaria em volta de objetos que ja
       // sairam do documento.
       this.selection.prune(this.doc);
+      this.#refreshLayers();
       this.#scheduler.invalidate();
     });
     this.doc.on('prefs', () => this.#scheduler.invalidate());
-    this.selection.onChange(() => this.#scheduler.invalidate());
+    this.selection.onChange(() => {
+      this.#refreshLayers();
+      this.#scheduler.invalidate();
+    });
     this.history.onChange(() => this.#bar.setHistory(this.history.canUndo, this.history.canRedo));
 
     this.#observeSize();
@@ -1318,6 +1343,51 @@ export class App {
     this.#scheduler.invalidate();
   }
 
+  // --------------------------------------------------------------- camadas
+
+  /** Abre ou fecha o painel de camadas (M8). */
+  toggleLayers(): void {
+    this.#layers.toggle();
+    this.#bar.setLayers(this.#layers.open);
+    this.#refreshLayers();
+  }
+
+  get layersOpen(): boolean {
+    return this.#layers.open;
+  }
+
+  /**
+   * Realimenta o painel com o que esta no viewport.
+   *
+   * Sai barato quando o painel esta fechado, e isso importa: este metodo e
+   * chamado a cada mudanca de documento e de selecao, que sao os eventos mais
+   * frequentes do app.
+   */
+  #refreshLayers(): void {
+    if (!this.#layers.open) return;
+    const view = this.camera.viewportRect(this.#renderer.viewportW, this.#renderer.viewportH);
+    this.#layers.render(this.doc.queryVisible(view), new Set(this.selection.ids()));
+  }
+
+  /**
+   * Muda um campo de um objeto so, com undo.
+   *
+   * Passa pelo `PatchObjects` como qualquer outra edicao -- ver a decisao 18 do
+   * RETOMAR. Travar e esconder nao merecem comando proprio: sao mudanca de
+   * campo, e o comando generico ja existe.
+   */
+  #patchOne(id: string, patch: ObjectPatch, rotulo: string): void {
+    const obj = this.doc.get(id);
+    if (!obj) return;
+    const antes = new Map([[id, snapshotPatch(obj, patch)]]);
+    const depois = new Map([[id, patch]]);
+    this.history.push(new PatchObjects(this.doc, antes, depois, rotulo));
+    this.history.seal();
+    this.#markDirty();
+    this.#refreshLayers();
+    this.#scheduler.invalidate();
+  }
+
   /** Troca a ferramenta ativa, pelo botao da barra ou pelo atalho. */
   setTool(id: ToolId): void {
     this.#tools.setActive(id);
@@ -1722,6 +1792,7 @@ export class App {
       deselect: () => this.#escape(),
       bringToFront: () => void reorderSelection(this.#toolCtx, 'front'),
       sendToBack: () => void reorderSelection(this.#toolCtx, 'back'),
+      layers: () => this.toggleLayers(),
       toolSelect: () => this.setTool('select'),
       toolPen: () => this.setTool('pen'),
       toolHighlighter: () => this.setTool('highlighter'),

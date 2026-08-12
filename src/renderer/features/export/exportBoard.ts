@@ -241,6 +241,8 @@ function inflate(r: Rect, by: number): Rect {
 
 /** Objetos a desenhar, na ordem de camada. */
 function objectsToExport(doc: Document, ids: readonly string[], box: Rect): BoardObject[] {
+  // `queryVisible` ja descarta os escondidos, entao o olho do painel de camadas
+  // (M8) vale para o arquivo tambem: o que se exporta e o que se ve.
   const visible = doc.queryVisible(box);
   if (ids.length === 0) return visible;
   const wanted = new Set(ids);

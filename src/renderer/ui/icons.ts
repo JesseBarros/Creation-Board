@@ -46,7 +46,15 @@ export type IconName =
   | 'preencher'
   // barra lateral: modos da borracha
   | 'apagarPeca'
-  | 'apagarTraco';
+  | 'apagarTraco'
+  // painel de camadas (M8)
+  | 'camadas'
+  | 'olho'
+  | 'olhoFechado'
+  | 'cadeado'
+  | 'cadeadoAberto'
+  | 'subir'
+  | 'descer';
 
 /** Traços de cada ícone, em coordenadas de uma caixa 24x24. */
 const PATHS: Record<IconName, string[]> = {
@@ -96,6 +104,18 @@ const PATHS: Record<IconName, string[]> = {
   apagarPeca: ['M3 12h4', 'M17 12h4', 'M15.5 12a3.5 3.5 0 11-7 0 3.5 3.5 0 017 0z'],
   // Apagar o traco inteiro: a linha toda riscada.
   apagarTraco: ['M4 12h16', 'M8.5 7.5l7 9', 'M15.5 7.5l-7 9'],
+
+  // Painel de camadas. Folhas empilhadas, e nao um "L" de lista: o que o painel
+  // mostra e uma PILHA, e a ordem dela e o assunto.
+  camadas: ['M12 4l8 4.5-8 4.5-8-4.5z', 'M4 13l8 4.5 8-4.5'],
+  olho: ['M2.5 12S6 6.5 12 6.5 21.5 12 21.5 12 18 17.5 12 17.5 2.5 12 2.5 12z', 'M14.5 12a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z'],
+  // O olho fechado e o MESMO olho com um corte por cima, e nao outro desenho:
+  // ligado e desligado tem de se reconhecer como o mesmo controle.
+  olhoFechado: ['M2.5 12S6 6.5 12 6.5c1.6 0 3 .4 4.2 1M21.5 12s-1.4 2.2-3.8 3.8', 'M4 4l16 16'],
+  cadeado: ['M6 11h12v9H6z', 'M9 11V8a3 3 0 016 0v3'],
+  cadeadoAberto: ['M6 11h12v9H6z', 'M9 11V8a3 3 0 015.7-1.3'],
+  subir: ['M12 19V6', 'M7 11l5-5 5 5'],
+  descer: ['M12 5v13', 'M7 13l5 5 5-5'],
 };
 
 /** Ícones cujo segundo traço é preenchido, e não contornado. */

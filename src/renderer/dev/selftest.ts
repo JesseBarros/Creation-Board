@@ -1,4 +1,4 @@
-import type { Vec2 } from '@shared/geometry/vec2';
+﻿import type { Vec2 } from '@shared/geometry/vec2';
 import { computeBbox } from '@shared/model/bbox';
 import { keyBetween } from '@shared/model/fractional';
 import type {
@@ -306,6 +306,10 @@ export async function runSelfTest(host: HTMLElement, app: App): Promise<void> {
     // trecho com o pedaco marcado e o contorno roxo em volta do objeto sao
     // justamente o que numero nenhum verifica.
     showSearchForShot(app);
+    // O painel de camadas aberto (M8): a foto e a unica forma de conferir que os
+    // quatro botoes cabem na linha sem serrilhar, que o nome longo corta com
+    // reticencias e que o material acrilico combina com as outras barras.
+    if (!app.layersOpen) app.toggleLayers();
     // O `reset()` dos blocos mexe na camera direto, sem avisar a barra, entao o
     // rotulo de zoom fica com o valor do ultimo `fitToContent`. Passar pelo
     // caminho normal acerta o numero -- a foto nao pode mentir sobre o estado.
@@ -2058,10 +2062,80 @@ async function runHudTests(app: App, check: Check, reset: () => void): Promise<v
       `regua=${reguaDepois !== reguaAntes}`,
   );
 
+  // --- M8: o painel de camadas
+  //
+  // O cadeado e o `hidden` ja existiam no modelo desde a Fase 1/3; o que este
+  // painel entrega e ENXERGAR e ALCANCAR. As verificacoes seguem esse recorte:
+  // nao re-testam travar (ja coberto), testam que o painel liga o controle.
+  doc.clear();
+  doc.add(scene());
+  app.selection.clear();
+  app.history.clear();
+
+  const camadasBtn = barButton('camadas');
+  camadasBtn?.click();
+  const linhasDoPainel = (): HTMLElement[] => [
+    ...document.querySelectorAll<HTMLElement>('.qb-layers__row'),
+  ];
+  const abriu = !document.querySelector<HTMLElement>('.qb-layers')?.hidden;
+  check(
+    'o botao de camadas abre o painel, e ele lista o que esta no quadro',
+    abriu && linhasDoPainel().length === doc.size,
+    `aberto=${abriu} linhas=${linhasDoPainel().length} objetos=${doc.size}`,
+  );
+
+  // --- o olho esconde de verdade, e o Ctrl+Z devolve
+  //
+  // "Esconder" so vale se o objeto sair do desenho. `queryVisible` e o caminho
+  // por onde o renderer e a exportacao pedem os objetos -- se ele ainda
+  // aparecer ali, o olho e enfeite.
+  const alvoId = linhasDoPainel()[0]?.dataset['id'] ?? '';
+  const noViewport = (): number =>
+    doc.queryVisible({ x: -5000, y: -5000, w: 20_000, h: 20_000 }).length;
+  const antesDeEsconder = noViewport();
+  linhasDoPainel()[0]?.querySelector<HTMLButtonElement>('[aria-label="Esconder"]')?.click();
+  const depoisDeEsconder = noViewport();
+  key('z', { ctrl: true });
+  check(
+    'o olho do painel esconde o objeto do desenho, e o Ctrl+Z devolve',
+    depoisDeEsconder === antesDeEsconder - 1 && noViewport() === antesDeEsconder,
+    `no viewport: antes=${antesDeEsconder} escondido=${depoisDeEsconder} ` +
+      `depois do Ctrl+Z=${noViewport()} esperado=(${antesDeEsconder}, ${antesDeEsconder - 1}, ${antesDeEsconder})`,
+  );
+
+  // --- o cadeado do painel e a mesma trava que o hitTest ja respeita
+  linhasDoPainel()
+    .find((l) => l.dataset['id'] === alvoId)
+    ?.querySelector<HTMLButtonElement>('[aria-label="Travar"]')
+    ?.click();
+  const travou = doc.get(alvoId)?.locked === true;
+
+  // --- e o painel continua alcancando o que travou
+  //
+  // Esta e a verificacao que da sentido ao painel: travar sem uma lista seria
+  // uma porta que fecha por fora. O clique no NOME seleciona mesmo travado, que
+  // e o unico caminho de volta.
+  app.selection.clear();
+  linhasDoPainel()
+    .find((l) => l.dataset['id'] === alvoId)
+    ?.querySelector<HTMLButtonElement>('.qb-layers__name')
+    ?.click();
+  check(
+    'o cadeado do painel trava, e o painel continua sendo a porta de volta',
+    travou && app.selection.ids().includes(alvoId),
+    `travado=${travou} selecionado pelo painel=${app.selection.ids().includes(alvoId)} ` +
+      `(travado nao responde a clique NO QUADRO; o painel e o unico caminho)`,
+  );
+
+  camadasBtn?.click();
+  app.selection.clear();
+  doc.clear();
+  reset();
+
   // --- a barra virou icones, mas continua nomeada e alcancavel
   // Sem texto visivel, o nome do botao vive no `aria-label` -- e e ele que um
   // leitor de tela anuncia. Um icone sem nome e um botao mudo.
-  const acoes = ['voltar', 'salvar', 'exportar', 'desfazer', 'refazer', 'grade', 'ima', 'regua', 'ajustar', 'tema', 'comandos', 'zoom-menos', 'zoom-mais'];
+  const acoes = ['voltar', 'salvar', 'exportar', 'desfazer', 'refazer', 'grade', 'ima', 'regua', 'camadas', 'ajustar', 'tema', 'comandos', 'zoom-menos', 'zoom-mais'];
   const faltando = acoes.filter((a) => barButton(a) === null);
   const semNome = acoes.filter((a) => {
     const b = barButton(a);

@@ -8,6 +8,7 @@ export interface ViewportBarActions {
   toggleGrid(): void;
   toggleSnap(): void;
   toggleRulers(): void;
+  toggleLayers(): void;
   toggleTheme(): void;
   save(): void;
   exportBoard(): void;
@@ -43,6 +44,7 @@ export class ViewportBar {
   #gridBtn: HTMLButtonElement;
   #snapBtn: HTMLButtonElement;
   #rulerBtn: HTMLButtonElement;
+  #layersBtn: HTMLButtonElement;
   #nameLabel: HTMLElement;
   #undoBtn: HTMLButtonElement;
   #redoBtn: HTMLButtonElement;
@@ -85,6 +87,13 @@ export class ViewportBar {
     );
     const fitBtn = iconButton('ajustar', 'ajustar', 'Ajustar a tela (Ctrl+1)', () =>
       this.actions.fitToContent(),
+    );
+    // No grupo de "o que vejo", junto com grade, ima e regua: o painel de
+    // camadas responde "o que esta no quadro", que e a mesma familia. Botao, e
+    // nao so o atalho -- recurso sem botao e recurso que ninguem descobre, que
+    // foi a licao do M1.
+    this.#layersBtn = iconButton('camadas', 'camadas', 'Painel de camadas (C)', () =>
+      this.actions.toggleLayers(),
     );
     const themeBtn = iconButton('tema', 'tema', 'Alternar tema claro/escuro', () =>
       this.actions.toggleTheme(),
@@ -132,7 +141,7 @@ export class ViewportBar {
       divider(),
       group(this.#undoBtn, this.#redoBtn),
       divider(),
-      group(this.#gridBtn, this.#snapBtn, this.#rulerBtn, fitBtn),
+      group(this.#gridBtn, this.#snapBtn, this.#rulerBtn, this.#layersBtn, fitBtn),
       divider(),
       group(themeBtn, helpBtn),
       divider(),
@@ -159,6 +168,10 @@ export class ViewportBar {
 
   setRulers(on: boolean): void {
     this.#rulerBtn.classList.toggle('qb-bar__btn--active', on);
+  }
+
+  setLayers(on: boolean): void {
+    this.#layersBtn.classList.toggle('qb-bar__btn--active', on);
   }
 
   setHistory(canUndo: boolean, canRedo: boolean): void {

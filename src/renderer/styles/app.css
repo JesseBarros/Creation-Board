@@ -500,6 +500,160 @@
 /* ----------------------------------------------------------------- busca */
 
 /*
+  Painel de camadas (M8), na lateral DIREITA.
+
+  Do lado oposto a barra de ferramentas de proposito: a esquerda e de onde se
+  escolhe o que fazer, a direita e onde se olha o que ja existe. Sobrepor os
+  dois faria o painel cobrir justamente os botoes que se acabou de usar.
+
+  Mesmo material das outras barras -- translucido, desfocado, arredondado.
+*/
+.qb-layers {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  width: 258px;
+  /* Nunca mais alto que a janela: o quadro dele tem centenas de objetos, e sem
+     teto o painel sairia pela borda de baixo. */
+  max-height: min(560px, calc(100% - 120px));
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  z-index: 4;
+  overflow: hidden;
+}
+
+.qb-layers__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 8px 8px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.qb-layers__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.qb-layers__count {
+  flex: 1;
+  font-size: 11.5px;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.qb-layers__close {
+  border: none;
+  background: transparent;
+  color: var(--fg-muted);
+  font-size: 18px;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.qb-layers__close:hover {
+  background: color-mix(in srgb, var(--fg) 10%, transparent);
+  color: var(--fg);
+}
+
+.qb-layers__list {
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.qb-layers__row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: 8px;
+  padding-right: 2px;
+}
+
+.qb-layers__row:hover {
+  background: color-mix(in srgb, var(--fg) 7%, transparent);
+}
+
+.qb-layers__row--active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.qb-layers__name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  padding: 7px 4px 7px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* O nome e a unica parte elastica da linha: com muitos objetos, os quatro
+   botoes precisam ficar sempre no mesmo lugar, senao a fila deles serrilha. */
+.qb-layers__name > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qb-layers__name > svg {
+  flex: none;
+  color: var(--fg-muted);
+}
+
+.qb-layers__actions {
+  display: flex;
+  flex: none;
+  gap: 1px;
+}
+
+.qb-layers__btn {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  color: var(--fg-muted);
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.qb-layers__btn:hover {
+  background: color-mix(in srgb, var(--fg) 12%, transparent);
+  color: var(--fg);
+}
+
+/* Ligado = o estado que MUDA o quadro (escondido, travado). Ele fica aceso para
+   a linha denunciar sozinha por que aquele objeto nao responde ao clique. */
+.qb-layers__btn--on {
+  color: var(--accent);
+}
+
+.qb-layers__empty {
+  margin: 0;
+  padding: 18px 14px 22px;
+  color: var(--fg-muted);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+/*
   Painel flutuante no topo, e nao um modal: procurar uma palavra e uma acao
   SOBRE o quadro, e escurecer o fundo esconderia justamente o que se procura.
   Estreito pelo mesmo motivo -- o resultado precisa de tela.
