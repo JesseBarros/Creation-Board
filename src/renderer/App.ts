@@ -37,6 +37,7 @@ import { ContextMenu, type MenuEntry } from './ui/ContextMenu';
 import { Lobby } from './ui/Lobby';
 import { ShortcutsModal } from './ui/ShortcutsModal';
 import { LayersPanel } from './ui/LayersPanel';
+import { dismissBootScreen } from './bootScreen';
 import {
   confirmDialog,
   exportDialog,
@@ -368,6 +369,19 @@ export class App {
     const params = new URLSearchParams(location.search);
     const bench = params.get('bench');
     const importPath = params.get('import');
+
+    // Os modos de verificacao dispensam a abertura NA HORA, e isso nao e
+    // cosmetico: ela cobre a janela inteira (`inset: 0`), entao um evento de
+    // ponteiro do auto-teste cairia nela em vez de no canvas, e a foto do
+    // QB_SHOT sairia dela em vez do quadro.
+    const modoDeVerificacao =
+      importPath !== null ||
+      params.get('paste') !== null ||
+      params.get('export') !== null ||
+      params.get('selftest') !== null ||
+      bench !== null;
+    if (modoDeVerificacao) dismissBootScreen(true);
+
     if (importPath) {
       this.#enterBoard();
       void import('./dev/importCheck').then((m) =>
@@ -388,7 +402,18 @@ export class App {
     } else if (bench) {
       void this.#runAutoBenchmark(Number(bench));
     } else {
-      void this.goToLobby();
+      // A tela de abertura sai quando a BIBLIOTECA esta listada, e nao quando o
+      // JavaScript termina de carregar: ler a pasta e gerar as miniaturas e o
+      // trabalho de verdade da abertura, e sumir antes disso mostraria um lobby
+      // vazio por um instante -- exatamente o susto que ela existe para evitar.
+      //
+      // `QB_BOOT=hold` a mantem na tela, para poder ser fotografada com o
+      // QB_SHOT. Sem isso ela seria a unica parte da interface que nao se
+      // confere por terminal: ela dura 642 ms e some sozinha.
+      const segurar = params.get('boot') === 'hold';
+      void this.goToLobby().then(() => {
+        if (!segurar) dismissBootScreen();
+      });
     }
   }
 

@@ -15,6 +15,7 @@
     "typecheck": [...],
     "build": "npm run typecheck && node scripts/run.mjs build",
     "icon": "node build/make-icon.js build/icon.ico",
+    "boot-logo": "node build/make-boot-logo.js",
     "prepare:winsign": "node scripts/prepare-wincodesign.mjs",
     "dist": [...],
     "dist:dir": [...]
