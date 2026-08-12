@@ -1,7 +1,7 @@
 import type { BoardSummary } from '@shared/wbd';
 import { formatBytes, formatDate } from '../features/storage/boardIO';
 import { confirmDialog, toast } from './dialogs';
-import { brandMark, icon, type IconName } from './icons';
+import { icon, type IconName } from './icons';
 
 export interface LobbyActions {
   newBoard(): void;
@@ -35,12 +35,16 @@ export class Lobby {
     const header = document.createElement('header');
     header.className = 'qb-lobby__header';
 
-    // A marca ao lado do titulo: e a primeira tela que se ve ao abrir o app, e
-    // ate aqui ela nao tinha nenhuma identidade visual alem do nome escrito.
-    const marca = document.createElement('span');
-    marca.className = 'qb-lobby__brand';
-    marca.append(brandMark(30));
-
+    // NAO ha marca aqui, e isso e decisao.
+    //
+    // Ela chegou a existir ao lado do titulo, e ele viu o problema na hora: a
+    // barra de titulo da janela ja mostra o mesmo icone com o mesmo nome, um
+    // centimetro acima. Eram a mesma coisa duas vezes, empilhadas.
+    //
+    // O icone do aplicativo mora onde o sistema o poe -- barra de titulo, barra
+    // de tarefas, Alt+Tab -- e na tela de abertura. Dentro da interface ele nao
+    // se repete: aplicativo de desktop nao carrega a propria logo na tela, e
+    // "Creation Board" escrito em corpo 26 ja e a marca desta tela.
     const titleBox = document.createElement('div');
     const title = document.createElement('h1');
     title.className = 'qb-lobby__title';
@@ -80,7 +84,7 @@ export class Lobby {
     newBtn.prepend(icon('mais', 15));
 
     tools.append(helpBtn, this.#themeBtn, importBtn, newBtn);
-    header.append(marca, titleBox, tools);
+    header.append(titleBox, tools);
 
     // ---- grade de cards
     this.#grid = document.createElement('div');

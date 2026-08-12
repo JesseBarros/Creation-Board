@@ -763,7 +763,18 @@ export class App {
 
   #updateTitle(): void {
     this.#bar.setBoardName(this.#session.name, this.#session.dirty);
-    document.title = `${this.#session.dirty ? '• ' : ''}${this.#session.name} — Creation Board`;
+    // A barra de titulo da janela fica FIXA em "Creation Board".
+    //
+    // Ate 12/08/2026 ela carregava o nome do quadro e o ponto de alteracoes nao
+    // salvas -- e o resultado era a identidade do aplicativo trocando a cada
+    // arquivo aberto, com titulos longos ("Continuacao cybersec google
+    // coursera(curso 4,5,6,7,8,9) — Creation Board") empurrando o nome do app
+    // para fora da barra de tarefas.
+    //
+    // Nada se perde: o nome do quadro e o ponto de sujeira continuam na barra
+    // inferior, que e onde se olha enquanto se trabalha. A barra de titulo passa
+    // a responder so "que aplicativo e este", que e a pergunta dela.
+    document.title = 'Creation Board';
   }
 
   /** Pergunta antes de descartar alteracoes nao salvas. */

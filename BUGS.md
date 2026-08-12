@@ -26,9 +26,9 @@ tratados como três.
   aparentemente só no tema escuro. Relatado em 12/08 e **agendado para depois da rodada de
   ícones**, a pedido dele: mexer nas duas coisas juntas tornaria impossível dizer qual
   mudança melhorou o quê.
-- **M9** — `ideia registrada`. Plano de fundo por imagem no menu principal, com os painéis em
-  vidro. Só depois da Fase 9 fechada e commitada, por decisão dele. A viabilidade está
-  respondida no item; a parte difícil é o contraste sobre uma foto qualquer.
+O **M9** (plano de fundo por imagem no menu principal) foi **abandonado por ora**, por decisão
+dele no mesmo dia em que teve a ideia. O item fica escrito com a viabilidade toda respondida:
+se voltar, a investigação já está feita.
 
 **Fechados na Fase 9:** B13 (exportar em ladrilhos), M8 (camadas, nas duas metades) e a
 parte corrigível do B9 (o painel do `F3`).
@@ -1297,7 +1297,19 @@ alcançá-lo**, que é justamente o papel de um painel de camadas.
 </details>
 
 ### M9 — Plano de fundo no menu principal, com os painéis em vidro
-`ideia registrada` · `médio` · 12/08/2026 · **só depois da Fase 9 fechada**
+`abandonada por ora` · `médio` · 12/08/2026, arquivada no mesmo dia
+
+> **Ele desistiu dela no mesmo dia:** *"vamos abandonar a ideia de colocar a imagem de fundo
+> por enquanto, vamos focar nessa informação e nas outras ideias"*.
+>
+> **O item fica escrito assim mesmo**, com a viabilidade toda respondida, porque a análise
+> não expira: se a ideia voltar, o trabalho de descobrir o que já existe e onde está a
+> dificuldade está feito. Apagá-la faria a próxima sessão refazer a mesma investigação.
+>
+> **E uma parte dela já foi aproveitada:** os ícones da interface são SVG com `currentColor`,
+> e não PNG. Isso não foi decidido pensando em vidro — veio do M3, para não depender da fonte
+> do sistema —, mas é exatamente o que um efeito de transparência precisa: eles herdam a cor,
+> ficam nítidos em qualquer tamanho e aceitam opacidade sem sujar as bordas.
 
 Pedido dele: *"uma opção de 'plano de fundo' apenas do menu principal — é possível escolher
 um arquivo png ou outro formato de imagem e carregar para se tornar o plano de fundo do
