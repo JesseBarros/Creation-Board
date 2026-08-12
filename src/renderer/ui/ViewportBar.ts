@@ -1,4 +1,4 @@
-import { brandMark, icon, type IconName } from './icons';
+import { icon, type IconName } from './icons';
 
 export interface ViewportBarActions {
   zoomIn(): void;
@@ -55,16 +55,12 @@ export class ViewportBar {
     this.el = document.createElement('div');
     this.el.className = 'qb-bar';
 
-    // A marca ancora a barra a esquerda, antes de qualquer comando.
+    // A marca chegou a ancorar esta barra a esquerda, e SAIU em 12/08/2026.
     //
-    // Ela nao e um botao: nao faz nada ao ser clicada, e por isso e uma `span` e
-    // nao um `<button>`. Um alvo que parece clicavel e nao responde e pior que
-    // nenhum alvo -- e a barra ja tem catorze coisas que respondem.
-    const marca = document.createElement('span');
-    marca.className = 'qb-bar__brand';
-    marca.title = 'Creation Board';
-    marca.append(brandMark(19));
-
+    // O motivo e o mesmo do lobby: a barra de titulo da janela ja mostra o icone
+    // do aplicativo, e repeti-lo aqui era a segunda copia na mesma tela. Dentro
+    // da interface o icone nao se repete -- ele mora onde o sistema o poe, e na
+    // tela de abertura.
     const backBtn = iconButton('voltar', 'voltar', 'Voltar aos quadros (Ctrl+O)', () =>
       this.actions.backToLobby(),
     );
@@ -151,7 +147,7 @@ export class ViewportBar {
     const zoomGroup = group(minus, this.#zoomLabel, plus, this.#menu);
 
     this.el.append(
-      group(marca, backBtn, this.#nameLabel),
+      group(backBtn, this.#nameLabel),
       divider(),
       group(saveBtn, exportBtn),
       divider(),

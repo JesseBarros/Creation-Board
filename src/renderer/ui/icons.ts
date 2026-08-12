@@ -72,15 +72,18 @@ export type IconName =
  */
 const PATHS: Record<IconName, string[]> = {
   voltar: ['M14.5 5.5L8 12l6.5 6.5'],
-  // Seta para BAIXO sobre uma base: guardar no disco.
-  salvar: ['M12 4.5v9.5', 'M8.5 10.5l3.5 3.5 3.5-3.5', 'M5.5 18.5h13'],
-  // A mesma base, seta para CIMA: tirar do app para fora.
-  exportar: ['M12 14V4.5', 'M8.5 8l3.5-3.5L15.5 8', 'M5.5 18.5h13'],
+  // Bandeja com seta para BAIXO: guardar no disco. A bandeja (dois lados que
+  // sobem) diz "entra aqui"; a linha reta que havia antes so dizia "chao".
+  salvar: ['M12 4.5v8.6', 'M8.4 9.7l3.6 3.6 3.6-3.6', 'M4.8 15v2.5a2 2 0 002 2h10.4a2 2 0 002-2V15'],
+  // A MESMA bandeja, seta para CIMA: tirar do app para fora. Os dois so se
+  // distinguem pela direcao da seta, e e assim que se le "o par".
+  exportar: ['M12 13.1V4.5', 'M8.4 8.1L12 4.5l3.6 3.6', 'M4.8 15v2.5a2 2 0 002 2h10.4a2 2 0 002-2V15'],
   desfazer: ['M9 7.5L5 12l4 4.5', 'M5 12h8.5a4.5 4.5 0 014.5 4.5v1.5'],
   refazer: ['M15 7.5l4 4.5-4 4.5', 'M19 12h-8.5A4.5 4.5 0 006 16.5v1.5'],
-  // Quatro linhas curtas, e nao quatro atravessando a caixa: a grade era o
-  // icone mais pesado da fila so por ocupar mais espaco que os vizinhos.
-  grade: ['M5 9.5h14', 'M5 14.5h14', 'M9.5 5v14', 'M14.5 5v14'],
+  // Janela dividida em quatro, e nao quatro linhas soltas: com moldura o icone
+  // tem silhueta -- fechado, ele se reconhece de longe e aguenta ficar
+  // translucido sem virar quatro riscos perdidos.
+  grade: ['M6.2 5h11.6a1.8 1.8 0 011.8 1.8v10.4a1.8 1.8 0 01-1.8 1.8H6.2a1.8 1.8 0 01-1.8-1.8V6.8A1.8 1.8 0 016.2 5z', 'M12 5v14', 'M4.4 12h15.2'],
   // Imã em U, com as duas pontas. Ocupa a area viva inteira (4.5 a 19.5): antes
   // ele parava em 17 e ficava visivelmente menor que os vizinhos na mesma fila.
   ima: ['M6.4 4.5v8a5.6 5.6 0 0011.2 0v-8h-3.7v8a1.9 1.9 0 01-3.8 0v-8z', 'M6.4 8.6h3.8', 'M13.9 8.6h3.7'],
@@ -91,7 +94,12 @@ const PATHS: Record<IconName, string[]> = {
   // de tamanho pequeno: descontado o traco, sobram menos de 3px de vao aos 17px
   // de tela, e as marcas encostam no lado de baixo. Com o vao maior, a regua
   // continua sendo uma regua mesmo quando o botao esta ligado e preenchido.
-  regua: ['M4 8.2h16v7.6H4z', 'M8 8.2v2.6', 'M12 8.2v3.6', 'M16 8.2v2.6'],
+  regua: [
+    'M6 8.2h12a2 2 0 012 2v3.6a2 2 0 01-2 2H6a2 2 0 01-2-2v-3.6a2 2 0 012-2z',
+    'M8.4 8.2v2.6',
+    'M12 8.2v3.6',
+    'M15.6 8.2v2.6',
+  ],
   ajustar: ['M4.5 9V4.5H9', 'M19.5 9V4.5H15', 'M4.5 15v4.5H9', 'M19.5 15v4.5H15'],
   // Sol e lua, e nao um circulo meio preenchido: o interruptor de tema mostra
   // PARA ONDE vai, e um crescente diz "escuro" sem precisar de legenda.
@@ -109,7 +117,13 @@ const PATHS: Record<IconName, string[]> = {
   lua: ['M19.5 14.6A8 8 0 019.4 4.5a8 8 0 1010.1 10.1z'],
   // Teclado: a tela que ele abre e a lista de teclas. Tres teclas e nao quatro
   // -- a quarta nao acrescentava informacao e fechava os vaos.
-  comandos: ['M4 7.5h16v9H4z', 'M8 11h.01', 'M12 11h.01', 'M16 11h.01', 'M9 14h6'],
+  comandos: [
+    'M6 7.5h12a2 2 0 012 2v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5a2 2 0 012-2z',
+    'M8 11h.01',
+    'M12 11h.01',
+    'M16 11h.01',
+    'M9.4 14h5.2',
+  ],
   menos: ['M5.5 12h13'],
   mais: ['M12 5.5v13', 'M5.5 12h13'],
 
@@ -127,18 +141,27 @@ const PATHS: Record<IconName, string[]> = {
   texto: ['M6.5 5.5h11', 'M12 5.5v13', 'M9 18.5h6'],
   // Post-it: o canto dobrado fica EMBAIXO, e nao em cima. Em cima ele e o
   // desenho universal de "documento", e era isso que o icone dizia.
-  postit: ['M5 4.5h14v9.5l-5 5H5z', 'M19 14h-5v5'],
+  postit: [
+    'M6.4 4.5h11.2a1.9 1.9 0 011.9 1.9v6.7L13.6 19.5H6.4a1.9 1.9 0 01-1.9-1.9V6.4a1.9 1.9 0 011.9-1.9z',
+    'M19.5 13.1h-4a1.9 1.9 0 00-1.9 1.9v4.5',
+  ],
   // Um quadrado e um circulo se cruzando: e a ferramenta das varias formas.
-  formas: ['M4.5 5.5h9v9h-9z', 'M19.5 14.5a5 5 0 01-10 0 5 5 0 0110 0z'],
+  formas: [
+    'M6.2 5.5h5.6a1.7 1.7 0 011.7 1.7v5.6a1.7 1.7 0 01-1.7 1.7H6.2a1.7 1.7 0 01-1.7-1.7V7.2A1.7 1.7 0 016.2 5.5z',
+    'M19.5 14.6a5 5 0 11-10 0 5 5 0 0110 0z',
+  ],
   borracha: ['M5 15l6.6-6.6a1.5 1.5 0 012.1 0l3.9 3.9a1.5 1.5 0 010 2.1L14 18H8.2z', 'M4.5 19.8h15', 'M9.3 10.3l5.7 5.7'],
 
-  retangulo: ['M4 6h16v12H4z'],
-  elipse: ['M20 12a8 6 0 11-16 0 8 6 0 0116 0z'],
-  triangulo: ['M12 5l8 14H4z'],
-  losango: ['M12 4l8 8-8 8-8-8z'],
+  // As PREVIAS das formas: aqui o desenho e o proprio objeto que sera criado,
+  // entao os cantos seguem a forma de verdade e nao a linguagem da interface.
+  // Arredondar o triangulo aqui prometeria um triangulo arredondado no quadro.
+  retangulo: ['M4.5 6.5h15v11h-15z'],
+  elipse: ['M19.5 12a7.5 5.5 0 11-15 0 7.5 5.5 0 0115 0z'],
+  triangulo: ['M12 5.5l7.5 13h-15z'],
+  losango: ['M12 4.5l7.5 7.5-7.5 7.5-7.5-7.5z'],
   linha: ['M5 19L19 5'],
-  seta: ['M5 19L19 5', 'M19 11V5h-6'],
-  preencher: ['M4 6h16v12H4z', 'M4 6h8v12H4z'],
+  seta: ['M5 19L19 5', 'M19 11.5V5h-6.5'],
+  preencher: ['M4.5 6.5h15v11h-15z', 'M4.5 6.5h7.5v11H4.5z'],
 
   // Apagar por peca: o rastro come um pedaco do traco e o resto fica.
   apagarPeca: ['M3 12h4', 'M17 12h4', 'M15.5 12a3.5 3.5 0 11-7 0 3.5 3.5 0 017 0z'],
@@ -152,8 +175,14 @@ const PATHS: Record<IconName, string[]> = {
   // O olho fechado e o MESMO olho com um corte por cima, e nao outro desenho:
   // ligado e desligado tem de se reconhecer como o mesmo controle.
   olhoFechado: ['M2.5 12S6 6.5 12 6.5c1.6 0 3 .4 4.2 1M21.5 12s-1.4 2.2-3.8 3.8', 'M4 4l16 16'],
-  cadeado: ['M6 11h12v9H6z', 'M9 11V8a3 3 0 016 0v3'],
-  cadeadoAberto: ['M6 11h12v9H6z', 'M9 11V8a3 3 0 015.7-1.3'],
+  cadeado: [
+    'M7.6 10.6h8.8a2 2 0 012 2v5.4a2 2 0 01-2 2H7.6a2 2 0 01-2-2v-5.4a2 2 0 012-2z',
+    'M9.2 10.6V8.2a2.8 2.8 0 015.6 0v2.4',
+  ],
+  cadeadoAberto: [
+    'M7.6 10.6h8.8a2 2 0 012 2v5.4a2 2 0 01-2 2H7.6a2 2 0 01-2-2v-5.4a2 2 0 012-2z',
+    'M9.2 10.6V8.2a2.8 2.8 0 015.3-1.2',
+  ],
   subir: ['M12 19V6', 'M7 11l5-5 5 5'],
   descer: ['M12 5v13', 'M7 13l5 5 5-5'],
 };

@@ -1090,7 +1090,19 @@ alcançá-lo**, que é justamente o papel de um painel de camadas.
 </details>
 
 ### M9 — Plano de fundo no menu principal, com os painéis em vidro
-`ideia registrada` · `médio` · 12/08/2026 · **só depois da Fase 9 fechada**
+`abandonada por ora` · `médio` · 12/08/2026, arquivada no mesmo dia
+
+> **Ele desistiu dela no mesmo dia:** *"vamos abandonar a ideia de colocar a imagem de fundo
+> por enquanto, vamos focar nessa informação e nas outras ideias"*.
+>
+> **O item fica escrito assim mesmo**, com a viabilidade toda respondida, porque a análise
+> não expira: se a ideia voltar, o trabalho de descobrir o que já existe e onde está a
+> dificuldade está feito. Apagá-la faria a próxima sessão refazer a mesma investigação.
+>
+> **E uma parte dela já foi aproveitada:** os ícones da interface são SVG com `currentColor`,
+> e não PNG. Isso não foi decidido pensando em vidro — veio do M3, para não depender da fonte
+> do sistema —, mas é exatamente o que um efeito de transparência precisa: eles herdam a cor,
+> ficam nítidos em qualquer tamanho e aceitam opacidade sem sujar as bordas.
 
 Pedido: [...].
 
