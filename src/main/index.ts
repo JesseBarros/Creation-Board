@@ -119,6 +119,14 @@ function createWindow(): void {
     backgroundColor: '#060912',
     autoHideMenuBar: true,
     title: 'Creation Board',
+    // O icone da JANELA -- barra de titulo, barra de tarefas e Alt+Tab.
+    //
+    // So em desenvolvimento, e por isso: no app empacotado o icone ja esta
+    // dentro do proprio `.exe` como recurso, posto pelo electron-builder, e o
+    // caminho abaixo nem existiria (o codigo roda de dentro do asar). Sem esta
+    // linha, `npm run dev` mostrava o atomo do Electron -- o icone padrao --,
+    // que foi exatamente o que ele viu na barra de titulo.
+    ...(isDev ? { icon: join(__dirname, '../../build/icon.ico') } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,

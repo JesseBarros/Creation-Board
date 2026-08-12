@@ -1,4 +1,4 @@
-import { icon, type IconName } from './icons';
+import { brandMark, icon, type IconName } from './icons';
 
 export interface ViewportBarActions {
   zoomIn(): void;
@@ -53,6 +53,16 @@ export class ViewportBar {
   constructor(private readonly actions: ViewportBarActions) {
     this.el = document.createElement('div');
     this.el.className = 'qb-bar';
+
+    // A marca ancora a barra a esquerda, antes de qualquer comando.
+    //
+    // Ela nao e um botao: nao faz nada ao ser clicada, e por isso e uma `span` e
+    // nao um `<button>`. Um alvo que parece clicavel e nao responde e pior que
+    // nenhum alvo -- e a barra ja tem catorze coisas que respondem.
+    const marca = document.createElement('span');
+    marca.className = 'qb-bar__brand';
+    marca.title = 'Creation Board';
+    marca.append(brandMark(19));
 
     const backBtn = iconButton('voltar', 'voltar', 'Voltar aos quadros (Ctrl+O)', () =>
       this.actions.backToLobby(),
@@ -135,7 +145,7 @@ export class ViewportBar {
     const zoomGroup = group(minus, this.#zoomLabel, plus, this.#menu);
 
     this.el.append(
-      group(backBtn, this.#nameLabel),
+      group(marca, backBtn, this.#nameLabel),
       divider(),
       group(saveBtn, exportBtn),
       divider(),

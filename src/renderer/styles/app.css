@@ -54,25 +54,46 @@
 /* ------------------------------------------------------- barra de viewport */
 
 /*
-  Barra no estilo da barra de tarefas do Windows 11: fundo translucido com
-  desfoque (o "acrilico"), cantos generosos e o conteudo separado em grupos.
-  O desfoque nao e enfeite -- e ele que deixa a barra flutuar sobre o quadro sem
-  esconder o que esta atras dela.
+  Barra flutuante sobre o quadro: fundo translucido com desfoque, cantos
+  generosos e o conteudo separado em grupos. O desfoque nao e enfeite -- e ele
+  que deixa a barra flutuar sem esconder o que esta atras dela.
+
+  TRES COISAS AQUI SAO O ACABAMENTO, e valem explicar porque parecem detalhe:
+
+  1. **Raios encadeados.** O raio de fora (15) e o de dentro (10) mais o
+     espacamento (5). Quando essa conta nao fecha, a curva do botao e a da barra
+     correm em paralelo com folga desigual, e a fila parece torta sem que se
+     saiba dizer por que.
+  2. **Sombra em duas camadas.** Uma curta e escura logo abaixo (contato) e uma
+     longa e fraca (ambiente). Uma sombra so precisa escolher entre parecer
+     colada ou parecer flutuando longe demais.
+  3. **Brilho interno de 1px no topo.** E o que faz uma superficie translucida
+     ter borda em vez de vazar no fundo. Some no tema claro, onde nao ha o que
+     iluminar.
 */
 .qb-bar {
   position: absolute;
-  bottom: 14px;
+  bottom: 16px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 4px;
-  background: color-mix(in srgb, var(--panel) 82%, transparent);
-  backdrop-filter: blur(20px) saturate(140%);
+  padding: 5px;
+  background: color-mix(in srgb, var(--panel) 80%, transparent);
+  backdrop-filter: blur(24px) saturate(160%);
   border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  border-radius: 14px;
-  box-shadow: var(--shadow);
+  border-radius: 15px;
+  box-shadow:
+    0 1px 2px rgba(16, 22, 38, 0.1),
+    0 10px 34px -8px rgba(16, 22, 38, 0.22);
+}
+
+:root[data-theme='dark'] .qb-bar {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.34),
+    0 12px 38px -10px rgba(0, 0, 0, 0.6);
 }
 
 .qb-bar__group {
@@ -82,58 +103,81 @@
   gap: 2px;
 }
 
+/* A marca ancora a esquerda. Nao e alvo de clique -- ver ViewportBar.ts. */
+.qb-bar__brand {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 32px;
+  margin-right: 2px;
+}
+
 .qb-bar__btn {
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;
   border: none;
-  border-radius: 9px;
+  border-radius: 10px;
   padding: 6px 10px;
-  color: var(--fg);
+  /*
+    Apagado por padrao, cheio no hover. Catorze icones todos em contraste
+    maximo competem entre si e nenhum se destaca; apagados, a fila vira textura
+    e o que estiver ligado aparece sozinho.
+  */
+  color: var(--fg-muted);
   font-size: 13px;
   line-height: 1;
   white-space: nowrap;
-  /* A transicao curta e o que da a sensacao de resposta imediata sem piscar. */
-  transition: background-color 0.12s ease, color 0.12s ease;
+  transition:
+    background-color 0.14s ease,
+    color 0.14s ease,
+    transform 0.09s ease;
 }
 
 .qb-bar__btn:hover {
-  background: var(--panel-2);
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  color: var(--fg);
 }
 
+/* 0,96 e nao 0,9: o afundar tem de ser sentido, nao visto. */
 .qb-bar__btn:active {
-  transform: scale(0.94);
+  transform: scale(0.96);
+}
+
+/* Anel de foco so para quem navega por teclado -- o mouse ja tem o hover. */
+.qb-bar__btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 60%, transparent);
 }
 
 .qb-bar__btn--icon {
+  position: relative;
   width: 32px;
   height: 32px;
   padding: 0;
 }
 
 /*
-  O destaque de "ligado" e uma barrinha embaixo do icone, como na barra de
-  tarefas: preencher o botao inteiro competiria com o botao primario e deixaria
-  a fila manchada quando tres deles estivessem ativos.
+  Ligado = pilha preenchida em cinza NEUTRO, com o icone em cor.
+
+  Ate 12/08/2026 era uma barrinha embaixo do icone, no idioma da barra de
+  tarefas do Windows. A barrinha saiu a pedido dele, que quis a estetica de
+  aplicativo Apple -- ali um interruptor ligado e um retangulo arredondado
+  preenchido, nao um sublinhado.
+
+  O preenchimento e neutro e nao da cor de destaque, e isso preserva a razao
+  original da barrinha: grade, ima, regua e camadas podem estar ligados ao mesmo
+  tempo, e quatro pilulas azuis deixariam a fila manchada. Neutro atras, cor so
+  no glifo -- o estado se le e a fila continua calma.
 */
 .qb-bar__btn--active {
   color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  background: color-mix(in srgb, var(--fg) 11%, transparent);
 }
 
-.qb-bar__btn--active::after {
-  content: '';
-  position: absolute;
-  bottom: 3px;
-  width: 14px;
-  height: 2px;
-  border-radius: 1px;
-  background: var(--accent);
-}
-
-.qb-bar__btn--icon {
-  position: relative;
+.qb-bar__btn--active:hover {
+  background: color-mix(in srgb, var(--fg) 15%, transparent);
 }
 
 .qb-bar__btn:disabled {
@@ -153,36 +197,48 @@
   color: var(--fg);
 }
 
+/*
+  Filete curto e fraco, com folga generosa dos dois lados.
+
+  O que separa os grupos e principalmente o ESPACO; a linha so confirma. Um
+  filete alto e forte a cada quatro icones cortaria a barra em pedacos e faria
+  ela parecer mais cheia do que esta -- e ela ja tem catorze controles.
+*/
 .qb-bar__divider {
   width: 1px;
-  height: 18px;
-  background: color-mix(in srgb, var(--border) 65%, transparent);
-  margin: 0 4px;
+  height: 16px;
+  background: color-mix(in srgb, var(--border) 55%, transparent);
+  margin: 0 7px;
 }
 
 .qb-bar__menu {
   position: absolute;
-  bottom: calc(100% + 8px);
+  bottom: calc(100% + 10px);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: var(--shadow);
-  padding: 4px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 12px;
+  box-shadow:
+    0 1px 2px rgba(16, 22, 38, 0.1),
+    0 10px 34px -8px rgba(16, 22, 38, 0.24);
+  padding: 5px;
   z-index: 10;
 }
 
 .qb-bar__menu-item {
   background: transparent;
   border: none;
-  border-radius: 5px;
-  padding: 5px 16px;
+  border-radius: 8px;
+  padding: 6px 16px;
+  color: var(--fg-muted);
   font-size: 12px;
   font-family: var(--font-mono);
   text-align: right;
+  transition: background-color 0.14s ease, color 0.14s ease;
 }
 
 .qb-bar__menu-item:hover {
@@ -201,17 +257,26 @@
   gap: 8px;
 }
 
-/* Mesmo material da barra inferior: translucido, desfocado e arredondado. */
+/* Mesmo material e a mesma conta de raios da barra inferior. */
 .qb-tools__rail {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 4px;
-  background: color-mix(in srgb, var(--panel) 82%, transparent);
-  backdrop-filter: blur(20px) saturate(140%);
+  padding: 5px;
+  background: color-mix(in srgb, var(--panel) 80%, transparent);
+  backdrop-filter: blur(24px) saturate(160%);
   border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  border-radius: 14px;
-  box-shadow: var(--shadow);
+  border-radius: 16px;
+  box-shadow:
+    0 1px 2px rgba(16, 22, 38, 0.1),
+    0 10px 34px -8px rgba(16, 22, 38, 0.22);
+}
+
+:root[data-theme='dark'] .qb-tools__rail {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.34),
+    0 12px 38px -10px rgba(0, 0, 0, 0.6);
 }
 
 .qb-tools__btn {
@@ -223,49 +288,69 @@
   justify-content: center;
   background: transparent;
   border: none;
-  border-radius: 9px;
-  color: var(--fg);
+  border-radius: 11px;
+  /* Apagado por padrao, igual a barra inferior: a ferramenta ATIVA e a unica
+     informacao que a fila precisa dar de longe. */
+  color: var(--fg-muted);
   line-height: 1;
-  transition: background-color 0.12s ease, color 0.12s ease;
+  transition:
+    background-color 0.14s ease,
+    color 0.14s ease,
+    transform 0.09s ease;
 }
 
 .qb-tools__btn:hover {
-  background: var(--panel-2);
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  color: var(--fg);
 }
 
 .qb-tools__btn:active {
-  transform: scale(0.94);
+  transform: scale(0.96);
 }
 
-.qb-tools__btn--active {
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  color: var(--accent);
+.qb-tools__btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 60%, transparent);
 }
 
 /*
-  A barra do ativo fica na LATERAL, e nao embaixo como na barra inferior: numa
-  fila vertical, o indicador embaixo apontaria para o botao seguinte.
+  Aqui o preenchimento E da cor de destaque, ao contrario da barra inferior.
+  A diferenca nao e inconsistencia: ali varios interruptores ficam ligados ao
+  mesmo tempo e o azul mancharia a fila; aqui a escolha e EXCLUSIVA -- so uma
+  ferramenta esta ativa --, entao a pilula colorida diz onde voce esta sem
+  competir com nada.
+
+  Isso tambem aposenta a barrinha lateral que existia: com a pilula cheia, ela
+  virava um segundo indicador dizendo a mesma coisa.
 */
-.qb-tools__btn--active::after {
-  content: '';
-  position: absolute;
-  left: 2px;
-  width: 2px;
-  height: 14px;
-  border-radius: 1px;
-  background: var(--accent);
+.qb-tools__btn--active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+.qb-tools__btn--active:hover {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .qb-tools__options {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 8px;
-  background: color-mix(in srgb, var(--panel) 82%, transparent);
-  backdrop-filter: blur(20px) saturate(140%);
+  gap: 9px;
+  padding: 9px;
+  background: color-mix(in srgb, var(--panel) 80%, transparent);
+  backdrop-filter: blur(24px) saturate(160%);
   border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  border-radius: 14px;
-  box-shadow: var(--shadow);
+  border-radius: 16px;
+  box-shadow:
+    0 1px 2px rgba(16, 22, 38, 0.1),
+    0 10px 34px -8px rgba(16, 22, 38, 0.22);
+}
+
+:root[data-theme='dark'] .qb-tools__options {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.34),
+    0 12px 38px -10px rgba(0, 0, 0, 0.6);
 }
 
 /* Seis formas + o preenchimento, num bloco de duas colunas como as cores. */
@@ -285,14 +370,15 @@
   justify-content: center;
   background: transparent;
   border: none;
-  border-radius: 8px;
-  color: var(--fg);
+  border-radius: 9px;
+  color: var(--fg-muted);
   line-height: 1;
-  transition: background-color 0.12s ease, color 0.12s ease;
+  transition: background-color 0.14s ease, color 0.14s ease;
 }
 
 .qb-tools__shape:hover {
-  background: var(--panel-2);
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  color: var(--fg);
 }
 
 .qb-tools__shape--active {
