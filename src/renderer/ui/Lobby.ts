@@ -1,6 +1,7 @@
 import type { BoardSummary } from '@shared/wbd';
 import { formatBytes, formatDate } from '../features/storage/boardIO';
 import { confirmDialog, toast } from './dialogs';
+import { brandMark, icon, type IconName } from './icons';
 
 export interface LobbyActions {
   newBoard(): void;
@@ -24,6 +25,7 @@ export class Lobby {
   #grid: HTMLElement;
   #empty: HTMLElement;
   #folderLabel: HTMLElement;
+  #themeBtn!: HTMLButtonElement;
 
   constructor(private readonly actions: LobbyActions) {
     this.el = document.createElement('div');
@@ -32,6 +34,12 @@ export class Lobby {
     // ---- cabecalho
     const header = document.createElement('header');
     header.className = 'qb-lobby__header';
+
+    // A marca ao lado do titulo: e a primeira tela que se ve ao abrir o app, e
+    // ate aqui ela nao tinha nenhuma identidade visual alem do nome escrito.
+    const marca = document.createElement('span');
+    marca.className = 'qb-lobby__brand';
+    marca.append(brandMark(30));
 
     const titleBox = document.createElement('div');
     const title = document.createElement('h1');
@@ -49,16 +57,30 @@ export class Lobby {
     const tools = document.createElement('div');
     tools.className = 'qb-lobby__tools';
 
-    const helpBtn = textButton('Atalhos', () => this.actions.showShortcuts());
-    helpBtn.title = 'F1';
-    const themeBtn = textButton('Tema', () => this.actions.toggleTheme());
+    // Duas classes de botao, e a divisao e o que deixa o cabecalho calmo:
+    //
+    // **Utilidades viram icone** -- atalhos e tema. Sao coisas que se procura
+    // quando ja se sabe que existem, e o nome escrito delas competia em peso com
+    // as duas acoes que realmente importam aqui.
+    //
+    // **Acoes continuam escritas** -- importar e criar. Elas precisam se
+    // explicar: quem abre o app pela primeira vez tem de saber o que fazer sem
+    // decifrar desenho nenhum.
+    const helpBtn = iconOnlyButton('comandos', 'Atalhos e comandos (F1)', () =>
+      this.actions.showShortcuts(),
+    );
+    this.#themeBtn = iconOnlyButton('lua', 'Alternar tema', () => this.actions.toggleTheme());
+
     const importBtn = textButton('Importar arquivo', () => this.actions.importWhiteboard());
     importBtn.title = 'Abrir a exportacao (.zip ou .html) do Microsoft Whiteboard';
-    const newBtn = textButton('+ Novo quadro', () => this.actions.newBoard());
+    const newBtn = textButton('Novo quadro', () => this.actions.newBoard());
     newBtn.classList.add('qb-btn--primary');
+    // O "+" era texto dentro do rotulo e alinhava mal com a letra; como icone
+    // ele tem o mesmo peso dos outros glifos e fica na linha de base certa.
+    newBtn.prepend(icon('mais', 15));
 
-    tools.append(helpBtn, themeBtn, importBtn, newBtn);
-    header.append(titleBox, tools);
+    tools.append(helpBtn, this.#themeBtn, importBtn, newBtn);
+    header.append(marca, titleBox, tools);
 
     // ---- grade de cards
     this.#grid = document.createElement('div');
@@ -91,6 +113,20 @@ export class Lobby {
 
   setFolder(path: string): void {
     this.#folderLabel.textContent = path;
+  }
+
+  /**
+   * Troca o glifo do interruptor de tema para o do PROXIMO tema.
+   *
+   * Sol de noite, lua de dia: o botao oferece o proximo estado, e nao relata o
+   * atual. Um interruptor de uma tecla so nao tem como dizer as duas coisas, e
+   * "para onde isto leva" e a pergunta de quem esta com o dedo em cima dele.
+   */
+  setTheme(theme: 'light' | 'dark'): void {
+    this.#themeBtn.replaceChildren(icon(theme === 'dark' ? 'sol' : 'lua', 17));
+    const label = theme === 'dark' ? 'Mudar para o tema claro' : 'Mudar para o tema escuro';
+    this.#themeBtn.title = label;
+    this.#themeBtn.setAttribute('aria-label', label);
   }
 
   /** Recarrega a lista a partir do disco. */
@@ -185,6 +221,24 @@ function textButton(text: string, onClick: () => void): HTMLButtonElement {
   b.type = 'button';
   b.className = 'qb-btn';
   b.textContent = text;
+  b.addEventListener('click', onClick);
+  return b;
+}
+
+/**
+ * Botao so de icone.
+ *
+ * O nome vive no `aria-label` e no `title`: sem texto visivel, e ele que um
+ * leitor de tela anuncia e que aparece ao parar o mouse. Um icone sem nome e um
+ * botao mudo -- foi a licao do M3 na barra inferior.
+ */
+function iconOnlyButton(name: IconName, label: string, onClick: () => void): HTMLButtonElement {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'qb-btn qb-btn--icon';
+  b.title = label;
+  b.setAttribute('aria-label', label);
+  b.append(icon(name, 17));
   b.addEventListener('click', onClick);
   return b;
 }

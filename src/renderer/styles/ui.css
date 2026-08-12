@@ -1,18 +1,55 @@
 /* ====================================================== botoes genericos */
 
 .qb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   background: var(--panel-2);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 9px;
   padding: 8px 14px;
   font-size: 13px;
   line-height: 1;
   white-space: nowrap;
+  transition:
+    background-color 0.14s ease,
+    border-color 0.14s ease,
+    color 0.14s ease,
+    transform 0.09s ease;
 }
 
+/*
+  No hover muda o FUNDO, e nao a borda e o texto.
+
+  Antes a borda e o texto viravam azuis juntos: o botao inteiro trocava de cor
+  ao passar o mouse, o que le como "isto foi selecionado" e nao como "isto
+  responde". Escurecer o fundo um pouco e o gesto discreto que um app de
+  desktop faz.
+*/
 .qb-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+  background: color-mix(in srgb, var(--fg) 9%, var(--panel-2));
+  border-color: color-mix(in srgb, var(--border) 130%, transparent);
+}
+
+.qb-btn:active {
+  transform: scale(0.97);
+}
+
+.qb-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+/* So o icone: quadrado, para nao ficar mais largo que alto ao lado dos outros. */
+.qb-btn--icon {
+  width: 34px;
+  padding: 0;
+  color: var(--fg-muted);
+}
+
+.qb-btn--icon:hover {
+  color: var(--fg);
 }
 
 .qb-btn--primary {
@@ -60,11 +97,22 @@
 
 .qb-lobby__header {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
+  align-items: center;
+  gap: 14px;
   flex-wrap: wrap;
   margin-bottom: 26px;
+}
+
+/* A marca a esquerda do titulo, alinhada pelo meio das duas linhas de texto. */
+.qb-lobby__brand {
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+/* O bloco do titulo empurra as ferramentas para a direita. */
+.qb-lobby__header > div:first-of-type {
+  margin-right: auto;
 }
 
 .qb-lobby__title {

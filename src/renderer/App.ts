@@ -847,6 +847,10 @@ export class App {
     document.documentElement.dataset['theme'] = this.#theme;
     this.#renderer.theme = THEMES[this.#theme];
     this.#bar.setGridEnabled(this.doc.prefs.grid.enabled);
+    // Os dois interruptores de tema mostram o PROXIMO tema, e por isso trocam de
+    // glifo junto. O do lobby existe separado porque o lobby nao tem a barra.
+    this.#bar.setTheme(this.#theme);
+    this.#lobby.setTheme(this.#theme);
   }
 
   #zoomCenter(factor: number): void {

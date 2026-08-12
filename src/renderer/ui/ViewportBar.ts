@@ -45,6 +45,7 @@ export class ViewportBar {
   #snapBtn: HTMLButtonElement;
   #rulerBtn: HTMLButtonElement;
   #layersBtn: HTMLButtonElement;
+  #themeBtn: HTMLButtonElement;
   #nameLabel: HTMLElement;
   #undoBtn: HTMLButtonElement;
   #redoBtn: HTMLButtonElement;
@@ -105,7 +106,12 @@ export class ViewportBar {
     this.#layersBtn = iconButton('camadas', 'camadas', 'Painel de camadas (C)', () =>
       this.actions.toggleLayers(),
     );
-    const themeBtn = iconButton('tema', 'tema', 'Alternar tema claro/escuro', () =>
+    // Sol ou lua conforme o tema, e nao um circulo meio preenchido.
+    //
+    // O icone mostra PARA ONDE o clique leva -- de dia aparece a lua, de noite o
+    // sol. E a leitura que um interruptor de uma tecla so pede: ele nao esta
+    // relatando o estado atual, esta oferecendo o proximo.
+    this.#themeBtn = iconButton('lua', 'tema', 'Alternar tema claro/escuro', () =>
       this.actions.toggleTheme(),
     );
     const helpBtn = iconButton('comandos', 'comandos', 'Atalhos e comandos (F1)', () =>
@@ -153,7 +159,7 @@ export class ViewportBar {
       divider(),
       group(this.#gridBtn, this.#snapBtn, this.#rulerBtn, this.#layersBtn, fitBtn),
       divider(),
-      group(themeBtn, helpBtn),
+      group(this.#themeBtn, helpBtn),
       divider(),
       zoomGroup,
     );
@@ -182,6 +188,13 @@ export class ViewportBar {
 
   setLayers(on: boolean): void {
     this.#layersBtn.classList.toggle('qb-bar__btn--active', on);
+  }
+
+  /** Troca o glifo do interruptor de tema para o do PROXIMO tema. */
+  setTheme(theme: 'light' | 'dark'): void {
+    this.#themeBtn.replaceChildren(icon(theme === 'dark' ? 'sol' : 'lua'));
+    this.#themeBtn.title = theme === 'dark' ? 'Mudar para o tema claro' : 'Mudar para o tema escuro';
+    this.#themeBtn.setAttribute('aria-label', this.#themeBtn.title);
   }
 
   setHistory(canUndo: boolean, canRedo: boolean): void {

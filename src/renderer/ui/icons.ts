@@ -23,7 +23,8 @@ export type IconName =
   | 'ima'
   | 'regua'
   | 'ajustar'
-  | 'tema'
+  | 'sol'
+  | 'lua'
   | 'comandos'
   | 'menos'
   | 'mais'
@@ -56,41 +57,80 @@ export type IconName =
   | 'subir'
   | 'descer';
 
-/** Traços de cada ícone, em coordenadas de uma caixa 24x24. */
+/**
+ * Traços de cada ícone, em coordenadas de uma caixa 24x24.
+ *
+ * **Todos vivem dentro de uma área de 16x16, entre 4 e 20.** Essa regra é o que
+ * mais mudou em 12/08/2026, a pedido dele ("o mais clean possível"): antes cada
+ * ícone tinha a sua própria extensão — a grade ia de 4 a 20, a régua de 3 a 21,
+ * o ímã de 4 a 17 — e o peso óptico variava tanto que a fila parecia desalinhada
+ * mesmo estando alinhada. Com a mesma área viva, eles viram um conjunto.
+ *
+ * As exceções são deliberadas e são poucas: os traços que *representam* a
+ * largura de algo (o rastro do marca-texto, a base do salvar) passam do limite
+ * de propósito.
+ */
 const PATHS: Record<IconName, string[]> = {
-  voltar: ['M15 5l-7 7 7 7'],
+  voltar: ['M14.5 5.5L8 12l6.5 6.5'],
   // Seta para BAIXO sobre uma base: guardar no disco.
-  salvar: ['M12 4v10', 'M8 10l4 4 4-4', 'M5 19h14'],
+  salvar: ['M12 4.5v9.5', 'M8.5 10.5l3.5 3.5 3.5-3.5', 'M5.5 18.5h13'],
   // A mesma base, seta para CIMA: tirar do app para fora.
-  exportar: ['M12 14V4', 'M8 8l4-4 4 4', 'M5 19h14'],
-  desfazer: ['M9 7l-5 5 5 5', 'M4 12h9a5 5 0 015 5v2'],
-  refazer: ['M15 7l5 5-5 5', 'M20 12h-9a5 5 0 00-5 5v2'],
-  grade: ['M4 9.5h16', 'M4 14.5h16', 'M9.5 4v16', 'M14.5 4v16'],
-  // Imã em U, com as duas pontas: e o desenho que todo mundo reconhece.
-  ima: ['M7 4v8a5 5 0 0010 0V4h-3v8a2 2 0 01-4 0V4z', 'M7 8h3', 'M14 8h3'],
-  regua: ['M3 8.5h18v7H3z', 'M7 8.5v3', 'M11 8.5v3', 'M15 8.5v3', 'M19 8.5v3'],
-  ajustar: ['M4 9V4h5', 'M20 9V4h-5', 'M4 15v5h5', 'M20 15v5h-5'],
-  // Circulo meio preenchido: claro de um lado, escuro do outro.
-  tema: ['M12 3a9 9 0 100 18 9 9 0 000-18z', 'M12 3v18a9 9 0 000-18z'],
-  // Teclado: a tela que ele abre e a lista de teclas.
-  comandos: ['M3 7h18v10H3z', 'M7 11h.01', 'M11 11h.01', 'M15 11h.01', 'M8 14.5h8'],
-  menos: ['M5 12h14'],
-  mais: ['M12 5v14', 'M5 12h14'],
+  exportar: ['M12 14V4.5', 'M8.5 8l3.5-3.5L15.5 8', 'M5.5 18.5h13'],
+  desfazer: ['M9 7.5L5 12l4 4.5', 'M5 12h8.5a4.5 4.5 0 014.5 4.5v1.5'],
+  refazer: ['M15 7.5l4 4.5-4 4.5', 'M19 12h-8.5A4.5 4.5 0 006 16.5v1.5'],
+  // Quatro linhas curtas, e nao quatro atravessando a caixa: a grade era o
+  // icone mais pesado da fila so por ocupar mais espaco que os vizinhos.
+  grade: ['M5 9.5h14', 'M5 14.5h14', 'M9.5 5v14', 'M14.5 5v14'],
+  // Imã em U, com as duas pontas. Ocupa a area viva inteira (4.5 a 19.5): antes
+  // ele parava em 17 e ficava visivelmente menor que os vizinhos na mesma fila.
+  ima: ['M6.4 4.5v8a5.6 5.6 0 0011.2 0v-8h-3.7v8a1.9 1.9 0 01-3.8 0v-8z', 'M6.4 8.6h3.8', 'M13.9 8.6h3.7'],
+  // Marcas de tamanhos diferentes, como numa regua de verdade -- quatro iguais
+  // liam como uma cerca.
+  //
+  // A caixa e mais alta do que parece necessario (7,5 contra 6) por um motivo
+  // de tamanho pequeno: descontado o traco, sobram menos de 3px de vao aos 17px
+  // de tela, e as marcas encostam no lado de baixo. Com o vao maior, a regua
+  // continua sendo uma regua mesmo quando o botao esta ligado e preenchido.
+  regua: ['M4 8.2h16v7.6H4z', 'M8 8.2v2.6', 'M12 8.2v3.6', 'M16 8.2v2.6'],
+  ajustar: ['M4.5 9V4.5H9', 'M19.5 9V4.5H15', 'M4.5 15v4.5H9', 'M19.5 15v4.5H15'],
+  // Sol e lua, e nao um circulo meio preenchido: o interruptor de tema mostra
+  // PARA ONDE vai, e um crescente diz "escuro" sem precisar de legenda.
+  sol: [
+    'M15.2 12a3.2 3.2 0 11-6.4 0 3.2 3.2 0 016.4 0z',
+    'M12 4.2v1.8',
+    'M12 18v1.8',
+    'M4.2 12H6',
+    'M18 12h1.8',
+    'M6.5 6.5l1.3 1.3',
+    'M16.2 16.2l1.3 1.3',
+    'M17.5 6.5l-1.3 1.3',
+    'M7.8 16.2l-1.3 1.3',
+  ],
+  lua: ['M19.5 14.6A8 8 0 019.4 4.5a8 8 0 1010.1 10.1z'],
+  // Teclado: a tela que ele abre e a lista de teclas. Tres teclas e nao quatro
+  // -- a quarta nao acrescentava informacao e fechava os vaos.
+  comandos: ['M4 7.5h16v9H4z', 'M8 11h.01', 'M12 11h.01', 'M16 11h.01', 'M9 14h6'],
+  menos: ['M5.5 12h13'],
+  mais: ['M12 5.5v13', 'M5.5 12h13'],
 
-  // A seta do cursor, como o proprio sistema desenha.
-  selecionar: ['M6 4l11 7-5 1.3 2.4 5.2-2.2 1-2.4-5.2-3.8 3.4z'],
+  // A seta do cursor, em CONTORNO como todos os outros. Ela era o unico icone
+  // preenchido da fila, e por isso pesava mais que os vizinhos.
+  selecionar: ['M7 4.6l9.6 6.2-4.3 1 1.9 4.4-2 .9-1.9-4.4-3.3 2.6z'],
   // Caneta e lapis dividem o corpo inclinado; o que os separa e a ponta --
   // a caneta termina em bico, o lapis tem a madeira marcada.
-  caneta: ['M5 19l1.3-4.2L16.2 5l3 3-9.8 9.8z', 'M14.2 7l3 3'],
-  lapis: ['M5 19l1.3-4.2L16.2 5l3 3-9.8 9.8z', 'M13 8.2l3 3', 'M6.3 14.8l3 3'],
-  // Marca-texto: ponta chanfrada e o rastro que ela deixa embaixo.
-  marcaTexto: ['M7 15l7-7 3.5 3.5-7 7H7z', 'M13 7l3.5 3.5', 'M4 20h16'],
-  texto: ['M6 5h12', 'M12 5v14', 'M9 19h6'],
-  // Papel com o canto dobrado.
-  postit: ['M5 4h9l5 5v11H5z', 'M14 4v5h5'],
+  caneta: ['M5 19l1.2-4L16 5.2l2.8 2.8L9 17.8z', 'M14.2 7l2.8 2.8'],
+  lapis: ['M5 19l1.2-4L16 5.2l2.8 2.8L9 17.8z', 'M13 8.2l2.8 2.8', 'M6.4 14.8l2.8 2.8'],
+  // Marca-texto: corpo CURTO e GORDO com ponta chanfrada, mais o rastro largo
+  // embaixo. Antes ele dividia o corpo comprido com a caneta e os dois se
+  // confundiam na barra; agora a silhueta e outra desde longe.
+  marcaTexto: ['M9 13.8l4.6-4.6 3.6 3.6-4.6 4.6H9z', 'M12.6 8.2l3.6 3.6', 'M4.5 19.8h15'],
+  texto: ['M6.5 5.5h11', 'M12 5.5v13', 'M9 18.5h6'],
+  // Post-it: o canto dobrado fica EMBAIXO, e nao em cima. Em cima ele e o
+  // desenho universal de "documento", e era isso que o icone dizia.
+  postit: ['M5 4.5h14v9.5l-5 5H5z', 'M19 14h-5v5'],
   // Um quadrado e um circulo se cruzando: e a ferramenta das varias formas.
-  formas: ['M4 5h9v9H4z', 'M14.5 14.5a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z'],
-  borracha: ['M4.5 15.5l7-7a1.5 1.5 0 012 0l4 4a1.5 1.5 0 010 2L13 19H8z', 'M4 20h16', 'M9 10l6 6'],
+  formas: ['M4.5 5.5h9v9h-9z', 'M19.5 14.5a5 5 0 01-10 0 5 5 0 0110 0z'],
+  borracha: ['M5 15l6.6-6.6a1.5 1.5 0 012.1 0l3.9 3.9a1.5 1.5 0 010 2.1L14 18H8.2z', 'M4.5 19.8h15', 'M9.3 10.3l5.7 5.7'],
 
   retangulo: ['M4 6h16v12H4z'],
   elipse: ['M20 12a8 6 0 11-16 0 8 6 0 0116 0z'],
@@ -119,7 +159,7 @@ const PATHS: Record<IconName, string[]> = {
 };
 
 /** Ícones cujo segundo traço é preenchido, e não contornado. */
-const FILLED_SECOND: ReadonlySet<IconName> = new Set(['tema', 'preencher']);
+const FILLED_SECOND: ReadonlySet<IconName> = new Set(['preencher']);
 
 export function icon(name: IconName, size = 17): SVGSVGElement {
   const svg = document.createElementNS(SVG_NS, 'svg');
