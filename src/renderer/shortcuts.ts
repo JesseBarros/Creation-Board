@@ -44,7 +44,8 @@ export type ShortcutId =
   | 'thicker'
   | 'snapToGrid'
   | 'rulers'
-  | 'rulerUnit';
+  | 'rulerUnit'
+  | 'layers';
 
 export interface ShortcutDef {
   /** Ausente = entrada apenas informativa (gesto de mouse, sem tecla). */
@@ -176,6 +177,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   { id: 'grid', group: 'Visualizacao', keys: 'G', label: 'Ligar/desligar a grade de fundo', scope: 'board' },
   { id: 'rulers', group: 'Visualizacao', keys: 'R', label: 'Reguas nas bordas', scope: 'board' },
   { id: 'rulerUnit', group: 'Visualizacao', keys: 'U', label: 'Unidade das reguas: px ou cm', scope: 'board' },
+  { id: 'layers', group: 'Visualizacao', keys: 'C', label: 'Painel de camadas: olho e cadeado', scope: 'board' },
   { id: 'help', group: 'Visualizacao', keys: 'F1|?', label: 'Mostrar esta lista de atalhos' },
   { id: 'debug', group: 'Visualizacao', keys: 'F3', label: 'Painel de debug e carga de teste', scope: 'board' },
   { id: 'benchmark', group: 'Visualizacao', keys: 'B', label: 'Medir fps sustentado', scope: 'board' },

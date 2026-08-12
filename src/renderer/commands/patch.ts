@@ -28,6 +28,16 @@ export interface ObjectPatch {
    * muda o pedaco visivel E o retangulo que ele ocupa no quadro.
    */
   crop?: Rect | null;
+  /**
+   * Cadeado e olho do painel de camadas (M8).
+   *
+   * Entram aqui, e nao num comando proprio, porque `PatchObjects` ja e o comando
+   * generico de mudanca de campo -- e com isso travar e esconder ganham undo,
+   * agrupamento e notificacao de graca. Um `ToggleLock` separado seria um
+   * terceiro caminho fazendo o mesmo que os outros dois.
+   */
+  locked?: boolean;
+  hidden?: boolean;
 }
 
 /** Le do objeto os campos que um patch tocaria, para poder desfazer depois. */
@@ -40,6 +50,8 @@ export function snapshotPatch(obj: BoardObject, fields: ObjectPatch): ObjectPatc
   if (fields.content !== undefined && 'content' in obj) out.content = obj.content;
   if (fields.list !== undefined && obj.type === 'text') out.list = obj.list;
   if (fields.crop !== undefined && obj.type === 'image') out.crop = obj.crop ?? null;
+  if (fields.locked !== undefined) out.locked = obj.locked;
+  if (fields.hidden !== undefined) out.hidden = obj.hidden;
   return out;
 }
 
@@ -79,6 +91,8 @@ export function applyPatches(
     if (patch.crop !== undefined && obj.type === 'image') {
       next.crop = patch.crop === null ? undefined : { ...patch.crop };
     }
+    if (patch.locked !== undefined) next.locked = patch.locked;
+    if (patch.hidden !== undefined) next.hidden = patch.hidden;
 
     next.rev = obj.rev + 1;
     next.updatedAt = now;
