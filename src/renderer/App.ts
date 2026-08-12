@@ -5,7 +5,7 @@ import { History } from './core/History';
 import { Scheduler, type FrameStats } from './core/Scheduler';
 import { Selection } from './core/Selection';
 import { ViewportInput } from './input/ViewportInput';
-import { Renderer, type RenderTheme } from './render/Renderer';
+import { Renderer, type RenderStats, type RenderTheme } from './render/Renderer';
 import { paintRulers, RULER_PX, type RulerTheme } from './render/Rulers';
 import { paintPinnedNotes } from './render/PinnedNotes';
 import { displayedAs } from './render/colorAdapt';
@@ -1692,6 +1692,27 @@ export class App {
    */
   invalidateForMeasurement(): void {
     this.#scheduler.invalidate();
+  }
+
+  /**
+   * Desenha a camada estatica AGORA e devolve o custo, sem passar pelo rAF.
+   *
+   * Existe porque toda medicao de desenho deste projeto dependia do rAF, e o rAF
+   * mente em dois casos que aparecem o tempo todo:
+   *
+   * - **Janela encoberta.** O Chromium para de entregar frames quando a janela
+   *   esta atras de outra, e `backgroundThrottling: false` nao cobre isso. Em
+   *   12/08/2026 o `QB_BENCH` devolveu `0.0 fps` em duas das tres fases por esse
+   *   motivo -- com o render medido em 16,5 ms na mesma linha.
+   * - **Vsync.** Esperar o frame soma a espera do monitor ao trabalho, e a
+   *   espera muda de 8 para 16 ms conforme a taxa do painel (ver o B9).
+   *
+   * Chamando o renderer direto, o que se mede e o trabalho, e so ele. Nao serve
+   * para medir fluidez percebida -- serve para responder "desenhar isto custa
+   * quanto?", que e a pergunta de quem otimiza.
+   */
+  renderNowForMeasurement(): RenderStats {
+    return this.#renderer.render();
   }
 
   get frameStats(): FrameStats {

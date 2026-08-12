@@ -2071,38 +2071,77 @@ async function runHudTests(app: App, check: Check, reset: () => void): Promise<v
   for (let i = 0; i < TROCAS; i++) app.setTool(i % 2 === 0 ? 'pen' : 'select');
   const msDom = (performance.now() - t0) / TROCAS;
 
-  // Duas medidas com o MESMO trabalho de canvas, para o vsync sair da conta:
-  // as duas mandam repintar o quadro inteiro e esperam o frame. A unica
-  // diferenca e o trabalho de interface da troca de ferramenta.
+  // Mede o trabalho SINCRONO da troca, e nada mais.
   //
-  // Comparar contra frames OCIOSOS, como esta verificacao fazia antes, media a
-  // espera do vsync junto e oscilava vários ms entre execucoes -- reprovava com
-  // a maquina ocupada, sem nada ter piorado.
-  const t1 = performance.now();
-  for (let i = 0; i < TROCAS; i++) {
-    app.setTool(i % 2 === 0 ? 'pen' : 'select');
-    await nextFrames(1);
-  }
-  const msComTroca = (performance.now() - t1) / TROCAS;
-
-  const t2 = performance.now();
-  for (let i = 0; i < TROCAS; i++) {
-    app.invalidateForMeasurement();
-    await nextFrames(1);
-  }
-  const msSoRepintura = (performance.now() - t2) / TROCAS;
-
-  const custoDaInterface = msComTroca - msSoRepintura;
+  // Ate 12/08/2026 esta verificacao comparava dois lacos que esperavam frame --
+  // "troca + repintura" menos "so repintura" -- e reprovava. A conta era
+  // impossivel, e o registro do B9 ja avisava: esperar o frame soma a espera do
+  // vsync ao trabalho. Depois do B12 ficou pior, porque a repintura de 4.000
+  // objetos passou de ~8 ms para ~46 ms: dois numeros grandes e quantizados pelo
+  // monitor sendo subtraidos para enxergar um efeito de 0,1 ms. O ruido virou
+  // dez vezes o teto, sem uma linha do codigo vigiado ter mudado.
+  //
+  // O que esta verificacao existe para pegar e o B3: alguem voltar a reconstruir
+  // o painel inteiro a cada troca. Isso e trabalho de DOM, sincrono, e aparece
+  // por completo em `msDom` -- que ja era medido e ja estava certo. Quando o
+  // painel era reconstruido, este numero era 5,3 ms; hoje e 0,1 ms.
+  const custoDeDesenho = medirRender(app);
   check(
-    'trocar de ferramenta custa quase nada alem da repintura que ela ja pede',
-    custoDaInterface < 3,
-    `troca+repintura ${msComTroca.toFixed(1)} ms · so repintura ${msSoRepintura.toFixed(1)} ms · ` +
-      `interface ${custoDaInterface.toFixed(1)} ms (teto 3) · sincrono ${msDom.toFixed(2)} ms`,
+    'trocar de ferramenta nao reconstroi o painel de opcoes',
+    msDom < 1,
+    `troca sincrona ${msDom.toFixed(2)} ms (teto 1; era 5,3 quando o painel era reconstruido) · ` +
+      `desenhar os 4.000 objetos, so trabalho: ${custoDeDesenho.toFixed(1)} ms`,
+  );
+
+  // --- MEDICAO: onde o custo de desenhar esta, por tipo de objeto
+  //
+  // Esta e a repartição que orienta o cache de rasterizacao. Sem ela, "o quadro
+  // cheio custa 16 ms" nao diz o que otimizar -- e a decisao registrada no
+  // rasterCache.ts ("traco e caminho passam direto, cachea-los economizaria
+  // pouco") era deducao, nunca medicao.
+  //
+  // Duas colunas de proposito, pelo mesmo motivo da medicao da busca: o primeiro
+  // desenho paga a rasterizacao e os seguintes colhem o cache. Uma media
+  // escondendo o primeiro daria um numero bonito e mentiroso.
+  const POR_TIPO = 800;
+  const pool = generateStressObjects(14_000, 4242);
+  const linhas: string[] = [];
+  for (const tipo of ['stroke', 'shape', 'note', 'text'] as const) {
+    const amostra = pool.filter((o) => o.type === tipo).slice(0, POR_TIPO);
+    if (amostra.length < POR_TIPO) continue;
+
+    doc.clear();
+    doc.add(amostra);
+    app.fitToContent();
+
+    const frio = medirRender(app, 1);
+    const quente = medirRender(app, 6);
+    linhas.push(
+      `${tipo} ${((quente / POR_TIPO) * 1000).toFixed(2)}/mil (frio ${((frio / POR_TIPO) * 1000).toFixed(2)})`,
+    );
+  }
+
+  check(
+    'a reparticao do custo de desenho por tipo de objeto esta disponivel',
+    linhas.length === 4,
+    `${linhas.join(' · ')} — ms por mil objetos na tela, sem esperar frame`,
   );
 
   reset();
   doc.clear();
   app.setTool('select');
+}
+
+/**
+ * Custo medio de UMA passada de desenho da camada estatica, em ms.
+ *
+ * Chama o renderer direto: sem rAF, sem vsync, sem depender de a janela estar
+ * na frente. Ver `App.renderNowForMeasurement` para o porque.
+ */
+function medirRender(app: App, reps = 5): number {
+  const t = performance.now();
+  for (let i = 0; i < reps; i++) app.renderNowForMeasurement();
+  return (performance.now() - t) / reps;
 }
 
 /** Espera N frames de animacao. */
