@@ -22,7 +22,13 @@ import { plainText } from '../features/text/spans';
 import { searchBoard } from '../features/search/search';
 import { paintObject } from '../render/painters';
 import { displayedAs } from '../render/colorAdapt';
-import { exportBounds, renderPng } from '../features/export/exportBoard';
+import {
+  exportBounds,
+  planTiles,
+  renderPng,
+  renderPngTile,
+  type TilePlan,
+} from '../features/export/exportBoard';
 import { renderSvg } from '../features/export/exportSvg';
 import { autosaveVerdict } from '../features/storage/autosave';
 import { layoutOf, layoutText } from '../render/text/layout';
@@ -2214,6 +2220,62 @@ async function runExportTests(app: App, check: Check, reset: () => void): Promis
     gigante.scale < 3 && gigante.width * gigante.height <= 64_000_000 && gigante.bytes.length > 0,
     `escala pedida=3 usada=${gigante.scale.toFixed(3)} ` +
       `${gigante.width}x${gigante.height} = ${(gigante.width * gigante.height / 1e6).toFixed(1)} MP`,
+  );
+
+  // --- B13: os tres botoes de resolucao tem de produzir arquivos DIFERENTES
+  //
+  // Era este o defeito: num quadro grande o teto de pixels engolia a escolha e
+  // 1x, 2x e 3x davam o mesmo arquivo, calado. A verificacao compara os tres
+  // planos -- se dois derem o mesmo total de pixels, o botao voltou a mentir.
+  const planos = [1, 2, 3].map((s) => planTiles(enorme, 0, s));
+  const totais = planos.map((p) => p.width * p.height);
+  check(
+    'os tres botoes de resolucao produzem tamanhos diferentes, mesmo num quadro grande',
+    planos.every((p, i) => p.scale === i + 1) &&
+      totais[1]! > totais[0]! * 3.5 &&
+      totais[2]! > totais[1]! * 2,
+    planos
+      .map((p) => `${p.scale}x=${p.width}x${p.height} em ${p.cols * p.rows} ladrilho(s)`)
+      .join(' · '),
+  );
+
+  // --- nenhum ladrilho pode estourar o que o navegador aloca
+  const grande = planTiles(enorme, 0, 3);
+  check(
+    'nenhum ladrilho passa do teto de pixels nem do lado maximo',
+    grande.tileW <= 16_384 && grande.tileH <= 16_384 && grande.tileW * grande.tileH <= 64_000_000,
+    `ladrilho=${grande.tileW}x${grande.tileH} = ` +
+      `${((grande.tileW * grande.tileH) / 1e6).toFixed(1)} MP (tetos 16.384 e 64 MP)`,
+  );
+
+  // --- a grade cobre a area inteira, sem buraco e sem sobra
+  const somaW = grande.tileW * (grande.cols - 1) + Math.min(grande.tileW, grande.width - grande.tileW * (grande.cols - 1));
+  const somaH = grande.tileH * (grande.rows - 1) + Math.min(grande.tileH, grande.height - grande.tileH * (grande.rows - 1));
+  check(
+    'os ladrilhos somados dao exatamente a imagem inteira',
+    somaW === grande.width && somaH === grande.height,
+    `${grande.cols}x${grande.rows} ladrilhos somam ${somaW}x${somaH}, imagem ${grande.width}x${grande.height}`,
+  );
+
+  // --- e os ladrilhos mostram partes DIFERENTES do quadro
+  //
+  // Sem isto, uma transformacao errada gravaria o mesmo pedaco N vezes -- o
+  // arquivo sairia, a contagem bateria, e o quadro estaria perdido. Com dois
+  // objetos afastados, cada ladrilho tem de pegar um deles.
+  setup();
+  doc.clear();
+  doc.add(scene());
+  const dois = { x: 0, y: 0, w: 3000, h: 200 };
+  const planoDois = planTiles(dois, 0, 1);
+  const forcado: TilePlan = { ...planoDois, cols: 2, tileW: Math.ceil(planoDois.width / 2) };
+  const esq = await renderPngTile(doc, app.assets, [], { scale: 1, padding: 0, background: '#ffffff', theme: tema }, forcado, 0, 0);
+  const dir = await renderPngTile(doc, app.assets, [], { scale: 1, padding: 0, background: '#ffffff', theme: tema }, forcado, 1, 0);
+  check(
+    'ladrilhos vizinhos gravam pedacos diferentes do quadro',
+    esq.bytes.length !== dir.bytes.length,
+    `esquerdo ${esq.width}x${esq.height} (${esq.bytes.length} bytes) · ` +
+      `direito ${dir.width}x${dir.height} (${dir.bytes.length} bytes) — ` +
+      `bytes iguais significariam o mesmo pedaco gravado duas vezes`,
   );
 
   // --- SVG: um elemento por objeto, com a geometria certa

@@ -30,8 +30,73 @@ export interface ExportOptions {
   theme: RenderTheme;
 }
 
-/** Teto de pixels do PNG exportado (~64 MP). Acima disto, a escala cede. */
+/** Teto de pixels de UM canvas (~64 MP). Acima disto o navegador nao aloca. */
 const MAX_PIXELS = 64_000_000;
+
+/**
+ * Teto de lado de um canvas. O Chromium aceita ate 65.535, mas um lado gigante
+ * com o outro curto desperdica o orcamento de pixels numa tira; 16.384 mantem os
+ * ladrilhos com forma utilizavel.
+ */
+const MAX_SIDE = 16_384;
+
+/**
+ * Como um pedido de resolucao vira arquivos.
+ *
+ * O B13 era este: os tres botoes (1x, 2x, 3x) produziam o MESMO arquivo num
+ * quadro grande, porque o teto de pixels engolia a escolha calado. Um controle
+ * que promete e nao cumpre e pior que um controle ausente.
+ *
+ * A saida registrada no BUGS.md era "renderizar em pedacos e juntar no arquivo
+ * final". **Ela nao e alcancavel, e vale dizer por que:** o quadro real dele tem
+ * 82.967 x 19.274 unidades, o que da 1,6 GIGApixel a 1x -- 6,4 GB de pixel cru.
+ * Nao existe PNG unico para isso, com ou sem ladrilhos, e nenhum visualizador
+ * abriria. O teto de 64 MP nao era o limite que apertava; a aritmetica era.
+ *
+ * Entao o ladrilho vira ARQUIVO, e nao pedaco costurado. A escala pedida passa a
+ * ser respeitada exatamente, e o quadro sai numa grade de imagens de tamanho
+ * normal -- que e o que torna o resumo legivel, que era o pedido original.
+ */
+export interface TilePlan {
+  /** Escala efetivamente usada. Igual a pedida, sempre que houver ladrilhos. */
+  scale: number;
+  /** Tamanho total da imagem completa, em pixels. */
+  width: number;
+  height: number;
+  cols: number;
+  rows: number;
+  /** Lado de um ladrilho em pixels (o da ultima coluna/linha pode ser menor). */
+  tileW: number;
+  tileH: number;
+  /** Area do mundo coberta, ja com a margem. */
+  box: Rect;
+}
+
+export function planTiles(area: Rect, padding: number, wanted: number): TilePlan {
+  const box = inflate(area, padding);
+  const width = Math.max(1, Math.round(box.w * wanted));
+  const height = Math.max(1, Math.round(box.h * wanted));
+
+  // Primeiro o limite de LADO, que e rigido. Depois o de AREA, crescendo sempre
+  // o eixo mais longo -- crescer o curto deixaria ladrilhos em forma de tira.
+  let cols = Math.ceil(width / MAX_SIDE);
+  let rows = Math.ceil(height / MAX_SIDE);
+  while ((width / cols) * (height / rows) > MAX_PIXELS) {
+    if (width / cols >= height / rows) cols++;
+    else rows++;
+  }
+
+  return {
+    scale: wanted,
+    width,
+    height,
+    cols,
+    rows,
+    tileW: Math.ceil(width / cols),
+    tileH: Math.ceil(height / rows),
+    box,
+  };
+}
 
 /** Retangulo a exportar: a selecao, se houver, senao todo o conteudo. */
 export function exportBounds(doc: Document, ids: readonly string[]): Rect | null {
@@ -61,17 +126,24 @@ export interface RenderedPng {
   scale: number;
 }
 
-export async function renderPng(
+/**
+ * Um ladrilho da exportacao. Com `cols * rows === 1` e a imagem inteira, e o
+ * caminho e identico ao que existia antes de o B13 ser corrigido.
+ */
+export async function renderPngTile(
   doc: Document,
   assets: AssetStore,
-  area: Rect,
   ids: readonly string[],
   opts: ExportOptions,
+  plan: TilePlan,
+  col: number,
+  row: number,
 ): Promise<RenderedPng> {
-  const box = inflate(area, opts.padding);
-  const scale = fitScale(box, opts.scale);
-  const width = Math.max(1, Math.round(box.w * scale));
-  const height = Math.max(1, Math.round(box.h * scale));
+  const { scale, box } = plan;
+  // O ultimo ladrilho de cada eixo costuma sobrar: sem o `min`, ele teria pixels
+  // vazios alem da borda do quadro.
+  const width = Math.min(plan.tileW, plan.width - col * plan.tileW);
+  const height = Math.min(plan.tileH, plan.height - row * plan.tileH);
 
   const canvas = document.createElement('canvas');
   canvas.width = width;
@@ -84,10 +156,25 @@ export async function renderPng(
     ctx.fillRect(0, 0, width, height);
   }
 
-  const adapt = createColorAdapter(opts.background ?? opts.theme.boardBg);
-  ctx.setTransform(scale, 0, 0, scale, -box.x * scale, -box.y * scale);
+  // A origem do ladrilho em pixels vira deslocamento da transformacao: o resto
+  // do desenho nao sabe que esta num pedaco.
+  const offX = col * plan.tileW;
+  const offY = row * plan.tileH;
 
-  for (const obj of objectsToExport(doc, ids, box)) {
+  const adapt = createColorAdapter(opts.background ?? opts.theme.boardBg);
+  ctx.setTransform(scale, 0, 0, scale, -box.x * scale - offX, -box.y * scale - offY);
+
+  // Culling pelo pedaco do MUNDO que este ladrilho cobre. Sem isto, cada
+  // ladrilho percorreria o quadro inteiro, e o custo cresceria com o quadrado do
+  // numero de ladrilhos.
+  const janela: Rect = {
+    x: box.x + offX / scale,
+    y: box.y + offY / scale,
+    w: width / scale,
+    h: height / scale,
+  };
+
+  for (const obj of objectsToExport(doc, ids, janela)) {
     const t = obj.transform;
     ctx.save();
     ctx.translate(t.x, t.y);
@@ -111,6 +198,25 @@ export async function renderPng(
   const blob = await new Promise<Blob | null>((r) => canvas.toBlob((b) => r(b), 'image/png'));
   if (!blob) throw new Error('Falha ao codificar o PNG');
   return { bytes: new Uint8Array(await blob.arrayBuffer()), width, height, scale };
+}
+
+/**
+ * Uma imagem SO, com a escala cedendo se o pedido nao couber num canvas.
+ *
+ * Continua existindo porque o PDF e uma pagina: nao ha onde por o segundo
+ * ladrilho. Quem exporta PNG passa pelo `planTiles` + `renderPngTile`, que
+ * respeitam a escala pedida.
+ */
+export async function renderPng(
+  doc: Document,
+  assets: AssetStore,
+  area: Rect,
+  ids: readonly string[],
+  opts: ExportOptions,
+): Promise<RenderedPng> {
+  const scale = fitScale(inflate(area, opts.padding), opts.scale);
+  const plan = planTiles(area, opts.padding, scale);
+  return renderPngTile(doc, assets, ids, opts, plan, 0, 0);
 }
 
 /**

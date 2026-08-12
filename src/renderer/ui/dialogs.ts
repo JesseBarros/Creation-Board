@@ -160,7 +160,19 @@ export interface ExportChoice {
  * mais de um formato, e repetir as opcoes em cada item multiplicaria o menu sem
  * explicar nada.
  */
-export function exportDialog(opts: { hasSelection: boolean }): Promise<ExportChoice | null> {
+export interface ExportPreview {
+  width: number;
+  height: number;
+  files: number;
+  /** Escala que sera realmente usada; menor que a pedida so no PDF. */
+  scale: number;
+}
+
+export function exportDialog(opts: {
+  hasSelection: boolean;
+  /** O que vai sair, para as escolhas atuais. Ver o B13. */
+  preview: (choice: ExportChoice) => ExportPreview | null;
+}): Promise<ExportChoice | null> {
   return new Promise((resolve) => {
     const choice: ExportChoice = {
       format: 'png',
@@ -177,12 +189,53 @@ export function exportDialog(opts: { hasSelection: boolean }): Promise<ExportCho
     h.textContent = 'Exportar quadro';
     panel.append(h);
 
+    /**
+     * O que vai sair, escrito antes de exportar.
+     *
+     * Era isto que faltava no B13: os tres botoes de resolucao produziam o mesmo
+     * arquivo num quadro grande e ninguem avisava. Agora a linha muda a cada
+     * clique, e dizer "12 arquivos de 8.192 x 4.819" e o que impede a pessoa de
+     * descobrir isso depois de esperar a exportacao.
+     */
+    const resumo = document.createElement('p');
+    resumo.className = 'qb-dialog__hint';
+    const atualizarResumo = (): void => {
+      const p = opts.preview(choice);
+      if (!p) {
+        resumo.textContent = '';
+        return;
+      }
+      const tamanho = `${p.width.toLocaleString('pt-BR')} × ${p.height.toLocaleString('pt-BR')} px`;
+      if (choice.format === 'svg') {
+        resumo.textContent = 'Vetorial: legivel em qualquer ampliacao, sem resolucao fixa.';
+      } else if (p.scale < choice.scale - 0.001) {
+        // So o PDF cai aqui: uma pagina nao tem onde por o segundo ladrilho.
+        resumo.textContent =
+          `${tamanho} — uma pagina so cabe ${p.scale.toFixed(2)}x, e nao ${choice.scale}x. ` +
+          `Para ${choice.scale}x de verdade, exporte em PNG.`;
+      } else if (p.files > 1) {
+        resumo.textContent = `${tamanho} em ${p.files} arquivos, a ${choice.scale}x de verdade.`;
+        // Acima de duas dezenas de arquivos a escolha deixa de ser obvia: a
+        // resolucao e real, mas o resultado e uma pasta cheia e uma espera
+        // longa. Dizer isso antes vale mais do que descobrir depois.
+        if (p.files > 24) {
+          resumo.textContent += ' Sao muitos — considere 1x, ou o SVG.';
+          resumo.classList.add('qb-dialog__hint--warn');
+        } else {
+          resumo.classList.remove('qb-dialog__hint--warn');
+        }
+      } else {
+        resumo.textContent = `${tamanho}, um arquivo.`;
+      }
+    };
+
     const scaleRow = group('Resolucao', [
       ['1x', '1'],
       ['2x', '2'],
       ['3x', '3'],
     ], String(choice.scale), (v) => {
       choice.scale = Number(v);
+      atualizarResumo();
     });
 
     panel.append(
@@ -199,6 +252,7 @@ export function exportDialog(opts: { hasSelection: boolean }): Promise<ExportCho
           // SVG nao tem resolucao: o arquivo e a geometria, e ampliar depois nao
           // perde nada. Esconder a linha e mais honesto que deixa-la sem efeito.
           scaleRow.hidden = choice.format === 'svg';
+          atualizarResumo();
         },
       ),
     );
@@ -214,6 +268,7 @@ export function exportDialog(opts: { hasSelection: boolean }): Promise<ExportCho
           choice.scope,
           (v) => {
             choice.scope = v as ExportChoice['scope'];
+            atualizarResumo();
           },
         ),
       );
@@ -233,6 +288,9 @@ export function exportDialog(opts: { hasSelection: boolean }): Promise<ExportCho
         },
       ),
     );
+
+    panel.append(resumo);
+    atualizarResumo();
 
     const actions = document.createElement('div');
     actions.className = 'qb-dialog__actions';

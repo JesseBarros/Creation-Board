@@ -1,5 +1,11 @@
 import type { App } from '../App';
-import { exportBounds, renderPng } from '../features/export/exportBoard';
+import {
+  exportBounds,
+  planTiles,
+  renderPng,
+  renderPngTile,
+  type TilePlan,
+} from '../features/export/exportBoard';
 import { renderSvg } from '../features/export/exportSvg';
 import { generateStressObjects } from './stress';
 
@@ -90,6 +96,61 @@ export async function runExportCheck(prefix: string, app: App): Promise<void> {
           : `  FALHOU ${format.toUpperCase()}: nada gravado`,
       );
     }
+
+    // --- B13: a grade de ladrilhos, gravada de verdade
+    //
+    // O autoteste ja confere o PLANO (escalas diferentes, teto por ladrilho,
+    // soma exata) e o desenho de dois ladrilhos vizinhos. O que so aqui se
+    // confere e o resto do caminho: mandar N ladrilhos num pedido so pelo IPC e
+    // acabar com N arquivos irmaos no disco, com o sufixo antes da extensao.
+    //
+    // A escala e escolhida para forcar uma grade PEQUENA de proposito: gravar
+    // 180 arquivos a cada verificacao seria inutilizavel.
+    const plano = planTiles(area, 24, 2);
+    const forcado: TilePlan = {
+      ...plano,
+      cols: 2,
+      rows: 2,
+      tileW: Math.ceil(plano.width / 2),
+      tileH: Math.ceil(plano.height / 2),
+    };
+
+    const ladrilhos = [];
+    for (let row = 0; row < forcado.rows; row++) {
+      for (let col = 0; col < forcado.cols; col++) {
+        ladrilhos.push(
+          await renderPngTile(
+            app.doc,
+            app.assets,
+            [],
+            { scale: forcado.scale, padding: 24, background: theme.boardBg, theme },
+            forcado,
+            col,
+            row,
+          ),
+        );
+      }
+    }
+
+    const t3 = performance.now();
+    const grade = await window.quadro.exporter.save({
+      name: 'verificacao',
+      format: 'png',
+      data: ladrilhos[0]!.bytes.slice().buffer,
+      path: `${prefix}-grade.png`,
+      suffix: '-l1c1',
+      parts: ladrilhos.slice(1).map((t, i) => ({
+        data: t.bytes.slice().buffer,
+        suffix: `-l${Math.floor((i + 1) / forcado.cols) + 1}c${((i + 1) % forcado.cols) + 1}`,
+      })),
+    });
+    lines.push(
+      grade.count === 4
+        ? `  gravada a grade: ${grade.count} arquivos a partir de ${grade.path} ` +
+          `(${forcado.cols}x${forcado.rows} de ${ladrilhos[0]!.width}x${ladrilhos[0]!.height}px, ` +
+          `${(performance.now() - t3).toFixed(0)} ms)`
+        : `  FALHOU a grade: esperava 4 arquivos, gravou ${grade.count ?? 0}`,
+    );
   } catch (err) {
     lines.push(`  ERRO ${String(err)}`);
   }

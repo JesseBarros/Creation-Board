@@ -36,8 +36,22 @@ import { ViewportBar } from './ui/ViewportBar';
 import { ContextMenu, type MenuEntry } from './ui/ContextMenu';
 import { Lobby } from './ui/Lobby';
 import { ShortcutsModal } from './ui/ShortcutsModal';
-import { confirmDialog, exportDialog, promptText, toast } from './ui/dialogs';
-import { exportBounds, renderPng } from './features/export/exportBoard';
+import {
+  confirmDialog,
+  exportDialog,
+  promptText,
+  toast,
+  type ExportChoice,
+} from './ui/dialogs';
+import {
+  exportBounds,
+  planTiles,
+  renderPng,
+  renderPngTile,
+  type RenderedPng,
+  type TilePlan,
+} from './features/export/exportBoard';
+import type { ExportPart } from '@shared/ipc-contract';
 import { renderSvg } from './features/export/exportSvg';
 import {
   applyBoard,
@@ -855,7 +869,43 @@ export class App {
       return;
     }
 
-    const choice = await exportDialog({ hasSelection: this.selection.size > 0 });
+    // O resumo do dialogo (B13) refaz este calculo a cada clique, por isso ele e
+    // uma funcao e nao um valor: escala, formato e "o que exportar" mudam o
+    // resultado, e o numero mostrado tem de ser o do estado atual.
+    const planFor = (c: ExportChoice): TilePlan | null => {
+      const alvo = c.scope === 'selection' ? this.selection.ids() : [];
+      const r = exportBounds(this.doc, alvo);
+      if (!r || r.w <= 0 || r.h <= 0) return null;
+      return planTiles(r, EXPORT_PADDING, c.scale);
+    };
+
+    const choice = await exportDialog({
+      hasSelection: this.selection.size > 0,
+      preview: (c) => {
+        const plan = planFor(c);
+        if (!plan) return null;
+        // O PDF e uma pagina: nao ha onde por o segundo ladrilho, entao ele
+        // continua cedendo escala. O PNG nao cede mais.
+        if (c.format === 'pdf') {
+          const unico = planFor({ ...c, scale: 1 });
+          if (!unico) return null;
+          const cabe = plan.cols * plan.rows === 1;
+          const escala = cabe ? c.scale : c.scale / Math.sqrt(plan.cols * plan.rows);
+          return {
+            width: Math.round(unico.width * escala),
+            height: Math.round(unico.height * escala),
+            files: 1,
+            scale: escala,
+          };
+        }
+        return {
+          width: plan.width,
+          height: plan.height,
+          files: plan.cols * plan.rows,
+          scale: plan.scale,
+        };
+      },
+    });
     if (!choice) return;
 
     const ids = choice.scope === 'selection' ? this.selection.ids() : [];
@@ -875,8 +925,49 @@ export class App {
       let widthPx: number | undefined;
       let heightPx: number | undefined;
       let aviso = '';
+      let parts: ExportPart[] | undefined;
 
-      if (choice.format === 'svg') {
+      if (choice.format === 'png') {
+        // PNG honra a escala pedida, custe quantos arquivos custar (B13). O
+        // quadro dele daria 1,6 gigapixel a 1x -- nao existe imagem unica para
+        // isso, e reduzir calado era o defeito.
+        const plan = planTiles(area, EXPORT_PADDING, choice.scale);
+        const total = plan.cols * plan.rows;
+        const tiles: RenderedPng[] = [];
+        for (let row = 0; row < plan.rows; row++) {
+          for (let col = 0; col < plan.cols; col++) {
+            this.#showProgress(
+              total > 1 ? `Exportando PNG… ladrilho ${tiles.length + 1} de ${total}` : 'Exportando PNG…',
+              (tiles.length + 1) / (total + 1),
+            );
+            // Devolve o controle ao navegador entre ladrilhos: sem isto, uma
+            // grade grande congela a janela e a barra de progresso nunca aparece.
+            await new Promise((r) => setTimeout(r, 0));
+            tiles.push(await renderPngTile(this.doc, this.assets, ids, {
+              scale: plan.scale,
+              padding: EXPORT_PADDING,
+              background,
+              theme,
+            }, plan, col, row));
+          }
+        }
+
+        data = tiles[0]!.bytes;
+        widthPx = tiles[0]!.width;
+        heightPx = tiles[0]!.height;
+        if (total > 1) {
+          // O sufixo e `-l<linha>c<coluna>`, com base 1: `-l2c3` e a segunda
+          // linha, terceira coluna. Ordenar por nome ja remonta a grade.
+          parts = tiles.slice(1).map((t, i) => {
+            const idx = i + 1;
+            return {
+              data: t.bytes.slice().buffer,
+              suffix: `-l${Math.floor(idx / plan.cols) + 1}c${(idx % plan.cols) + 1}`,
+            };
+          });
+          aviso = ` — ${total} arquivos, a ${choice.scale}x`;
+        }
+      } else if (choice.format === 'svg') {
         const svg = renderSvg(this.doc, this.assets, area, ids, {
           padding: EXPORT_PADDING,
           background,
@@ -887,19 +978,21 @@ export class App {
         });
         data = new TextEncoder().encode(svg);
       } else {
+        // PDF: uma pagina, entao a escala continua cedendo ao teto de pixels --
+        // nao ha onde por o segundo ladrilho. O dialogo ja disse isso.
         const png = await renderPng(this.doc, this.assets, area, ids, {
           scale: choice.scale,
           padding: EXPORT_PADDING,
           // Um PDF transparente e branco na pratica; deixar o fundo do tema
           // evita um arquivo que parece certo na tela e sai errado no papel.
-          background: choice.format === 'pdf' ? (background ?? theme.boardBg) : background,
+          background: background ?? theme.boardBg,
           theme,
         });
         data = png.bytes;
         widthPx = png.width;
         heightPx = png.height;
         if (png.scale < choice.scale - 0.001) {
-          aviso = ` (reduzido para ${png.scale.toFixed(2)}x: o tamanho pedido estourava o limite)`;
+          aviso = ` (uma pagina so cabe ${png.scale.toFixed(2)}x; para ${choice.scale}x, exporte em PNG)`;
         }
       }
 
@@ -911,6 +1004,7 @@ export class App {
         // que estiver ao redor dela.
         data: data.slice().buffer,
         ...(widthPx !== undefined ? { widthPx, heightPx } : {}),
+        ...(parts ? { parts, suffix: '-l1c1' } : {}),
       });
 
       if (result.path) {
