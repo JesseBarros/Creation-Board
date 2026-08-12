@@ -4,8 +4,7 @@ Registro do que apareceu usando o app de verdade, antes da Fase 9 (polimento).
 O [RETOMAR.md](RETOMAR.md) diz em que pé o projeto está; este arquivo diz **o que está
 errado e o que falta**. Some quando a lista zerar.
 
-**Última atualização: 12/08/2026.** **1 item aberto** (B10), **18 fechados** e **1 novo a
-investigar** (**B15**, uma falha intermitente no próprio auto-teste).
+**Última atualização: 12/08/2026.** **3 itens abertos** (B10, B15 e B16), **18 fechados**.
 
 **A Fase 9 fechou o B13, o M8 e a parte do B9 que era corrigível.** O que sobrou do B9 não
 é bug: o teto de 60 é taxa de entrega de evento, e o custo de desenho do quadro de teste
@@ -839,6 +838,23 @@ muito maior e licença de fonte para resolver. Isto custa dois atributos.
 
 **Verificação no `selftest`:** todo `<text>` do SVG tem de sair com `textLength`, e o arquivo
 tem de conter `spacingAndGlyphs`. É o par que some se alguém simplificar a emissão.
+
+### B16 — Uma "sombra" atrás dos ícones da barra polui a interface
+`a investigar` · `baixo` · 12/08/2026 · **para depois da rodada de ícones**
+
+
+**Fica agendado de propósito.** foi pedido para verificar isto **depois** de fecharmos a
+rodada de ícones — mexer nas duas coisas ao mesmo tempo tornaria impossível dizer qual
+mudança melhorou o quê. É a mesma razão pela qual as correções deste arquivo são agrupadas
+por área tocada, e não por ordem de chegada.
+
+**O que já dá para afirmar sem medir:** a captura é de 12/08/2026, logo depois do polimento
+das barras, e nela os únicos ícones com fundo visível são os **três interruptores ligados**
+(grade, régua e camadas). Então o primeiro suspeito é meu, e é recente.
+
+Três candidatos, do mais provável ao menos:
+
+
 
 ### B15 — Uma verificação do auto-teste falhou uma vez e não reproduziu
 `a investigar` · `baixo` · 12/08/2026
