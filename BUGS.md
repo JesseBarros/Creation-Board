@@ -1089,6 +1089,36 @@ alcançá-lo**, que é justamente o papel de um painel de camadas.
 
 </details>
 
+### M9 — Plano de fundo no menu principal, com os painéis em vidro
+`ideia registrada` · `médio` · 12/08/2026 · **só depois da Fase 9 fechada**
+
+Pedido: [...].
+
+**Está registrado e NÃO começado, por decisão de produto:** [...]. A
+regra é boa — é uma mudança visual grande, e começá-la com a fase aberta misturaria o efeito
+dela com o polimento que ainda está em curso.
+
+**Viabilidade, respondendo à pergunta:** sim, e a maior parte da infraestrutura já
+existe. O que já está pronto e o que falta:
+
+| Peça | Situação |
+|---|---|
+| Escolher o arquivo de imagem | **Pronto** — o app já abre seletor (`importer.pick`) e já lê imagem solta (`features/images/insert`) |
+| Mostrar como fundo do lobby | **Trivial** — `background-image` no `.qb-lobby` |
+| O efeito de vidro | **Pronto** — as barras já usam `backdrop-filter: blur() saturate()`. Hoje ele desfoca um fundo liso, ou seja, **não aparece**. É sobre uma foto que ele passa a valer alguma coisa |
+| Guardar a escolha | **Falta** — copiar o arquivo para a pasta de dados e guardar o caminho. Guardar a imagem em `localStorage` como base64 não serve: uma foto de 4 MB não cabe lá |
+| A CSP | **Atenção** — `img-src 'self' data: blob:` barra `file://`. A imagem tem de chegar por IPC e virar `blob:`, como as imagens do quadro já fazem |
+
+**A parte difícil não é nenhuma dessas, e é onde a coisa vira profissional ou amadora: o
+contraste.** Sobre uma foto qualquer, o texto dos cards e o nome dos quadros podem ficar
+ilegíveis, e o `npm run check:colors` **não cobre isso** — ele confere as cores de marca
+contra os dois fundos de tema, não contra uma imagem arbitrária que o usuário escolheu.
+
+A saída conhecida é um **véu** entre a foto e o conteúdo (uma camada escura ou clara, com
+intensidade regulável), que é exatamente o que a Apple faz. Sem véu, o efeito funciona com a
+foto que se testou e quebra com a próxima.
+
+
 ### M6 — Seletor de cores personalizado
 `corrigido` · `médio` · 04/08/2026
 
