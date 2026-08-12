@@ -206,29 +206,39 @@ function createWindow(): void {
             ? '?paste=1'
             : '';
 
-  if (!app.isPackaged) {
-    // Os modos de verificacao terminam imprimindo um marcador. Fechar a janela
-    // nesse ponto e o que torna `QB_IMPORT`/`--selftest`/`QB_BENCH` utilizaveis
-    // dentro de um script: sem isso o processo fica aberto esperando alguem
-    // clicar no X, e quem chamou nunca recebe a saida.
-    const done = bench
-      ? 'BENCH_RESULT'
-      : selftest
-        ? 'SELFTEST_FIM'
-        : importPath
-          ? 'IMPORTCHECK_FIM'
-          : exportPrefix
-            ? 'EXPORTCHECK_FIM'
-            : pasteCheck
-              ? 'PASTECHECK_FIM'
-              : null;
+  // Os modos de verificacao terminam imprimindo um marcador. Fechar a janela
+  // nesse ponto e o que torna `QB_IMPORT`/`--selftest`/`QB_BENCH` utilizaveis
+  // dentro de um script: sem isso o processo fica aberto esperando alguem
+  // clicar no X, e quem chamou nunca recebe a saida.
+  const done = bench
+    ? 'BENCH_RESULT'
+    : selftest
+      ? 'SELFTEST_FIM'
+      : importPath
+        ? 'IMPORTCHECK_FIM'
+        : exportPrefix
+          ? 'EXPORTCHECK_FIM'
+          : pasteCheck
+            ? 'PASTECHECK_FIM'
+            : null;
 
-    mainWindow.webContents.on('console-message', (_e, _level, message) => {
-      console.log(`[renderer] ${message}`);
-      // QB_SHOT pede uma foto da janela: fechar antes dela sair nao serve.
-      if (done && !process.env['QB_SHOT'] && message.includes(done)) app.quit();
-    });
-  }
+  // O encaminhamento e o fechamento valem TAMBEM no app empacotado, e isso e
+  // deliberado: a `query` acima e montada sem olhar `isPackaged`, entao o modo
+  // de verificacao ja rodava dentro do `.exe` -- so que calado e sem nunca
+  // fechar. Medido em 12/08/2026: `QB_SELFTEST=1` no executavel empacotado
+  // rodou por 4 minutos sem imprimir uma linha e sem terminar. O pior dos dois
+  // mundos, e o que impedia conferir o instalador pelo unico metodo que este
+  // projeto usa -- o terminal.
+  //
+  // Nao ha risco de alguem cair nisto sem querer: os modos so ligam por
+  // variavel de ambiente `QB_*`, e a `query` fica vazia quando nenhuma existe.
+  // Fora dos modos de verificacao o encaminhamento tambem serve: um erro do
+  // renderer no app instalado hoje nao aparece em lugar nenhum.
+  mainWindow.webContents.on('console-message', (_e, _level, message) => {
+    console.log(`[renderer] ${message}`);
+    // QB_SHOT pede uma foto da janela: fechar antes dela sair nao serve.
+    if (done && !process.env['QB_SHOT'] && message.includes(done)) app.quit();
+  });
 
   // QB_SHOT=<arquivo.png> grava uma captura da janela alguns segundos depois de
   // carregar. Usa capturePage, que fotografa apenas o conteudo desta janela --

@@ -16,6 +16,7 @@
     "build": "npm run typecheck && node scripts/run.mjs build",
     "icon": "node build/make-icon.js build/icon.ico",
     "check:colors": "node scripts/check-colors.mjs",
+    "check:dist": "node scripts/check-dist.mjs",
     "selftest": "node scripts/run.mjs dev --selftest",
     "prepare:winsign": "node scripts/prepare-wincodesign.mjs",
     "dist": "npm run build && npm run prepare:winsign && electron-builder --win --x64",
