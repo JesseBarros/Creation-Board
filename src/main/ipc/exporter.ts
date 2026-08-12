@@ -1,7 +1,7 @@
 import { BrowserWindow, dialog, ipcMain, type FileFilter } from 'electron';
 import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, dirname, extname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { IPC, type ExportRequest, type ExportResult } from '@shared/ipc-contract';
 import { sanitizeBoardName } from '@shared/wbd';
@@ -46,11 +46,26 @@ export function registerExportIpc(): void {
     const bytes = new Uint8Array(req.data);
     if (req.format === 'pdf') {
       await writePdf(filePath, bytes, req.widthPx ?? 1, req.heightPx ?? 1);
-    } else {
-      await fs.writeFile(filePath, bytes);
+      return { path: filePath, count: 1 };
     }
-    return { path: filePath };
+
+    // Ladrilhos (B13): um dialogo so, varios arquivos irmaos. O sufixo entra
+    // ANTES da extensao, senao o Windows nao reconhece o tipo e o arquivo deixa
+    // de abrir com dois cliques.
+    const parts = req.parts ?? [];
+    const primeiro = req.suffix ? comSufixo(filePath, req.suffix) : filePath;
+    await fs.writeFile(primeiro, bytes);
+    for (const part of parts) {
+      await fs.writeFile(comSufixo(filePath, part.suffix), new Uint8Array(part.data));
+    }
+    return { path: primeiro, count: 1 + parts.length };
   });
+}
+
+/** `C:\a\quadro.png` + `-l1c2` -> `C:\a\quadro-l1c2.png`. */
+function comSufixo(filePath: string, suffix: string): string {
+  const ext = extname(filePath);
+  return join(dirname(filePath), `${basename(filePath, ext)}${suffix}${ext}`);
 }
 
 /** Pontos por polegada que o Chromium assume ao imprimir uma pagina web. */

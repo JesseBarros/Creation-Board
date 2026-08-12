@@ -59,11 +59,39 @@ export interface ExportRequest {
    * e sem esta porta o caminho do PDF so seria exercitado a mao.
    */
   path?: string;
+  /**
+   * Ladrilhos alem do primeiro (ver o B13).
+   *
+   * Um quadro grande nao cabe num PNG so -- o dele daria 1,6 gigapixel a 1x --,
+   * entao a escala pedida e honrada gravando uma GRADE de arquivos. Eles vem
+   * juntos num pedido unico de proposito: sao um gesto so para quem exporta, e
+   * perguntar onde salvar uma vez por ladrilho seria insuportavel.
+   *
+   * `data` do pedido e sempre o primeiro ladrilho; estes sao do segundo em
+   * diante, cada um com o sufixo que entra antes da extensao.
+   */
+  parts?: ExportPart[];
+  /**
+   * Sufixo do PRIMEIRO arquivo, quando a exportacao sai em ladrilhos.
+   *
+   * Sem ele o primeiro sairia `quadro.png` e os vizinhos `quadro-l1c2.png`: numa
+   * pasta ordenada por nome, o canto superior esquerdo cairia longe do resto da
+   * primeira linha. Com `-l1c1`, ordenar por nome ja remonta a grade.
+   */
+  suffix?: string;
+}
+
+export interface ExportPart {
+  data: ArrayBuffer;
+  /** Sufixo antes da extensao, ex.: "-l1c2". */
+  suffix: string;
 }
 
 export interface ExportResult {
   /** Caminho gravado, ou null se o usuario cancelou o dialogo. */
   path: string | null;
+  /** Quantos arquivos foram gravados. Maior que 1 quando saiu em ladrilhos. */
+  count?: number;
 }
 
 /** Superficie exposta em `window.quadro` pelo preload. */
