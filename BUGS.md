@@ -4,12 +4,19 @@ Registro do que apareceu usando o app de verdade, antes da Fase 9 (polimento).
 O [RETOMAR.md](RETOMAR.md) diz em que pé o projeto está; este arquivo diz **o que está
 errado e o que falta**. Some quando a lista zerar.
 
-**Última atualização: 08/08/2026.** **2 itens abertos** (B9 e B10, os dois de desempenho),
-**15 fechados** e **1 decisão a revisar** (**M8**, camadas — vai para a Fase 9).
+**Última atualização: 12/08/2026.** **1 item aberto** (B10), **18 fechados** e **1 novo a
+investigar** (**B15**, uma falha intermitente no próprio auto-teste).
+
+**A Fase 9 fechou o B13, o M8 e a parte do B9 que era corrigível.** O que sobrou do B9 não
+é bug: o teto de 60 é taxa de entrega de evento, e o custo de desenho do quadro de teste
+já cabe num frame de 144 fps — **6,1 ms medidos, contra 6,94 ms de orçamento**. Ver abaixo.
 
 
 **Ainda em aberto:**
 
+
+**Fechados na Fase 9:** B13 (exportar em ladrilhos), M8 (camadas, nas duas metades) e a
+parte corrigível do B9 (o painel do `F3`).
 
 
 
@@ -572,7 +579,43 @@ O tema só mudava o quanto incomodava.
 </details>
 
 ### B9 — O quadro crava em 60 fps ao arrastar com o botão direito
-`a investigar` · `médio` · 08/08/2026
+`fechado — não é custo de desenho` · `médio` · 08/08/2026, fechado em 12/08/2026
+
+> **Fechado em 12/08/2026 por medição, e o número que fecha é este:** no quadro de teste
+> (quadro de referência, 1.063 objetos, **tudo na tela**), desenhar custa **6,1 ms**. O orçamento
+> de um frame a 144 fps é **6,94 ms**. O material de verdade já desenha dentro da meta.
+>
+> Ou seja: o teto de 60 (e depois 66) nunca foi preço de desenho, exatamente como a análise
+> abaixo suspeitava. É taxa de entrega dos eventos de ponteiro somada ao vsync — nada que
+> otimizar o renderer alcance.
+>
+> **O que foi corrigido:** o painel do `F3`, que era o que convidava à leitura errada. Ele
+> agora destaca **Render** (trabalho puro, colorido contra o orçamento de 144 fps) e o antigo
+> "FPS" desceu para o fim com o nome honesto, *Atualizações/s*, **sem cor** — um número baixo
+> ali costuma significar "nada mudou", que é o comportamento certo. O verde antigo começava
+> em 55 fps: o medidor dizia "ótimo" exatamente no número que o incomodava.
+>
+> **A tensão com o B12 também se dissolveu, e por medição.** A suspeita era que desenhar todo
+> texto custaria fps. A repartição por tipo mostrou outra coisa (ms por mil objetos na tela):
+>
+> | | Desenhar do zero | Com o cache |
+> |---|---|---|
+> | traço | 6,4–6,7 | — (não cacheia) |
+> | forma | 5,7–6,0 | — (não cacheia) |
+> | texto | ~200 | **6,3–6,5** |
+>
+> **Cachear traço e forma economizaria menos que zero:** colar um bitmap (6,3–7,0) não é mais
+> barato que desenhar um traço curto (6,4–6,7). O custo que domina é **fixo por objeto**, e o
+> bitmap paga esse custo igual. O que torna o cache valioso em texto não é colar ser barato —
+> é desenhar texto do zero custar ~200 ms por mil. Fator 30.
+>
+> **E uma otimização "óbvia" foi testada e reprovada:** reaproveitar um `PaintContext` para o
+> frame inteiro, em vez de montar um por objeto — 4.000 alocações por frame a menos. Quatro
+> execuções de cada lado: faixas idênticas. Revertida, com o porquê comentado no lugar onde
+> alguém tentaria de novo.
+
+<details>
+<summary>A investigação original</summary>
 
 
 
@@ -622,6 +665,8 @@ informação secundária e com nome honesto ([...]). Item da Fase 9.
 **Um detalhe que vale corrigir junto, se a meta virar 144:** o próprio painel do `F3` trata
 **60 como alvo** — pinta o número de verde a partir de 55 fps (`DebugPanel.ts:111`). Com a
 meta em 144, o medidor está dizendo "ótimo" justamente no número que incomoda.
+
+</details>
 
 ### B11 — A biblioteca está partida em DUAS pastas
 `corrigido` · `crítico` · 08/08/2026
@@ -795,8 +840,59 @@ muito maior e licença de fonte para resolver. Isto custa dois atributos.
 **Verificação no `selftest`:** todo `<text>` do SVG tem de sair com `textLength`, e o arquivo
 tem de conter `spacingAndGlyphs`. É o par que some se alguém simplificar a emissão.
 
+### B15 — Uma verificação do auto-teste falhou uma vez e não reproduziu
+`a investigar` · `baixo` · 12/08/2026
+
+Em 12/08/2026, numa execução do `selftest`, a verificação [...] devolveu **centro=(700, 600)** onde esperava **(700, 400)**.
+
+**Não reproduziu.** Quatro execuções depois — duas no mesmo código, uma no commit anterior
+e uma no seguinte — deram (700, 400). A execução que falhou estava sob carga: na mesma
+saída, o teste de arraste marcou `bbox 3.9` (faixa normal 3,0–3,3).
+
+**Está registrado apesar de não reproduzir, e o motivo é o método:** este projeto trata o
+`selftest` como o verificador, e uma verificação que falha sozinha de vez em quando é pior
+que uma que falha sempre — ela ensina a ignorar falhas. Se aparecer de novo, o suspeito
+inicial é o teste depender do retângulo do host medido num instante em que o layout ainda
+estava assentando.
+
+**O que NÃO explica:** 200px de diferença não é jitter de tempo. A carga externa pode ter
+mudado *quando* algo foi medido, mas alguma medição está lendo estado que ela supõe pronto.
+
 ### B13 — Os três botões de resolução da exportação não fazem nada em quadro grande
-`aberto` · `alto` · 08/08/2026
+`corrigido` · `alto` · 08/08/2026, fechado em 12/08/2026
+
+> **Corrigido na Fase 9, e a saída registrada aqui não era alcançável.**
+>
+> O plano anterior dizia [...]. Isso não dá:
+> o quadro de teste tem 82.967 × 19.274 unidades, o que são **1,6 gigapixel a 1x** — 6,4 GB de
+> pixel cru. Não existe PNG único para isso, com ou sem ladrilhos, e nenhum visualizador
+> abriria. **O teto de 64 MP nunca foi o limite que apertava; a aritmética era.**
+>
+> Então o ladrilho virou **arquivo**, e não pedaço costurado. A escala pedida passa a ser
+> respeitada exatamente, e o quadro sai numa grade de imagens de tamanho normal — que é o
+> que torna o resumo legível, o pedido original.
+>
+> | Pedido | Antes | Agora |
+> |---|---|---|
+> | 1x | 0,199x, 1 arquivo | **1x**, ~25 arquivos |
+> | 2x | 0,199x, 1 arquivo | **2x**, ~100 arquivos |
+> | 3x | 0,199x, 1 arquivo | **3x**, ~225 arquivos |
+>
+> **E o mínimo honesto que este arquivo pedia veio junto:** o diálogo diz o que vai sair
+> **antes** de exportar — tamanho final em pixels, escala real e quantos arquivos —, e muda
+> a cada clique. Acima de 24 arquivos ele avisa que são muitos e sugere 1x ou o SVG.
+>
+> O **PDF continua cedendo escala**, e o diálogo diz isso com todas as letras: uma página não
+> tem onde pôr o segundo ladrilho.
+>
+> Sufixo `-l<linha>c<coluna>` com base 1, **inclusive no primeiro arquivo** — ordenar a pasta
+> por nome remonta a grade.
+>
+> **Verificação em duas camadas:** no `selftest`, que as três escalas dão tamanhos
+> diferentes (era isso que o bug quebrava), que nenhum ladrilho passa dos tetos, que a soma
+> deles é exatamente a imagem inteira e que dois vizinhos gravam pedaços **diferentes**
+> (bytes iguais denunciariam a mesma região gravada N vezes); e no `QB_EXPORT`, a grade
+> gravada de verdade, 4 arquivos irmãos no disco.
 
 
 
@@ -920,7 +1016,30 @@ levou o custo da troca de 1,6 ms para 5,3 ms — a verificação de desempenho r
 hora. Os dois controles passaram a ser criados uma vez e reaproveitados: 2,5 ms.
 
 ### M8 — Camadas, com cadeado — **e o marca-texto que [...]*
-`decisão a revisar` · `médio` · 08/08/2026 · **para a Fase 9**
+`corrigido` · `médio` · 08/08/2026, fechado em 12/08/2026
+
+> **Feito na Fase 9, nas duas metades — e a primeira resolve o caso sem painel nenhum.**
+>
+
+>A **decisão 5 do RETOMAR mudou junto**, senão a próxima sessão lê a regra antiga e
+> "conserta" de volta.
+>
+> **M8b, o painel.** Lista de **objetos**, não grupos com nome: das duas perguntas de projeto
+> abaixo, a escolha foi a barata — "camada" é o objeto que já existe, com o `z` que já existe.
+> Quase nada foi construído, e isso é o ponto: `locked` já existia e já era respeitado; o
+> `hidden` já era filtrado dentro do `queryVisible`, que é por onde o renderer **e** a
+> exportação pedem os objetos — então o olho vale para o arquivo também, de graça.
+>
+> Detalhes que são decisão: fica na lateral **direita** (a esquerda é de onde se escolhe o
+> que fazer); lista **só o que está no viewport** (mil linhas não são um painel, são um
+> despejo); a lista sai **invertida** em relação à ordem de desenho; o nome de um texto é o
+> **próprio texto**; e **clicar no nome seleciona mesmo travado** — é o que torna o cadeado
+> reversível, porque travar sem uma lista seria uma porta que fecha por fora.
+>
+> Atalho `C` e botão na barra inferior — recurso sem botão é recurso que ninguém descobre.
+
+<details>
+<summary>O pedido original e as duas perguntas de projeto</summary>
 
 Pedido: [...].
 
@@ -951,6 +1070,8 @@ alcançá-lo**, que é justamente o papel de um painel de camadas.
 2. **O marca-texto sobre imagem:** a saída mais barata é a regra deixar de ser absoluta —
    grifo vai por baixo de **texto** e por cima de **imagem**. Isso resolve o caso sem
    painel nenhum, e o painel passa a ser o controle geral, não o remendo.
+
+</details>
 
 ### M6 — Seletor de cores personalizado
 `corrigido` · `médio` · 04/08/2026
