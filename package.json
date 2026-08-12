@@ -15,6 +15,7 @@
     "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.web.json --noEmit",
     "build": "npm run typecheck && node scripts/run.mjs build",
     "icon": "node build/make-icon.js build/icon.ico",
+    "boot-logo": "node build/make-boot-logo.js",
     "check:colors": "node scripts/check-colors.mjs",
     "check:dist": "node scripts/check-dist.mjs",
     "selftest": "node scripts/run.mjs dev --selftest",

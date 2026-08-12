@@ -111,9 +111,12 @@ function createWindow(): void {
     minWidth: 940,
     minHeight: 600,
     show: false,
-    // Cor de fundo igual a do tema escuro: evita o flash branco entre abrir a
-    // janela e o primeiro paint do renderer.
-    backgroundColor: '#16181d',
+    // Cor de fundo igual a da TELA DE ABERTURA, que por sua vez e a cor exata do
+    // fundo da logo (medido: rgb(6,9,18)). As tres iguais fazem a janela abrir
+    // sem nenhuma troca de cor ate o app assumir. Antes era a cor do tema
+    // escuro, que ja evitava o flash branco -- mas com a marca embutida, uma cor
+    // diferente deixaria o retangulo opaco dela aparecendo como mancha.
+    backgroundColor: '#060912',
     autoHideMenuBar: true,
     title: 'Creation Board',
     webPreferences: {
@@ -194,6 +197,10 @@ function createWindow(): void {
   // QB_PASTE=1 manda um Ctrl+V NATIVO na janela, para exercitar o caminho real
   // do colar (com uma imagem ja na area de transferencia do Windows).
   const pasteCheck = process.env['QB_PASTE'];
+  // QB_BOOT=hold segura a tela de abertura na tela, para o QB_SHOT poder
+  // fotografa-la. Ela dura 642 ms e some sozinha -- sem isto, seria a unica
+  // parte da interface que nao se confere por terminal.
+  const boot = process.env['QB_BOOT'] === 'hold' ? '?boot=hold' : '';
   const query = bench
     ? `?bench=${encodeURIComponent(bench)}`
     : selftest
@@ -204,7 +211,7 @@ function createWindow(): void {
           ? `?export=${encodeURIComponent(exportPrefix)}`
           : pasteCheck
             ? '?paste=1'
-            : '';
+            : boot;
 
   // Os modos de verificacao terminam imprimindo um marcador. Fechar a janela
   // nesse ponto e o que torna `QB_IMPORT`/`--selftest`/`QB_BENCH` utilizaveis
