@@ -7,7 +7,7 @@ o que fazer a seguir*. Some quando o projeto acabar.
 **Última sessão: 12/08/2026.** A **Fase 9 está em andamento**, na branch
 `fase-9-polimento`, com sete entregas feitas e conferidas.
 
-> **Retomar por aqui.** O que já saiu da Fase 9:
+> **Retomar por aqui.** O que já saiu da Fase 9, em **13 commits** na branch:
 >
 > | Item | Estado |
 > |---|---|
@@ -19,20 +19,33 @@ o que fazer a seguir*. Some quando o projeto acabar.
 > | **M8b** — painel de camadas (`C`) | **feito** |
 > | **B9** — o painel do `F3` | **feito** — destaca custo, e o "FPS" virou *Atualizações/s* |
 > | Tela de abertura com a logo | **feita** — `QB_BOOT=hold` a segura para fotografar |
+> | Ícone do sistema | **feito** — nove tamanhos, e glifo próprio abaixo de 48px |
+> | Polimento das barras | **feito** — raios encadeados, sombra em duas camadas, pílula de ligado |
+> | Conjunto de ícones | **feito** — área viva única (16×16), geometria arredondada, lua/sol |
+> | Menu principal | **feito** — utilidades viraram ícone, ações continuam escritas |
+> | Título da janela | **feito** — fixo em "Creation Board", não muda com o quadro aberto |
 >
-> **O que falta para fechar a fase:**
+> **O que falta para fechar a fase, na ordem:**
 >
-> 1. **Polimento de UI e revisão do tema escuro** com todas as fases prontas. A barra
->    inferior está com **catorze** controles agora (o de camadas entrou), e o painel de
->    opções da barra lateral cresce a cada ferramenta.
-> 2. **Subir o Electron** (33.4.11 → 43.x, dez versões maiores). Ficou por último de
+> 1. **B16** — a "sombra" atrás dos ícones da barra, que ele relatou e pediu para deixar
+>    depois da rodada de ícones. Os três suspeitos e o teste que custa nada estão no
+>    [BUGS.md](BUGS.md). **É o próximo.**
+> 2. **Revisar o tema claro.** Todo o polimento de 12/08 foi conferido no escuro; o claro só
+>    passou pelo `check:colors`, que mede contraste de marca e não diz se a interface ficou
+>    boa.
+> 3. **Subir o Electron** (33.4.11 → 43.x, dez versões maiores). Ficou por último de
 >    propósito: é o conserto de raiz do B8 e pode mexer no desempenho por baixo — subir
 >    antes confundiria regressão nossa com mudança de Chromium. Depois de subir, conferir
 >    com `QB_GPU=normal` se a correção das duas flags ainda é necessária.
-> 3. **Regerar o instalador** e validar o `.exe` final.
-> 4. **Mesclar na `main`**, que é o padrão dele entre fases.
+> 4. **Regerar o instalador** e validar o `.exe` final (`npm run dist` + `npm run check:dist`).
+> 5. **Mesclar na `main`**, que é o padrão dele entre fases.
 >
 > Depois disso sobra só a **Fase 7.5** (OCR), adiada para depois da 9.
+>
+> **Como ele trabalha nesta fase, e vale respeitar:** ele pede para **aprovar antes de
+> seguir** para o item seguinte. Entregar dois de uma vez tira dele a chance de dizer o que
+> incomodou — e foi assim que o título da janela, a marca duplicada e o peso dos ícones
+> apareceram, cada um depois de uma entrega parada para avaliação.
 
 ---
 
@@ -60,7 +73,7 @@ gravando sozinho. Falta o polimento final (Fase 9) e o OCR (7.5), que ficou para
 | 6 | Busca `Ctrl+F` | pronta |
 | 7 | Imagens: colar, arrastar e recortar | pronta |
 | 8 | Exportar PNG/SVG/PDF e autosave | pronta |
-| **9** | **Polimento de UI, temas e build final** | **em andamento** — 7 entregas feitas |
+| **9** | **Polimento de UI, temas e build final** | **em andamento** — 13 entregas feitas |
 | 7.5 | OCR: transcrever imagem em texto | adiada, fica para depois da 9 |
 
 A ordem diverge do plano original **de propósito**: o objetivo é migrar os resumos do
