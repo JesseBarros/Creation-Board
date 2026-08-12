@@ -193,4 +193,104 @@ function encodePng(img) {
   ]);
 }
 
-module.exports = { decodePng, resize, encodePng };
+/**
+ * Recorta `rect` da imagem e centraliza o recorte num quadrado de lado `side`,
+ * preenchendo a sobra com `bg`.
+ *
+ * Serve aos tamanhos pequenos do icone: apertar a arte inteira em 16px vira
+ * mancha, entao o recorte fica no que ainda se reconhece nesse tamanho. A sobra
+ * e pintada com a cor de fundo em vez de puxada da origem -- puxar traria de
+ * volta justamente o que o recorte tirou.
+ */
+function cropSquare(img, rect, side, bg) {
+  const out = Buffer.alloc(side * side * 4);
+  for (let i = 0; i < side * side; i++) {
+    out[i * 4] = bg[0];
+    out[i * 4 + 1] = bg[1];
+    out[i * 4 + 2] = bg[2];
+    out[i * 4 + 3] = bg[3];
+  }
+
+  const offX = Math.round((side - rect.w) / 2);
+  const offY = Math.round((side - rect.h) / 2);
+  for (let y = 0; y < rect.h; y++) {
+    const sy = rect.y + y;
+    const dy = offY + y;
+    if (sy < 0 || sy >= img.height || dy < 0 || dy >= side) continue;
+    for (let x = 0; x < rect.w; x++) {
+      const sx = rect.x + x;
+      const dx = offX + x;
+      if (sx < 0 || sx >= img.width || dx < 0 || dx >= side) continue;
+      img.data.copy(out, (dy * side + dx) * 4, (sy * img.width + sx) * 4, (sy * img.width + sx) * 4 + 4);
+    }
+  }
+  return { width: side, height: side, data: out };
+}
+
+/**
+ * Uma imagem como DIB de icone (BITMAPINFOHEADER + BGRA de baixo para cima +
+ * mascara AND).
+ *
+ * Os tamanhos pequenos vao como DIB e nao como PNG por compatibilidade: PNG
+ * dentro de ICO so vale do Vista em diante e, mesmo hoje, alguns caminhos do
+ * shell tratam melhor o DIB nos tamanhos de lista. Acima de 48 o PNG compensa,
+ * porque o DIB e sempre sem compressao.
+ */
+function encodeIconDib(img) {
+  const { width: w, height: h } = img;
+  const header = Buffer.alloc(40);
+  header.writeUInt32LE(40, 0);
+  header.writeInt32LE(w, 4);
+  // Altura DOBRADA: o formato conta a imagem mais a mascara, mesmo com alfa.
+  header.writeInt32LE(h * 2, 8);
+  header.writeUInt16LE(1, 12); // planes
+  header.writeUInt16LE(32, 14); // bits por pixel
+  header.writeUInt32LE(0, 16); // BI_RGB
+
+  const pixels = Buffer.alloc(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    // De baixo para cima, que e a ordem do DIB.
+    const src = (h - 1 - y) * w * 4;
+    for (let x = 0; x < w; x++) {
+      const s = src + x * 4;
+      const d = (y * w + x) * 4;
+      pixels[d] = img.data[s + 2]; // B
+      pixels[d + 1] = img.data[s + 1]; // G
+      pixels[d + 2] = img.data[s]; // R
+      pixels[d + 3] = img.data[s + 3]; // A
+    }
+  }
+
+  // Mascara AND zerada: com 32 bits quem manda e o alfa, mas ela e obrigatoria
+  // e as linhas sao alinhadas em 4 bytes.
+  const maskStride = Math.ceil(w / 32) * 4;
+  const mask = Buffer.alloc(maskStride * h);
+
+  return Buffer.concat([header, pixels, mask]);
+}
+
+/** Monta o container ICO a partir de entradas ja codificadas. */
+function packIco(entries) {
+  const dir = Buffer.alloc(6 + entries.length * 16);
+  dir.writeUInt16LE(0, 0);
+  dir.writeUInt16LE(1, 2); // type = icon
+  dir.writeUInt16LE(entries.length, 4);
+
+  let offset = dir.length;
+  entries.forEach((e, i) => {
+    const o = 6 + i * 16;
+    dir[o] = e.size >= 256 ? 0 : e.size; // 0 significa 256
+    dir[o + 1] = e.size >= 256 ? 0 : e.size;
+    dir[o + 2] = 0; // cores da paleta
+    dir[o + 3] = 0;
+    dir.writeUInt16LE(1, o + 4); // planes
+    dir.writeUInt16LE(32, o + 6);
+    dir.writeUInt32LE(e.data.length, o + 8);
+    dir.writeUInt32LE(offset, o + 12);
+    offset += e.data.length;
+  });
+
+  return Buffer.concat([dir, ...entries.map((e) => e.data)]);
+}
+
+module.exports = { decodePng, resize, encodePng, cropSquare, encodeIconDib, packIco };

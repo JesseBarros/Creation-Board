@@ -149,3 +149,75 @@ export function icon(name: IconName, size = 17): SVGSVGElement {
 }
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/**
+ * A marca do aplicativo, em miniatura.
+ *
+ * Nao entra no `PATHS` acima porque ela e a unica coisa aqui que NAO acompanha
+ * a cor do texto: os outros sao icones de comando e mudam com o tema, esta e a
+ * identidade e tem cor propria. Misturar as duas coisas no mesmo mecanismo faria
+ * a marca desbotar junto com a interface.
+ *
+ * E a MESMA geometria do glifo pequeno do icone do sistema (`build/glyph.js`),
+ * nas mesmas fracoes. As duas precisam ser reconheciveis como a mesma coisa: a
+ * pessoa ve uma na barra de tarefas e a outra dentro do app, lado a lado.
+ */
+export function brandMark(size = 20): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 100 100');
+  svg.setAttribute('width', String(size));
+  svg.setAttribute('height', String(size));
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+
+  const grad = document.createElementNS(SVG_NS, 'linearGradient');
+  const gid = 'qb-marca-grad';
+  grad.setAttribute('id', gid);
+  grad.setAttribute('x1', '16');
+  grad.setAttribute('y1', '78');
+  grad.setAttribute('x2', '84');
+  grad.setAttribute('y2', '30');
+  grad.setAttribute('gradientUnits', 'userSpaceOnUse');
+  for (const [offset, cor] of [
+    ['0', '#2b5cf0'],
+    ['1', '#4c9dff'],
+  ] as const) {
+    const stop = document.createElementNS(SVG_NS, 'stop');
+    stop.setAttribute('offset', offset);
+    stop.setAttribute('stop-color', cor);
+    grad.append(stop);
+  }
+  const defs = document.createElementNS(SVG_NS, 'defs');
+  defs.append(grad);
+  svg.append(defs);
+
+  const add = (tag: string, attrs: Record<string, string>): void => {
+    const el = document.createElementNS(SVG_NS, tag);
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    svg.append(el);
+  };
+
+  // Ladrilho de fundo, na cor da logo.
+  add('rect', { x: '0', y: '0', width: '100', height: '100', rx: '22', fill: '#0a0d16' });
+  // O quadro, aberto no canto superior direito. O `stroke-dasharray` desenha o
+  // contorno inteiro menos a faixa da abertura -- mais curto que descrever o
+  // caminho aberto a mao, e o retangulo continua sendo um retangulo.
+  add('rect', {
+    x: '16.5', y: '30', width: '67', height: '47', rx: '8',
+    fill: 'none', stroke: `url(#${gid})`, 'stroke-width': '8.8', 'stroke-linecap': 'round',
+    'stroke-dasharray': '150 34', 'stroke-dashoffset': '-18',
+  });
+  // O rabisco: duas subidas altas (ver o porque em build/glyph.js).
+  add('polyline', {
+    points: '30,62 38,44 47,61 56,44 65,58',
+    fill: 'none', stroke: '#6cc4ff', 'stroke-width': '7',
+    'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+  });
+  // A caneta apoiada na borda de baixo.
+  add('line', {
+    x1: '45', y1: '73.5', x2: '62', y2: '73.5',
+    stroke: '#eef2f8', 'stroke-width': '5', 'stroke-linecap': 'round',
+  });
+
+  return svg;
+}
