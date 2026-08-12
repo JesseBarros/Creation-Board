@@ -4,23 +4,35 @@ Ponto de retomada do **Creation Board**. O [README](README.md) explica o que o a
 como cada parte funciona; este arquivo responde outra pergunta: *em que pé isso está e
 o que fazer a seguir*. Some quando o projeto acabar.
 
-**Última sessão: 08/08/2026.** Fases 5 a 8 concluídas, mais duas **rodadas de correção de
-bugs** vindas do uso real — ver **[BUGS.md](BUGS.md)**.
+**Última sessão: 12/08/2026.** A **Fase 9 está em andamento**, na branch
+`fase-9-polimento`, com sete entregas feitas e conferidas.
 
-> **Retomar por aqui:** a Fase 8 está em **teste de aceitação**, feito por ele. Placar:
+> **Retomar por aqui.** O que já saiu da Fase 9:
 >
-> | Teste | Estado |
+> | Item | Estado |
 > |---|---|
-> | 3 — exportar PNG | **feito** — achou o B12 (texto virava barra) e o B13 (resolução inerte) |
-> | 3 — SVG, PDF, seleção, fundo transparente | **falta** |
-> | 4 — autosave | **passou** em 08/08: o ponto acende ao editar e apaga sozinho em 3-5 s |
-> | 5 — abrir os três resumos | **falta** |
+> | `npm run dist` e o executável empacotado | **feito** — e agora se confere por terminal (`npm run check:dist`) |
+> | Verificação de troca de ferramenta, que reprovava | **feita** — a conta é que era impossível, não o código |
+> | Cache de texto | **feito** — 12–13% mais rápido, com as faixas sem se tocar |
+> | **B13** — exportar em ladrilhos | **feito** — 1x/2x/3x voltam a significar o que prometem |
+> | **M8a** — marca-texto sobre imagem | **feito** |
+> | **M8b** — painel de camadas (`C`) | **feito** |
+> | **B9** — o painel do `F3` | **feito** — destaca custo, e o "FPS" virou *Atualizações/s* |
+> | Tela de abertura com a logo | **feita** — `QB_BOOT=hold` a segura para fotografar |
 >
-> Com o 3 e o 5 fechados, a Fase 8 acaba e começa a **Fase 9**. A lista dela já tem dono:
-> **B13** (exportar em ladrilhos, para o PNG sair legível), **B10**, **M8** (painel de
-> camadas com cadeado), o painel do `F3` mostrando custo de frame em vez de frequência de
-> atualização, e **subir o Electron** (hoje num Chromium de 2024). Mais `npm run dist`, que
-> não roda desde a Fase 0.
+> **O que falta para fechar a fase:**
+>
+> 1. **Polimento de UI e revisão do tema escuro** com todas as fases prontas. A barra
+>    inferior está com **catorze** controles agora (o de camadas entrou), e o painel de
+>    opções da barra lateral cresce a cada ferramenta.
+> 2. **Subir o Electron** (33.4.11 → 43.x, dez versões maiores). Ficou por último de
+>    propósito: é o conserto de raiz do B8 e pode mexer no desempenho por baixo — subir
+>    antes confundiria regressão nossa com mudança de Chromium. Depois de subir, conferir
+>    com `QB_GPU=normal` se a correção das duas flags ainda é necessária.
+> 3. **Regerar o instalador** e validar o `.exe` final.
+> 4. **Mesclar na `main`**, que é o padrão dele entre fases.
+>
+> Depois disso sobra só a **Fase 7.5** (OCR), adiada para depois da 9.
 
 ---
 
@@ -48,7 +60,7 @@ gravando sozinho. Falta o polimento final (Fase 9) e o OCR (7.5), que ficou para
 | 6 | Busca `Ctrl+F` | pronta |
 | 7 | Imagens: colar, arrastar e recortar | pronta |
 | 8 | Exportar PNG/SVG/PDF e autosave | pronta |
-| **9** | **Polimento de UI, temas e build final** | **próxima** |
+| **9** | **Polimento de UI, temas e build final** | **em andamento** — 7 entregas feitas |
 | 7.5 | OCR: transcrever imagem em texto | adiada, fica para depois da 9 |
 
 A ordem diverge do plano original **de propósito**: o objetivo é migrar os resumos do
@@ -57,8 +69,8 @@ Whiteboard, e para isso importar e manipular vieram antes de desenhar.
 A Fase 5.5 nasceu de um pedido dele ao testar a Fase 5 — a borracha apagando o traço
 inteiro não servia — e **reverteu a decisão da Fase 4**. Está resolvida.
 
-**A `main` foi até a Fase 7** (mesclada em 04/08/2026, em avanço rápido). A Fase 8 está
-na branch **`fase-8-exportar`**, ainda sem mesclar — ele não pediu.
+**A `main` foi até a Fase 8**, mais a rodada de bugs (`bf6593b`). A Fase 9 está na branch
+**`fase-9-polimento`**, ainda sem mesclar.
 
 ---
 
@@ -68,9 +80,24 @@ Sempre por terminal — nunca por captura de tela cheia (ver o *porquê* no READ
 
 ```
 npm run typecheck     # tsc nos dois projetos, strict
-npm run selftest      # 107 verificações, deve terminar com "tudo passou"
+npm run selftest      # ~125 verificações, deve terminar com "tudo passou"
 npm run check:colors  # contraste das cores nos dois temas
+npm run check:dist    # o MESMO auto-teste, dentro do .exe empacotado
 ```
+
+**O `check:dist` é novo e vale explicar por que existe.** O `selftest` mede o app servido
+pelo Vite, e nada nele passa pelo empacotamento — asar, caminhos absolutos diferentes,
+`isPackaged` verdadeiro, sem servidor de dev. Oito fases entraram entre a validação do
+instalador na Fase 0 e a Fase 9, e nenhuma foi conferida do lado de lá.
+
+Ele precisa de `npm run dist:dir` antes (é o executável que ele roda), e resolve duas
+armadilhas que custaram tempo em 12/08/2026:
+
+1. **`ELECTRON_RUN_AS_NODE=1`** — o terminal do VS Code exporta essa variável, e com ela o
+   binário do Electron roda como **Node puro**: sai em um segundo, sem janela e sem uma
+   linha de saída. Parece um executável quebrado, e não é.
+2. Um app de subsistema gráfico no Windows só entrega `stdout` se ele estiver
+   **redirecionado** — daí `stdio: 'pipe'` e não `'inherit'`.
 
 ⚠️ **Duas delas medem a máquina, não o código.** A primeira: "arrastar 10.000 objetos selecionados
 fica acima de 30fps", com teto de 33 ms por frame. Ela reprova com o computador ocupado —
@@ -190,8 +217,13 @@ nasceu, e ela era mais importante que metade do que estava planejado.
 4. **O mesmo vale para desempenho.** Na Fase 3, o palpite natural sobre o gargalo do
    arraste em massa (recalcular o AABB dos traços) era o menor dos custos: 3,1 ms de
    27,3. O real era o índice espacial, 20,4 ms. Medir primeiro, otimizar depois.
-5. **O marca-texto entra por baixo de tudo** (chave `z`, não ordem de desenho), senão
-   grifar cobriria o texto que se quis destacar. Caneta e lápis entram por cima.
+5. **O marca-texto entra por baixo de TEXTO e por cima de IMAGEM** (chave `z`, não ordem de
+   desenho). Por baixo, senão grifar cobriria o texto que se quis destacar. Por cima da
+   imagem, porque imagem é **opaca** e não há "atrás" que se veja — a regra nasceu na Fase 4,
+   quando o app não tinha imagens, e ele relatou o sintoma no M8. **E a subida é local:** o
+   grifo sobe só até acima da imagem mais alta **que ele encosta**, e não acima de todas as
+   imagens do quadro. Subir sempre trocaria o problema pelo oposto em outro lugar. Caneta e
+   lápis entram por cima de tudo.
 6. **A borracha apaga por peça (padrão) ou o traço inteiro, e só tinta** (`stroke` e
    `path`). Ela ignora texto, post-it e imagem de propósito: um gesto largo apagaria o
    resumo inteiro sem ninguém ter pedido. Os comandos são `EraseInk` e `EraseObjects`,
@@ -245,6 +277,33 @@ nasceu, e ela era mais importante que metade do que estava planejado.
 18. **`PatchObjects` é o comando genérico de conteúdo+geometria** (texto, marcadores,
     recorte). Ele nasceu como `EditText` e foi renomeado na Fase 7, quando o terceiro uso
     apareceu — se você procurar `EditText` no histórico, é ele.
+19b. **O PNG sai em LADRILHOS quando não cabe num arquivo, e a escala pedida é honrada**
+    (B13). Não existe imagem única para o quadro dele — 82.967 × 19.274 unidades são 1,6
+    gigapixel a 1x. Cada ladrilho vira um arquivo irmão, com sufixo `-l<linha>c<coluna>` em
+    base 1 **inclusive no primeiro**, para ordenar por nome remontar a grade. O PDF continua
+    cedendo escala: uma página não tem onde pôr o segundo ladrilho.
+
+19c. **Medir desenho pelo rAF mente, e há um caminho que não mente.**
+    `App.renderNowForMeasurement()` desenha a camada estática na hora e devolve o custo. O
+    rAF erra em dois casos comuns: **janela encoberta** (o Chromium para de entregar frames,
+    e `backgroundThrottling: false` não cobre isso — em 12/08/2026 o `QB_BENCH` devolveu
+    `0.0 fps` em duas das três fases) e **vsync** (esperar o frame soma a espera do monitor
+    ao trabalho). Toda verificação de custo de desenho passa por aqui.
+
+19d. **O cache de rasterização vale para texto e post-it, e NÃO para traço e forma.**
+    Medido, não deduzido: colar mil bitmaps custa 6,3–7,0 ms e desenhar mil traços custa
+    6,4–6,7. O custo que domina é **fixo por objeto**, e o bitmap paga esse custo igual. O
+    ganho em texto vem de desenhar texto do zero custar ~200 ms por mil — fator 30, não de
+    colar ser barato. O cache é um `WeakMap` chaveado pelo próprio objeto: como toda mutação
+    o substitui, a invalidação sai de graça, sem string de chave e sem LRU para manter.
+
+20b. **A tela de abertura mora no `index.html`, e não num módulo.** Ela precisa estar pintada
+    no primeiro frame, antes de qualquer CSS ou JavaScript. Não adia nada — sai quando a
+    biblioteca está listada (642 ms medidos), sem tempo mínimo. A marca é a logo de verdade,
+    embutida por `npm run boot-logo`; o fundo é `#060912`, a cor **exata** do fundo do
+    arquivo, que é opaco. Os modos de verificação a removem na hora, senão ela intercepta os
+    eventos do auto-teste. `QB_BOOT=hold` a segura para o `QB_SHOT` fotografá-la.
+
 19. **Exportar reaproveita os painters no PNG e NÃO no SVG.** No PNG é o mesmo
     `paintObject` da tela — dois renderizadores divergiriam na primeira funcionalidade
     nova. No SVG isso é impossível (os painters falam canvas), então o que se reaproveita
@@ -285,7 +344,7 @@ src/renderer/
 │               text/layout, SelectionOverlay, SnapGuides, Rulers, PinnedNotes,
 │               SearchHighlight, CropOverlay
 ├─ ui/          ToolBar, SearchBar, Lobby, ViewportBar, ContextMenu, ShortcutsModal,
-│               DebugPanel
+│               DebugPanel, LayersPanel (M8)
 └─ dev/         selftest, layoutOracle, importCheck, exportCheck, stress
                 ← ferramentas de medição
 ```
