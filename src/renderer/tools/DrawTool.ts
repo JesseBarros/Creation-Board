@@ -100,7 +100,10 @@ export class DrawTool implements Tool {
       type: 'stroke',
       variant: this.id,
       parentId: null,
-      z: this.#nextZ(),
+      // Provisorio: a camada do marca-texto depende de o que ele COBRE, e para
+      // saber isso e preciso do AABB, que so existe depois do `computeBbox`
+      // abaixo.
+      z: '',
       transform: { x: this.#anchor.x, y: this.#anchor.y, rotation: 0, scaleX: 1, scaleY: 1 },
       bbox: { x: 0, y: 0, w: 0, h: 0 },
       opacity: 1,
@@ -117,6 +120,7 @@ export class DrawTool implements Tool {
     // O AABB e sempre derivado, nunca escrito a mao; `computeBbox` ja infla pela
     // espessura, que extrapola a linha de centro dos pontos para os dois lados.
     stroke.bbox = computeBbox(stroke);
+    stroke.z = this.#nextZ(stroke);
     return stroke;
   }
 
@@ -124,14 +128,42 @@ export class DrawTool implements Tool {
    * Camada do traco novo.
    *
    * Caneta e lapis entram por CIMA, que e onde se espera encontrar o que se
-   * acabou de escrever. O marca-texto entra por BAIXO de tudo: grifar um resumo
-   * importado com ele no topo cobriria com uma faixa translucida justamente o
-   * texto que se quis destacar.
+   * acabou de escrever.
+   *
+   * O marca-texto entra por BAIXO -- grifar um resumo importado com ele no topo
+   * cobriria com uma faixa translucida justamente o texto que se quis destacar.
+   * **Mas "por baixo de tudo" estava errado, e o M8 nasceu disso:** ele relatou
+   * que grifar sobre uma print colada nao mostra nada. Esta certo, e a diferenca
+   * e fisica -- texto e tinta escura sobre fundo claro, e o grifo aparece atras
+   * das letras como um marcador de verdade; uma IMAGEM e opaca, e nao ha "atras"
+   * que se veja. A regra foi escrita na Fase 4, quando o app nao tinha imagens;
+   * elas chegaram na Fase 7 e ninguem revisitou.
+   *
+   * A correcao e local, e nao global: o grifo sobe ate logo ACIMA da imagem mais
+   * alta que ele encosta, e nao acima de todas as imagens do quadro. Subir
+   * sempre faria um grifo passar na frente de um texto que esta acima de alguma
+   * imagem distante, sem ninguem ter pedido.
    */
-  #nextZ(): string {
+  #nextZ(stroke: StrokeObject): string {
     const { doc } = this.ctx;
     if (this.id !== 'highlighter') return keyBetween(doc.topZ(), null);
-    return keyBetween('', doc.bottomZ());
+
+    // A imagem mais alta que este traco cobre. `queryVisible` ja devolve em
+    // ordem de camada, entao a ultima da lista e a de cima.
+    let alvo: string | null = null;
+    for (const o of doc.queryVisible(stroke.bbox)) {
+      if (o.type === 'image') alvo = o.z;
+    }
+    if (alvo === null) return keyBetween('', doc.bottomZ());
+
+    // Entre a imagem e o que vier logo acima dela no quadro INTEIRO: `z` e uma
+    // ordem global, e usar so os vizinhos que o traco encosta produziria uma
+    // chave que colide com objetos fora dele.
+    let acima: string | null = null;
+    for (const o of doc.all()) {
+      if (o.z > alvo && (acima === null || o.z < acima)) acima = o.z;
+    }
+    return keyBetween(alvo, acima);
   }
 
   // ---------------------------------------------------------------- visual

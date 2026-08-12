@@ -1,5 +1,6 @@
 import type { Vec2 } from '@shared/geometry/vec2';
 import { computeBbox } from '@shared/model/bbox';
+import { keyBetween } from '@shared/model/fractional';
 import type {
   BoardObject,
   ImageObject,
@@ -974,6 +975,60 @@ function runDrawingTests(host: HTMLElement, app: App, check: Check, reset: () =>
     'o marca-texto entra por baixo do conteudo, para grifar em vez de cobrir',
     grifo !== undefined && grifo.variant === 'highlighter' && grifo.z < aZ,
     `z do grifo=${grifo?.z} z do objeto grifado=${aZ} esperado=grifo menor`,
+  );
+
+  // --- M8: grifar SOBRE UMA IMAGEM tem de ficar por cima dela
+  //
+  // Ele relatou que grifar numa print colada nao mostra nada, e estava certo: a
+  // regra "marca-texto por baixo de tudo" nasceu na Fase 4, quando o app nao
+  // tinha imagens. Texto e tinta escura sobre fundo claro e o grifo aparece
+  // atras das letras; imagem e OPACA, e nao ha "atras" que se veja.
+  setup('highlighter');
+  const foto: ImageObject = {
+    id: 'IMG',
+    type: 'image',
+    parentId: null,
+    // Acima de todo o cenario, que e o caso que reproduz o problema dele.
+    z: keyBetween(doc.topZ(), null),
+    transform: { x: 600, y: 400, rotation: 0, scaleX: 1, scaleY: 1 },
+    bbox: { x: 600, y: 400, w: 300, h: 200 },
+    opacity: 1,
+    locked: false,
+    hidden: false,
+    rev: 0,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    w: 300,
+    h: 200,
+    assetId: 'nenhum',
+    naturalW: 300,
+    naturalH: 200,
+  };
+  doc.add([foto]);
+  drawAt({ x: 620, y: 460 }, 240, 0);
+  const sobreFoto = drawn();
+  check(
+    'grifar sobre uma imagem entra POR CIMA dela, senao o grifo some',
+    sobreFoto !== undefined && sobreFoto.z > foto.z,
+    `z do grifo=${sobreFoto?.z} z da imagem=${foto.z} esperado=grifo maior ` +
+      `(imagem e opaca: por baixo, o grifo nao aparece)`,
+  );
+
+  // --- e o grifo LONGE da imagem continua indo por baixo
+  //
+  // O par importa mais que cada um sozinho: se a correcao fosse "subir sempre
+  // que houver imagem no quadro", grifar um texto do outro lado passaria a
+  // cobri-lo. A regra e local -- so sobe acima do que o traco ENCOSTA.
+  drawAt({ x: 120, y: 150 }, 300, 0);
+  const longe = [...doc.all()].filter(
+    (o): o is StrokeObject => o.type === 'stroke' && o.variant === 'highlighter',
+  );
+  const distante = longe.find((o) => o.transform.x < 200);
+  check(
+    'com a imagem no quadro, grifar longe dela continua indo por baixo do texto',
+    distante !== undefined && distante.z < aZ && distante.z < foto.z,
+    `z do grifo distante=${distante?.z} z do texto=${aZ} z da imagem=${foto.z} ` +
+      `esperado=menor que os dois`,
   );
 
   // --- a pressao chega ao traco
