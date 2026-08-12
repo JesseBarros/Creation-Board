@@ -4,8 +4,7 @@ Registro do que apareceu usando o app de verdade, antes da Fase 9 (polimento).
 O [RETOMAR.md](RETOMAR.md) diz em que pé o projeto está; este arquivo diz **o que está
 errado e o que falta**. Some quando a lista zerar.
 
-**Última atualização: 12/08/2026.** **1 item aberto** (B10), **18 fechados** e **1 novo a
-investigar** (**B15**, uma falha intermitente no próprio auto-teste).
+**Última atualização: 12/08/2026.** **3 itens abertos** (B10, B15 e B16), **18 fechados**.
 
 **A Fase 9 fechou o B13, o M8 e a parte do B9 que era corrigível.** O que sobrou do B9 não
 é bug: o teto de 60 é taxa de entrega de evento, e o custo de desenho do quadro real dele
@@ -23,6 +22,10 @@ tratados como três.
 - **B15** — `a investigar`. Uma verificação do auto-teste falhou **uma vez**, sob carga, e
   não reproduziu depois. Detalhe abaixo — está aqui porque flakiness no verificador é o que
   corrói a confiança nele.
+- **B16** — `a investigar`. Uma "sombra" atrás dos ícones da barra polui a interface,
+  aparentemente só no tema escuro. Relatado em 12/08 e **agendado para depois da rodada de
+  ícones**, a pedido dele: mexer nas duas coisas juntas tornaria impossível dizer qual
+  mudança melhorou o quê.
 
 **Fechados na Fase 9:** B13 (exportar em ladrilhos), M8 (camadas, nas duas metades) e a
 parte corrigível do B9 (o painel do `F3`).
@@ -1005,6 +1008,37 @@ muito maior e licença de fonte para resolver. Isto custa dois atributos.
 
 **Verificação no `selftest`:** todo `<text>` do SVG tem de sair com `textLength`, e o arquivo
 tem de conter `spacingAndGlyphs`. É o par que some se alguém simplificar a emissão.
+
+### B16 — Uma "sombra" atrás dos ícones da barra polui a interface
+`a investigar` · `baixo` · 12/08/2026 · **para depois da rodada de ícones**
+
+Relato dele, com captura da barra inferior: *"atrás dos ícones existe uma espécie de
+'sombra' que deixa a interface do aplicativo meio poluída, acredito que ela só seja visível
+no modo noturno"*.
+
+**Fica agendado de propósito.** Ele pediu para verificar isto **depois** de fecharmos a
+rodada de ícones — mexer nas duas coisas ao mesmo tempo tornaria impossível dizer qual
+mudança melhorou o quê. É a mesma razão pela qual as correções deste arquivo são agrupadas
+por área tocada, e não por ordem de chegada.
+
+**O que já dá para afirmar sem medir:** a captura é de 12/08/2026, logo depois do polimento
+das barras, e nela os únicos ícones com fundo visível são os **três interruptores ligados**
+(grade, régua e camadas). Então o primeiro suspeito é meu, e é recente.
+
+Três candidatos, do mais provável ao menos:
+
+1. **A pílula de "ligado" da barra inferior.** Ela é `color-mix(var(--fg) 11%, transparent)`
+   — cinza claro sobre um painel translúcido escuro. Isso pode dar uma mancha sem forma
+   definida em vez de um retângulo limpo, que é exatamente "sombra atrás do ícone". Foi
+   escolhida neutra de propósito (quatro pílulas azuis manchariam a fila), mas neutro sobre
+   translúcido pode ser pior que colorido.
+2. **`saturate(160%)` no `backdrop-filter`.** Subiu de 140% no polimento. Saturar o que está
+   atrás de um painel escuro puxa a cor do quadro para dentro da barra.
+3. **O brilho interno de 1px** (`inset 0 1px 0 rgba(255,255,255,.06)`), que entrou junto e só
+   existe no tema escuro — o que casa com a suspeita dele de ser só no modo noturno.
+
+**A hipótese dele de "só no modo noturno" custa nada para conferir:** trocar de tema e olhar.
+Se aparecer nos dois, o candidato 3 cai sozinho.
 
 ### B15 — Uma verificação do auto-teste falhou uma vez e não reproduziu
 `a investigar` · `baixo` · 12/08/2026
