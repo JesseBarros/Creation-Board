@@ -13,8 +13,33 @@ export interface DebugActions {
  * Detalhe importante de medicao: o DOM e atualizado no maximo a cada 120ms, nao
  * a cada frame. Escrever ~15 nos de texto 60 vezes por segundo custaria o
  * suficiente para contaminar justamente o numero que o painel esta medindo.
+ *
+ * **O painel foi pego medindo a coisa errada, e reordenado por causa disso.**
+ * Ele relatou, olhando o F3 no quadro real: *"quanto mais rapido eu movo, maior
+ * o fps, chegando a um teto proximo a 66; quando movo um pouco fica uns 28-30"*.
+ * Custo nao se comporta assim -- se desenhar fosse o gargalo, mover mais rapido
+ * daria MENOS fps, nao mais.
+ *
+ * O que o contador media era o intervalo entre redesenhos, e o `Scheduler` so
+ * redesenha quando algo muda: mover devagar produz menos mudancas, logo menos
+ * frames, logo um numero menor. Ele lia "o app esta lento"; o painel respondia
+ * "a tela mudou 30 vezes neste segundo". Na MESMA captura, o render era de
+ * 6,40 ms com 1.049 objetos -- daria 156 fps se houvesse o que desenhar.
+ *
+ * Entao o destaque agora e **Render**, que e trabalho e so trabalho, e o antigo
+ * "FPS" desceu para o fim com o nome honesto: *atualizacoes por segundo*.
  */
 const UPDATE_INTERVAL_MS = 120;
+
+/**
+ * Orcamento de um frame, em ms, nas duas metas.
+ *
+ * 144 e a meta dele (*"como os aplicativos Apple"*, B9). O verde antigo comecava
+ * em 55 fps -- ou seja, o medidor dizia "otimo" exatamente no numero que o
+ * incomodava.
+ */
+const ORCAMENTO_144 = 1000 / 144;
+const ORCAMENTO_60 = 1000 / 60;
 
 export class DebugPanel {
   readonly el: HTMLElement;
@@ -35,16 +60,19 @@ export class DebugPanel {
 
     const stats = document.createElement('div');
     stats.className = 'qb-debug__stats';
+    // A ordem e a mensagem: o primeiro numero e o que se olha. Render vem antes
+    // porque e o unico que mede TRABALHO -- Frame carrega a espera do vsync
+    // junto, e "atualizacoes/s" depende de quanta coisa mudou.
     for (const key of [
-      'FPS',
-      'Frame',
       'Render',
+      'Frame',
       'Objetos',
       'No viewport',
       'Desenhados',
       'LOD',
       'Zoom',
       'Heap JS',
+      'Atualizacoes/s',
     ]) {
       const row = document.createElement('div');
       row.className = 'qb-debug__row';
@@ -102,21 +130,42 @@ export class DebugPanel {
     if (now - this.#lastUpdate < UPDATE_INTERVAL_MS) return;
     this.#lastUpdate = now;
 
-    const fpsEl = this.#rows.get('FPS')!;
-    if (stats.idle) {
-      fpsEl.textContent = 'ocioso';
-      fpsEl.className = 'qb-debug__val qb-debug__val--idle';
-    } else {
-      fpsEl.textContent = stats.fps.toFixed(0);
-      // Verde a partir de 55fps (a meta de 60 com folga de vsync), ambar ate 30,
-      // vermelho abaixo disso.
-      fpsEl.className =
-        'qb-debug__val ' +
-        (stats.fps >= 55 ? 'qb-debug__val--ok' : stats.fps >= 30 ? 'qb-debug__val--warn' : 'qb-debug__val--bad');
-    }
+    // O numero de destaque: desenhar a cena custa isto, e so isto. Ele nao
+    // depende de vsync, de quanto a tela mudou nem de a janela estar na frente.
+    const renderEl = this.#rows.get('Render')!;
+    renderEl.textContent = `${stats.renderMs.toFixed(2)} ms`;
+    renderEl.className =
+      'qb-debug__val ' +
+      (stats.renderMs <= ORCAMENTO_144
+        ? 'qb-debug__val--ok'
+        : stats.renderMs <= ORCAMENTO_60
+          ? 'qb-debug__val--warn'
+          : 'qb-debug__val--bad');
+    // A dica diz contra o que a cor esta comparando -- sem isso, verde e vermelho
+    // sao opiniao sem criterio.
+    renderEl.title =
+      `Custo de desenhar a cena. Verde ate ${ORCAMENTO_144.toFixed(1)} ms (144 fps), ` +
+      `ambar ate ${ORCAMENTO_60.toFixed(1)} ms (60 fps).`;
 
     this.#set('Frame', stats.idle ? '—' : `${stats.frameMs.toFixed(1)} ms`);
-    this.#set('Render', `${stats.renderMs.toFixed(2)} ms`);
+
+    // O antigo "FPS". O nome mudou porque o numero sempre foi este: quantas
+    // vezes a tela foi redesenhada, e nao quao rapido o app consegue desenhar.
+    const taxaEl = this.#rows.get('Atualizacoes/s')!;
+    if (stats.idle) {
+      taxaEl.textContent = 'ocioso';
+      taxaEl.className = 'qb-debug__val qb-debug__val--idle';
+    } else {
+      taxaEl.textContent = stats.fps.toFixed(0);
+      // Sem cor de propósito: um numero baixo aqui costuma significar "nada
+      // mudou", que e o comportamento certo. Pintar de vermelho o quadro parado
+      // seria o erro que este painel acabou de deixar de cometer.
+      taxaEl.className = 'qb-debug__val';
+    }
+    taxaEl.title =
+      'Quantas vezes a tela foi redesenhada no ultimo segundo. Nao e velocidade: ' +
+      'o quadro so redesenha quando algo muda, entao mover devagar reduz este numero.';
+
     this.#set('Objetos', stats.total.toLocaleString('pt-BR'));
     this.#set('No viewport', stats.visible.toLocaleString('pt-BR'));
     this.#set('Desenhados', stats.drawn.toLocaleString('pt-BR'));

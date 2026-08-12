@@ -2132,6 +2132,31 @@ async function runHudTests(app: App, check: Check, reset: () => void): Promise<v
   doc.clear();
   reset();
 
+  // --- B9: o painel do F3 destaca CUSTO, e nao frequencia de atualizacao
+  //
+  // Ele leu "66 fps" como "o app esta rapido" e "28 fps" como "esta lento",
+  // quando o numero so dizia quantas vezes a tela mudou. A verificacao trava as
+  // duas metades da correcao: o primeiro numero e o Render (trabalho puro), e o
+  // rotulo "FPS" nao existe mais -- e ele que convidava a leitura errada.
+  key('F3');
+  // O painel so escreve os valores no proximo frame -- ele e alimentado pelo
+  // laco de render, e nao pelo atalho. Ler na mesma linha pega o traco inicial.
+  await nextFrames(2);
+  const chaves = [...document.querySelectorAll<HTMLElement>('.qb-debug__key')].map(
+    (e) => e.textContent ?? '',
+  );
+  const primeiro = document.querySelector<HTMLElement>('.qb-debug__row .qb-debug__val');
+  key('F3');
+  check(
+    'o painel do F3 destaca o custo de desenhar, e nao a frequencia de atualizacao',
+    chaves[0] === 'Render' &&
+      !chaves.includes('FPS') &&
+      chaves.includes('Atualizacoes/s') &&
+      /ms$/.test(primeiro?.textContent ?? ''),
+    `primeira linha=${chaves[0]} valor=${primeiro?.textContent} · ` +
+      `tem "FPS"=${chaves.includes('FPS')} tem "Atualizacoes/s"=${chaves.includes('Atualizacoes/s')}`,
+  );
+
   // --- a barra virou icones, mas continua nomeada e alcancavel
   // Sem texto visivel, o nome do botao vive no `aria-label` -- e e ele que um
   // leitor de tela anuncia. Um icone sem nome e um botao mudo.
