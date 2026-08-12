@@ -20,8 +20,24 @@ import type { PaintContext } from './painters/types';
  * texto nao e medido nem montado de novo.
  *
  * Vale para texto e post-it, que sao os caros. Imagem ja e bitmap, e traco e
- * caminho -- os dois passam direto, porque cachea-los gastaria memoria para
- * economizar pouco.
+ * caminho passam direto.
+ *
+ * **Traco e forma NAO devem ser cacheados, e isto deixou de ser deducao.**
+ * Medido em 12/08/2026 (repartição por tipo, no selftest), em ms por mil
+ * objetos na tela:
+ *
+ *   desenhar mil tracos do zero    6,4 - 6,7
+ *   desenhar mil formas do zero    5,7 - 6,0
+ *   COLAR mil bitmaps ja prontos   6,3 - 7,0
+ *
+ * Colar um bitmap nao e mais barato que desenhar um traco curto: os tres numeros
+ * sao a mesma coisa. O custo que domina e FIXO por objeto -- ele existe antes de
+ * qualquer pixel --, e um bitmap paga esse custo igual. Cachear traco e forma
+ * gastaria memoria para economizar *menos que zero*.
+ *
+ * O que torna o cache valioso para texto e o tamanho do que ele evita: mil
+ * caixas de texto desenhadas do zero custam ~200 ms, e coladas ~6,4. Fator 30.
+ * E isso porque medir e montar texto e caro, nao porque colar seja barato.
  */
 
 /** Folga em unidades locais, para descida de letra e sombra nao serem cortadas. */
@@ -37,6 +53,14 @@ const MAX_SIDE = 2048;
 interface Entrada {
   canvas: OffscreenCanvas;
   bytes: number;
+  /** Bucket de escala com que este bitmap foi desenhado. */
+  escala: number;
+}
+
+/** O que o cache precisa saber do objeto. Evita depender do tipo do modelo. */
+export interface Rasterizavel {
+  readonly w: number;
+  readonly h: number;
 }
 
 /**
@@ -53,8 +77,27 @@ export function bucketScale(escala: number): number {
 }
 
 export class RasterCache {
-  /** `Map` mantem ordem de insercao: reinserir no acesso ja da o LRU. */
-  readonly #entradas = new Map<string, Entrada>();
+  /**
+   * Chaveado pelo PROPRIO objeto, e nao por uma string `id:rev:escala`.
+   *
+   * As duas metades importam, e as duas saem de uma medicao (12/08/2026: colar
+   * um bitmap de texto custava 7,7 ms por mil objetos, mais que DESENHAR mil
+   * tracos do zero -- o custo estava na contabilidade, nao no desenho):
+   *
+   * - **Sem montar string.** A chave antiga era interpolada a cada objeto a cada
+   *   frame. Num quadro cheio isso e uma string nova por objeto por frame, so
+   *   para ser jogada fora em seguida.
+   * - **Sem remexer a ordem.** O LRU antigo fazia `delete` + `set` em CADA
+   *   acerto, para marcar o item como recem-usado. Com milhares de acertos por
+   *   frame, manter a ordem custava mais do que a ordem valia.
+   *
+   * A invalidacao sai de graca, e pelo mesmo motivo que ja vale para o cache da
+   * busca: toda mutacao SUBSTITUI o objeto, entao o objeto novo simplesmente nao
+   * esta no mapa. Nao ha `rev` para comparar nem entrada velha para expulsar --
+   * o coletor de lixo leva o bitmap junto com o objeto que morreu.
+   */
+  #mapa = new WeakMap<Rasterizavel, Entrada>();
+  #vivas = 0;
   #bytes = 0;
   #acertos = 0;
   #erros = 0;
@@ -67,7 +110,7 @@ export class RasterCache {
 
   get stats(): { entradas: number; mb: number; acertos: number; erros: number } {
     return {
-      entradas: this.#entradas.size,
+      entradas: this.#vivas,
       mb: this.#bytes / (1024 * 1024),
       acertos: this.#acertos,
       erros: this.#erros,
@@ -79,10 +122,14 @@ export class RasterCache {
    *
    * Chamado ao trocar de tema: a cor gravada no bitmap ja passou pelo adaptador,
    * e um bitmap do tema claro colado no tema escuro apareceria com a cor errada.
+   *
+   * Um `WeakMap` nao se percorre, entao "esvaziar" e trocar o mapa por um novo.
+   * O antigo morre inteiro com os bitmaps dentro dele, que e o que se queria.
    */
   clear(): void {
-    this.#entradas.clear();
+    this.#mapa = new WeakMap<Rasterizavel, Entrada>();
     this.#bytes = 0;
+    this.#vivas = 0;
   }
 
   /**
@@ -92,23 +139,20 @@ export class RasterCache {
    * direto, como antes.
    */
   obter(
-    chave: string,
-    larguraLocal: number,
-    alturaLocal: number,
+    obj: Rasterizavel,
     escala: number,
     pintar: (ctx: OffscreenCanvasRenderingContext2D, escala: number) => void,
   ): OffscreenCanvas | null {
-    const existente = this.#entradas.get(chave);
-    if (existente) {
-      // Reinsere para marcar como recem-usado.
-      this.#entradas.delete(chave);
-      this.#entradas.set(chave, existente);
+    const existente = this.#mapa.get(obj);
+    // A escala entra na comparacao, e nao na chave: um zoom que mude de bucket
+    // redesenha o bitmap por cima do antigo, em vez de acumular um por bucket.
+    if (existente && existente.escala === escala) {
       this.#acertos++;
       return existente.canvas;
     }
 
-    const w = Math.ceil((larguraLocal + RASTER_PAD * 2) * escala);
-    const h = Math.ceil((alturaLocal + RASTER_PAD * 2) * escala);
+    const w = Math.ceil((obj.w + RASTER_PAD * 2) * escala);
+    const h = Math.ceil((obj.h + RASTER_PAD * 2) * escala);
     if (!(w > 0) || !(h > 0) || w > MAX_SIDE || h > MAX_SIDE) return null;
 
     const canvas = new OffscreenCanvas(w, h);
@@ -119,21 +163,22 @@ export class RasterCache {
     pintar(ctx, escala);
 
     const bytes = w * h * 4;
-    this.#entradas.set(chave, { canvas, bytes });
-    this.#bytes += bytes;
-    this.#erros++;
-    this.#despejar();
-    return canvas;
-  }
-
-  /** Descarta os menos usados ate caber no orcamento. */
-  #despejar(): void {
-    if (this.#bytes <= this.orcamentoBytes) return;
-    for (const [chave, entrada] of this.#entradas) {
-      this.#entradas.delete(chave);
-      this.#bytes -= entrada.bytes;
-      if (this.#bytes <= this.orcamentoBytes) return;
+    if (existente) {
+      this.#bytes -= existente.bytes;
+      this.#vivas--;
     }
+    this.#mapa.set(obj, { canvas, bytes, escala });
+    this.#bytes += bytes;
+    this.#vivas++;
+    this.#erros++;
+
+    // Sem lista para percorrer nao ha como expulsar o menos usado, entao o teto
+    // e aplicado de uma vez: passou do orcamento, o cache inteiro vai embora e
+    // se refaz sob demanda. E grosseiro de proposito -- custa UM frame caro e
+    // acontece raramente, contra um custo por objeto por frame para manter uma
+    // ordem que a medicao mostrou nao valer o preco.
+    if (this.#bytes > this.orcamentoBytes) this.clear();
+    return canvas;
   }
 }
 

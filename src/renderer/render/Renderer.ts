@@ -159,6 +159,15 @@ export class Renderer {
     const minWorldSize = 0.5 / zoom;
     let drawn = 0;
 
+    // O `PaintContext` continua sendo montado por objeto, dentro do `#paintOne`,
+    // e isso foi TESTADO em 12/08/2026: reaproveitar um so para o frame inteiro
+    // -- 4.000 alocacoes por frame a menos -- nao mudou nada. Quatro execucoes de
+    // cada lado, `stroke` 6,40-6,73 contra 6,38-6,79 e `shape` 5,67-5,98 contra
+    // 5,63-6,23: faixas identicas. Alocar um objeto pequeno e novo em V8 e um
+    // avanco de ponteiro, e o custo por objeto esta em outro lugar.
+    //
+    // Fica registrado para ninguem "otimizar" isto de novo por parecer obvio.
+
     // Um caminho so, para qualquer zoom. Ate 08/08/2026 havia um atalho aqui:
     // abaixo de 12% de zoom todo objeto virava um retangulo solido da cor
     // dominante, desenhado em lote. Era barato e mentia -- imagem e forma
@@ -220,13 +229,9 @@ export class Renderer {
     // Texto e post-it passam pelo cache: sao os unicos cujo desenho envolve
     // medir e montar texto, que e o custo que domina com muitos objetos na tela.
     if (obj.type === 'text' || obj.type === 'note') {
-      const escala = bucketScale(s * Math.abs(t.scaleY));
-      const bitmap = this.#raster.obter(
-        `${obj.id}:${obj.rev}:${escala}`,
-        obj.w,
-        obj.h,
-        escala,
-        (rctx) => paintObject(obj, contextoDeRaster(rctx, escala, p)),
+      const escala = bucketScale(p.deviceScale * p.objectScale);
+      const bitmap = this.#raster.obter(obj, escala, (rctx) =>
+        paintObject(obj, contextoDeRaster(rctx, escala, p)),
       );
       if (bitmap) {
         ctx.drawImage(
