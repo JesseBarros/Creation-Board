@@ -4,7 +4,7 @@ Registro do que apareceu usando o app de verdade, antes da Fase 9 (polimento).
 O [RETOMAR.md](RETOMAR.md) diz em que pé o projeto está; este arquivo diz **o que está
 errado e o que falta**. Some quando a lista zerar.
 
-**Última atualização: 12/08/2026.** **3 itens abertos** (B10, B15 e B16), **18 fechados**.
+**Última atualização: 13/08/2026.** **2 itens abertos** (B10 e B15), **19 fechados**.
 
 **A Fase 9 fechou o B13, o M8 e a parte do B9 que era corrigível.** O que sobrou do B9 não
 é bug: o teto de 60 é taxa de entrega de evento, e o custo de desenho do quadro real dele
@@ -22,16 +22,13 @@ tratados como três.
 - **B15** — `a investigar`. Uma verificação do auto-teste falhou **uma vez**, sob carga, e
   não reproduziu depois. Detalhe abaixo — está aqui porque flakiness no verificador é o que
   corrói a confiança nele.
-- **B16** — `a investigar`. Uma "sombra" atrás dos ícones da barra polui a interface,
-  aparentemente só no tema escuro. Relatado em 12/08 e **agendado para depois da rodada de
-  ícones**, a pedido dele: mexer nas duas coisas juntas tornaria impossível dizer qual
-  mudança melhorou o quê.
+
 O **M9** (plano de fundo por imagem no menu principal) foi **abandonado por ora**, por decisão
 dele no mesmo dia em que teve a ideia. O item fica escrito com a viabilidade toda respondida:
 se voltar, a investigação já está feita.
 
-**Fechados na Fase 9:** B13 (exportar em ladrilhos), M8 (camadas, nas duas metades) e a
-parte corrigível do B9 (o painel do `F3`).
+**Fechados na Fase 9:** B13 (exportar em ladrilhos), M8 (camadas, nas duas metades), a
+parte corrigível do B9 (o painel do `F3`) e o B16 (a "sombra" atrás dos ícones da barra).
 
 O **B11** (biblioteca partida em duas pastas) foi **corrigido no mesmo dia em que ele o
 relatou**, e é o item mais sério que este arquivo já teve. Falta só **consolidar as duas
@@ -1013,35 +1010,79 @@ muito maior e licença de fonte para resolver. Isto custa dois atributos.
 tem de conter `spacingAndGlyphs`. É o par que some se alguém simplificar a emissão.
 
 ### B16 — Uma "sombra" atrás dos ícones da barra polui a interface
-`a investigar` · `baixo` · 12/08/2026 · **para depois da rodada de ícones**
+`corrigido` · `baixo` · 12/08/2026, fechado em 13/08/2026
+
+> **Era o candidato 1, e a foto da janela mediu o porquê.** A "sombra" é a **pílula de
+> ligado** da barra inferior — o retângulo arredondado atrás de grade, régua e camadas. Ela
+> era cinza neutro (`--fg` a 11%); passou a ser da **cor de destaque** (`--accent` a 16%), a
+> mesma que a barra lateral já usava.
+>
+> **Os números, lidos pixel a pixel de uma captura da janela no tema escuro:**
+>
+> | | RGB | Passo em luminância |
+> |---|---|---|
+> | quadro, fora da barra | 19,21,26 | — |
+> | barra | 27,30,37 | +8 sobre o quadro |
+> | pílula **neutra** (o bug) | 48,53,59 | **+22 sobre a barra** |
+> | pílula **de destaque** (a correção) | 31,44,69 | **+13 sobre a barra** |
+>
+> **Duas coisas saem daí, e nenhuma era visível lendo o CSS.**
+>
+> Primeira: o cinza neutro dava um degrau de luminância quase **três vezes maior** que o da
+> própria barra contra o quadro. O indicador de estado estava gritando mais alto que a
+> superfície em que ele mora — daí "polui", e não "está errado".
+>
+> Segunda, e é a que explica a palavra *sombra*: **o tema escuro inteiro é azulado.** A razão
+> azul/vermelho é 1,37 no fundo do quadro e 1,37 na barra; a pílula neutra caía para **1,23**.
+> Uma mancha *cinza* sobre uma interface azulada não se lê como destaque, se lê como sujeira.
+> O azul faz o contrário: metade do degrau de luminância, e a diferença vai para a cor — e,
+> como o glifo já é azul, pílula e ícone viram um objeto só em vez de um ícone pousado sobre
+> um borrão.
+>
+> **Os candidatos 2 e 3 caíram, e não por eliminação:** a captura mostra a barra com quatorze
+> ícones e **só os três ligados** tinham fundo. `saturate(160%)` e o brilho interno de 1px são
+> da barra inteira; se fossem eles, todos os quatorze estariam manchados.
+>
+> **A hipótese dele de "só no modo noturno" estava meio certa, e vale registrar o meio.** A
+> pílula neutra aparece nos dois temas — no claro ela daria `#e3e4e5` sobre o painel branco
+> (isto é composição no papel, e não medido: a foto é do tema escuro). O que
+> muda é a **leitura**: sobre fundo claro, um cinza um pouco mais escuro é o idioma normal de
+> "pressionado"; sobre fundo escuro, um cinza mais *claro* é o idioma de véu. Ele viu certo o
+> sintoma e quase certo a causa.
+>
+> **Verificação no `selftest`:** *"a pílula de ligado usa a cor de destaque, e é a mesma nas
+> duas barras"*. Ela compara **matiz** — a cor composta, sem o alfa — do fundo do botão ligado
+> nas duas barras contra o token `--accent`. Mexer na opacidade da pílula é acabamento e
+> continua passando; voltar para cinza é a regressão, e reprova. A comparação lê `#rrggbb`,
+> `rgb()` e `color(srgb …)` como a mesma coisa, porque `color-mix` sai na terceira forma.
 
 Relato dele, com captura da barra inferior: *"atrás dos ícones existe uma espécie de
 'sombra' que deixa a interface do aplicativo meio poluída, acredito que ela só seja visível
 no modo noturno"*.
 
-**Fica agendado de propósito.** Ele pediu para verificar isto **depois** de fecharmos a
+**Ficou agendado de propósito.** Ele pediu para verificar isto **depois** de fecharmos a
 rodada de ícones — mexer nas duas coisas ao mesmo tempo tornaria impossível dizer qual
 mudança melhorou o quê. É a mesma razão pela qual as correções deste arquivo são agrupadas
 por área tocada, e não por ordem de chegada.
 
-**O que já dá para afirmar sem medir:** a captura é de 12/08/2026, logo depois do polimento
-das barras, e nela os únicos ícones com fundo visível são os **três interruptores ligados**
-(grade, régua e camadas). Então o primeiro suspeito é meu, e é recente.
+<details>
+<summary>Os três candidatos, antes de medir</summary>
 
-Três candidatos, do mais provável ao menos:
+**O que já dava para afirmar sem medir:** a captura é de 12/08/2026, logo depois do polimento
+das barras, e nela os únicos ícones com fundo visível são os **três interruptores ligados**
+(grade, régua e camadas). Então o primeiro suspeito era meu, e recente.
 
 1. **A pílula de "ligado" da barra inferior.** Ela é `color-mix(var(--fg) 11%, transparent)`
    — cinza claro sobre um painel translúcido escuro. Isso pode dar uma mancha sem forma
    definida em vez de um retângulo limpo, que é exatamente "sombra atrás do ícone". Foi
    escolhida neutra de propósito (quatro pílulas azuis manchariam a fila), mas neutro sobre
-   translúcido pode ser pior que colorido.
+   translúcido pode ser pior que colorido. — **era esta.**
 2. **`saturate(160%)` no `backdrop-filter`.** Subiu de 140% no polimento. Saturar o que está
    atrás de um painel escuro puxa a cor do quadro para dentro da barra.
 3. **O brilho interno de 1px** (`inset 0 1px 0 rgba(255,255,255,.06)`), que entrou junto e só
    existe no tema escuro — o que casa com a suspeita dele de ser só no modo noturno.
 
-**A hipótese dele de "só no modo noturno" custa nada para conferir:** trocar de tema e olhar.
-Se aparecer nos dois, o candidato 3 cai sozinho.
+</details>
 
 ### B15 — Uma verificação do auto-teste falhou uma vez e não reproduziu
 `a investigar` · `baixo` · 12/08/2026

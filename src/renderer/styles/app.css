@@ -159,25 +159,45 @@
 }
 
 /*
-  Ligado = pilha preenchida em cinza NEUTRO, com o icone em cor.
+  Ligado = pilula preenchida com a COR DE DESTAQUE, igual a barra lateral.
 
   Ate 12/08/2026 era uma barrinha embaixo do icone, no idioma da barra de
   tarefas do Windows. A barrinha saiu a pedido dele, que quis a estetica de
   aplicativo Apple -- ali um interruptor ligado e um retangulo arredondado
-  preenchido, nao um sublinhado.
+  preenchido, nao um sublinhado. A pilula fica; o que mudou foi a cor dela.
 
-  O preenchimento e neutro e nao da cor de destaque, e isso preserva a razao
-  original da barrinha: grade, ima, regua e camadas podem estar ligados ao mesmo
-  tempo, e quatro pilulas azuis deixariam a fila manchada. Neutro atras, cor so
-  no glifo -- o estado se le e a fila continua calma.
+  **O preenchimento foi NEUTRO por um dia, e era o B16.** O raciocinio era que
+  grade, ima, regua e camadas podem estar ligados ao mesmo tempo e quatro
+  pilulas azuis manchariam a fila. Ele relatou "uma especie de sombra atras dos
+  icones" -- e a medicao, tirada de uma foto da janela no tema escuro, explica
+  o que ele viu:
+
+  | | RGB medido | Passo em luminancia |
+  |---|---|---|
+  | quadro, fora da barra | 19,21,26 | -- |
+  | barra | 27,30,37 | +8 sobre o quadro |
+  | pilula NEUTRA (--fg 11%) | 48,53,59 | **+22 sobre a barra** |
+  | pilula de DESTAQUE (16%) | 32,43,70 | +13 sobre a barra |
+
+  Duas coisas saem dai, e nenhuma era visivel no CSS. Primeira: o cinza
+  neutro dava um degrau de luminancia quase TRES VEZES maior que o da propria
+  barra contra o quadro -- o indicador de estado gritava mais alto que a
+  superficie em que ele mora. Segunda, e e a que fecha o "parece sombra": o
+  tema escuro inteiro e azulado (B/R = 1,37 no fundo e na barra), e a pilula
+  neutra caia para 1,23. Uma mancha CINZA sobre uma interface azulada nao le
+  como destaque, le como sujeira.
+
+  O azul faz o contrario: metade do degrau de luminancia, e a diferenca vai
+  para a cor. E como o glifo ja e azul, pilula e icone viram um objeto so, em
+  vez de um icone azul pousado sobre um borrao cinza.
 */
 .qb-bar__btn--active {
   color: var(--accent);
-  background: color-mix(in srgb, var(--fg) 11%, transparent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
 }
 
 .qb-bar__btn--active:hover {
-  background: color-mix(in srgb, var(--fg) 15%, transparent);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .qb-bar__btn:disabled {
@@ -314,11 +334,9 @@
 }
 
 /*
-  Aqui o preenchimento E da cor de destaque, ao contrario da barra inferior.
-  A diferenca nao e inconsistencia: ali varios interruptores ficam ligados ao
-  mesmo tempo e o azul mancharia a fila; aqui a escolha e EXCLUSIVA -- so uma
-  ferramenta esta ativa --, entao a pilula colorida diz onde voce esta sem
-  competir com nada.
+  A MESMA pilula da barra inferior, de proposito: "ligado" tem uma cor so no
+  aplicativo inteiro. Ate o B16 as duas barras divergiam -- azul aqui, cinza
+  neutro ali --, e a divergencia foi o bug.
 
   Isso tambem aposenta a barrinha lateral que existia: com a pilula cheia, ela
   virava um segundo indicador dizendo a mesma coisa.

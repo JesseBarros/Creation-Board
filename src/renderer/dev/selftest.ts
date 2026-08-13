@@ -2020,6 +2020,52 @@ function textOf(line: { runs: ReadonlyArray<{ text: string }> }): string {
  * relatados como sem efeito. Testar a acao e testar o caminho ate ela sao
  * coisas diferentes.
  */
+/** Cor sem alfa, em 0..255 -- e a MATIZ da pilula, nao a opacidade dela. */
+interface RGB {
+  r: number;
+  g: number;
+  b: number;
+}
+
+/**
+ * Le uma cor CSS, em qualquer das formas que o navegador devolve.
+ *
+ * Sao tres, e por isso isto existe em vez de uma regex solta: `#rrggbb` (o que
+ * esta escrito no token do tema), `rgb()/rgba()` (o que a maioria das
+ * propriedades computa) e `color(srgb r g b / a)` -- que e como o Chromium
+ * devolve um `color-mix`, com os canais em 0..1 e nao em 0..255. Ler os tres
+ * como se fossem um so foi o unico jeito de comparar o token com o resultado.
+ */
+function corDeTexto(valor: string): RGB | null {
+  const t = valor.trim();
+  if (t.startsWith('#')) {
+    const h = t.slice(1);
+    const hex = h.length === 3 ? [...h].map((c) => c + c).join('') : h;
+    if (hex.length < 6) return null;
+    return {
+      r: parseInt(hex.slice(0, 2), 16),
+      g: parseInt(hex.slice(2, 4), 16),
+      b: parseInt(hex.slice(4, 6), 16),
+    };
+  }
+  const n = t.match(/-?\d*\.?\d+(?:e[-+]?\d+)?/gi)?.map(Number) ?? [];
+  if (n.length < 3) return null;
+  const escala = t.startsWith('color(') ? 255 : 1;
+  return {
+    r: Math.round(n[0]! * escala),
+    g: Math.round(n[1]! * escala),
+    b: Math.round(n[2]! * escala),
+  };
+}
+
+function corDeFundo(el: Element | null): RGB | null {
+  return el === null ? null : corDeTexto(getComputedStyle(el).backgroundColor);
+}
+
+function mostrar(c: RGB | null): string {
+  return c === null ? 'nao achado' : `${c.r},${c.g},${c.b}`;
+}
+
 async function runHudTests(app: App, check: Check, reset: () => void): Promise<void> {
   const { doc } = app;
   reset();
@@ -2060,6 +2106,38 @@ async function runHudTests(app: App, check: Check, reset: () => void): Promise<v
     `achados: grade=${grade !== null} ima=${ima !== null} regua=${regua !== null} | ` +
       `mudou: grade=${gradeDepois !== gradeAntes} ima=${imaDepois !== imaAntes} ` +
       `regua=${reguaDepois !== reguaAntes}`,
+  );
+
+  // --- B16: a pilula de "ligado" e da cor de destaque, e a mesma nas duas barras
+  //
+  // Ela ja foi cinza neutro, e ele leu isso como "uma sombra atras dos icones".
+  // O porque esta medido no comentario do `.qb-bar__btn--active`, em app.css:
+  // cinza sobre uma interface azulada le como sujeira, nao como destaque.
+  //
+  // A verificacao compara MATIZ, e nao um valor literal: mudar a opacidade da
+  // pilula e acabamento e continua passando; trocar o azul por cinza e a
+  // regressao, e reprova. O alvo e a cor composta, e nao o texto do CSS --
+  // `color-mix` sai como `color(srgb ...)` num navegador e `rgba(...)` noutro.
+  grade?.classList.add('qb-bar__btn--active');
+  const pilulaBarra = corDeFundo(grade);
+  if (!gradeAntes) grade?.classList.remove('qb-bar__btn--active');
+  const ferramentaAtiva = document.querySelector<HTMLElement>('.qb-tools__btn--active');
+  const pilulaTrilho = corDeFundo(ferramentaAtiva);
+  const destaque = corDeTexto(getComputedStyle(document.documentElement).getPropertyValue('--accent'));
+  // Tolerancia de 1 por canal: o navegador devolve `color(srgb ...)` em ponto
+  // flutuante, e arredondar 0,231373 x 255 pode cair um passo do hex de origem.
+  const mesmoMatiz = (a: RGB | null, b: RGB | null): boolean =>
+    a !== null &&
+    b !== null &&
+    Math.abs(a.r - b.r) <= 1 &&
+    Math.abs(a.g - b.g) <= 1 &&
+    Math.abs(a.b - b.b) <= 1;
+
+  check(
+    'a pilula de ligado usa a cor de destaque, e e a mesma nas duas barras (B16)',
+    mesmoMatiz(pilulaBarra, destaque) && mesmoMatiz(pilulaTrilho, destaque),
+    `destaque=${mostrar(destaque)} barra inferior=${mostrar(pilulaBarra)} ` +
+      `barra lateral=${mostrar(pilulaTrilho)}`,
   );
 
   // --- M8: o painel de camadas
