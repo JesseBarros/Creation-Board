@@ -4,7 +4,11 @@ Registro do que apareceu usando o app de verdade, antes da Fase 9 (polimento).
 O [RETOMAR.md](RETOMAR.md) diz em que pé o projeto está; este arquivo diz **o que está
 errado e o que falta**. Some quando a lista zerar.
 
-**Última atualização: 13/08/2026.** **2 itens abertos** (B10 e B15), **19 fechados**.
+**Última atualização: 13/08/2026.** **4 itens abertos** (B10, B15, B17 e M10), **19 fechados**.
+
+**A revisão do tema claro da Fase 9 abriu os dois últimos.** Ela foi feita comparando a
+**mesma cena** nos dois temas, lado a lado — e o que ela achou não estava no tema claro
+sozinho, estava na *diferença* entre os dois. Ver o B17 e o M10.
 
 **A Fase 9 fechou o B13, o M8 e a parte do B9 que era corrigível.** O que sobrou do B9 não
 é bug: o teto de 60 é taxa de entrega de evento, e o custo de desenho do quadro de teste
@@ -839,6 +843,56 @@ muito maior e licença de fonte para resolver. Isto custa dois atributos.
 
 **Verificação no `selftest`:** todo `<text>` do SVG tem de sair com `textLength`, e o arquivo
 tem de conter `spacingAndGlyphs`. É o par que some se alguém simplificar a emissão.
+
+### B17 — As miniaturas do lobby guardam o tema em que o quadro foi salvo
+`aberto` · `médio` · 13/08/2026
+
+A miniatura é desenhada na hora de gravar, com o tema que estava ligado
+(`App.#writeBoard` → `renderThumbnail(doc, THEMES[this.#theme])`), e vai **assada dentro do
+`.wbd`**. Ela não é redesenhada ao trocar de tema, porque isso exigiria reabrir todos os
+quadros da pasta.
+
+
+
+| Saída | O que custa |
+|---|---|
+| **Miniatura sempre no tema claro** | Um quadro é branco — é a linha do próprio projeto (`base.css`: [...]). No tema escuro o lobby fica com cartões claros, que é como um gerenciador de arquivos mostra fotos. **Quadros já salvos só mudam ao serem gravados de novo.** |
+| **Guardar as duas** | Nenhum caso feio, e o arquivo cresce (a miniatura é PNG de 480px dentro do `.wbd`). |
+| **Redesenhar ao trocar de tema** | Correto sempre, e caro: obriga a abrir cada `.wbd` da pasta e regravar. |
+
+A primeira é a mais barata e a que menos mente; a terceira é a única que nunca erra. Não
+mexi em nada esperando a decisão.
+
+### M10 — A amostra de tinta quase preta some no painel, no tema escuro
+`decisão a revisar` · `baixo` · 13/08/2026
+
+**Medido na mesma cena, nos dois temas:**
+
+| | Amostra `#1f2933` | Painel atrás dela | Diferença |
+|---|---|---|---|
+| tema claro | 31,41,51 | 252,252,252 | enorme |
+| tema escuro | 31,41,51 | 29,34,40 | **+2, +7, +11** |
+
+No escuro a amostra tem praticamente a cor do painel. O que sobra dela é o próprio contorno
+(`--border`, mais claro que as duas), então ela **se lê como um círculo vazio** — parecida
+com o botão `+` de escolher outra cor, que é um círculo vazio de verdade.
+
+
+**Bate numa decisão deliberada, e por isso entra como `decisão a revisar`.** Está escrita no
+código (`ToolBar.ts`, em `#renderColors`): *"a amostra é a própria cor do documento, sem
+passar pelo adaptador de tema: é ela que fica gravada no `.wbd` e que o usuário está
+escolhendo"*. Isso é verdade e é um bom motivo.
+
+**A tensão é com outra decisão, do mesmo projeto**, a de número 10 do RETOMAR: [...] A amostra de cor é a única prévia que ficou de
+fora dessa regra — e o sintoma previsto pela regra é exatamente o que aconteceu.
+
+**As duas saídas, e as duas são defensáveis:**
+
+1. **A amostra passa pelo adaptador**, como a prévia do traço. Ela mostra o que vai aparecer
+   no quadro. Perde-se saber qual cor fica gravada no arquivo — que a dica do botão já diz.
+2. **Fica como está, e ganha um anel de contraste** derivado de `--fg` em vez de `--border`.
+   Resolve o sumiço e mantém a decisão original; não resolve escolher preto e sair branco.
+
 
 ### B16 — Uma "sombra" atrás dos ícones da barra polui a interface
 `corrigido` · `baixo` · 12/08/2026, fechado em 13/08/2026
