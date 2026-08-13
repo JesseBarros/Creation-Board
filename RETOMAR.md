@@ -164,6 +164,12 @@ regressão. **O texto é o caso com história** (leia antes de suspeitar de bug)
   depende dos dois lados da caixa, então uma caixa mais estreita move os cantos. A origem
   do objeto continua exata.
 
+Para conferir os dois temas, `QB_THEME=light` ou `QB_THEME=dark` manda no tema da execução
+**sem gravar a preferência**. Ele soma-se aos outros modos em vez de substituí-los
+(`QB_THEME=light QB_SHOT=... npm run selftest` é o que se usa), e existe porque antes disto
+"conferir o tema claro" dependia do que estava no `localStorage` da máquina — ou seja, não
+era repetível.
+
 Para ver renderização, `QB_SHOT=<arquivo.png> npm run selftest` fotografa **só a janela
 do app** e deixa na tela a cena de conferência: seleção com alças, um traço de cada
 variante, duas formas, as réguas ligadas, um objeto encostado noutro pelo encaixe, uma
@@ -171,6 +177,12 @@ caixa de texto com negrito, sublinhado e marcadores, um post-it com alerta, um b
 borracha no meio de um traço, a busca aberta com o achado destacado e uma imagem com o
 recorte aberto (sombra, terços e alças) — tudo produzido pelas ferramentas de verdade. Atenção: com `QB_SHOT` a janela **não fecha
 sozinha** — o processo fica aberto até você encerrá-lo.
+
+**A foto espera o marcador de fim, e não um cronômetro** (mudou em 13/08/2026). Quanto o
+auto-teste demora depende da máquina; com o cronômetro de 9 s a foto caía no meio da
+execução — numa tentativa saiu a cena de carga de 4.000 objetos a 2% de zoom, que não mostra
+nada do que se queria conferir. Acertar era sorte. O cronômetro (`QB_SHOT_DELAY`) continua
+valendo onde não há fim que se possa ouvir: `npm run dev` puro e `QB_BOOT=hold`.
 
 **A guia de encaixe não sai na foto**, e não é bug: ela existe só enquanto o botão está
 pressionado, e um gesto deixado em aberto é desfeito pelo guarda de `blur` do

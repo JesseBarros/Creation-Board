@@ -276,7 +276,18 @@ export class App {
     root.append(this.#lobby.el, this.#boardView, this.#help.el, this.#menu.el);
 
     // ------------------------------------------------------------- setup
-    this.#theme = (localStorage.getItem(THEME_KEY) as 'light' | 'dark' | null) ?? 'light';
+    //
+    // `QB_THEME=light|dark` manda no tema desta execucao e NAO grava nada: o
+    // tema e preferencia dele, e um modo de verificacao que a sobrescrevesse
+    // devolveria o app com outra cara depois de conferir. Sem isto, "conferir o
+    // tema claro" dependia do que estava no `localStorage` da maquina -- ou
+    // seja, nao era repetivel, que e justamente o que os modos QB_* existem
+    // para resolver.
+    const temaForcado = new URLSearchParams(location.search).get('theme');
+    this.#theme =
+      temaForcado === 'light' || temaForcado === 'dark'
+        ? temaForcado
+        : ((localStorage.getItem(THEME_KEY) as 'light' | 'dark' | null) ?? 'light');
     this.#rulers = localStorage.getItem(RULERS_KEY) === '1';
     this.#applyTheme();
     this.#bar.setRulers(this.#rulers);

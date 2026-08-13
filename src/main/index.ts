@@ -209,7 +209,7 @@ function createWindow(): void {
   // fotografa-la. Ela dura 642 ms e some sozinha -- sem isto, seria a unica
   // parte da interface que nao se confere por terminal.
   const boot = process.env['QB_BOOT'] === 'hold' ? '?boot=hold' : '';
-  const query = bench
+  const modo = bench
     ? `?bench=${encodeURIComponent(bench)}`
     : selftest
       ? '?selftest=1'
@@ -220,6 +220,15 @@ function createWindow(): void {
           : pasteCheck
             ? '?paste=1'
             : boot;
+
+  // QB_THEME=light|dark manda no tema desta execucao, sem gravar a preferencia.
+  //
+  // Vem SOMADO ao modo, e nao no lugar dele: os outros sao alternativas entre si
+  // (ou se importa, ou se exporta), e este atravessa todos -- conferir o tema
+  // claro so serve se der para conferi-lo com o auto-teste rodando por baixo.
+  const tema = process.env['QB_THEME'];
+  const query =
+    tema === 'light' || tema === 'dark' ? `${modo}${modo ? '&' : '?'}theme=${tema}` : modo;
 
   // Os modos de verificacao terminam imprimindo um marcador. Fechar a janela
   // nesse ponto e o que torna `QB_IMPORT`/`--selftest`/`QB_BENCH` utilizaveis
@@ -249,10 +258,24 @@ function createWindow(): void {
   // variavel de ambiente `QB_*`, e a `query` fica vazia quando nenhuma existe.
   // Fora dos modos de verificacao o encaminhamento tambem serve: um erro do
   // renderer no app instalado hoje nao aparece em lugar nenhum.
+  const shotPath = process.env['QB_SHOT'];
+
   mainWindow.webContents.on('console-message', (_e, _level, message) => {
     console.log(`[renderer] ${message}`);
-    // QB_SHOT pede uma foto da janela: fechar antes dela sair nao serve.
-    if (done && !process.env['QB_SHOT'] && message.includes(done)) app.quit();
+    if (done && message.includes(done)) {
+      // QB_SHOT pede uma foto da janela: fechar antes dela sair nao serve.
+      // Fotografa AQUI, e nao num cronometro, e a diferenca importa: o
+      // auto-teste monta a cena de conferencia no fim, e quanto ele demora
+      // depende da maquina. Com o cronometro de 9 s a foto caia no meio da
+      // execucao -- em 13/08/2026 saiu a cena de carga de 4.000 objetos a 4% de
+      // zoom, que nao mostra nada do que se queria conferir. Acertar era sorte.
+      //
+      // O `isPackaged` fica junto porque a foto e ferramenta de dentro do
+      // repositorio: dentro do `.exe` o modo tem de FECHAR, senao o
+      // `check:dist` espera para sempre por um processo que nao termina.
+      if (shotPath && !app.isPackaged) setTimeout(() => void tirarFoto(shotPath), 400);
+      else app.quit();
+    }
   });
 
   // QB_SHOT=<arquivo.png> grava uma captura da janela alguns segundos depois de
@@ -276,16 +299,19 @@ function createWindow(): void {
     });
   }
 
-  const shotPath = process.env['QB_SHOT'];
-  if (shotPath && !app.isPackaged) {
+  // Sem marcador para esperar (`npm run dev` puro, `QB_BOOT=hold`), sobra o
+  // cronometro -- ali nao existe "fim" que se possa ouvir.
+  if (shotPath && !done && !app.isPackaged) {
     mainWindow.webContents.once('did-finish-load', () => {
-      setTimeout(() => {
-        void mainWindow?.webContents.capturePage().then(async (image) => {
-          await writeFile(shotPath, image.toPNG());
-          console.log(`[shot] ${shotPath}`);
-        });
-      }, Number(process.env['QB_SHOT_DELAY'] ?? 9000));
+      setTimeout(() => void tirarFoto(shotPath), Number(process.env['QB_SHOT_DELAY'] ?? 9000));
     });
+  }
+
+  async function tirarFoto(destino: string): Promise<void> {
+    const image = await mainWindow?.webContents.capturePage();
+    if (!image) return;
+    await writeFile(destino, image.toPNG());
+    console.log(`[shot] ${destino}`);
   }
 
   const devUrl = process.env['ELECTRON_RENDERER_URL'];
