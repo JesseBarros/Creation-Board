@@ -4,7 +4,7 @@ Registro do que apareceu usando o app de verdade, antes da Fase 9 (polimento).
 O [RETOMAR.md](RETOMAR.md) diz em que pé o projeto está; este arquivo diz **o que está
 errado e o que falta**. Some quando a lista zerar.
 
-**Última atualização: 12/08/2026.** **3 itens abertos** (B10, B15 e B16), **18 fechados**.
+**Última atualização: 13/08/2026.** **2 itens abertos** (B10 e B15), **19 fechados**.
 
 **A Fase 9 fechou o B13, o M8 e a parte do B9 que era corrigível.** O que sobrou do B9 não
 é bug: o teto de 60 é taxa de entrega de evento, e o custo de desenho do quadro de teste
@@ -14,8 +14,9 @@ já cabe num frame de 144 fps — **6,1 ms medidos, contra 6,94 ms de orçamento
 **Ainda em aberto:**
 
 
-**Fechados na Fase 9:** B13 (exportar em ladrilhos), M8 (camadas, nas duas metades) e a
-parte corrigível do B9 (o painel do `F3`).
+
+**Fechados na Fase 9:** B13 (exportar em ladrilhos), M8 (camadas, nas duas metades), a
+parte corrigível do B9 (o painel do `F3`) e o B16 (a "sombra" atrás dos ícones da barra).
 
 
 
@@ -840,21 +841,61 @@ muito maior e licença de fonte para resolver. Isto custa dois atributos.
 tem de conter `spacingAndGlyphs`. É o par que some se alguém simplificar a emissão.
 
 ### B16 — Uma "sombra" atrás dos ícones da barra polui a interface
-`a investigar` · `baixo` · 12/08/2026 · **para depois da rodada de ícones**
+`corrigido` · `baixo` · 12/08/2026, fechado em 13/08/2026
+
+> **Era o candidato 1, e a foto da janela mediu o porquê.** A "sombra" é a **pílula de
+> ligado** da barra inferior — o retângulo arredondado atrás de grade, régua e camadas. Ela
+> era cinza neutro (`--fg` a 11%); passou a ser da **cor de destaque** (`--accent` a 16%), a
+> mesma que a barra lateral já usava.
+>
+> **Os números, lidos pixel a pixel de uma captura da janela no tema escuro:**
+>
+> | | RGB | Passo em luminância |
+> |---|---|---|
+> | quadro, fora da barra | 19,21,26 | — |
+> | barra | 27,30,37 | +8 sobre o quadro |
+> | pílula **neutra** (o bug) | 48,53,59 | **+22 sobre a barra** |
+> | pílula **de destaque** (a correção) | 31,44,69 | **+13 sobre a barra** |
+>
+> **Duas coisas saem daí, e nenhuma era visível lendo o CSS.**
+>
+> Primeira: o cinza neutro dava um degrau de luminância quase **três vezes maior** que o da
+> própria barra contra o quadro. O indicador de estado estava gritando mais alto que a
+> superfície em que ele mora — daí "polui", e não "está errado".
+>
+> Segunda, e é a que explica a palavra *sombra*: **o tema escuro inteiro é azulado.** A razão
+> azul/vermelho é 1,37 no fundo do quadro e 1,37 na barra; a pílula neutra caía para **1,23**.
+> Uma mancha *cinza* sobre uma interface azulada não se lê como destaque, se lê como sujeira.
+> O azul faz o contrário: metade do degrau de luminância, e a diferença vai para a cor — e,
+> como o glifo já é azul, pílula e ícone viram um objeto só em vez de um ícone pousado sobre
+> um borrão.
+>
+> **Os candidatos 2 e 3 caíram, e não por eliminação:** a captura mostra a barra com quatorze
+> ícones e **só os três ligados** tinham fundo. `saturate(160%)` e o brilho interno de 1px são
+> da barra inteira; se fossem eles, todos os quatorze estariam manchados.
+>
+
+>**Verificação no `selftest`:** *"a pílula de ligado usa a cor de destaque, e é a mesma nas
+> duas barras"*. Ela compara **matiz** — a cor composta, sem o alfa — do fundo do botão ligado
+> nas duas barras contra o token `--accent`. Mexer na opacidade da pílula é acabamento e
+> continua passando; voltar para cinza é a regressão, e reprova. A comparação lê `#rrggbb`,
+> `rgb()` e `color(srgb …)` como a mesma coisa, porque `color-mix` sai na terceira forma.
 
 
-**Fica agendado de propósito.** foi pedido para verificar isto **depois** de fecharmos a
+**Ficou agendado de propósito.** foi pedido para verificar isto **depois** de fecharmos a
 rodada de ícones — mexer nas duas coisas ao mesmo tempo tornaria impossível dizer qual
 mudança melhorou o quê. É a mesma razão pela qual as correções deste arquivo são agrupadas
 por área tocada, e não por ordem de chegada.
 
-**O que já dá para afirmar sem medir:** a captura é de 12/08/2026, logo depois do polimento
+<details>
+<summary>Os três candidatos, antes de medir</summary>
+
+**O que já dava para afirmar sem medir:** a captura é de 12/08/2026, logo depois do polimento
 das barras, e nela os únicos ícones com fundo visível são os **três interruptores ligados**
-(grade, régua e camadas). Então o primeiro suspeito é meu, e é recente.
-
-Três candidatos, do mais provável ao menos:
+(grade, régua e camadas). Então o primeiro suspeito era meu, e recente.
 
 
+</details>
 
 ### B15 — Uma verificação do auto-teste falhou uma vez e não reproduziu
 `a investigar` · `baixo` · 12/08/2026
