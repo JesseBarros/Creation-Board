@@ -12,6 +12,12 @@ por medição — e um comentário no código diz *o que* foi escolhido, nunca *
 falhou*. Sem este registro, a próxima pessoa refaz a investigação e chega à mesma conclusão
 duas semanas depois.
 
+> **Sobre a voz deste documento.** O app foi construído por **Jessé Barros**, que o usou
+> diariamente durante o desenvolvimento. Quando o texto diz *"a pedido dele"* ou *"decisão
+> dele"*, é a essa pessoa que se refere. Várias decisões aqui existem porque uma entrega
+> ficou parada para avaliação e voltou com um incômodo concreto — e é o que explica por que
+> as funcionalidades mais úteis do app não estavam em plano nenhum.
+
 **Leia antes de:**
 
 | Se você vai… | Leia |
