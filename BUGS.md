@@ -6,6 +6,10 @@ errado e o que falta**. Some quando a lista zerar.
 
 **Última atualização: 14/08/2026.** **2 itens abertos** (B10 e B15), **21 fechados**.
 
+**O dia 14/08 fechou a investigação do B8**, que era o item mais antigo em aberto de fato —
+formalmente corrigido desde 06/08, mas com a causa desconhecida e um "conserto de raiz"
+pendente. Ele não existe mais como pendência: ver o B8, seção de 14/08.
+
 **A revisão do tema claro da Fase 9 achou dois itens, e os dois já fecharam.** Ela foi feita
 comparando a **mesma cena** nos dois temas, lado a lado — e o que ela achou não estava no
 tema claro sozinho, estava na *diferença* entre os dois: o **B17** (miniaturas do lobby com o
@@ -20,6 +24,13 @@ Três relatos catalogados como bugs diferentes — **B1, B7 e B8** — eram **um
 "que pedaço da tela mudou" saindo errada nesta máquina. Enquanto pareciam três, cada um
 ganhou o seu remendo local. Fecharam juntos, com uma correção só, quando pararam de ser
 tratados como três.
+
+**Em 14/08/2026 a causa desse trio foi localizada**, depois de oito dias: está na
+**atualização parcial da composição por GPU**. Os dois modos de `QB_GPU` que curam são
+exatamente os dois que a desligam; os três que piscam são os que a mantêm, mesmo trocando
+DirectComposition, Direct3D por OpenGL e a versão do Chromium (33, 41 e 43 foram testadas).
+As duas flags do app deixaram de ser remédio de sintoma e passaram a ser escolha de caminho
+de código com causa conhecida. O relato completo está no B8, na seção de 14/08.
 
 **Ainda em aberto:**
 
@@ -389,13 +400,21 @@ os pixels do tamanho antigo, e só a faixa recém-exposta foi pintada com o layo
 de texto aberta. Se não rasgar mais, fecha.
 
 ### B8 — A tela pisca preto ao passar o mouse sobre ícones e cartões
-`corrigido` · `alto` · 06/08/2026
+`corrigido` · `alto` · 06/08/2026 · **causa localizada em 14/08/2026**
 
-**Causa: a conta de região suja.** O Chromium repinta e troca só o pedaço da tela que
-mudou. Nesta máquina essa conta erra: o que ficou de fora mantém os pixels velhos (os
-rastros) e a troca do pedaço aparece como um flash. **Um único defeito produzia os três
-sintomas** — o piscar no hover (B8), o rasgo ao redimensionar (B7) e o rastro ao voltar
-para o menu (B1).
+**Causa: a conta de região suja, na composição por GPU.** O Chromium repinta e troca só o
+pedaço da tela que mudou. Nesta máquina essa conta erra: o que ficou de fora mantém os
+pixels velhos (os rastros) e a troca do pedaço aparece como um flash. **Um único defeito
+produzia os três sintomas** — o piscar no hover (B8), o rasgo ao redimensionar (B7) e o
+rastro ao voltar para o menu (B1).
+
+> **A localização foi confirmada em 14/08/2026, e a seção
+> [«A CAUSA FOI LOCALIZADA»](#14082026--a-causa-foi-localizada-as-duas-flags-deixaram-de-ser-remendo)
+> mais abaixo é o resumo que vale ler primeiro.** Em uma linha: dos cinco modos de
+> `QB_GPU`, os dois que curam são exatamente os dois que desligam a **atualização parcial
+> na composição por GPU**, e os três que piscam são os que a mantêm — mesmo trocando
+> DirectComposition, Direct3D e a versão do Chromium. As duas flags deixaram de ser remédio
+> de sintoma.
 
 **Correção:** `--ui-disable-partial-swap` e `--disable-partial-raster`, aplicadas por
 padrão. Repinta e troca a tela inteira a cada frame. Confirmado por ele: *"os 2 bugs
@@ -456,10 +475,8 @@ nos dois casos**. O 99,7 era ruído. Conclusão da época: não há custo mensur
 > Ele estava certo nas duas metades: sumiu sozinho, e voltou sozinho. Seis dias e dez versões
 > maiores de Chromium depois, o remédio de sintoma é o que se tem.
 >
-> **O que sobrou de suspeito, e agora com um favorito claro:** o **Parsec Virtual Display
-> Adapter**, cujo driver é de **24/01/2024** — o único componente desta máquina que ainda é de
-> 2024, agora que o app não é. Ele é um adaptador de vídeo, ou seja, mora no caminho de
-> apresentação, que é onde esta investigação já tinha localizado a falha. Atrás dele,
+> **Os suspeitos que sobraram naquele momento** — resolvidos algumas horas depois, na seção
+> seguinte: o **Parsec Virtual Display Adapter**, cujo driver é de **24/01/2024**, e
 > `nvspcap64.dll` (**NVIDIA ShadowPlay**, que engancha a apresentação para gravar vídeo e
 > nunca foi testado isoladamente). O RivaTuner já caiu do jeito certo, e o CSS, o conteúdo, os
 > caches, o modo de desenvolvimento e o G-SYNC também. A tabela remedida está mais abaixo.
@@ -469,6 +486,134 @@ nos dois casos**. O 99,7 era ruído. Conclusão da época: não há custo mensur
 > [RETOMAR.md](RETOMAR.md)) e **não entregou o que prometia aqui**. A hipótese era boa,
 > tinha evidência circunstancial forte — dez versões maiores, uma máquina de 2026 — e estava
 > errada. Só um teste a derrubou, e ele custou um comando e um par de olhos.
+
+---
+
+## 14/08/2026 — A CAUSA FOI LOCALIZADA. As duas flags deixaram de ser remendo.
+
+**Leia esta seção antes de reabrir o B8.** Ela é o fim de oito dias de investigação, e
+responde a pergunta que as seções anteriores deixaram em aberto. Se você chegou aqui achando
+que ainda há o que descobrir, provavelmente não há — há um teste barato para o dia em que a
+plataforma mudar, e ele está no fim.
+
+### O achado: o `comp` também cura, e é isso que fecha o caso
+
+O degrau `comp` da escada `QB_GPU` (composição pela **CPU**, com a GPU ainda desenhando)
+estava definido desde 06/08 e **nunca tinha sido testado**. Foi testado hoje, e ele **cura**.
+Palavras dele: *"não piscou e não deixou rastros"*.
+
+Com isso, a escada fica inteira — e o padrão que aparece é a resposta:
+
+| Modo | Composição por GPU | Atualização parcial | Resultado |
+|---|---|---|---|
+| `normal` | ligada | ligada | **pisca** |
+| `dc` — sem DirectComposition | ligada | ligada | **pisca** (e o flash muda de preto para branco) |
+| `angle` — ANGLE por OpenGL | ligada | ligada | **pisca** |
+| `comp` — composição pela CPU | **desligada** | — | **cura** |
+| `swap` — **o padrão do app** | ligada | **desligada** | **cura** |
+
+**As duas curas atacam a mesma coisa por caminhos diferentes.** O `swap` desliga a
+atualização parcial e mantém a GPU compondo; o `comp` elimina a atualização parcial junto com
+a composição inteira. Os três que piscam preservam essa combinação — inclusive trocando o
+DirectComposition por outro caminho de apresentação (`dc`) e o Direct3D por OpenGL (`angle`).
+
+**A variável que prevê a cura é uma só: a atualização parcial dentro da composição por GPU.**
+Isso confirma, por uma segunda via independente, o que a investigação de 06/08 concluiu por
+eliminação — a conta de "que pedaço da tela mudou" sai errada nesta máquina.
+
+### O ShadowPlay não pode ser isolado, e as tentativas anteriores nunca o isolaram
+
+O `nvspcap64.dll` era o último suspeito nunca testado sozinho. Hoje ele foi medido de
+verdade, lendo os módulos carregados no processo do app:
+
+| Situação | `nvspcap64.dll` no processo |
+|---|---|
+| Sobreposição NVIDIA **desligada** no NVIDIA App | **injetada** |
+| Serviço `NvContainerLocalSystem` **parado**, 3 `nvcontainer` mortos | **injetada** |
+| Rodando em `QB_GPU=comp` | **injetada** |
+
+**Desligar a sobreposição não remove o gancho, e parar o serviço também não.** A DLL entra
+com a inicialização do Direct3D — faz parte da **pilha do driver de vídeo**, não do aplicativo
+opcional de sobreposição. Isso reabilita uma conclusão antiga: os testes anteriores que
+"inocentaram" o ShadowPlay desligando a sobreposição **não testaram nada**, porque ele nunca
+saiu do processo.
+
+Não dá para isolá-lo sem desinstalar o componente de captura da NVIDIA — e, como o `comp` e o
+`swap` já curam com ele dentro, isso deixou de importar: **seja quem for que erra a conta, os
+dois modos que a contornam funcionam com o culpado presente.**
+
+O serviço foi restaurado ao estado exato de antes do teste: `Running`, `Automatic`, 3
+processos.
+
+### O Parsec caiu, e a remoção ficou pela metade
+
+Ele desinstalou o Parsec. O **Virtual Display Adapter sumiu** dos adaptadores de vídeo — só a
+RTX 3050 restou. **O bug continuou.** Ficaram em disco o serviço `Parsec` (rodando,
+`C:\Program Files\Parsec\pservice.exe`) e a pasta `vdd`; a desinstalação pede um reinício para
+terminar. Mas o suspeito já caiu com o adaptador fora da pilha gráfica, que era o que
+importava.
+
+### Placar final, agora completo
+
+| Suspeito | Como caiu |
+|---|---|
+| Conteúdo importado, caches, `Local Storage` | Biblioteca vazia e caches apagados, bug igual |
+| CSS (desfoque, sombra, `clip`, transições) | Cinco desligados juntos, bug igual |
+| RivaTuner (`RTSSHooks64.dll`) | Fechado, bug igual |
+| Modo de desenvolvimento | App construído, bug igual |
+| G-SYNC em modo janela | Trocado para só tela cheia, bug igual |
+| DirectComposition | `QB_GPU=dc`, bug igual (mudou a cor do flash) |
+| **Direct3D vs. OpenGL** | `QB_GPU=angle`, bug igual |
+| **Idade do Chromium** | Electron 33, 41 e 43 — pisca nos três |
+| **Parsec Virtual Display Adapter** | Desinstalado, adaptador fora, bug igual |
+| **NVIDIA App / sobreposição** | Serviço parado e sobreposição desligada, bug igual |
+| **Composição por GPU** | `QB_GPU=comp` — **CURA** |
+| **Atualização parcial** | `QB_GPU=swap` — **CURA** (é o padrão) |
+
+### Por que o `swap` é o padrão, e não o `comp`
+
+Os dois curam. O `swap` é melhor por dois motivos medidos:
+
+- **Ele mantém a GPU compondo.** O `comp` joga a composição na CPU, e ele viu o uso subir
+  para **~33%** — observação dele, e a razão pela qual esse modo não serve como padrão.
+- **O custo do `swap` foi medido e é nulo dentro do ruído.** `QB_BENCH=4000`, duas rodadas com
+  e duas sem, deram **9,26 ms de frame nos dois casos** (06/08).
+
+### O que isto muda no jeito de encarar as duas flags
+
+Elas eram um **remédio de sintoma com data de validade** — ligadas porque funcionavam, sem
+saber por quê, à espera do "conserto de raiz" que seria subir de Electron. Esse conserto foi
+tentado e falhou, e no lugar dele veio uma explicação.
+
+Hoje elas são **uma escolha de caminho de código feita com conhecimento de causa**: o app não
+usa a atualização parcial da composição por GPU porque essa conta erra nesta máquina, e o
+custo de não usá-la é zero dentro do ruído. Isso não é curativo — é configuração.
+
+### O que ficou genuinamente sem resposta
+
+**Qual componente erra a conta.** Chromium, driver NVIDIA, `nvspcap64.dll` e Windows
+compartilham esse caminho, e separar um do outro exigiria instrumentar código que não é nosso.
+**E saber a resposta não mudaria nada aqui:** a correção continuaria sendo as mesmas duas
+flags, ou uma correção de terceiros que não passa por este repositório.
+
+### Como conferir, no dia em que a plataforma mudar
+
+```
+$env:QB_GPU = "normal"
+npm run dev
+```
+
+Passar o mouse pelos ícones e pelos cartões, e ir e voltar entre o menu e um quadro. **Se não
+piscar, as duas flags podem sair.** É o único teste que importa, custa um comando, e precisa
+de olhos — piscar de tela não sai em número nenhum, e é por isso que o `selftest` nunca vai
+cobrir isto.
+
+---
+
+> **O que vem daqui para baixo é o registro histórico**, na ordem em que foi descoberto.
+> Duas coisas nele foram **superadas** pela seção acima e ficam por valor de método, não de
+> conclusão: a tese de que a raiz era o Electron velho (testada e derrubada) e o rótulo de
+> "remédio de sintoma" nas duas flags.
 
 **Isto é remédio de sintoma.** A raiz provável está na tabela abaixo, e o conserto de
 verdade virou item da Fase 9:
