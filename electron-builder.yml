@@ -1,6 +1,6 @@
 appId: com.creationboard.app
 productName: Creation Board
-copyright: Copyright © 2026 Creation Board
+copyright: Copyright © 2026 Jessé Barros
 
 directories:
   output: release
@@ -18,8 +18,11 @@ win:
     - target: nsis
       arch: [x64]
   icon: build/icon.ico
-  # Sem assinatura de codigo: uso pessoal. O SmartScreen vai avisar na primeira
-  # execucao do instalador ("Mais informacoes" -> "Executar assim mesmo").
+  # Sem assinatura de codigo: um certificado de assinatura custa caro e este e um
+  # projeto aberto. A consequencia e visivel e vale avisar quem for instalar: o
+  # SmartScreen mostra "O Windows protegeu o computador" na primeira execucao do
+  # instalador, e e preciso clicar em "Mais informacoes" e "Executar assim mesmo".
+  # Nao e um aviso sobre o conteudo do programa -- e sobre a falta de assinatura.
   signAndEditExecutable: true
 
 nsis:

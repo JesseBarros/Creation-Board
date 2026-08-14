@@ -50,6 +50,26 @@ provaram erradas**, e a medição que derrubou cada uma.
 
 ---
 
+## Instalar
+
+Baixe o instalador na página de **[Releases](https://github.com/JesseBarros/Creation-Board/releases)**
+(`Creation Board-Setup-1.0.0.exe`, 78 MB) e execute.
+
+> **O Windows vai mostrar um aviso azul** — *"O Windows protegeu o computador"*. Clique em
+> **Mais informações** e depois em **Executar assim mesmo**.
+>
+> Ele aparece porque o instalador **não tem assinatura digital**, e não porque haja algo
+> errado com o programa. Um certificado de assinatura custa algumas centenas de dólares por
+> ano, o que não se justifica num projeto aberto. Para conferir que o arquivo é o mesmo que
+> foi publicado, compare o SHA-256 com o que está na página do release:
+>
+> ```
+> Get-FileHash "Creation Board-Setup-1.0.0.exe" -Algorithm SHA256
+> ```
+
+A instalação **não pede privilégio de administrador**, deixa escolher a pasta e cria atalhos
+no menu Iniciar e na área de trabalho. Desinstalar não apaga seus quadros.
+
 ## Rodar sem instalar
 
 ```
@@ -57,9 +77,8 @@ npm install
 npm run dev
 ```
 
-A janela abre direto, sem instalador e sem deixar nada no sistema. É assim que se
-usa o app durante o desenvolvimento. Fechar a janela encerra tudo; nada fica
-registrado no Windows.
+A janela abre direto, sem instalador e sem deixar nada no sistema. É assim que se usa o app
+durante o desenvolvimento. Fechar a janela encerra tudo; nada fica registrado no Windows.
 
 ## Requisitos
 
