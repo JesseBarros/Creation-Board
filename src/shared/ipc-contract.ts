@@ -6,6 +6,7 @@ import type {
 } from './wbd';
 import type { ImportSource } from './importer';
 import type { OcrItem, OcrReport } from './ocr';
+import type { LibraryIndex } from './librarySearch';
 
 /**
  * Contrato IPC compartilhado por main, preload e renderer.
@@ -27,6 +28,7 @@ export const IPC = {
   importRead: 'import:read',
   exportSave: 'export:save',
   ocrRecognize: 'ocr:recognize',
+  boardSearchIndex: 'board:searchIndex',
 } as const;
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC];
@@ -107,6 +109,14 @@ export interface CreationBoardApi {
     remove(path: string): Promise<void>;
     folder(): Promise<string>;
     revealFolder(): Promise<void>;
+    /**
+     * Texto buscavel de TODOS os quadros, para a busca da biblioteca.
+     *
+     * Le os arquivos na hora -- 68 ms na biblioteca real dele. O renderer guarda
+     * o resultado em memoria e so pede de novo depois de salvar ou apagar um
+     * quadro.
+     */
+    searchIndex(): Promise<LibraryIndex>;
   };
 
   importer: {

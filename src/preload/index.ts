@@ -14,6 +14,7 @@ import type {
 } from '@shared/wbd';
 import type { ImportSource } from '@shared/importer';
 import type { OcrItem, OcrReport } from '@shared/ocr';
+import type { LibraryIndex } from '@shared/librarySearch';
 
 /**
  * Unica ponte entre renderer e main. Nada de `ipcRenderer` cru exposto: cada
@@ -35,6 +36,8 @@ const api: CreationBoardApi = {
     folder: (): Promise<string> => ipcRenderer.invoke(IPC.boardFolder) as Promise<string>,
     revealFolder: (): Promise<void> =>
       ipcRenderer.invoke(IPC.boardRevealFolder) as Promise<void>,
+    searchIndex: (): Promise<LibraryIndex> =>
+      ipcRenderer.invoke(IPC.boardSearchIndex) as Promise<LibraryIndex>,
   },
 
   importer: {

@@ -45,7 +45,8 @@ export type ShortcutId =
   | 'snapToGrid'
   | 'rulers'
   | 'rulerUnit'
-  | 'layers';
+  | 'layers'
+  | 'findLibrary';
 
 export interface ShortcutDef {
   /** Ausente = entrada apenas informativa (gesto de mouse, sem tecla). */
@@ -59,8 +60,12 @@ export interface ShortcutDef {
    */
   keysAlt?: string;
   label: string;
-  /** Contexto em que vale. 'board' nao dispara no lobby. */
-  scope?: 'board' | 'global';
+  /**
+   * Contexto em que vale. 'board' nao dispara no lobby, e 'lobby' e o contrario
+   * -- e e o que permite `Ctrl+F` significar "neste quadro" la dentro e "em
+   * todos" aqui fora, sem que um cancele o outro.
+   */
+  scope?: 'board' | 'lobby' | 'global';
   /**
    * Aceita a combinacao com ou sem Shift. Serve para atalhos em que o Shift e
    * um modificador de intensidade (setas movem 1px, Shift+setas movem 10px) e
@@ -112,6 +117,16 @@ export const SHORTCUTS: ShortcutDef[] = [
   { id: 'toolPen', group: 'Ferramentas', keys: 'P', label: 'Caneta', scope: 'board' },
   { id: 'toolHighlighter', group: 'Ferramentas', keys: 'M', label: 'Marca-texto (entra por baixo do conteudo)', scope: 'board' },
   { id: 'find', group: 'Buscar', keys: 'Ctrl+F', label: 'Buscar texto no quadro', scope: 'board' },
+  // O MESMO Ctrl+F no menu principal busca em todos os quadros. Duas entradas
+  // com a mesma tecla e escopos diferentes, e nao um atalho novo: a pergunta e a
+  // mesma ("onde esta isto"), o que muda e o alcance de onde voce esta.
+  {
+    id: 'findLibrary',
+    group: 'Buscar',
+    keys: 'Ctrl+F',
+    label: 'No menu principal: buscar em TODOS os quadros',
+    scope: 'lobby',
+  },
   { group: 'Buscar', keys: 'Enter', label: 'Ir para o resultado; de novo, para o proximo' },
   { group: 'Buscar', keys: 'Shift+Enter', label: 'Resultado anterior' },
   { group: 'Buscar', keys: 'Escape', label: 'Fechar a busca' },
@@ -251,6 +266,7 @@ export function resolve(e: KeyboardEvent, scope: 'board' | 'lobby'): ShortcutId 
   for (const s of SHORTCUTS) {
     if (!s.id) continue;
     if (s.scope === 'board' && scope !== 'board') continue;
+    if (s.scope === 'lobby' && scope !== 'lobby') continue;
     if (matches(e, s.keys, s.shiftOptional)) return s.id;
     if (s.keysAlt && matches(e, s.keysAlt, s.shiftOptional)) return s.id;
   }

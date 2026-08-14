@@ -14,6 +14,8 @@ import {
   loadBoard,
   saveBoard,
 } from '../storage/wbdFile';
+import { readLibraryIndex } from '../storage/libraryIndex';
+import type { LibraryIndex } from '@shared/librarySearch';
 
 export function registerBoardIpc(): void {
   ipcMain.handle(IPC.boardSave, (_e, req: SaveBoardRequest): Promise<SaveBoardResult> => {
@@ -23,6 +25,8 @@ export function registerBoardIpc(): void {
   });
 
   ipcMain.handle(IPC.boardList, (): Promise<BoardSummary[]> => listBoards());
+
+  ipcMain.handle(IPC.boardSearchIndex, (): Promise<LibraryIndex> => readLibraryIndex());
 
   ipcMain.handle(IPC.boardLoad, (_e, path: string): Promise<LoadBoardResult> => loadBoard(path));
 

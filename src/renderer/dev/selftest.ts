@@ -22,6 +22,12 @@ import { applyBoard, serializeBoard } from '../features/storage/boardIO';
 import { plainText } from '../features/text/spans';
 import { searchBoard } from '../features/search/search';
 import { recognizeBoardImages } from '../features/ocr/recognizeBoard';
+import {
+  invalidateLibraryIndex,
+  loadLibraryIndex,
+  searchLibrary,
+} from '../features/search/libraryQuery';
+import type { LibraryIndex } from '@shared/librarySearch';
 import { paintObject } from '../render/painters';
 import { displayedAs } from '../render/colorAdapt';
 import {
@@ -279,6 +285,7 @@ export async function runSelfTest(host: HTMLElement, app: App): Promise<void> {
   await block('busca', () => runSearchTests(app, check, reset));
   await block('imagens', () => runImageTests(host, app, check, reset));
   await block('OCR: texto dentro de imagem', () => runOcrTests(app, check, reset));
+  await block('busca na biblioteca inteira', () => runLibrarySearchTests(check));
   await block('exportar e autosave', () => runExportTests(app, check, reset));
   await block('barra e troca de ferramenta', () => runHudTests(app, check, reset));
 
@@ -2690,6 +2697,101 @@ async function fakeImageFile(w: number, h: number, name = 'teste.png'): Promise<
   const blob = await new Promise<Blob | null>((r) => canvas.toBlob((b) => r(b), 'image/png'));
   if (!blob) throw new Error('nao foi possivel gerar o PNG de teste');
   return new File([blob], name, { type: 'image/png' });
+}
+
+/**
+ * Busca na biblioteca inteira.
+ *
+ * Le a pasta de quadros DE VERDADE, pelo mesmo caminho que o menu principal usa.
+ * Nao grava nada e nao depende de haver quadro nenhum: numa biblioteca vazia as
+ * verificacoes continuam valendo, so que sobre zero quadros.
+ *
+ * O que elas travam e a regra que faz as duas buscas conviverem: **achar tem uma
+ * definicao so no app**. Se o casamento daqui divergir do `Ctrl+F` de dentro do
+ * quadro, uma das duas parece quebrada -- e nao ha como saber qual.
+ */
+async function runLibrarySearchTests(check: Check): Promise<void> {
+  invalidateLibraryIndex();
+
+  const t0 = performance.now();
+  const index = await loadLibraryIndex();
+  const ms = Math.round(performance.now() - t0);
+  const entradas = index.boards.reduce((n, b) => n + b.entries.length, 0);
+
+  check(
+    'a busca da biblioteca le todos os quadros da pasta',
+    Array.isArray(index.boards) && index.falhas === 0,
+    `${index.boards.length} quadro(s) · ${entradas} trechos buscaveis · ` +
+      `${index.ms} ms no main, ${ms} ms com o IPC · falhas=${index.falhas}`,
+  );
+
+  // --- a segunda chamada nao volta ao disco
+  const t1 = performance.now();
+  await loadLibraryIndex();
+  const msCache = performance.now() - t1;
+  check(
+    'a segunda busca nao le o disco de novo',
+    msCache < Math.max(5, ms / 2),
+    `primeira ${ms} ms · segunda ${msCache.toFixed(1)} ms ` +
+      `(a segunda tem de sair da memoria; ler de novo a cada tecla custaria ${ms} ms por tecla)`,
+  );
+
+  // --- casa com o MESMO criterio da busca de dentro do quadro
+  //
+  // O quadro sintetico existe para a verificacao nao depender do conteudo da
+  // maquina: com a biblioteca vazia, tudo abaixo continua valendo.
+  const falso: LibraryIndex = {
+    ms: 0,
+    falhas: 0,
+    boards: [
+      {
+        path: 'C:\\falso\\um.wbd',
+        name: 'Um',
+        updatedAt: 2,
+        entries: [
+          { id: 'o1', kind: 'text', text: 'A matriz de revisão precisa de atenção' },
+          { id: 'o2', kind: 'image', text: 'Ransomware: um ataque malicioso' },
+        ],
+      },
+      {
+        path: 'C:\\falso\\dois.wbd',
+        name: 'Dois',
+        updatedAt: 1,
+        entries: [{ id: 'o3', kind: 'note', text: 'nada a ver' }],
+      },
+    ],
+  };
+
+  const semAcento = searchLibrary(falso, 'REVISAO');
+  check(
+    'a busca da biblioteca ignora acento e caixa, igual a do quadro',
+    semAcento.length === 1 && semAcento[0]?.hits[0]?.id === 'o1',
+    `quadros com acerto=${semAcento.length} objeto=${semAcento[0]?.hits[0]?.id ?? 'nenhum'} ` +
+      `esperado=(1, o1) — "REVISAO" tem de achar "revisão"`,
+  );
+
+  // --- acha texto que veio do OCR de uma imagem, e diz que veio de imagem
+  const daImagem = searchLibrary(falso, 'ransomware');
+  check(
+    'a busca da biblioteca acha texto lido de dentro de uma imagem',
+    daImagem[0]?.hits[0]?.kind === 'image' && daImagem[0]?.hits[0]?.id === 'o2',
+    `tipo=${daImagem[0]?.hits[0]?.kind ?? '-'} objeto=${daImagem[0]?.hits[0]?.id ?? 'nenhum'} ` +
+      `esperado=(image, o2) — sem isto a Fase 7.5 nao chega ao menu principal`,
+  );
+
+  // --- o resultado carrega o caminho do quadro e o id do objeto
+  //
+  // E o que transforma a lista em navegacao: sem os dois, clicar num resultado
+  // nao teria como abrir o quadro certo nem enquadrar o objeto.
+  const primeiro = daImagem[0]?.hits[0];
+  check(
+    'cada resultado sabe em qual quadro e em qual objeto ele esta',
+    primeiro?.path === 'C:\\falso\\um.wbd' && primeiro.boardName === 'Um' && primeiro.length > 0,
+    `caminho=${primeiro?.path ?? 'nenhum'} quadro=${primeiro?.boardName ?? '-'} ` +
+      `trecho="${primeiro?.snippet ?? ''}" destaque=${primeiro?.length ?? 0} caractere(s)`,
+  );
+
+  invalidateLibraryIndex();
 }
 
 /**

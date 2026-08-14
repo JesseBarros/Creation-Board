@@ -128,8 +128,15 @@ function foldedOf(obj: BoardObject): string {
 
 const foldedCache = new WeakMap<BoardObject, string>();
 
-/** Primeiro casamento dentro de um texto, ja recortado em trecho. */
-function findIn(text: string, needle: string): Omit<SearchHit, 'id' | 'kind'> | null {
+/**
+ * Primeiro casamento dentro de um texto, ja recortado em trecho.
+ *
+ * Exportado porque a busca da BIBLIOTECA usa exatamente isto (ver
+ * `features/search/libraryQuery.ts`). Duas implementacoes de "achar" fariam a
+ * mesma palavra aparecer numa busca e nao na outra -- e quem visse isso
+ * concluiria, com razao, que uma das duas esta quebrada.
+ */
+export function findIn(text: string, needle: string): Omit<SearchHit, 'id' | 'kind'> | null {
   if (text.length === 0) return null;
   const folded = fold(text);
   const found = folded.text.indexOf(needle);
@@ -167,7 +174,7 @@ const COMBINING = /[̀-ͯ]/g;
  * casamento de todos os objetos. Dobrar caractere a caractere, como `fold` faz
  * para poder montar o mapa, custava mais que um frame com 10.000 objetos.
  */
-function foldText(text: string): string {
+export function foldText(text: string): string {
   return text.normalize('NFD').replace(COMBINING, '').toLowerCase();
 }
 
