@@ -26,10 +26,10 @@ o que fazer a seguir*. Some quando o projeto acabar.
 > | Título da janela | **feito** — fixo em "Creation Board", não muda com o quadro aberto |
 > | **B16** — a "sombra" atrás dos ícones | **feito** — era a pílula de ligado em cinza neutro; agora é da cor de destaque, igual à barra lateral |
 > | **Revisão do tema claro** | **feita** — achou o B17 (fechado por decisão dele) e o M10 (corrigido); `QB_THEME` a tornou repetível |
-> | **Electron 33.4.11 → 41.0.0** | **feito** — o 43 exige Node ≥ 22.12 e a máquina tem 20.18.3; ver abaixo |
+> | **Subir o Electron** | **feito e DESFEITO** — testado no 41 e no 43; o B8 pisca nos três, e ele decidiu voltar ao 33.4.11. A escada inteira está medida mais abaixo |
+> | **`QB_GPU=normal` no Electron novo** | **conferido por ele — o bug VOLTOU, no 41 e no 43.** As duas flags ficam, e a hipótese de raiz do B8 morreu: não era a idade do Chromium |
+> | **Node 20.18.3 → 22.12.0** | **feito** (na máquina dele, não no repo) — era o que o Electron 42+ exigia. Fica útil mesmo com a volta ao 33, que instala nos dois |
 > | **Instalador regerado** | **feito** — `npm run dist` + `check:dist` passam no `.exe` empacotado |
->
-> | **`QB_GPU=normal` no Electron novo** | **conferido por ele — o bug VOLTOU.** As duas flags ficam, e a hipótese de raiz do B8 morreu: não era a idade do Chromium |
 >
 > **Falta só mesclar na `main`**, que é o padrão dele entre fases.
 >
@@ -201,32 +201,27 @@ com tudo estável.
 
 ---
 
-## O Electron está TRAVADO em 41.0.0, e a versão exata importa
+## O Electron subiu até o 43, e VOLTOU para o 33 — a escada inteira está medida
 
-`package.json` traz `"electron": "41.0.0"` **sem acento circunflexo**, e isso não é descuido.
+**O projeto está no `^33.2.1` (33.4.11), de propósito e por decisão dele.** Quem ler
+"Electron de 2024" e quiser subir: já foi feito, em 14/08/2026, e o resultado está aqui.
+Não refaça a subida esperando outra resposta — refaça só se tiver um motivo *novo*.
 
-**Por que não o 43, que era o alvo escrito aqui:** o Electron 42 e o 43 exigem
-**Node ≥ 22.12.0**, e esta máquina tem **20.18.3**. Subir o Node é mexer fora deste
-repositório e afeta tudo o mais que ele compila — ficou como decisão dele, para outro dia.
+**O item existia como conserto de raiz do B8** (o piscar de tela), sob a tese de que o app
+era o único Chromium de 2024 numa máquina de 2026. A tese foi testada em três degraus:
 
-**E a subida NÃO entregou o que a justificava.** O item existia como conserto de raiz do
-**B8** (o piscar de tela), sob a tese de que o app era o único Chromium de 2024 numa máquina
-de 2026. Com o Electron 41 instalado, ele rodou `QB_GPU=normal` — o modo que desliga as duas
-flags — e **o bug voltou inteiro**. Um Chromium de 2026 reproduz o mesmo defeito na mesma
-máquina. As duas flags ficam, agora por prova; o resto da história está no
-[BUGS.md](BUGS.md), no B8. A subida vale pelo que está medido abaixo, que é outra coisa.
+| Electron | Chromium | O B8 com `QB_GPU=normal` |
+|---|---|---|
+| 33.4.11 (o de origem) | ~130, fim de 2024 | pisca |
+| 41.0.0 | 146.0.7680.65, 2026 | **pisca igual** |
+| 43.4.0 | o mais novo publicado | **pisca igual** |
 
-**Por que travado no `.0.0`, e esta é a armadilha:** um `^41.0.0` resolveria para **41.10.5**
-num `npm install` limpo, e o script de instalação dele faz `require()` de um
-`@electron/get` que virou **só ESM**. Node 20 não consegue — `ERR_REQUIRE_ESM`, e a
-instalação morre. Ou seja: a faixa `^41` **não é instalável nesta máquina**, só a versão
-exata. Quem trocar o `41.0.0` por `^41.0.0` quebra o `npm install` do projeto.
+**A idade do Chromium não é a causa, e isso agora é fato medido e não suspeita.** As duas
+flags de repintura ficam. O que sobrou de suspeito está no [BUGS.md](BUGS.md), no B8 — e o
+`QB_GPU=angle` (ANGLE por OpenGL, que troca Direct3D) **nunca foi testado**, apesar de estar
+na escada desde 06/08.
 
-**O preço, dito com todas as letras:** travado no `41.0.0`, o projeto **não recebe as
-correções de segurança do 41.x**. O caminho de saída é o Node 22+, e ele destrava o 43
-junto.
-
-**O que a subida mudou, medido com 4 execuções de cada lado:**
+**O que a subida mudou de verdade, medido com 4 execuções de cada lado:**
 
 | | Electron 33 | Electron 41 |
 |---|---|---|
@@ -234,17 +229,30 @@ junto.
 | "arrastar 10.000 objetos", com Discord e Chrome abertos | **reprovou 8 de 9** (31–49 ms) | **passou 5 de 5** (25,3–28,8 ms) |
 | `bbox` (matemática pura) nas mesmas execuções | 4,0–9,3 | **3,2–3,5** |
 
-**A primeira linha é o achado que quase virou notícia errada.** A primeira execução no 41
-deu 25–30% a menos em tudo, e escrever isso teria sido o mesmo erro que este projeto já
-cometeu duas vezes: repetindo, as faixas se sobrepõem e **não há ganho de desenho
-demonstrável**.
+**A primeira linha quase virou notícia errada.** A primeira execução no 41 deu 25–30% a
+menos em tudo, e escrever isso teria sido o mesmo erro que este projeto já cometeu duas
+vezes: repetindo, as faixas se sobrepõem e **não há ganho de desenho demonstrável**.
 
-**A segunda e a terceira são o achado de verdade**, e valem juntas: o `bbox` é matemática
-pura em JavaScript — não passa por GPU, nem por composição, nem por vsync. Ele voltar para
-a faixa normal **sob a mesma carga de fundo** que fazia o 33 disparar diz que o que melhorou
-é como o V8 e o agendador se comportam com a máquina ocupada, e não o quanto o app desenha.
-Na prática: a verificação que vinha reprovando o dia inteiro parou de reprovar sem ninguém
-tocar no código dela.
+**A segunda e a terceira são o achado real**, e valem juntas: o `bbox` é matemática pura em
+JavaScript — não passa por GPU, nem por composição, nem por vsync. Ele voltar para a faixa
+normal **sob a mesma carga de fundo** que fazia o 33 disparar diz que o V8 e o agendador do
+Chromium novo lidam melhor com máquina ocupada, e não que o app desenhe mais rápido. **É o
+que se perde ao ficar no 33**, junto com as correções de segurança (o `npm audit` sai de 4
+alertas no 43 para 18 no 33).
+
+### Duas armadilhas que a subida encontrou, e que valem para a próxima tentativa
+
+1. **Electron 42+ exige Node ≥ 22.12.0.** Com Node 20 o `npm install` morre em
+   `ERR_REQUIRE_ESM`: o script de instalação faz `require()` de um `@electron/get` que virou
+   só ESM. Ele subiu para o **Node 22.12.0** em 14/08 por causa disto, e o `engines` do
+   `package.json` continua dizendo `>=20.18.0` — o que hoje é **frouxo, e não errado**,
+   porque o Electron 33 instala nos dois.
+2. **A faixa `^41` não é instalável em Node 20**, só a versão exata `41.0.0`: qualquer
+   patch acima (até o 41.10.5) já traz o `@electron/get` novo. Se um dia voltar ao 41, ou
+   trave a versão exata, ou esteja em Node 22+.
+
+E a boa notícia da volta: **o Electron 33 instala sem problema no Node 22**, binário e tudo.
+Subir o Node não fecha a porta de trás.
 
 ---
 
