@@ -25,18 +25,16 @@ o que fazer a seguir*. Some quando o projeto acabar.
 > | Menu principal | **feito** — utilidades viraram ícone, ações continuam escritas |
 > | Título da janela | **feito** — fixo em "Creation Board", não muda com o quadro aberto |
 > | **B16** — a "sombra" atrás dos ícones | **feito** — era a pílula de ligado em cinza neutro; agora é da cor de destaque, igual à barra lateral |
+> | **Revisão do tema claro** | **feita** — achou o B17 (fechado por decisão dele) e o M10 (corrigido); `QB_THEME` a tornou repetível |
+> | **Electron 33.4.11 → 41.0.0** | **feito** — o 43 exige Node ≥ 22.12 e a máquina tem 20.18.3; ver abaixo |
+> | **Instalador regerado** | **feito** — `npm run dist` + `check:dist` passam no `.exe` empacotado |
 >
-> **O que falta para fechar a fase, na ordem:**
+> **O que falta para fechar a fase:**
 >
-> 1. **Revisar o tema claro.** Todo o polimento de 12/08 foi conferido no escuro; o claro só
->    passou pelo `check:colors`, que mede contraste de marca e não diz se a interface ficou
->    boa.
-> 2. **Subir o Electron** (33.4.11 → 43.x, dez versões maiores). Ficou por último de
->    propósito: é o conserto de raiz do B8 e pode mexer no desempenho por baixo — subir
->    antes confundiria regressão nossa com mudança de Chromium. Depois de subir, conferir
->    com `QB_GPU=normal` se a correção das duas flags ainda é necessária.
-> 3. **Regerar o instalador** e validar o `.exe` final (`npm run dist` + `npm run check:dist`).
-> 4. **Mesclar na `main`**, que é o padrão dele entre fases.
+> 1. **Conferir o `QB_GPU=normal` com os olhos.** É o único passo que não se faz por
+>    terminal: o B8 é piscar de tela, e nenhum número o enxerga. Se não piscar, as duas flags
+>    podem sair; se piscar, ficam. **Depende dele olhar.**
+> 2. **Mesclar na `main`**, que é o padrão dele entre fases.
 >
 > Depois disso sobra só a **Fase 7.5** (OCR), adiada para depois da 9.
 >
@@ -203,6 +201,47 @@ objetos: PNG 6432×6130 em ~700ms, SVG 75 KB em 4ms, PDF em ~800ms.
 
 **Rodar sempre por `npm run dev`.** O instalador (`npm run dist`) só quando você pedir,
 com tudo estável.
+
+---
+
+## O Electron está TRAVADO em 41.0.0, e a versão exata importa
+
+`package.json` traz `"electron": "41.0.0"` **sem acento circunflexo**, e isso não é descuido.
+
+**Por que não o 43, que era o alvo escrito aqui:** o Electron 42 e o 43 exigem
+**Node ≥ 22.12.0**, e esta máquina tem **20.18.3**. Subir o Node é mexer fora deste
+repositório e afeta tudo o mais que ele compila — ficou como decisão dele, para outro dia.
+O 41 já entrega o que o item pedia: sai de um Chromium de 2024 para um de 2026.
+
+**Por que travado no `.0.0`, e esta é a armadilha:** um `^41.0.0` resolveria para **41.10.5**
+num `npm install` limpo, e o script de instalação dele faz `require()` de um
+`@electron/get` que virou **só ESM**. Node 20 não consegue — `ERR_REQUIRE_ESM`, e a
+instalação morre. Ou seja: a faixa `^41` **não é instalável nesta máquina**, só a versão
+exata. Quem trocar o `41.0.0` por `^41.0.0` quebra o `npm install` do projeto.
+
+**O preço, dito com todas as letras:** travado no `41.0.0`, o projeto **não recebe as
+correções de segurança do 41.x**. O caminho de saída é o Node 22+, e ele destrava o 43
+junto.
+
+**O que a subida mudou, medido com 4 execuções de cada lado:**
+
+| | Electron 33 | Electron 41 |
+|---|---|---|
+| custo de desenho por tipo (traço, forma, post-it, texto) | faixas **sobrepostas** | faixas **sobrepostas** |
+| "arrastar 10.000 objetos", com Discord e Chrome abertos | **reprovou 8 de 9** (31–49 ms) | **passou 5 de 5** (25,3–28,8 ms) |
+| `bbox` (matemática pura) nas mesmas execuções | 4,0–9,3 | **3,2–3,5** |
+
+**A primeira linha é o achado que quase virou notícia errada.** A primeira execução no 41
+deu 25–30% a menos em tudo, e escrever isso teria sido o mesmo erro que este projeto já
+cometeu duas vezes: repetindo, as faixas se sobrepõem e **não há ganho de desenho
+demonstrável**.
+
+**A segunda e a terceira são o achado de verdade**, e valem juntas: o `bbox` é matemática
+pura em JavaScript — não passa por GPU, nem por composição, nem por vsync. Ele voltar para
+a faixa normal **sob a mesma carga de fundo** que fazia o 33 disparar diz que o que melhorou
+é como o V8 e o agendador se comportam com a máquina ocupada, e não o quanto o app desenha.
+Na prática: a verificação que vinha reprovando o dia inteiro parou de reprovar sem ninguém
+tocar no código dela.
 
 ---
 

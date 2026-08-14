@@ -426,6 +426,13 @@ nos dois casos**. O 99,7 era ruído. Conclusão da época: não há custo mensur
 > leitura várias vezes de cada lado e comparar as distribuições, e não os extremos. Ficou sem
 > resposta porque a pergunta perdeu o objeto: a correção saiu (ver abaixo).
 
+> **14/08/2026 — a raiz foi tratada: Electron 33.4.11 → 41.0.0.** O app deixou de ser o
+> único Chromium de 2024 rodando numa máquina de 2026, que era a explicação de "por que só
+> este programa pisca". **As duas flags continuam ligadas por ora**, porque desligá-las é uma
+> conferência que só se faz com os olhos — o piscar não aparece em número nenhum. `QB_GPU=normal`
+> é o modo; se não piscar mais, elas saem. Detalhes da subida (e por que 41 e não 43) no
+> [RETOMAR.md](RETOMAR.md).
+
 **Isto é remédio de sintoma.** A raiz provável está na tabela abaixo, e o conserto de
 verdade virou item da Fase 9:
 
