@@ -426,12 +426,36 @@ nos dois casos**. O 99,7 era ruído. Conclusão da época: não há custo mensur
 > leitura várias vezes de cada lado e comparar as distribuições, e não os extremos. Ficou sem
 > resposta porque a pergunta perdeu o objeto: a correção saiu (ver abaixo).
 
-> **14/08/2026 — a raiz foi tratada: Electron 33.4.11 → 41.0.0.** O app deixou de ser o
-> único Chromium de 2024 rodando numa máquina de 2026, que era a explicação de "por que só
-> este programa pisca". **As duas flags continuam ligadas por ora**, porque desligá-las é uma
-> conferência que só se faz com os olhos — o piscar não aparece em número nenhum. `QB_GPU=normal`
-> é o modo; se não piscar mais, elas saem. Detalhes da subida (e por que 41 e não 43) no
-> [RETOMAR.md](RETOMAR.md).
+> **14/08/2026 — o Electron subiu, o bug voltou, e a hipótese de raiz MORREU.**
+>
+> O app foi de **33.4.11 para 41.0.0** — de um Chromium de 2024 para um de 2026. Era o
+> conserto de raiz que esta seção anunciava, com todas as letras: *"é a resposta para 'por
+> que só este programa pisca': é o único Chromium de 2024 rodando numa máquina de 2026"*.
+>
+> Ele rodou `QB_GPU=normal` no Electron 41 e **o sintoma voltou inteiro**. A captura dele
+> mostra o quadro aberto com os **cartões do menu desenhados por cima**, mais um pedaço da
+> barra lateral — região que ninguém repintou, o mesmo desenho de 06/08.
+>
+> **Então não era a idade do Chromium.** Um Chromium de 2026, na mesma máquina, produz o
+> mesmo defeito. A tabela de versões abaixo continua verdadeira e deixou de ser relevante:
+> ela explicava um sintoma que sobrevive à explicação.
+>
+> **As duas flags ficam, e agora por prova e não por precaução.** Em 08/08 elas continuavam
+> ligadas porque *"pode ser um bug sazonal"* — palavra dele, quando o sintoma sumiu sozinho.
+> Ele estava certo nas duas metades: sumiu sozinho, e voltou sozinho. Seis dias e dez versões
+> maiores de Chromium depois, o remédio de sintoma é o que se tem.
+>
+> **O que sobrou de suspeito, para quem voltar a isto:** o que este arquivo nunca conseguiu
+> isolar sozinho — `nvspcap64.dll` (**NVIDIA ShadowPlay**, que engancha a apresentação para
+> gravar vídeo e nunca foi testado isoladamente) e o **Parsec Virtual Display Adapter**, um
+> adaptador de vídeo virtual convivendo com a NVIDIA em dois monitores. O RivaTuner já caiu
+> do jeito certo, e o CSS, o conteúdo, os caches, o modo de desenvolvimento e o G-SYNC também.
+>
+> **E a lição de método, que é a mais cara desta rodada:** a subida do Electron era o item
+> da Fase 9 justificado *por este bug*. Ela foi feita, valeu por outros motivos (ver o
+> [RETOMAR.md](RETOMAR.md)) e **não entregou o que prometia aqui**. A hipótese era boa,
+> tinha evidência circunstancial forte — dez versões maiores, uma máquina de 2026 — e estava
+> errada. Só um teste a derrubou, e ele custou um comando e um par de olhos.
 
 **Isto é remédio de sintoma.** A raiz provável está na tabela abaixo, e o conserto de
 verdade virou item da Fase 9:

@@ -29,12 +29,9 @@ o que fazer a seguir*. Some quando o projeto acabar.
 > | **Electron 33.4.11 → 41.0.0** | **feito** — o 43 exige Node ≥ 22.12 e a máquina tem 20.18.3; ver abaixo |
 > | **Instalador regerado** | **feito** — `npm run dist` + `check:dist` passam no `.exe` empacotado |
 >
-> **O que falta para fechar a fase:**
+> | **`QB_GPU=normal` no Electron novo** | **conferido por ele — o bug VOLTOU.** As duas flags ficam, e a hipótese de raiz do B8 morreu: não era a idade do Chromium |
 >
-> 1. **Conferir o `QB_GPU=normal` com os olhos.** É o único passo que não se faz por
->    terminal: o B8 é piscar de tela, e nenhum número o enxerga. Se não piscar, as duas flags
->    podem sair; se piscar, ficam. **Depende dele olhar.**
-> 2. **Mesclar na `main`**, que é o padrão dele entre fases.
+> **Falta só mesclar na `main`**, que é o padrão dele entre fases.
 >
 > Depois disso sobra só a **Fase 7.5** (OCR), adiada para depois da 9.
 >
@@ -211,7 +208,13 @@ com tudo estável.
 **Por que não o 43, que era o alvo escrito aqui:** o Electron 42 e o 43 exigem
 **Node ≥ 22.12.0**, e esta máquina tem **20.18.3**. Subir o Node é mexer fora deste
 repositório e afeta tudo o mais que ele compila — ficou como decisão dele, para outro dia.
-O 41 já entrega o que o item pedia: sai de um Chromium de 2024 para um de 2026.
+
+**E a subida NÃO entregou o que a justificava.** O item existia como conserto de raiz do
+**B8** (o piscar de tela), sob a tese de que o app era o único Chromium de 2024 numa máquina
+de 2026. Com o Electron 41 instalado, ele rodou `QB_GPU=normal` — o modo que desliga as duas
+flags — e **o bug voltou inteiro**. Um Chromium de 2026 reproduz o mesmo defeito na mesma
+máquina. As duas flags ficam, agora por prova; o resto da história está no
+[BUGS.md](BUGS.md), no B8. A subida vale pelo que está medido abaixo, que é outra coisa.
 
 **Por que travado no `.0.0`, e esta é a armadilha:** um `^41.0.0` resolveria para **41.10.5**
 num `npm install` limpo, e o script de instalação dele faz `require()` de um
