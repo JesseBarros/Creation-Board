@@ -4,11 +4,13 @@ Registro do que apareceu usando o app de verdade, antes da Fase 9 (polimento).
 O [RETOMAR.md](RETOMAR.md) diz em que pé o projeto está; este arquivo diz **o que está
 errado e o que falta**. Some quando a lista zerar.
 
-**Última atualização: 13/08/2026.** **4 itens abertos** (B10, B15, B17 e M10), **19 fechados**.
+**Última atualização: 14/08/2026.** **2 itens abertos** (B10 e B15), **21 fechados**.
 
-**A revisão do tema claro da Fase 9 abriu os dois últimos.** Ela foi feita comparando a
-**mesma cena** nos dois temas, lado a lado — e o que ela achou não estava no tema claro
-sozinho, estava na *diferença* entre os dois. Ver o B17 e o M10.
+**A revisão do tema claro da Fase 9 achou dois itens, e os dois já fecharam.** Ela foi feita
+comparando a **mesma cena** nos dois temas, lado a lado — e o que ela achou não estava no
+tema claro sozinho, estava na *diferença* entre os dois: o **B17** (miniaturas do lobby com o
+tema em que foram salvas, que ele decidiu deixar como está) e o **M10** (a amostra de tinta
+quase preta sumindo no painel escuro, corrigida com o anel tirado de `--fg`).
 
 **A Fase 9 fechou o B13, o M8 e a parte do B9 que era corrigível.** O que sobrou do B9 não
 é bug: o teto de 60 é taxa de entrega de evento, e o custo de desenho do quadro real dele
@@ -26,10 +28,6 @@ tratados como três.
 - **B15** — `a investigar`. Uma verificação do auto-teste falhou **uma vez**, sob carga, e
   não reproduziu depois. Detalhe abaixo — está aqui porque flakiness no verificador é o que
   corrói a confiança nele.
-- **B17** — `aberto`. As miniaturas do lobby guardam o tema em que o quadro foi salvo. Como
-  ele trabalha no escuro, **o lobby no tema claro mostra três retângulos pretos**.
-- **M10** — `decisão a revisar`. A amostra de tinta quase preta some no painel do tema
-  escuro, e no escuro essa cor é desenhada *clara*. A amostra não se lê nem prevê.
 
 O **M9** (plano de fundo por imagem no menu principal) foi **abandonado por ora**, por decisão
 dele no mesmo dia em que teve a ideia. O item fica escrito com a viabilidade toda respondida:
@@ -1018,7 +1016,15 @@ muito maior e licença de fonte para resolver. Isto custa dois atributos.
 tem de conter `spacingAndGlyphs`. É o par que some se alguém simplificar a emissão.
 
 ### B17 — As miniaturas do lobby guardam o tema em que o quadro foi salvo
-`aberto` · `médio` · 13/08/2026
+`fechado — decisão dele` · `médio` · 13/08/2026, fechado em 14/08/2026
+
+> **Fica como está, por decisão dele:** *"pode deixar do jeito que está, não precisa guardar
+> as duas, não senti diferença significativa para mudar"*. Ele trabalha no tema escuro, e as
+> miniaturas dele são de tema escuro — o caso feio só existe se ele mudar para o claro, o que
+> não faz.
+>
+> **A investigação fica escrita porque a decisão pode mudar**, e nesse dia as três saídas e o
+> preço de cada uma já estão levantados. Nada foi tocado no código.
 
 A miniatura é desenhada na hora de gravar, com o tema que estava ligado
 (`App.#writeBoard` → `renderThumbnail(doc, THEMES[this.#theme])`), e vai **assada dentro do
@@ -1043,7 +1049,29 @@ A primeira é a mais barata e a que menos mente; a terceira é a única que nunc
 mexi em nada esperando a decisão.
 
 ### M10 — A amostra de tinta quase preta some no painel, no tema escuro
-`decisão a revisar` · `baixo` · 13/08/2026
+`corrigido` · `baixo` · 13/08/2026, fechado em 14/08/2026
+
+> **Escolha dele entre as duas saídas: a de número 2** — *"fica como está, só ganhar um anel
+> de contraste para não sumir"*. A amostra continua sendo a cor que fica gravada no `.wbd`,
+> que era a decisão original do `ToolBar`; o que muda é de onde sai o anel dela.
+>
+> **A causa do sumiço, agora dita com precisão:** o anel era `--border`, uma cor **fixa por
+> tema**. No escuro isso dava só +22 contra o painel — e como o miolo da amostra também tinha
+> quase a cor do painel, a amostra inteira, anel incluído, desaparecia. Tirado de `--fg` a
+> 30%, o anel se compõe sobre o painel e cai sempre do lado oposto dele: claro no tema
+> escuro, escuro no claro. Nenhuma cor de amostra pode sumir — nem uma quase preta no escuro,
+> nem uma quase branca no claro, que é o caso espelhado que a cor fixa também não cobria.
+>
+> | | Antes (`--border`) | Agora (`--fg` 30%) |
+> |---|---|---|
+> | anel, tema escuro | 51,57,71 | **90,98,107** |
+> | painel atrás | 28,31,37 | 28,31,37 |
+> | diferença | +22 | **+62** |
+>
+> **Verificação no `selftest`:** *"o anel da amostra de cor sai do primeiro plano do tema, e
+> não de uma cor fixa"*. Ela compara a matiz do anel com o token `--fg` em vez de exigir um
+> valor — um anel fixo passaria num tema e falharia no outro, que é exatamente o defeito
+> original.
 
 **Medido na mesma cena, nos dois temas:**
 

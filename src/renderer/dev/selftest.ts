@@ -2295,6 +2295,28 @@ async function runHudTests(app: App, check: Check, reset: () => void): Promise<v
       `destaque em=${ativo?.dataset['value'] ?? 'nenhum'} esperado=${corNova}`,
   );
 
+  // --- M10: o anel da amostra de cor sai de `--fg`, e nao de uma cor fixa
+  //
+  // Com `--border` a amostra quase preta sumia no painel do tema escuro: o anel
+  // dava so +22 de diferenca, e a amostra (31,41,51) tinha praticamente a cor do
+  // painel (29,34,40). Tirado de `--fg`, o anel fica sempre do lado oposto do
+  // painel nos dois temas -- e e por isso que a verificacao compara com `--fg` e
+  // nao com um valor: um anel fixo passa em um tema e falha no outro, que foi o
+  // defeito original.
+  const raizes = getComputedStyle(document.documentElement);
+  const anel = botaoDepois === null ? null : corDeTexto(getComputedStyle(botaoDepois).borderTopColor);
+  const frente = corDeTexto(raizes.getPropertyValue('--fg'));
+  check(
+    'o anel da amostra de cor sai do primeiro plano do tema, e nao de uma cor fixa (M10)',
+    anel !== null &&
+      frente !== null &&
+      Math.abs(anel.r - frente.r) <= 1 &&
+      Math.abs(anel.g - frente.g) <= 1 &&
+      Math.abs(anel.b - frente.b) <= 1,
+    `anel=${mostrar(anel)} --fg=${mostrar(frente)} ` +
+      `(iguais na matiz; o anel entra com opacidade e se compoe sobre o painel)`,
+  );
+
   // --- MEDICAO: quanto custa alternar de ferramenta com o quadro cheio
   // Relato: o app engasga ao trocar de icone rapidamente. A conta abaixo separa
   // o custo do DOM (reconstruir o painel de opcoes) do custo de REDESENHAR o

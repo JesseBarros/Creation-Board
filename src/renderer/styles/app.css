@@ -421,11 +421,24 @@
   gap: 5px;
 }
 
+/*
+  O anel da amostra sai de `--fg`, e nao de `--border` (M10).
+
+  `--border` e uma cor fixa por tema, e no escuro ela dava so +22 de diferenca
+  contra o painel: a amostra quase preta (31,41,51 sobre painel 29,34,40)
+  desaparecia junto com o proprio contorno. Tirado de `--fg`, o anel se compoe
+  sobre o painel e fica sempre do lado oposto dele -- claro no tema escuro,
+  escuro no claro --, entao nenhuma cor de amostra pode sumir, nem uma quase
+  preta no escuro nem uma quase branca no claro.
+
+  Escolha dele em 13/08/2026, entre esta e adaptar a amostra ao tema: a amostra
+  continua sendo a cor que fica gravada no .wbd, que era a decisao original.
+*/
 .qb-tools__color {
   width: 20px;
   height: 20px;
   padding: 0;
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--fg) 30%, transparent);
   border-radius: 50%;
 }
 
