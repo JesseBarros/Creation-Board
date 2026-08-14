@@ -145,6 +145,31 @@ function createWindow(): void {
   });
 
   /**
+   * F12 abre e fecha as ferramentas de desenvolvedor.
+   *
+   * Fica AQUI e nao em `shortcuts.ts` de proposito. Aquele arquivo e registro
+   * unico: tudo que entra nele aparece na tela de ajuda do `F1`, porque e
+   * atalho do produto. Isto nao e -- e instrumento, como o `F3` do painel de
+   * medicao era antes de virar recurso. Alem disso, o despacho de teclas do
+   * renderer nao alcanca a tecla quando o foco esta dentro das proprias
+   * ferramentas, e ai nao haveria como fecha-las pelo mesmo caminho.
+   *
+   * `before-input-event` intercepta antes de a tecla chegar a pagina, o que faz
+   * o atalho funcionar tambem com uma caixa de texto aberta.
+   *
+   * Vale TAMBEM no app empacotado, pelo mesmo motivo que o console do renderer
+   * e encaminhado para o terminal ali: sem isso, um erro no app instalado nao
+   * aparece em lugar nenhum. O menu padrao do Electron esta escondido
+   * (`autoHideMenuBar`), entao o `Ctrl+Shift+I` dele nao e caminho descoberto
+   * por ninguem.
+   */
+  mainWindow.webContents.on('before-input-event', (_e, input) => {
+    if (input.type === 'keyDown' && input.key === 'F12') {
+      mainWindow?.webContents.toggleDevTools();
+    }
+  });
+
+  /**
    * Forca a janela a repintar INTEIRA depois de mudar de tamanho.
    *
    * Bug relatado com captura: ao redimensionar (ou maximizar), a janela ficava
