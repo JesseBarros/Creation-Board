@@ -184,6 +184,23 @@ export interface ImageObject extends BaseObject {
   crop?: Rect;
   naturalW: number;
   naturalH: number;
+  /**
+   * Texto lido da imagem pelo OCR, para o `Ctrl+F` achar (Fase 7.5).
+   *
+   * Fica GRAVADO no .wbd, e e isso que torna a leitura barata: ela roda uma vez
+   * por imagem na vida do quadro, em segundo plano, e nunca mais. Nas 36
+   * imagens do resumo real dele o lote inteiro custou 1,65 s -- e da segunda
+   * abertura em diante, zero.
+   *
+   * Os tres estados sao diferentes e o codigo depende disso:
+   *
+   *  - `undefined` -- ainda nao foi lida. E o que faz a leitura ser agendada.
+   *  - `''`        -- foi lida e NAO tem texto (um diagrama, um icone). Sem este
+   *                   estado, toda imagem sem texto seria relida a cada abertura,
+   *                   para sempre.
+   *  - texto       -- o que o motor leu.
+   */
+  ocr?: string;
 }
 
 export interface GroupObject extends BaseObject {

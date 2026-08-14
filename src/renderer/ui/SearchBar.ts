@@ -21,10 +21,18 @@ export interface SearchBarActions {
   close(): void;
 }
 
+/**
+ * Marca do tipo de cada resultado.
+ *
+ * O `▣` da imagem existe para uma pergunta que so ela levanta: "por que esse
+ * texto nao aparece no quadro?". Ele aparece porque foi LIDO de dentro de uma
+ * imagem (Fase 7.5), e sem a marca o resultado pareceria um erro da busca.
+ */
 const ICONS: Record<HitKind, string> = {
   text: 'T',
   note: '▤',
   name: '#',
+  image: '▣',
 };
 
 export class SearchBar {

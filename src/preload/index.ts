@@ -13,6 +13,7 @@ import type {
   SaveBoardResult,
 } from '@shared/wbd';
 import type { ImportSource } from '@shared/importer';
+import type { OcrItem, OcrReport } from '@shared/ocr';
 
 /**
  * Unica ponte entre renderer e main. Nada de `ipcRenderer` cru exposto: cada
@@ -46,6 +47,11 @@ const api: CreationBoardApi = {
   exporter: {
     save: (req: ExportRequest): Promise<ExportResult> =>
       ipcRenderer.invoke(IPC.exportSave, req) as Promise<ExportResult>,
+  },
+
+  ocr: {
+    recognize: (items: OcrItem[]): Promise<OcrReport> =>
+      ipcRenderer.invoke(IPC.ocrRecognize, items) as Promise<OcrReport>,
   },
 };
 

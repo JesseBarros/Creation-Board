@@ -21,6 +21,7 @@ import { snapRect } from '../features/snapping/snap';
 import { applyBoard, serializeBoard } from '../features/storage/boardIO';
 import { plainText } from '../features/text/spans';
 import { searchBoard } from '../features/search/search';
+import { recognizeBoardImages } from '../features/ocr/recognizeBoard';
 import { paintObject } from '../render/painters';
 import { displayedAs } from '../render/colorAdapt';
 import {
@@ -277,6 +278,7 @@ export async function runSelfTest(host: HTMLElement, app: App): Promise<void> {
   await block('texto e post-its', () => runTextTests(host, app, check, reset));
   await block('busca', () => runSearchTests(app, check, reset));
   await block('imagens', () => runImageTests(host, app, check, reset));
+  await block('OCR: texto dentro de imagem', () => runOcrTests(app, check, reset));
   await block('exportar e autosave', () => runExportTests(app, check, reset));
   await block('barra e troca de ferramenta', () => runHudTests(app, check, reset));
 
@@ -2688,6 +2690,130 @@ async function fakeImageFile(w: number, h: number, name = 'teste.png'): Promise<
   const blob = await new Promise<Blob | null>((r) => canvas.toBlob((b) => r(b), 'image/png'));
   if (!blob) throw new Error('nao foi possivel gerar o PNG de teste');
   return new File([blob], name, { type: 'image/png' });
+}
+
+/**
+ * OCR: le o texto de uma imagem e deixa o `Ctrl+F` achar (Fase 7.5).
+ *
+ * As verificacoes passam pelo caminho REAL -- desenham um PNG, mandam pelo IPC,
+ * levantam o PowerShell e o motor do Windows. Testar so o casamento da string
+ * seria testar a busca, que ja tem cobertura; o que esta fase acrescenta e o
+ * caminho ate ela.
+ *
+ * **Numa maquina sem idioma de OCR instalado isto NAO reprova**, e a distincao
+ * importa: "esta maquina nao le imagem" e uma resposta legitima do sistema, e
+ * transformar isso em falha ensinaria a ignorar falhas -- que e exatamente o
+ * problema registrado no B15.
+ */
+async function runOcrTests(app: App, check: Check, reset: () => void): Promise<void> {
+  const { doc } = app;
+  reset();
+  doc.clear();
+  app.assets.clear();
+  app.history.clear();
+
+  const FRASE = 'Criptografia simetrica';
+  const SEGUNDA = 'chave unica compartilhada';
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 720;
+  canvas.height = 200;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#111111';
+  ctx.font = '600 46px "Segoe UI", sans-serif';
+  ctx.fillText(FRASE, 28, 78);
+  ctx.font = '34px "Segoe UI", sans-serif';
+  ctx.fillText(SEGUNDA, 28, 148);
+  const blob = await new Promise<Blob | null>((r) => canvas.toBlob((b) => r(b), 'image/png'));
+  if (!blob) throw new Error('nao foi possivel gerar o PNG do teste de OCR');
+
+  const asset = await app.assets.add(blob, 'ocr.png');
+  const img: ImageObject = {
+    ...BASE,
+    id: 'IMG_OCR',
+    type: 'image',
+    z: 'a1',
+    transform: { x: 200, y: 200, rotation: 0, scaleX: 1, scaleY: 1 },
+    bbox: { x: 200, y: 200, w: 720, h: 200 },
+    w: 720,
+    h: 200,
+    assetId: asset.meta.id,
+    naturalW: 720,
+    naturalH: 200,
+  };
+  doc.add([img]);
+
+  const t0 = performance.now();
+  const lidas = await recognizeBoardImages(doc, app.assets);
+  const ms = Math.round(performance.now() - t0);
+  const depois = doc.get('IMG_OCR');
+  const texto = depois?.type === 'image' ? (depois.ocr ?? null) : null;
+
+  if (texto === null) {
+    // Nao reprova: sem idioma de OCR instalado, `ocr` fica indefinido de
+    // proposito, para que a leitura seja tentada de novo no dia em que houver.
+    check(
+      'o OCR le o texto de dentro de uma imagem (pulado: sem OCR nesta maquina)',
+      true,
+      `nenhum idioma de OCR disponivel -- o campo fica indefinido de proposito, ` +
+        `para nao carimbar a imagem como "sem texto"`,
+    );
+    return;
+  }
+
+  const dobrado = texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  check(
+    'o OCR le o texto de dentro de uma imagem e guarda no objeto',
+    lidas === 1 && dobrado.includes('criptografia'),
+    `lidas=${lidas} em ${ms} ms · leu="${texto.replace(/\s+/g, ' ').slice(0, 60)}"`,
+  );
+
+  // --- a razao de existir da fase: o Ctrl+F acha o que so existe na imagem
+  const achados = searchBoard(doc, 'criptografia');
+  check(
+    'o Ctrl+F acha uma palavra que so existe DENTRO de uma imagem',
+    achados.length === 1 && achados[0]?.id === 'IMG_OCR' && achados[0]?.kind === 'image',
+    `resultados=${achados.length} id=${achados[0]?.id ?? 'nenhum'} ` +
+      `tipo=${achados[0]?.kind ?? '-'} esperado=(1, IMG_OCR, image)`,
+  );
+
+  // --- e nao le duas vezes: o custo da segunda abertura precisa ser zero
+  const t1 = performance.now();
+  const denovo = await recognizeBoardImages(doc, app.assets);
+  check(
+    'uma imagem ja lida nao e lida de novo',
+    denovo === 0,
+    `segunda passada leu ${denovo} imagem(ns) em ${Math.round(performance.now() - t1)} ms ` +
+      `(esperado 0: o texto ja esta no objeto e vai gravado no .wbd)`,
+  );
+
+  // --- imagem SEM texto guarda '' e tambem nao volta a ser lida
+  const vazio = await fakeImageFile(120, 90, 'sem-texto.png');
+  const assetVazio = await app.assets.add(vazio, 'sem-texto.png');
+  doc.add([
+    {
+      ...img,
+      id: 'IMG_VAZIA',
+      z: 'a2',
+      assetId: assetVazio.meta.id,
+      ocr: undefined,
+    },
+  ]);
+  await recognizeBoardImages(doc, app.assets);
+  const semTexto = doc.get('IMG_VAZIA');
+  const campo = semTexto?.type === 'image' ? semTexto.ocr : undefined;
+  check(
+    'imagem sem texto guarda vazio, e nao "ainda nao lida"',
+    campo === '',
+    `campo=${campo === undefined ? 'indefinido' : `"${campo}"`} esperado="" — ` +
+      `com indefinido, um diagrama sem uma letra seria relido a cada abertura`,
+  );
+
+  doc.clear();
+  app.assets.clear();
+  reset();
 }
 
 async function runImageTests(

@@ -5,6 +5,7 @@ import type {
   SaveBoardResult,
 } from './wbd';
 import type { ImportSource } from './importer';
+import type { OcrItem, OcrReport } from './ocr';
 
 /**
  * Contrato IPC compartilhado por main, preload e renderer.
@@ -25,6 +26,7 @@ export const IPC = {
   importPick: 'import:pick',
   importRead: 'import:read',
   exportSave: 'export:save',
+  ocrRecognize: 'ocr:recognize',
 } as const;
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC];
@@ -117,5 +119,13 @@ export interface CreationBoardApi {
   exporter: {
     /** Pergunta onde salvar e grava. `path: null` = cancelado. */
     save(req: ExportRequest): Promise<ExportResult>;
+  };
+
+  ocr: {
+    /**
+     * Le o texto de um LOTE de imagens. Um lote por chamada, e nao uma imagem:
+     * o custo esta na partida do motor, e ela se paga uma vez so.
+     */
+    recognize(items: OcrItem[]): Promise<OcrReport>;
   };
 }

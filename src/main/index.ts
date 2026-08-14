@@ -5,6 +5,7 @@ import { registerAppIpc } from './ipc/app';
 import { registerBoardIpc } from './ipc/board';
 import { registerImportIpc } from './ipc/importer';
 import { registerExportIpc } from './ipc/exporter';
+import { registerOcrIpc } from './ipc/ocr';
 
 const isDev = !app.isPackaged;
 
@@ -381,6 +382,7 @@ if (!gotLock) {
     registerBoardIpc();
     registerImportIpc();
     registerExportIpc();
+    registerOcrIpc();
     createWindow();
 
     app.on('activate', () => {

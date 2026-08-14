@@ -151,6 +151,15 @@ export class App {
   #theme: 'light' | 'dark';
 
   #rulers: boolean;
+  /**
+   * Geracao da leitura de imagens em curso (Fase 7.5).
+   *
+   * Trocar de quadro incrementa, e o lote antigo se descarta ao ver que a
+   * geracao mudou. Sem isto, a resposta de um quadro fechado escreveria texto
+   * em objetos do quadro seguinte -- os ids sao unicos, mas o custo de descobrir
+   * isso seria um bug intermitente e difícil de reproduzir.
+   */
+  #ocrGen = 0;
   #view: View = 'lobby';
   #session: Session = { path: null, name: 'Quadro sem nome', dirty: false };
   #saving = false;
@@ -498,9 +507,49 @@ export class App {
       this.#enterBoard();
       this.#bar.setZoom(this.camera.zoom);
       this.#onCameraChanged();
+      this.readImagesInBackground();
     } catch (err) {
       toast(`Nao foi possivel abrir "${summary.name}": ${String(err)}`, 'error');
     }
+  }
+
+  /**
+   * Le o texto das imagens do quadro, sem travar nada (Fase 7.5).
+   *
+   * Comeca DEPOIS de o quadro estar na tela, e nao antes: a leitura das 36
+   * imagens do resumo real custa 1,65 s, e esperar por ela atrasaria em quase
+   * tres vezes uma abertura que hoje leva 642 ms. Quem chega buscando texto pode
+   * digitar no `Ctrl+F` enquanto isso; os resultados vao aparecendo por lote.
+   *
+   * **Marca o quadro como alterado quando le alguma coisa, e isso e deliberado.**
+   * O documento mudou de verdade -- ganhou texto que nao tinha --, e e o autosave
+   * que grava isso no .wbd. Sem a marca, a leitura seria refeita a cada abertura,
+   * para sempre. O ponto ao lado do nome aparece uma vez por quadro na vida dele.
+   *
+   * Publico porque o auto-teste chama direto: passar pelo caminho de abrir um
+   * arquivo de verdade so para exercitar isto seria testar o disco, nao o OCR.
+   */
+  readImagesInBackground(): void {
+    if (!window.quadro?.ocr) return;
+    const geracao = ++this.#ocrGen;
+    void import('./features/ocr/recognizeBoard')
+      .then((m) =>
+        m.recognizeBoardImages(
+          this.doc,
+          this.assets,
+          () => this.#scheduler.invalidate(),
+          // Sair do quadro ou abrir outro cancela: o que voltar depois disso
+          // pertence a um documento que nao esta mais na tela.
+          () => geracao !== this.#ocrGen || this.#view !== 'board',
+        ),
+      )
+      .then((lidas) => {
+        if (lidas > 0 && geracao === this.#ocrGen) this.#markDirty();
+      })
+      .catch(() => {
+        // OCR e conforto: uma falha aqui nao pode aparecer para quem so queria
+        // abrir um quadro.
+      });
   }
 
   /** Quadro de demonstracao, para ter conteudo sem precisar desenhar nada ainda. */
