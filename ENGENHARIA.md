@@ -12,6 +12,7 @@ por medição — e um comentário no código diz *o que* foi escolhido, nunca *
 falhou*. Sem este registro, a próxima pessoa refaz a investigação e chega à mesma conclusão
 duas semanas depois.
 
+
 **Leia antes de:**
 
 | Se você vai… | Leia |

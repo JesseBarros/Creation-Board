@@ -1,14 +1,26 @@
-# Bugs e melhorias abertos
+# Registro de bugs
 
-Registro do que apareceu usando o app de verdade, antes da Fase 9 (polimento).
-O [RETOMAR.md](RETOMAR.md) diz em que pé o projeto está; este arquivo diz **o que está
-errado e o que falta**. Some quando a lista zerar.
+**O que já deu errado neste app, por quê, e como foi resolvido.**
 
-**Última atualização: 14/08/2026.** **2 itens abertos** (B10 e B15), **21 fechados**.
+
+
+## Por onde procurar
+
+| Se o sintoma é… | Veja |
+|---|---|
+| A tela **pisca**, deixa rastro ou fica "rasgada" | **[B8](#b8--a-tela-pisca-preto-ao-passar-o-mouse-sobre-ícones-e-cartões)** — a investigação mais longa do projeto, com a causa localizada |
+| Quadros **sumiram** do menu, ou apareceram duplicados | **[B11](#b11--a-biblioteca-está-partida-em-duas-pastas)** — biblioteca partida em duas pastas |
+| O app parece **lento**, ou o `F3` mostra número ruim | **[B9](#b9--o-quadro-crava-em-60-fps-ao-arrastar-com-o-botão-direito)** e **[B5](#b5--queda-breve-de-fps-ao-clicar-num-ícone-da-barra-inferior)** — quase sempre o medidor, não o app |
+| **Exportar** não respeita a resolução pedida | **[B13](#b13--os-três-botões-de-resolução-da-exportação-não-fazem-nada-em-quadro-grande)** — o quadro sai em ladrilhos |
+| Algo **visual** incomoda (sombra, cor, ícone) | **[B16](#b16--uma-sombra-atrás-dos-ícones-da-barra-polui-a-interface)** e **[M10](#m10--a-amostra-de-tinta-quase-preta-some-no-painel-no-tema-escuro)** |
+| Uma verificação do auto-teste **reprovou** | **[B15](#b15--uma-verificação-do-auto-teste-falhou-uma-vez-e-não-reproduziu)**, e o `ENGENHARIA.md` em *"A verificação de arrastar"* |
+| `Ctrl+V` não cola, atalho não responde | **[B6](#b6--ctrlv-não-cola-imagem-da-área-de-transferência)** — o caminho até o atalho, não o atalho |
+
+**Estado: 2 itens abertos** (B10 e B15), **21 fechados**. Última atualização: 14/08/2026.
 
 **O dia 14/08 fechou a investigação do B8**, que era o item mais antigo em aberto de fato —
 formalmente corrigido desde 06/08, mas com a causa desconhecida e um [...]
-pendente. Ele não existe mais como pendência: ver o B8, seção de 14/08.
+pendente. Não há mais pendência ali: ver o B8, seção de 14/08.
 
 **A revisão do tema claro da Fase 9 achou dois itens, e os dois já fecharam.** Ela foi feita
 comparando a **mesma cena** nos dois temas, lado a lado — e o que ela achou não estava no
@@ -97,7 +109,7 @@ O que se quer é a régua do Microsoft Whiteboard: **um objeto físico no meio d
 que se gira 360°** e serve de apoio para riscar linhas retas — a tinta encosta na borda
 dela e sai reta.
 
-**Isto reverte uma decisão da Fase 4.5**, registrada no RETOMAR: *"régua = réguas nas
+**Isto reverte uma decisão da Fase 4.5**, registrada no ENGENHARIA.md: *"régua = réguas nas
 bordas em px/cm, não a régua-transferidor do Whiteboard"*. Foi escolha na época; a
 documentação precisa mudar junto, senão a próxima sessão lê a decisão e "conserta" de
 volta.
@@ -365,7 +377,7 @@ nos dois casos**. O 99,7 era ruído. Conclusão da época: não há custo mensur
 > mais um pedaço da barra lateral — região que ninguém repintou, o mesmo desenho de 06/08.
 >
 > **foi decidido voltar ao 33.4.11**, já que a subida não entregou o que a justificava. O que
-> se perde com a volta está medido no [RETOMAR.md](RETOMAR.md) e **não tem relação com este
+> se perde com a volta está medido no [ENGENHARIA.md](ENGENHARIA.md) e **não tem relação com este
 > bug**.
 >
 > **Então não era a idade do Chromium.** Um Chromium de 2026, na mesma máquina, produz o
@@ -381,7 +393,7 @@ nos dois casos**. O 99,7 era ruído. Conclusão da época: não há custo mensur
 >
 > **E a lição de método, que é a mais cara desta rodada:** a subida do Electron era o item
 > da Fase 9 justificado *por este bug*. Ela foi feita, valeu por outros motivos (ver o
-> [RETOMAR.md](RETOMAR.md)) e **não entregou o que prometia aqui**. A hipótese era boa,
+> [ENGENHARIA.md](ENGENHARIA.md)) e **não entregou o que prometia aqui**. A hipótese era boa,
 > tinha evidência circunstancial forte — dez versões maiores, uma máquina de 2026 — e estava
 > errada. Só um teste a derrubou, e ele custou um comando e um par de olhos.
 
@@ -918,7 +930,7 @@ meta em 144, o medidor está dizendo "ótimo" justamente no número que incomoda
 > estava preso na pasta alternativa** — o que se perderia era só o esforço de reimportar.
 >
 > Duas delas têm geometria idêntica; a terceira difere em **0,5px de altura média de texto**,
-> que é o ruído de medição de fonte já documentado no `RETOMAR`, e não uma versão melhor.
+> que é o ruído de medição de fonte já documentado no `ENGENHARIA.md`, e não uma versão melhor.
 >
 > As duas cópias da pasta alternativa foram **estacionadas** numa subpasta
 > `_substituidos-2026-08-08\`, e não apagadas: 0,29 MB cada não justificam uma decisão
@@ -1033,7 +1045,7 @@ desenha os glifos é a fonte de **quem abre o arquivo**. Quando essa fonte é um
 larga que a nossa, o trecho transborda e invade o começo do trecho seguinte — que está
 ancorado num ponto fixo e não sai do lugar. O resultado é sobreposição.
 
-Isso não acontece no PNG, e a razão está na decisão 19 do `RETOMAR`: o PNG **reusa os
+Isso não acontece no PNG, e a razão está na decisão 19 do `ENGENHARIA.md`: o PNG **reusa os
 painters**, então ele é pixel a pixel o que está na tela. O SVG não pode reusar (os painters
 falam canvas), e é aí que a fonte de terceiros entra na conta.
 
@@ -1107,7 +1119,7 @@ código (`ToolBar.ts`, em `#renderColors`): *"a amostra é a própria cor do doc
 passar pelo adaptador de tema: é ela que fica gravada no `.wbd` e que o usuário está
 escolhendo"*. Isso é verdade e é um bom motivo.
 
-**A tensão é com outra decisão, do mesmo projeto**, a de número 10 do RETOMAR: [...] A amostra de cor é a única prévia que ficou de
+**A tensão é com outra decisão, do mesmo projeto**, a de número 10 do ENGENHARIA.md: [...] A amostra de cor é a única prévia que ficou de
 fora dessa regra — e o sintoma previsto pela regra é exatamente o que aconteceu.
 
 **As duas saídas, e as duas são defensáveis:**
@@ -1363,7 +1375,7 @@ hora. Os dois controles passaram a ser criados uma vez e reaproveitados: 2,5 ms.
 > **Feito na Fase 9, nas duas metades — e a primeira resolve o caso sem painel nenhum.**
 >
 
->A **decisão 5 do RETOMAR mudou junto**, senão a próxima sessão lê a regra antiga e
+>A **decisão 5 do ENGENHARIA.md mudou junto**, senão a próxima sessão lê a regra antiga e
 > "conserta" de volta.
 >
 > **M8b, o painel.** Lista de **objetos**, não grupos com nome: das duas perguntas de projeto
@@ -1387,7 +1399,7 @@ Pedido: [...].
 
 **O sintoma bate numa decisão deliberada**, e por isso entra como `decisão a revisar` e não
 como bug (é a triagem que fez nascer a Fase 5.5). A regra está no
-[RETOMAR.md](RETOMAR.md), decisão 5: **o marca-texto entra por baixo de tudo** — por chave
+[ENGENHARIA.md](ENGENHARIA.md), decisão 5: **o marca-texto entra por baixo de tudo** — por chave
 `z`, não por ordem de desenho — senão grifar cobriria o texto que se quis destacar.
 
 **A regra está certa para texto e errada para imagem, e a diferença é física:** texto é
