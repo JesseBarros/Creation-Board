@@ -4,10 +4,32 @@ Ponto de retomada do **Creation Board**. O [README](README.md) explica o que o a
 como cada parte funciona; este arquivo responde outra pergunta: *em que pé isso está e
 o que fazer a seguir*. Some quando o projeto acabar.
 
-**Última sessão: 13/08/2026.** A **Fase 9 está em andamento**, na branch
-`fase-9-polimento`, com quatorze entregas feitas e conferidas.
+**Última sessão: 14/08/2026.** A **Fase 9 acabou e está mesclada na `main`** — 23 commits,
+31 arquivos, +3.758 linhas. **Sobra uma fase de funcionalidade: a 7.5 (OCR).**
 
-> **Retomar por aqui.** O que já saiu da Fase 9, em **14 commits** na branch:
+> **Retomar por aqui.** O que falta no projeto, em ordem:
+>
+> 1. **Fase 7.5 — OCR**, transcrever imagem em texto. É a última funcionalidade de verdade.
+>    Foi adiada duas vezes de propósito, e nunca começou.
+> 2. **B10** — o custo por frame cresce com o zoom. Medido por ele no `F3`, nunca sentido no
+>    uso.
+> 3. **B15** — uma verificação do auto-teste que falhou uma vez sob carga e não reproduziu.
+> 4. **B11** — consolidar as duas pastas de biblioteca; depende de uma decisão dele. As
+>    cópias estão estacionadas em `_substituidos-2026-08-08\`, nada perdido.
+>
+> **O B8 saiu da lista de pendências em 14/08**, e vale saber por quê antes de reabri-lo: a
+> causa foi localizada na **atualização parcial da composição por GPU**, e as duas flags do
+> app deixaram de ser remendo. Não há conserto pendente do nosso lado — há um teste de
+> reavaliação (`QB_GPU=normal` e olhar) para o dia em que driver ou Windows mudarem. Tudo no
+> [BUGS.md](BUGS.md), no B8, seção de 14/08.
+>
+> **Como ele trabalha, e vale respeitar:** ele pede para **aprovar antes de seguir** para o
+> item seguinte. Entregar dois de uma vez tira dele a chance de dizer o que incomodou — e foi
+> assim que o título da janela, a marca duplicada e o peso dos ícones apareceram, cada um
+> depois de uma entrega parada para avaliação.
+
+<details>
+<summary><strong>O que a Fase 9 entregou</strong> — 23 commits, mesclados em 14/08/2026</summary>
 >
 > | Item | Estado |
 > |---|---|
@@ -30,25 +52,21 @@ o que fazer a seguir*. Some quando o projeto acabar.
 > | **`QB_GPU=normal` no Electron novo** | **conferido por ele — o bug VOLTOU, no 41 e no 43.** As duas flags ficam, e a hipótese de raiz do B8 morreu: não era a idade do Chromium |
 > | **Node 20.18.3 → 22.12.0** | **feito** (na máquina dele, não no repo) — era o que o Electron 42+ exigia. Fica útil mesmo com a volta ao 33, que instala nos dois |
 > | **Instalador regerado** | **feito** — `npm run dist` + `check:dist` passam no `.exe` empacotado |
->
-> **Falta só mesclar na `main`**, que é o padrão dele entre fases.
->
-> Depois disso sobra só a **Fase 7.5** (OCR), adiada para depois da 9.
->
-> **Como ele trabalha nesta fase, e vale respeitar:** ele pede para **aprovar antes de
-> seguir** para o item seguinte. Entregar dois de uma vez tira dele a chance de dizer o que
-> incomodou — e foi assim que o título da janela, a marca duplicada e o peso dos ícones
-> apareceram, cada um depois de uma entrega parada para avaliação.
+> | **B8 — a causa localizada** | **feito** — o degrau `comp`, nunca testado, curou e fechou o mecanismo |
+> | **Mesclagem na `main`** | **feita** — avanço direto, como as fases anteriores |
+
+</details>
 
 ---
 
 ## Estado em uma linha
 
-Fases 0 a 8 prontas. Dá para importar um resumo do Microsoft Whiteboard, **trabalhar em
-cima dele por inteiro** (reorganizar com alinhamento assistido, escrever à mão, desenhar
-formas, digitar texto e post-its, apagar tinta por peça, achar palavra com `Ctrl+F`,
-colar/arrastar/recortar imagens) e **tirar dali um PNG, SVG ou PDF**, com o quadro
-gravando sozinho. Falta o polimento final (Fase 9) e o OCR (7.5), que ficou para depois.
+**Fases 0 a 9 prontas e mescladas.** Dá para importar um resumo do Microsoft Whiteboard,
+**trabalhar em cima dele por inteiro** (reorganizar com alinhamento assistido, escrever à
+mão, desenhar formas, digitar texto e post-its, apagar tinta por peça, achar palavra com
+`Ctrl+F`, colar/arrastar/recortar imagens) e **tirar dali um PNG, SVG ou PDF**, com o quadro
+gravando sozinho, tudo com a interface polida nos dois temas e o instalador validado por
+terminal. **Falta só o OCR (7.5).**
 
 ## O que existe hoje
 
@@ -66,8 +84,8 @@ gravando sozinho. Falta o polimento final (Fase 9) e o OCR (7.5), que ficou para
 | 6 | Busca `Ctrl+F` | pronta |
 | 7 | Imagens: colar, arrastar e recortar | pronta |
 | 8 | Exportar PNG/SVG/PDF e autosave | pronta |
-| **9** | **Polimento de UI, temas e build final** | **em andamento** — 14 entregas feitas |
-| 7.5 | OCR: transcrever imagem em texto | adiada, fica para depois da 9 |
+| 9 | Polimento de UI, temas e build final | **pronta** — mesclada em 14/08/2026 |
+| **7.5** | **OCR: transcrever imagem em texto** | **a única que falta** |
 
 A ordem diverge do plano original **de propósito**: o objetivo é migrar os resumos do
 Whiteboard, e para isso importar e manipular vieram antes de desenhar.
@@ -75,8 +93,9 @@ Whiteboard, e para isso importar e manipular vieram antes de desenhar.
 A Fase 5.5 nasceu de um pedido dele ao testar a Fase 5 — a borracha apagando o traço
 inteiro não servia — e **reverteu a decisão da Fase 4**. Está resolvida.
 
-**A `main` foi até a Fase 8**, mais a rodada de bugs (`bf6593b`). A Fase 9 está na branch
-**`fase-9-polimento`**, ainda sem mesclar.
+**A `main` está em dia**, com tudo até a Fase 9 (`411ac96`, mesclado em 14/08/2026 por
+avanço direto, como as fases anteriores). A branch `fase-9-polimento` continua no repositório
+apontando para o mesmo commit; pode ser apagada quando quiser.
 
 ---
 
@@ -256,21 +275,33 @@ Subir o Node não fecha a porta de trás.
 
 ---
 
-## Como começar a Fase 9
+## Como começar a Fase 7.5 (OCR)
 
-Polimento de UI, temas e build final. É a fase que fecha o projeto, e por isso vale
-começar **usando o app por uma hora** e anotando o que incomoda — foi assim que a 5.5
-nasceu, e ela era mais importante que metade do que estava planejado.
+**Transcrever imagem em texto.** É a última funcionalidade que falta, e a única fase que
+nunca começou. Foi adiada duas vezes de propósito: o objetivo do projeto é migrar os resumos
+do Whiteboard, e mover/desenhar/exportar vinham antes de ler.
 
-1. **Rodar `npm run dist`** cedo, e não no fim: o instalador foi validado na Fase 0 e
-   nunca mais desde então. Oito fases de código novo entraram depois.
-2. **Reimportar os resumos de verdade** (`QB_IMPORT_SAVE=1`) e abrir cada um: é o teste
-   de aceitação que importa, já que o objetivo do projeto é migrar esses arquivos.
-3. Candidatos de polimento já visíveis: a barra inferior está com doze controles, o painel
-   de opções da barra lateral cresce a cada ferramenta, e não há indicação visual de que o
-   autosave gravou (só a dica do nome).
-4. O tema escuro nunca foi olhado com todas as fases prontas — `npm run check:colors`
-   garante contraste de marca, mas não diz se a interface ficou boa.
+**O que ela precisa responder antes de qualquer linha de código, e nenhuma tem resposta
+hoje:**
+
+1. **De onde vem o motor de OCR.** Este app é **local e offline** — é a proposta dele desde
+   o começo, e está escrita no `wbdFile.ts`: *"todo quadro sincronizar para a nuvem é o
+   oposto do que o app se propõe a ser"*. Um serviço de nuvem contradiz isso. Um motor
+   embutido (Tesseract em WebAssembly, por exemplo) custa dezenas de MB no instalador, que
+   hoje tem 142 MB de Electron. **É a decisão que define a fase, e é dele.**
+2. **O que vira o texto reconhecido.** Um `PlainText` novo ao lado da imagem? Um campo na
+   própria imagem, invisível, que só a busca do `Ctrl+F` enxerga? Os dois têm sentido, e
+   respondem a pedidos diferentes: o primeiro é "quero editar", o segundo é "quero achar".
+3. **Se entra na importação ou só sob demanda.** Os resumos dele têm **36 imagens** só no
+   Cybersec; reconhecer todas na importação atrasaria a abertura de um arquivo que hoje abre
+   em 642 ms.
+
+**O que já está pronto e a fase pode usar:** `AssetStore` guarda os bitmaps, `PatchObjects` é
+o comando genérico de conteúdo (foi ele que absorveu o recorte na Fase 7), a busca já varre
+texto sem índice invertido, e o `selftest` sabe inserir imagem por arraste.
+
+**E o teste de aceitação já existe:** as 36 imagens do *Cybersec resumão*. Se o `Ctrl+F`
+achar uma palavra que só existe dentro de uma delas, a fase entregou o que prometia.
 
 ---
 
