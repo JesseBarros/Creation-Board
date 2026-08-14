@@ -4,18 +4,26 @@ Ponto de retomada do **Creation Board**. O [README](README.md) explica o que o a
 como cada parte funciona; este arquivo responde outra pergunta: *em que pé isso está e
 o que fazer a seguir*. Some quando o projeto acabar.
 
-**Última sessão: 14/08/2026.** A **Fase 9 acabou e está mesclada na `main`** — 23 commits,
-31 arquivos, +3.758 linhas. **Sobra uma fase de funcionalidade: a 7.5 (OCR).**
+**Última sessão: 14/08/2026.** A **Fase 9 e a Fase 7.5 acabaram**, e a busca cruzando toda a
+biblioteca entrou junto. **Todas as fases planejadas estão prontas** — o que sobra são três
+itens pequenos, e nenhum bloqueia o uso.
 
-> **Retomar por aqui.** O que falta no projeto, em ordem:
+> **Retomar por aqui.** O que falta no projeto:
 >
-> 1. **Fase 7.5 — OCR**, transcrever imagem em texto. É a última funcionalidade de verdade.
->    Foi adiada duas vezes de propósito, e nunca começou.
+> 1. **A verificação de arrastar 10.000 objetos vive no limite.** Teto de 33 ms, faixa normal
+>    25,0–26,5 — mas em 14/08 ela reprovou na maioria das execuções, sempre com o `bbox`
+>    (matemática pura) em 3,4–4,9 contra a faixa normal de 3,0–3,3. **É a máquina, e o
+>    diagnóstico já está escrito neste arquivo** — mas uma verificação que reprova metade das
+>    vezes ensina a ignorar reprovações, que é exatamente o que o B15 alerta. A saída
+>    desenhada: usar o próprio `bbox` para normalizar o teto, em vez de pedir que uma pessoa
+>    interprete. Hoje o número está lá só para ser lido por gente.
 > 2. **B10** — o custo por frame cresce com o zoom. Medido por ele no `F3`, nunca sentido no
 >    uso.
-> 3. **B15** — uma verificação do auto-teste que falhou uma vez sob carga e não reproduziu.
-> 4. **B11** — consolidar as duas pastas de biblioteca; depende de uma decisão dele. As
+> 3. **B11** — consolidar as duas pastas de biblioteca; depende de uma decisão dele. As
 >    cópias estão estacionadas em `_substituidos-2026-08-08\`, nada perdido.
+>
+> O **B15** (verificação que falhou uma vez e não reproduziu) continua aberto no `BUGS.md`,
+> mas não reapareceu em nenhuma das dezenas de execuções de 13 e 14/08.
 >
 > **O B8 saiu da lista de pendências em 14/08**, e vale saber por quê antes de reabri-lo: a
 > causa foi localizada na **atualização parcial da composição por GPU**, e as duas flags do
@@ -61,12 +69,15 @@ o que fazer a seguir*. Some quando o projeto acabar.
 
 ## Estado em uma linha
 
-**Fases 0 a 9 prontas e mescladas.** Dá para importar um resumo do Microsoft Whiteboard,
-**trabalhar em cima dele por inteiro** (reorganizar com alinhamento assistido, escrever à
-mão, desenhar formas, digitar texto e post-its, apagar tinta por peça, achar palavra com
-`Ctrl+F`, colar/arrastar/recortar imagens) e **tirar dali um PNG, SVG ou PDF**, com o quadro
-gravando sozinho, tudo com a interface polida nos dois temas e o instalador validado por
-terminal. **Falta só o OCR (7.5).**
+**Todas as fases planejadas estão prontas.** Dá para importar um resumo do Microsoft
+Whiteboard, **trabalhar em cima dele por inteiro** (reorganizar com alinhamento assistido,
+escrever à mão, desenhar formas, digitar texto e post-its, apagar tinta por peça,
+colar/arrastar/recortar imagens) e **tirar dali um PNG, SVG ou PDF**, com o quadro gravando
+sozinho, a interface polida nos dois temas e o instalador validado por terminal.
+
+**E achar o que se procura**, que é o que o material dele pede: `Ctrl+F` dentro do quadro,
+**inclusive dentro das imagens** (o OCR lê 3.456 palavras nas 36 imagens do *Cybersec
+resumão*), e uma busca no menu principal que atravessa **todos os quadros** de uma vez.
 
 ## O que existe hoje
 
@@ -85,7 +96,8 @@ terminal. **Falta só o OCR (7.5).**
 | 7 | Imagens: colar, arrastar e recortar | pronta |
 | 8 | Exportar PNG/SVG/PDF e autosave | pronta |
 | 9 | Polimento de UI, temas e build final | **pronta** — mesclada em 14/08/2026 |
-| **7.5** | **OCR: transcrever imagem em texto** | **a única que falta** |
+| 7.5 | OCR: o `Ctrl+F` acha texto dentro das imagens | **pronta** — 14/08/2026 |
+| — | Busca cruzando **toda a biblioteca**, no menu principal | **pronta** — 14/08/2026, fora do plano original |
 
 A ordem diverge do plano original **de propósito**: o objetivo é migrar os resumos do
 Whiteboard, e para isso importar e manipular vieram antes de desenhar.
@@ -275,7 +287,29 @@ Subir o Node não fecha a porta de trás.
 
 ---
 
-## Como começar a Fase 7.5 (OCR)
+## A Fase 7.5, e o que ela virou
+
+**Feita em 14/08/2026, e o motor não custou nada.** As três perguntas abaixo foram
+respondidas por medição, e as respostas mudaram o tamanho da fase. Ficam registradas porque
+explicam por que o código é do jeito que é.
+
+| Pergunta | Resposta |
+|---|---|
+| De onde vem o motor | **Do próprio Windows** (`Windows.Media.Ocr`), com pt-BR já instalado. **0 MB no instalador**, contra dezenas de MB do Tesseract |
+| Como o Electron o alcança | **PowerShell em lote**, não módulo nativo — o projeto não tem nenhuma dependência nativa e não ter é parte de por que ele compila em segundos |
+| O que o texto vira | Campo `ocr` no próprio objeto de imagem, gravado no `.wbd`. Roda uma vez por imagem na vida do quadro |
+| Quando roda | Em segundo plano, depois de o quadro estar na tela |
+
+**Medido nas 36 imagens do resumo real:** 1,65 s no total, 46 ms de média, **30 imagens com
+texto, 3.456 palavras**, zero erros. Da segunda abertura em diante, zero.
+
+**E ela puxou uma funcionalidade que não estava no plano:** com o texto das imagens
+indexado, a pergunta deixou de ser "onde está isto neste quadro" e virou "em qual dos meus
+quadros eu escrevi sobre isto". Daí a **busca da biblioteca**, no menu principal — 68 ms para
+ler os três quadros, com um motor de busca só compartilhado com o `Ctrl+F` (`findIn`).
+
+<details>
+<summary>O plano original da fase, antes de as medições responderem</summary>
 
 **Transcrever imagem em texto.** É a última funcionalidade que falta, e a única fase que
 nunca começou. Foi adiada duas vezes de propósito: o objetivo do projeto é migrar os resumos
@@ -302,6 +336,8 @@ texto sem índice invertido, e o `selftest` sabe inserir imagem por arraste.
 
 **E o teste de aceitação já existe:** as 36 imagens do *Cybersec resumão*. Se o `Ctrl+F`
 achar uma palavra que só existe dentro de uma delas, a fase entregou o que prometia.
+
+</details>
 
 ---
 
