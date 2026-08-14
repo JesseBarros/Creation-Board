@@ -25,13 +25,32 @@ import { WBD_SCHEMA_VERSION, type WbdDocument, type WbdManifest } from '@shared/
 /**
  * Pasta dos quadros.
  *
- * Fica na raiz do disco do sistema, e NAO em Documentos, de proposito: a pasta
- * Documentos deste usuario esta redirecionada para o OneDrive, e salvar la faria
- * todo quadro sincronizar para a nuvem -- o oposto do que o app se propoe a ser.
- * Aqui o arquivo nao sai da maquina; sincronizar e uma decisao manual (copiar o
- * .wbd para onde quiser).
+ * Fica na raiz do disco do sistema, e NAO em Documentos, de proposito: em muitas
+ * instalacoes do Windows a pasta Documentos esta redirecionada para o OneDrive, e
+ * salvar la faria todo quadro sincronizar para a nuvem -- o oposto do que o app
+ * se propoe a ser. Aqui o arquivo nao sai da maquina; sincronizar e uma decisao
+ * manual (copiar o .wbd para onde quiser).
  */
-const DIR_NAME = 'Resumos-quadrobranco';
+const DIR_NAME = 'Creation Board';
+
+/**
+ * Nomes que a pasta dos quadros JA TEVE, do mais recente para o mais antigo.
+ *
+ * Cada renomeacao do app deixou quadros para tras num nome antigo, e a lista e o
+ * que os traz de volta. Ela cresce por acrescimo no comeco, nunca por
+ * substituicao: apagar uma entrada daqui e apagar o caminho de volta dos quadros
+ * de quem pulou uma versao.
+ *
+ *  - `Resumos-quadrobranco` na raiz do disco -- ate 14/08/2026, quando o nome
+ *    provisorio do projeto saiu do que o usuario ve.
+ *  - `Documentos\QuadroBranco` -- as primeiras versoes, antes de a pasta sair de
+ *    Documentos por causa do OneDrive.
+ */
+const LEGACY_DIRS: ReadonlyArray<() => string> = [
+  () => join(process.env['SystemDrive'] ?? 'C:', '\\', 'Resumos-quadrobranco'),
+  () => join(app.getPath('home'), 'Resumos-quadrobranco'),
+  () => join(app.getPath('documents'), 'QuadroBranco'),
+];
 
 /**
  * QB_BOARDS=<caminho> troca a pasta dos quadros.
@@ -174,39 +193,57 @@ async function resolverDir(): Promise<string> {
 }
 
 /**
- * Move quadros salvos por versoes anteriores, que usavam Documentos.
- * Roda uma vez e e silenciosa: falhar a migracao nao pode impedir o app de abrir.
+ * Traz para a pasta atual os quadros deixados nos nomes antigos.
+ *
+ * Roda a cada abertura e e silenciosa quando nao ha o que fazer: falhar a
+ * migracao nao pode impedir o app de abrir.
+ *
+ * **Move, e nao copia.** Duas copias do mesmo quadro em pastas diferentes foi
+ * literalmente o B11 -- o item mais grave que este projeto teve --, e a licao
+ * dele e que biblioteca dividida e pior que biblioteca mudada de lugar.
+ *
+ * **Nada e apagado.** Um arquivo que nao seja `.wbd` fica onde esta, e a pasta
+ * antiga so some se tiver ficado vazia sozinha (`rmdir`, que recusa pasta com
+ * conteudo). Subpastas como `_exports-originais` continuam la, e isso e
+ * deliberado: sao os arquivos de origem do usuario, e mexer neles nao e assunto
+ * de uma migracao de nome.
  */
 async function migrateLegacyBoards(target: string): Promise<void> {
-  // Nome antigo de proposito: e onde as versoes anteriores gravaram de verdade.
-  // Renomear junto com o app faria a migracao procurar uma pasta que nunca
-  // existiu, e os quadros dessas versoes ficariam para tras.
-  const legacy = join(app.getPath('documents'), 'QuadroBranco');
-  if (legacy === target) return;
-
-  let entries: string[];
-  try {
-    entries = await fs.readdir(legacy);
-  } catch {
-    return; // pasta antiga nao existe: nada a fazer
-  }
-
-  let moved = 0;
-  for (const name of entries) {
-    if (!name.toLowerCase().endsWith(WBD_EXT)) continue;
+  for (const resolver of LEGACY_DIRS) {
+    let legacy: string;
     try {
-      const from = join(legacy, name);
-      const to = await uniquePath(target, basename(name, WBD_EXT));
-      await fs.rename(from, to);
-      moved++;
+      legacy = resolver();
     } catch {
-      // Um arquivo travado nao pode abortar a migracao dos outros.
+      continue;
     }
-  }
+    if (legacy === target) continue;
 
-  if (moved > 0) console.log(`[storage] ${moved} quadro(s) migrado(s) de "${legacy}" para "${target}"`);
-  // Remove a pasta antiga apenas se ela ficou vazia.
-  await fs.rmdir(legacy).catch(() => undefined);
+    let entries: string[];
+    try {
+      entries = await fs.readdir(legacy);
+    } catch {
+      continue; // pasta antiga nao existe: nada a fazer
+    }
+
+    let moved = 0;
+    for (const name of entries) {
+      if (!name.toLowerCase().endsWith(WBD_EXT)) continue;
+      try {
+        const from = join(legacy, name);
+        const to = await uniquePath(target, basename(name, WBD_EXT));
+        await fs.rename(from, to);
+        moved++;
+      } catch {
+        // Um arquivo travado nao pode abortar a migracao dos outros.
+      }
+    }
+
+    if (moved > 0) {
+      console.log(`[storage] ${moved} quadro(s) migrado(s) de "${legacy}" para "${target}"`);
+    }
+    // Remove a pasta antiga apenas se ela ficou vazia.
+    await fs.rmdir(legacy).catch(() => undefined);
+  }
 }
 
 function zipAsync(files: Zippable): Promise<Uint8Array> {

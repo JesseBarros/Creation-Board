@@ -2721,7 +2721,7 @@ async function runExportTests(app: App, check: Check, reset: () => void): Promis
     window.quadro.board.folder(),
   ]);
   const iguais = pastas.every((p) => p === pastas[0]);
-  const esperada = 'Resumos-quadrobranco';
+  const esperada = 'Creation Board';
   check(
     'a pasta de quadros e uma so, mesmo pedida por varios caminhos ao mesmo tempo',
     iguais && (pastas[0] ?? '').endsWith(esperada),
