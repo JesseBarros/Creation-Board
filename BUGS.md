@@ -445,11 +445,13 @@ nos dois casos**. O 99,7 era ruído. Conclusão da época: não há custo mensur
 > Ele estava certo nas duas metades: sumiu sozinho, e voltou sozinho. Seis dias e dez versões
 > maiores de Chromium depois, o remédio de sintoma é o que se tem.
 >
-> **O que sobrou de suspeito, para quem voltar a isto:** o que este arquivo nunca conseguiu
-> isolar sozinho — `nvspcap64.dll` (**NVIDIA ShadowPlay**, que engancha a apresentação para
-> gravar vídeo e nunca foi testado isoladamente) e o **Parsec Virtual Display Adapter**, um
-> adaptador de vídeo virtual convivendo com a NVIDIA em dois monitores. O RivaTuner já caiu
-> do jeito certo, e o CSS, o conteúdo, os caches, o modo de desenvolvimento e o G-SYNC também.
+> **O que sobrou de suspeito, e agora com um favorito claro:** o **Parsec Virtual Display
+> Adapter**, cujo driver é de **24/01/2024** — o único componente desta máquina que ainda é de
+> 2024, agora que o app não é. Ele é um adaptador de vídeo, ou seja, mora no caminho de
+> apresentação, que é onde esta investigação já tinha localizado a falha. Atrás dele,
+> `nvspcap64.dll` (**NVIDIA ShadowPlay**, que engancha a apresentação para gravar vídeo e
+> nunca foi testado isoladamente). O RivaTuner já caiu do jeito certo, e o CSS, o conteúdo, os
+> caches, o modo de desenvolvimento e o G-SYNC também. A tabela remedida está mais abaixo.
 >
 > **E a lição de método, que é a mais cara desta rodada:** a subida do Electron era o item
 > da Fase 9 justificado *por este bug*. Ela foi feita, valeu por outros motivos (ver o
@@ -470,6 +472,36 @@ verdade virou item da Fase 9:
 Dez versões maiores atrás. É a resposta para *"por que só este programa pisca"*: é o único
 Chromium de 2024 rodando numa máquina de 2026. **Dependência de plataforma envelhece
 sozinha, sem ninguém tocar no código.**
+
+> **14/08/2026 — a mesma tabela, medida de novo depois da subida. E ela aponta para outro
+> lugar.**
+>
+> | | Versão | Data |
+> |---|---|---|
+> | Creation Board | **Electron 41.0.0**, Chromium **146.0.7680.65** | 2026 |
+> | Último Electron publicado | 43.4.0 (exige Node ≥ 22.12) | 2026 |
+> | Windows desta máquina | build 26200 | 2026 |
+> | NVIDIA GeForce RTX 3050 | driver 32.0.16.1088, de **21/07/2026** | 2026 |
+> | **Parsec Virtual Display Adapter** | driver **0.45.0.0, de 24/01/2024** | **2024** |
+>
+> **O argumento que sustentava a hipótese do Electron não morreu — ele mudou de dono.** A
+> frase acima era *"é o único componente de 2024 numa máquina de 2026"*, e ela continua
+> verdadeira; o que deixou de ser verdade é que o componente seja o nosso. O app agora roda
+> Chromium 146 e o bug voltou. **O que sobrou de 2024 na máquina é o driver do adaptador de
+> vídeo virtual do Parsec**, dois anos e meio parado.
+>
+> E o suspeito tem a forma certa, o que é mais do que se pode dizer da hipótese anterior: um
+> **adaptador de vídeo** mora exatamente no caminho de apresentação — que é onde esta
+> investigação já tinha localizado a falha por outros meios (*"o que pisca é a superfície da
+> janela sem nada pintado"*, e *"a cor do flash acompanha o caminho de apresentação"*). O
+> Parsec já aparecia na tabela de vídeo do B8 desde 06/08 e nunca foi seguido; a atenção
+> estava toda na NVIDIA e no Electron.
+>
+> **O teste que decide, e ele custa pouco:** desabilitar o *Parsec Virtual Display Adapter* no
+> Gerenciador de Dispositivos, abrir o app com `QB_GPU=normal` e olhar. Se não piscar, a
+> causa está encontrada depois de oito dias — e a correção passa a ser uma decisão sobre o
+> Parsec, não sobre o app. É reversível com um clique, e **é dele a decisão**, porque mexe na
+> máquina e não no repositório.
 
 `QB_GPU=normal` desliga a correção e reproduz o bug — serve para descobrir o dia em que ela
 virar desnecessária, em vez de carregá-la para sempre por inércia.
