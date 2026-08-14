@@ -20,7 +20,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { decodePng, resize, encodePng } = require('./png');
 
-const SRC = path.join(__dirname, 'onlycloselogo.png');
+const SRC = path.join(__dirname, 'logo.png');
 const HTML = path.join(__dirname, '..', 'src', 'renderer', 'index.html');
 const INICIO = '<!-- LOGO:INICIO -->';
 const FIM = '<!-- LOGO:FIM -->';
@@ -48,7 +48,7 @@ if (i < 0 || f < 0) {
 }
 
 const img =
-  `\n        <img class=[...] width="${CSS_PX}" alt=""\n` +
+  `\n        <img class="qb-boot__mark" width="${CSS_PX}" alt=""\n` +
   `          src="${uri}" />\n        `;
 
 fs.writeFileSync(HTML, html.slice(0, i + INICIO.length) + img + html.slice(f), 'utf8');

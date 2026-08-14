@@ -25,7 +25,7 @@ const { decodePng, resize, encodePng, cropSquare, encodeIconDib, packIco } = req
 const { renderGlyph } = require('./glyph');
 
 const OUT = process.argv[2];
-const SRC = process.argv[3] ?? path.join(__dirname, 'onlycloselogo.png');
+const SRC = process.argv[3] ?? path.join(__dirname, 'logo.png');
 
 // Os tamanhos que o Windows realmente pede: lista (16), barra de titulo e
 // tarefas (20/24/32), area de trabalho (48), telas grandes (64/128) e a loja e
@@ -75,7 +75,7 @@ for (const e of entries) {
 }
 
 // Previa em PNG, para conferir com os olhos o que o Windows vai mostrar.
-// Sem isto, [...] seria opiniao.
+// Sem isto, "o icone pequeno melhorou" seria opiniao.
 if (process.env['QB_ICON_PREVIEW']) {
   const dir = process.env['QB_ICON_PREVIEW'];
   fs.mkdirSync(dir, { recursive: true });
