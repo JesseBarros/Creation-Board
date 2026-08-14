@@ -826,38 +826,96 @@ async function runSelectionTests(
     applyPatches(doc, moveObjects(originais, 1, 1)); // aquecimento do JIT
 
     const FRAMES = 20;
-    const t0 = performance.now();
-    for (let i = 1; i <= FRAMES; i++) applyPatches(doc, moveObjects(originais, i, i));
-    const msArraste = (performance.now() - t0) / FRAMES;
+    const objs = [...doc.all()];
 
-    // O overlay refaz esta lista a cada frame para saber o que contornar.
-    const t1 = performance.now();
-    for (let i = 0; i < FRAMES; i++) computeFrame(selection.objects(doc));
-    const msOverlay = (performance.now() - t1) / FRAMES;
+    /*
+      DUAS CORRECOES DE METODO, e as duas vieram de a verificacao reprovar
+      metade das vezes em 14/08/2026 sem uma linha de codigo mudar.
 
-    // Reparticao do custo, para nao otimizar por palpite.
-    let msBbox = 0;
-    let msIndex = 0;
-    let msRebuild = 0;
-    {
-      const objs = [...doc.all()];
-      const a = performance.now();
+      O problema nao era o teto. Era esta verificacao estar respondendo DUAS
+      perguntas com um numero so:
+
+        1. "o codigo regrediu?"        -- relativa, e a unica que um teste pode
+                                          responder numa maquina compartilhada
+        2. "esta maquina da 30 fps?"   -- absoluta, e depende de quem mais esta
+                                          aberto no Windows naquele minuto
+
+      Ela afirmava a (2) e era lida como a (1). Com o Discord e o Chrome
+      abertos, reprovava; com eles fechados, passava. Um verificador assim
+      ensina a ignorar reprovacoes -- que e exatamente o que o B15 alerta.
+
+      **Primeira correcao: o MENOR de tres medicoes, e nao uma.** Ruido so sabe
+      somar: uma interrupcao do sistema no meio do laco aumenta o tempo, nunca
+      diminui. Entao o menor de varios e a melhor estimativa do custo real, e
+      uma unica amostra e a pior. Isto sozinho resolve a maior parte do
+      problema.
+
+      **Segunda correcao: o teto acompanha a velocidade da maquina.** O `bbox` e
+      matematica pura -- sem GPU, sem alocacao, sem vsync -- e ja estava
+      impresso aqui como sinal de carga externa, para uma PESSOA interpretar. A
+      regra estava escrita no RETOMAR: *"se o custo de bbox subiu junto, e carga
+      externa"*. Agora quem aplica a regra e o teste.
+
+      O fator so CORRIGE PARA CIMA (`Math.max(1, ...)`): numa maquina mais
+      rapida que a de referencia, apertar o teto faria a verificacao reprovar
+      justamente por ter melhorado. E para em 3x, senao uma maquina em colapso
+      ganharia aprovacao automatica.
+    */
+    const RODADAS = 3;
+    const medir = (): { arraste: number; overlay: number; bbox: number } => {
+      const t0 = performance.now();
+      for (let i = 1; i <= FRAMES; i++) applyPatches(doc, moveObjects(originais, i, i));
+      const arraste = (performance.now() - t0) / FRAMES;
+
+      // O overlay refaz esta lista a cada frame para saber o que contornar.
+      const t1 = performance.now();
+      for (let i = 0; i < FRAMES; i++) computeFrame(selection.objects(doc));
+      const overlay = (performance.now() - t1) / FRAMES;
+
+      const t2 = performance.now();
       for (let i = 0; i < FRAMES; i++) for (const o of objs) computeBbox(o);
-      msBbox = (performance.now() - a) / FRAMES;
-      const b = performance.now();
-      for (let i = 0; i < FRAMES; i++) for (const o of objs) doc.index.update(o);
-      msIndex = (performance.now() - b) / FRAMES;
-      const c = performance.now();
-      for (let i = 0; i < FRAMES; i++) doc.index.rebuild(objs);
-      msRebuild = (performance.now() - c) / FRAMES;
+      const bbox = (performance.now() - t2) / FRAMES;
+
+      return { arraste, overlay, bbox };
+    };
+
+    let msArraste = Infinity;
+    let msOverlay = Infinity;
+    let msBbox = Infinity;
+    for (let r = 0; r < RODADAS; r++) {
+      const m = medir();
+      // Cada componente pelo seu proprio minimo: uma rodada pode ser atrapalhada
+      // no arraste e limpa no bbox, e aproveitar as duas partes boas e mais
+      // honesto que descartar a rodada inteira.
+      msArraste = Math.min(msArraste, m.arraste);
+      msOverlay = Math.min(msOverlay, m.overlay);
+      msBbox = Math.min(msBbox, m.bbox);
     }
+
+    // Reparticao do custo, para nao otimizar por palpite. Uma passada so: estes
+    // dois nao entram na conta de aprovacao, sao informacao de diagnostico.
+    const b = performance.now();
+    for (let i = 0; i < FRAMES; i++) for (const o of objs) doc.index.update(o);
+    const msIndex = (performance.now() - b) / FRAMES;
+    const c = performance.now();
+    for (let i = 0; i < FRAMES; i++) doc.index.rebuild(objs);
+    const msRebuild = (performance.now() - c) / FRAMES;
+
+    /** `bbox` da maquina de referencia, medido em 09/08/2026 com 8 execucoes. */
+    const BBOX_REF = 3.15;
+    const TETO = 33;
+    const fator = Math.min(3, Math.max(1, msBbox / BBOX_REF));
     const total = msArraste + msOverlay;
+    const normalizado = total / fator;
+
     check(
       `arrastar ${N.toLocaleString('pt-BR')} objetos selecionados fica acima de 30fps`,
-      total < 33,
-      `${total.toFixed(1)} ms/frame (mover ${msArraste.toFixed(1)} + overlay ${msOverlay.toFixed(1)}), ` +
-        `teto 33 ms | reparticao: bbox ${msBbox.toFixed(1)} · indice em lote ${msRebuild.toFixed(1)} ` +
-        `(seria ${msIndex.toFixed(1)} um a um)`,
+      normalizado < TETO,
+      `${normalizado.toFixed(1)} ms/frame na maquina de referencia · ` +
+        `medido ${total.toFixed(1)} (mover ${msArraste.toFixed(1)} + overlay ${msOverlay.toFixed(1)}), ` +
+        `teto ${TETO} ms | menor de ${RODADAS} rodadas · ` +
+        `bbox ${msBbox.toFixed(1)} (ref ${BBOX_REF}) = maquina ${fator.toFixed(2)}x mais lenta · ` +
+        `indice em lote ${msRebuild.toFixed(1)} (seria ${msIndex.toFixed(1)} um a um)`,
     );
   }
 

@@ -10,17 +10,14 @@ itens pequenos, e nenhum bloqueia o uso.
 
 > **Retomar por aqui.** O que falta no projeto:
 >
-> 1. **A verificação de arrastar 10.000 objetos vive no limite.** Teto de 33 ms, faixa normal
->    25,0–26,5 — mas em 14/08 ela reprovou na maioria das execuções, sempre com o `bbox`
->    (matemática pura) em 3,4–4,9 contra a faixa normal de 3,0–3,3. **É a máquina, e o
->    diagnóstico já está escrito neste arquivo** — mas uma verificação que reprova metade das
->    vezes ensina a ignorar reprovações, que é exatamente o que o B15 alerta. A saída
->    desenhada: usar o próprio `bbox` para normalizar o teto, em vez de pedir que uma pessoa
->    interprete. Hoje o número está lá só para ser lido por gente.
-> 2. **B10** — o custo por frame cresce com o zoom. Medido por ele no `F3`, nunca sentido no
+> 1. **B10** — o custo por frame cresce com o zoom. Medido por ele no `F3`, nunca sentido no
 >    uso.
-> 3. **B11** — consolidar as duas pastas de biblioteca; depende de uma decisão dele. As
->    cópias estão estacionadas em `_substituidos-2026-08-08\`, nada perdido.
+> 2. **B11** — consolidar as duas pastas de biblioteca; depende de uma decisão dele. As
+>    cópias estão estacionadas em `_substituidos-2026-08-08\`, nada perdido. **Não é código.**
+>
+> A verificação de arrastar, que reprovava metade das vezes por medir a máquina, foi
+> **corrigida em 14/08** — a variação caiu de 23,5 ms para 1,4 ms, e a correção passou pela
+> prova invertida. O como e o porquê estão em *"A verificação de arrastar"*, mais abaixo.
 >
 > O **B15** (verificação que falhou uma vez e não reproduziu) continua aberto no `BUGS.md`,
 > mas não reapareceu em nenhuma das dezenas de execuções de 13 e 14/08.
@@ -136,25 +133,58 @@ armadilhas que custaram tempo em 12/08/2026:
 2. Um app de subsistema gráfico no Windows só entrega `stdout` se ele estiver
    **redirecionado** — daí `stdio: 'pipe'` e não `'inherit'`.
 
-⚠️ **Duas delas medem a máquina, não o código.** A primeira: "arrastar 10.000 objetos selecionados
-fica acima de 30fps", com teto de 33 ms por frame. Ela reprova com o computador ocupado —
-em 04/08/2026 reprovou com **50–62 ms** simplesmente porque o **CS2 estava aberto**, e a
-`main` sem nenhuma mudança reprovou pior que a branch nova. O sinal de que é a máquina, e
-não uma regressão, está na própria linha do resultado: se o custo de `bbox` (matemática
-pura, que quase nunca muda) subiu junto, é carga externa. Rodar de novo com o jogo
-fechado antes de investigar qualquer coisa.
+### A verificação de arrastar: como ela parou de medir a máquina
 
-**A faixa normal, medida em 09/08/2026 com 8 execuções** (4 em cada commit de um A/B):
-**25,0–26,5 ms**, com `bbox` entre **3,0 e 3,3**. O teto de 33 ms deixa só ~25% de folga,
-e é por isso que ela vira para reprovada com pouca carga externa. Se você vir 36 ou 40 ms
-com `bbox` acima de 3,5, **é a máquina** — no mesmo dia essa verificação reprovou duas
-vezes seguidas e passou nas oito seguintes, sem uma linha de diferença no código.
+**"Arrastar 10.000 objetos selecionados fica acima de 30fps"** foi, por duas semanas, a
+verificação que mais atrapalhou. Ela reprovava com o computador ocupado: em 04/08/2026 deu
+**50–62 ms** porque o **CS2 estava aberto**, e em 14/08 reprovou na maioria das execuções
+com o Discord e o Chrome ligados — sempre sem uma linha de diferença no código.
 
-**E a lição que custou caro:** duas reprovações seguidas parecem sinal. Um A/B de **uma**
-execução contra **uma** não desfaz isso — se as duas estiverem sob carga, ele confirma a
-conclusão errada com ar de rigor. Repetir e comparar faixas é o que separa.
+**A causa não era o teto. Era ela responder DUAS perguntas com um número só:**
 
-A segunda é da Fase 6: **"buscar em 10.000 objetos custa menos que um frame"**, teto de
+| | |
+|---|---|
+| *"o código regrediu?"* | relativa — a única que um teste pode responder numa máquina compartilhada |
+| *"esta máquina dá 30 fps?"* | absoluta — depende de quem mais está aberto no Windows naquele minuto |
+
+Ela afirmava a segunda e era lida como a primeira. **Corrigida em 14/08/2026, com duas
+mudanças de método:**
+
+1. **O menor de três medições, e não uma.** Ruído só sabe somar — uma interrupção do sistema
+   aumenta o tempo, nunca diminui. O menor de várias é a melhor estimativa do custo real, e
+   uma amostra única é a pior.
+2. **O teto acompanha a velocidade da máquina.** O `bbox` é matemática pura e já estava
+   impresso ali como sinal de carga, para uma *pessoa* interpretar — a regra *"se o `bbox`
+   subiu junto, é carga externa"* estava escrita neste arquivo. Agora quem aplica a regra é o
+   teste: ele divide o medido pelo quanto a máquina está mais lenta que a de referência
+   (`bbox` de **3,15**, medido em 09/08/2026 com 8 execuções). O fator só corrige **para
+   cima** — numa máquina mais rápida, apertar o teto faria reprovar por ter melhorado — e
+   para em 3×, senão uma máquina em colapso ganharia aprovação automática.
+
+**O efeito, medido no mesmo dia e na mesma máquina carregada:**
+
+| | Antes | Depois |
+|---|---|---|
+| Faixa observada | 25,7 – 49,2 ms | **26,1 – 27,5 ms** |
+| Variação | 23,5 ms | **1,4 ms** |
+| Reprovações | metade das execuções | nenhuma |
+
+**E ela continua reprovando quando deve** — isso foi provado, não suposto. Com uma piora de
+50% injetada de propósito no arraste, ela deu **FALHA em 38,4 ms**; removida a piora, voltou
+a passar em 26,8. Sem esse passo, eu teria uma verificação que passa e nenhuma garantia de
+que ela ainda serve para alguma coisa.
+
+**A sensibilidade que sobra, dita com todas as letras:** com o normal em ~26,5 e o teto em
+33, ela pega regressões acima de **~25%**. Uma piora de 10% passaria despercebida. É o preço
+de um teto absoluto, e é deliberado: apertá-lo devolveria a instabilidade que acabou de sair.
+
+**A lição que custou caro, e continua valendo para qualquer medição aqui:** duas reprovações
+seguidas parecem sinal. Um A/B de **uma** execução contra **uma** não desfaz isso — se as
+duas estiverem sob carga, ele confirma a conclusão errada com ar de rigor. Repetir e comparar
+faixas é o que separa.
+
+⚠️ **A outra verificação que ainda mede a máquina** é da Fase 6: **"buscar em 10.000 objetos
+custa menos que um frame"**, teto de
 16 ms. Ela é o que sustenta não haver índice invertido, e a linha do resultado traz a
 repartição — em 04/08/2026: **4,0 ms por tecla, dos quais 0,9 ms é varrer tudo**. Se um
 dia ela reprovar, olhe primeiro a varredura pura: se ela continuar perto de 1 ms, o
