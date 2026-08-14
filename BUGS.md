@@ -1244,7 +1244,14 @@ significar 2x, e o resumo fica legível.
 em pixels e a escala que será realmente usada, antes de exportar.
 
 ### B10 — O custo por frame cresce com o zoom
-`a investigar` · `baixo` · 08/08/2026
+`fechado — não é bug` · `baixo` · 08/08/2026, fechado em 14/08/2026
+
+> **Fechado por decisão de produto**, sem medição: [...].
+>
+
+>**A medição que resolveria continua escrita abaixo**, e custa dez minutos se o sintoma
+> voltar a incomodar. A hipótese registrada — rasterização, não travessia de cena — nunca foi
+> confirmada nem derrubada, e é assim que ela fica.
 
 
 **Está separado do B9 de propósito:** ali é um teto redondo (60), aqui é preço que sobe
