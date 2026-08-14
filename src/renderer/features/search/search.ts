@@ -25,12 +25,17 @@ import { plainText } from '../text/spans';
  * Por isso o mapa de indices (que recorta o trecho no texto ORIGINAL) so e
  * montado para os objetos que casaram.
  *
- * O que casa: o texto das caixas e dos post-its, mais o `name` do objeto (campo
- * do modelo desde a Fase 1, sem produtor ainda -- entra aqui para que rotular um
- * objeto ja nasca buscavel).
+ * O que casa: o texto das caixas e dos post-its, o texto LIDO DAS IMAGENS pelo
+ * OCR (Fase 7.5), mais o `name` do objeto (campo do modelo desde a Fase 1, sem
+ * produtor ainda -- entra aqui para que rotular um objeto ja nasca buscavel).
+ *
+ * A imagem entra sem custo novo no caminho quente: o texto dela ja veio lido e
+ * gravado no .wbd, entao aqui ela e mais uma string no mesmo `WeakMap` que as
+ * caixas de texto usam. Procurar em 36 imagens custa o mesmo que procurar em 36
+ * post-its.
  */
 
-export type HitKind = 'text' | 'note' | 'name';
+export type HitKind = 'text' | 'note' | 'name' | 'image';
 
 export interface SearchHit {
   id: ObjectId;
@@ -83,6 +88,12 @@ function matchObject(obj: BoardObject, needle: string): SearchHit | null {
       if (hit) return { id: obj.id, kind: obj.type, ...hit };
     }
   }
+  if (obj.type === 'image' && obj.ocr) {
+    if (foldedOf(obj).includes(needle)) {
+      const hit = findIn(obj.ocr, needle);
+      if (hit) return { id: obj.id, kind: 'image', ...hit };
+    }
+  }
   if (obj.name && foldText(obj.name).includes(needle)) {
     const hit = findIn(obj.name, needle);
     if (hit) return { id: obj.id, kind: 'name', ...hit };
@@ -104,7 +115,12 @@ function foldedOf(obj: BoardObject): string {
   const hit = foldedCache.get(obj);
   if (hit !== undefined) return hit;
 
-  const text = obj.type === 'text' || obj.type === 'note' ? plainText(obj.content) : '';
+  const text =
+    obj.type === 'text' || obj.type === 'note'
+      ? plainText(obj.content)
+      : obj.type === 'image'
+        ? (obj.ocr ?? '')
+        : '';
   const folded = foldText(text);
   foldedCache.set(obj, folded);
   return folded;
