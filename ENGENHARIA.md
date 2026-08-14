@@ -1,0 +1,416 @@
+# Engenharia
+
+**Por que o código é assim, e como conferir que continua de pé.**
+
+O [README](README.md) explica *o que* o app faz e como usá-lo. O [BUGS.md](BUGS.md) registra
+*o que já deu errado* e como foi resolvido. Este arquivo responde a terceira pergunta, a que
+não cabe em nenhum dos dois: **as decisões que o código não consegue explicar sozinho, e as
+medições que as sustentam.**
+
+Ele existe porque quase toda decisão aqui teve uma alternativa plausível que foi descartada
+por medição — e um comentário no código diz *o que* foi escolhido, nunca *o que foi testado e
+falhou*. Sem este registro, a próxima pessoa refaz a investigação e chega à mesma conclusão
+duas semanas depois.
+
+**Leia antes de:**
+
+| Se você vai… | Leia |
+|---|---|
+| mudar qualquer coisa | **Decisões que não estão óbvias no código** — 20 itens, cada um com o porquê |
+| mexer em desempenho | **Como conferir que está tudo de pé** — as faixas normais e o que cada número significa |
+| atualizar o Electron | **A escada do Electron** — 33, 41 e 43 já foram testados, e o resultado surpreende |
+| procurar onde algo mora | **Onde as coisas ficam** |
+
+---
+
+## Como o app foi construído
+
+Em fases, cada uma entregando algo usável de ponta a ponta. **A ordem diverge do que seria
+natural, e isso é a primeira decisão do projeto:** importar e manipular vieram *antes* de
+desenhar, porque o objetivo era migrar resumos existentes do Microsoft Whiteboard — de nada
+adiantaria uma caneta ótima num app que não abrisse o material.
+
+| Fase | O que entrega | Estado |
+|---|---|---|
+| 0 | Setup, janela, instalador `.exe` validado | pronta |
+| 1 | Canvas infinito, modelo, índice espacial, culling, `F3` | pronta |
+| 1.5 | Lobby com miniaturas, salvar `.wbd`, `F1` | pronta |
+| 2 | Importação do Whiteboard, conferida contra o motor de layout | pronta |
+| 3 | Seleção, mover/redimensionar/girar, duplicar, excluir, camadas, undo/redo, copiar/colar | pronta |
+| 4 | Caneta, marca-texto, lápis, borracha, cores e espessura | pronta |
+| 4.5 | Formas, encaixe com guias, grade magnética, réguas | pronta |
+| 5 | Texto, post-its e alertas | pronta |
+| 5.5 | Borracha progressiva (apagar por peça) | pronta |
+| 6 | Busca `Ctrl+F` | pronta |
+| 7 | Imagens: colar, arrastar e recortar | pronta |
+| 8 | Exportar PNG/SVG/PDF e autosave | pronta |
+| 9 | Polimento de UI, temas e build final | **pronta** — mesclada em 14/08/2026 |
+| 7.5 | OCR: o `Ctrl+F` acha texto dentro das imagens | **pronta** — 14/08/2026 |
+| — | Busca cruzando **toda a biblioteca**, no menu principal | **pronta** — 14/08/2026, fora do plano original |
+
+**A Fase 5.5 não estava no plano** — ela nasceu de usar o app. A borracha apagava o traço
+inteiro, e isso não servia para corrigir um resumo; a fase **reverteu uma decisão da Fase 4**.
+O mesmo aconteceu com a busca da biblioteca, que só fez sentido depois que o OCR indexou o
+texto das imagens.
+
+É um padrão que vale mais que qualquer roadmap: **as duas funcionalidades mais úteis deste
+app não foram planejadas.** Apareceram porque alguém usou o que estava pronto e disse o que
+incomodava.
+
+---
+
+## Como conferir que está tudo de pé
+
+Sempre por terminal — nunca por captura de tela cheia (ver o *porquê* no README).
+
+```
+npm run typecheck     # tsc nos dois projetos, strict
+npm run selftest      # ~125 verificações, deve terminar com "tudo passou"
+npm run check:colors  # contraste das cores nos dois temas
+npm run check:dist    # o MESMO auto-teste, dentro do .exe empacotado
+```
+
+**O `check:dist` é novo e vale explicar por que existe.** O `selftest` mede o app servido
+pelo Vite, e nada nele passa pelo empacotamento — asar, caminhos absolutos diferentes,
+`isPackaged` verdadeiro, sem servidor de dev. Oito fases entraram entre a validação do
+instalador na Fase 0 e a Fase 9, e nenhuma foi conferida do lado de lá.
+
+Ele precisa de `npm run dist:dir` antes (é o executável que ele roda), e resolve duas
+armadilhas que custaram tempo em 12/08/2026:
+
+
+### A verificação de arrastar: como ela parou de medir a máquina
+
+**"Arrastar 10.000 objetos selecionados fica acima de 30fps"** foi, por duas semanas, a
+verificação que mais atrapalhou. Ela reprovava com o computador ocupado: em 04/08/2026 deu
+**50–62 ms** porque o **CS2 estava aberto**, e em 14/08 reprovou na maioria das execuções
+com o Discord e o Chrome ligados — sempre sem uma linha de diferença no código.
+
+**A causa não era o teto. Era ela responder DUAS perguntas com um número só:**
+
+| | |
+|---|---|
+| *"o código regrediu?"* | relativa — a única que um teste pode responder numa máquina compartilhada |
+| [...] | absoluta — depende de quem mais está aberto no Windows naquele minuto |
+
+Ela afirmava a segunda e era lida como a primeira. **Corrigida em 14/08/2026, com duas
+mudanças de método:**
+
+1. **O menor de três medições, e não uma.** Ruído só sabe somar — uma interrupção do sistema
+   aumenta o tempo, nunca diminui. O menor de várias é a melhor estimativa do custo real, e
+   uma amostra única é a pior.
+2. **O teto acompanha a velocidade da máquina.** O `bbox` é matemática pura e já estava
+   impresso ali como sinal de carga, para uma *pessoa* interpretar — a regra *"se o `bbox`
+   subiu junto, é carga externa"* estava escrita neste arquivo. Agora quem aplica a regra é o
+   teste: ele divide o medido pelo quanto a máquina está mais lenta que a de referência
+   (`bbox` de **3,15**, medido em 09/08/2026 com 8 execuções). O fator só corrige **para
+   cima** — numa máquina mais rápida, apertar o teto faria reprovar por ter melhorado — e
+   para em 3×, senão uma máquina em colapso ganharia aprovação automática.
+
+**O efeito, medido no mesmo dia e na mesma máquina carregada:**
+
+| | Antes | Depois |
+|---|---|---|
+| Faixa observada | 25,7 – 49,2 ms | **26,1 – 27,5 ms** |
+| Variação | 23,5 ms | **1,4 ms** |
+| Reprovações | metade das execuções | nenhuma |
+
+**E ela continua reprovando quando deve** — isso foi provado, não suposto. Com uma piora de
+50% injetada de propósito no arraste, ela deu **FALHA em 38,4 ms**; removida a piora, voltou
+a passar em 26,8. Sem esse passo, eu teria uma verificação que passa e nenhuma garantia de
+que ela ainda serve para alguma coisa.
+
+**A sensibilidade que sobra, dita com todas as letras:** com o normal em ~26,5 e o teto em
+33, ela pega regressões acima de **~25%**. Uma piora de 10% passaria despercebida. É o preço
+de um teto absoluto, e é deliberado: apertá-lo devolveria a instabilidade que acabou de sair.
+
+**A lição que custou caro, e continua valendo para qualquer medição aqui:** duas reprovações
+seguidas parecem sinal. Um A/B de **uma** execução contra **uma** não desfaz isso — se as
+duas estiverem sob carga, ele confirma a conclusão errada com ar de rigor. Repetir e comparar
+faixas é o que separa.
+
+⚠️ **A outra verificação que ainda mede a máquina** é da Fase 6: *[...]*, teto de
+16 ms. Ela é o que sustenta não haver índice invertido, e a linha do resultado traz a
+repartição — em 04/08/2026: **4,0 ms por tecla, dos quais 0,9 ms é varrer tudo**. Se um
+dia ela reprovar, olhe primeiro a varredura pura: se ela continuar perto de 1 ms, o
+problema não é procurar, é montar os trechos, e índice nenhum resolve isso.
+
+E, ao tocar em `Document`, `SpatialIndex`, no importador ou no **layout de texto**,
+conferir a geometria contra o oráculo:
+
+```
+$env:QB_IMPORT = "C:\caminho\para\um-export-do-whiteboard.zip"
+npm run dev
+```
+
+Deve sair **1.063 objetos**. Os números de referência depois da Fase 5:
+
+| Tipo | n | pos_méd | pos_máx | tam_méd | tam_máx |
+|---|---|---|---|---|---|
+| PlainText | 642 | 0,3 | 80,1 | 84,9 | 734,5 |
+| InkGroup | 345 | 0,0 | 0,2 | 0,0 | 0,3 |
+| AzureImage | 36 | 0,0 | 0,1 | 0,0 | 0,0 |
+| Note | 5 | 0,0 | 0,1 | 3,8 | 4,6 |
+
+Tinta, imagem e post-it fecham em **≤ 0,2px de posição** — qualquer número maior ali é
+regressão. **O texto é o caso com história** (leia antes de suspeitar de bug):
+
+- O erro de *tamanho* caiu de 136,2 para 84,9 de média (máx. de 3.295 para 734) porque a
+  caixa deixou de guardar o teto de quebra e passa a guardar o que o texto ocupou.
+- O que sobrou é **limite de medição, não decisão**: o navegador monta a caixa de linha
+  com a métrica da fonte que desenhou cada glifo, inclusive a substituta de um emoji
+  (medido: 62px de caixa para fonte de 34px), e essa métrica não aparece no `measureText`
+  do canvas.
+- `pos_máx` de 80px vem dos **dois textos girados a 45°**: num objeto girado o AABB
+  depende dos dois lados da caixa, então uma caixa mais estreita move os cantos. A origem
+  do objeto continua exata.
+
+Para conferir os dois temas, `QB_THEME=light` ou `QB_THEME=dark` manda no tema da execução
+**sem gravar a preferência**. Ele soma-se aos outros modos em vez de substituí-los
+(`QB_THEME=light QB_SHOT=... npm run selftest` é o que se usa), e existe porque antes disto
+[...] dependia do que estava no `localStorage` da máquina — ou seja, não
+era repetível.
+
+Para ver renderização, `QB_SHOT=<arquivo.png> npm run selftest` fotografa **só a janela
+do app** e deixa na tela a cena de conferência: seleção com alças, um traço de cada
+variante, duas formas, as réguas ligadas, um objeto encostado noutro pelo encaixe, uma
+caixa de texto com negrito, sublinhado e marcadores, um post-it com alerta, um buraco de
+borracha no meio de um traço, a busca aberta com o achado destacado e uma imagem com o
+recorte aberto (sombra, terços e alças) — tudo produzido pelas ferramentas de verdade. Atenção: com `QB_SHOT` a janela **não fecha
+sozinha** — o processo fica aberto até você encerrá-lo.
+
+**A foto espera o marcador de fim, e não um cronômetro** (mudou em 13/08/2026). Quanto o
+auto-teste demora depende da máquina; com o cronômetro de 9 s a foto caía no meio da
+execução — numa tentativa saiu a cena de carga de 4.000 objetos a 2% de zoom, que não mostra
+nada do que se queria conferir. Acertar era sorte. O cronômetro (`QB_SHOT_DELAY`) continua
+valendo onde não há fim que se possa ouvir: `npm run dev` puro e `QB_BOOT=hold`.
+
+**A guia de encaixe não sai na foto**, e não é bug: ela existe só enquanto o botão está
+pressionado, e um gesto deixado em aberto é desfeito pelo guarda de `blur` do
+`ToolManager` assim que a janela perde o foco (comportamento certo — gesto pendurado não
+pode sobreviver). Quem verifica a guia é a checagem numérica sobre `snapRect`; para vê-la
+com os olhos, arraste um objeto perto de outro no app.
+
+E, ao mexer em exportação, conferir os três formatos por terminal — o diálogo de salvar e
+o `printToPDF` não passam pelo auto-teste:
+
+```
+$env:QB_EXPORT = "$env:TEMP\qb-export"; npm run dev
+```
+
+
+**Rodar sempre por `npm run dev`.** O instalador (`npm run dist`) só quando você pedir,
+com tudo estável.
+
+---
+
+## O Electron subiu até o 43, e VOLTOU para o 33 — a escada inteira está medida
+
+**O projeto está no `^33.2.1` (33.4.11), de propósito e por decisão de produto.** Quem ler
+"Electron de 2024" e quiser subir: já foi feito, em 14/08/2026, e o resultado está aqui.
+Não refaça a subida esperando outra resposta — refaça só se tiver um motivo *novo*.
+
+**O item existia como conserto de raiz do B8** (o piscar de tela), sob a tese de que o app
+era o único Chromium de 2024 numa máquina de 2026. A tese foi testada em três degraus:
+
+| Electron | Chromium | O B8 com `QB_GPU=normal` |
+|---|---|---|
+| 33.4.11 (o de origem) | ~130, fim de 2024 | pisca |
+| 41.0.0 | 146.0.7680.65, 2026 | **pisca igual** |
+| 43.4.0 | o mais novo publicado | **pisca igual** |
+
+**A idade do Chromium não é a causa, e isso agora é fato medido e não suspeita.** As duas
+flags de repintura ficam. O que sobrou de suspeito está no [BUGS.md](BUGS.md), no B8 — e o
+`QB_GPU=angle` (ANGLE por OpenGL, que troca Direct3D) **nunca foi testado**, apesar de estar
+na escada desde 06/08.
+
+**O que a subida mudou de verdade, medido com 4 execuções de cada lado:**
+
+| | Electron 33 | Electron 41 |
+|---|---|---|
+| custo de desenho por tipo (traço, forma, post-it, texto) | faixas **sobrepostas** | faixas **sobrepostas** |
+| "arrastar 10.000 objetos", com Discord e Chrome abertos | **reprovou 8 de 9** (31–49 ms) | **passou 5 de 5** (25,3–28,8 ms) |
+| `bbox` (matemática pura) nas mesmas execuções | 4,0–9,3 | **3,2–3,5** |
+
+**A primeira linha quase virou notícia errada.** A primeira execução no 41 deu 25–30% a
+menos em tudo, e escrever isso teria sido o mesmo erro que este projeto já cometeu duas
+vezes: repetindo, as faixas se sobrepõem e **não há ganho de desenho demonstrável**.
+
+**A segunda e a terceira são o achado real**, e valem juntas: o `bbox` é matemática pura em
+JavaScript — não passa por GPU, nem por composição, nem por vsync. Ele voltar para a faixa
+normal **sob a mesma carga de fundo** que fazia o 33 disparar diz que o V8 e o agendador do
+Chromium novo lidam melhor com máquina ocupada, e não que o app desenhe mais rápido. **É o
+que se perde ao ficar no 33**, junto com as correções de segurança (o `npm audit` sai de 4
+alertas no 43 para 18 no 33).
+
+### Duas armadilhas que a subida encontrou, e que valem para a próxima tentativa
+
+1. **Electron 42+ exige Node ≥ 22.12.0.** Com Node 20 o `npm install` morre em
+   `ERR_REQUIRE_ESM`: o script de instalação faz `require()` de um `@electron/get` que virou
+   só ESM. Ele subiu para o **Node 22.12.0** em 14/08 por causa disto, e o `engines` do
+   `package.json` continua dizendo `>=20.18.0` — o que hoje é **frouxo, e não errado**,
+   porque o Electron 33 instala nos dois.
+2. **A faixa `^41` não é instalável em Node 20**, só a versão exata `41.0.0`: qualquer
+   patch acima (até o 41.10.5) já traz o `@electron/get` novo. Se um dia voltar ao 41, ou
+   trave a versão exata, ou esteja em Node 22+.
+
+E a boa notícia da volta: **o Electron 33 instala sem problema no Node 22**, binário e tudo.
+Subir o Node não fecha a porta de trás.
+
+---
+
+## A Fase 7.5, e o que ela virou
+
+**Feita em 14/08/2026, e o motor não custou nada.** As três perguntas abaixo foram
+respondidas por medição, e as respostas mudaram o tamanho da fase. Ficam registradas porque
+explicam por que o código é do jeito que é.
+
+| Pergunta | Resposta |
+|---|---|
+| De onde vem o motor | **Do próprio Windows** (`Windows.Media.Ocr`), com pt-BR já instalado. **0 MB no instalador**, contra dezenas de MB do Tesseract |
+| Como o Electron o alcança | **PowerShell em lote**, não módulo nativo — o projeto não tem nenhuma dependência nativa e não ter é parte de por que ele compila em segundos |
+| O que o texto vira | Campo `ocr` no próprio objeto de imagem, gravado no `.wbd`. Roda uma vez por imagem na vida do quadro |
+| Quando roda | Em segundo plano, depois de o quadro estar na tela |
+
+**Medido nas 36 imagens do resumo real:** 1,65 s no total, 46 ms de média, **30 imagens com
+texto, 3.456 palavras**, zero erros. Da segunda abertura em diante, zero.
+
+**E ela puxou uma funcionalidade que não estava no plano:** com o texto das imagens
+indexado, a pergunta deixou de ser [...] e virou [...]. Daí a **busca da biblioteca**, no menu principal — 68 ms para
+ler os três quadros, com um motor de busca só compartilhado com o `Ctrl+F` (`findIn`).
+
+<details>
+<summary>O plano original da fase, antes de as medições responderem</summary>
+
+**Transcrever imagem em texto.** É a última funcionalidade que falta, e a única fase que
+nunca começou. Foi adiada duas vezes de propósito: o objetivo do projeto é migrar os resumos
+do Whiteboard, e mover/desenhar/exportar vinham antes de ler.
+
+**O que ela precisa responder antes de qualquer linha de código, e nenhuma tem resposta
+hoje:**
+
+
+**O que já está pronto e a fase pode usar:** `AssetStore` guarda os bitmaps, `PatchObjects` é
+o comando genérico de conteúdo (foi ele que absorveu o recorte na Fase 7), a busca já varre
+texto sem índice invertido, e o `selftest` sabe inserir imagem por arraste.
+
+**E o teste de aceitação já existe:** as 36 imagens do *quadro de referência*. Se o `Ctrl+F`
+achar uma palavra que só existe dentro de uma delas, a fase entregou o que prometia.
+
+</details>
+
+---
+
+## Decisões que não estão óbvias no código
+
+0. **NADA DE NUVEM. Decidido em 14/08/2026, com a alternativa toda avaliada.** foi perguntado
+   se dava para ligar uma pasta do Google Drive ao app, e a resposta foi levantada inteira
+   antes de decidir. **Não é para reabrir isto**, a menos que ele peça.
+
+   A integração por API do Drive é um **subsistema, não uma funcionalidade**: projeto no
+   Google Cloud, OAuth de aplicativo instalado, renovação de token (que expira a cada 7 dias
+   sem passar pela verificação do Google), e — a parte cara — semântica de sincronização:
+   mesmo quadro alterado em dois lugares, offline, queda no meio da gravação. Maior que
+   qualquer fase que este projeto teve, e contra a premissa escrita no `wbdFile.ts`.
+
+   O **caminho barato existia** e também foi recusado: o Google Drive para computador monta
+   o Drive como pasta, e uma junção do Windows (`mklink /J`) apontaria a biblioteca para lá
+   sem uma linha de código — e com segurança, porque **a gravação já é atômica** (`.tmp` +
+   rename, `wbdFile.ts`), então o cliente de sincronização nunca vê um `.wbd` pela metade.
+
+   **Dois motivos concretos derrubaram até esse:**
+   - **Sincronizar não é backup.** O Drive replica corrupção e apagamento com a mesma
+     fidelidade. As cópias manuais de teste são backup de verdade; o Drive seria só uma segunda
+     cópia do estado atual.
+   - **O autosave regrava o arquivo inteiro** (3 s parado, 30 s no máximo). O *quadro
+     de referência* tem 4,7 MB: uma tarde de trabalho seriam dezenas de re-envios completos, e
+     palavras do teste — [...].
+
+   **O que fica no lugar:** o app continua **local e offline**, e mover quadro é assunto de
+   importar/exportar arquivo.
+
+
+
+<details>
+   <summary>A decisão anterior, que esta substitui</summary>
+
+   **A pasta de quadros continua `C:\Resumos-quadrobranco`** mesmo com o app renomeado
+   de QuadroBranco para Creation Board. Trocar o nome faria os resumos já salvos sumirem
+   do lobby. É deliberado.
+
+   </details>
+
+
+19c. **Medir desenho pelo rAF mente, e há um caminho que não mente.**
+    `App.renderNowForMeasurement()` desenha a camada estática na hora e devolve o custo. O
+    rAF erra em dois casos comuns: **janela encoberta** (o Chromium para de entregar frames,
+    e `backgroundThrottling: false` não cobre isso — em 12/08/2026 o `QB_BENCH` devolveu
+    `0.0 fps` em duas das três fases) e **vsync** (esperar o frame soma a espera do monitor
+    ao trabalho). Toda verificação de custo de desenho passa por aqui.
+
+19d. **O cache de rasterização vale para texto e post-it, e NÃO para traço e forma.**
+    Medido, não deduzido: colar mil bitmaps custa 6,3–7,0 ms e desenhar mil traços custa
+    6,4–6,7. O custo que domina é **fixo por objeto**, e o bitmap paga esse custo igual. O
+    ganho em texto vem de desenhar texto do zero custar ~200 ms por mil — fator 30, não de
+    colar ser barato. O cache é um `WeakMap` chaveado pelo próprio objeto: como toda mutação
+    o substitui, a invalidação sai de graça, sem string de chave e sem LRU para manter.
+
+20b. **A tela de abertura mora no `index.html`, e não num módulo.** Ela precisa estar pintada
+    no primeiro frame, antes de qualquer CSS ou JavaScript. Não adia nada — sai quando a
+    biblioteca está listada (642 ms medidos), sem tempo mínimo. A marca é a logo de verdade,
+    embutida por `npm run boot-logo`; o fundo é `#060912`, a cor **exata** do fundo do
+    arquivo, que é opaco. Os modos de verificação a removem na hora, senão ela intercepta os
+    eventos do auto-teste. `QB_BOOT=hold` a segura para o `QB_SHOT` fotografá-la.
+
+19. **Exportar reaproveita os painters no PNG e NÃO no SVG.** No PNG é o mesmo
+    `paintObject` da tela — dois renderizadores divergiriam na primeira funcionalidade
+    nova. No SVG isso é impossível (os painters falam canvas), então o que se reaproveita
+    é o que decide aparência: layout de texto, adaptador de cor, constantes do post-it.
+    Duas perdas assumidas: pressão do lápis vira espessura média, e texto sai como
+    `<text>` (dependente da fonte de quem abrir, mas selecionável).
+20. **O autosave só grava quadro que já tem caminho, e nunca com caixa de texto aberta.**
+    A regra mora em `features/storage/autosave.ts`, separada de quem grava, porque um
+    teste que gravasse de verdade encheria a pasta de quadros a cada execução.
+21. **Funcionalidade nova entra com cobertura no `selftest`.** Ele despacha eventos de
+    ponteiro e teclado no app real, então pega regressão de fiação, não só de matemática.
+    Foi ele que achou, na Fase 5, um `commit()` que lia `#isNew` **depois** de fechar o
+    editor — toda caixa nova virava "edição" de um objeto inexistente. Armadilha ao mexer
+    nele: se deixar o quadro marcado como sujo, o guarda de `beforeunload` recusa o
+    fechamento e a execução pendura — por isso existe `App.markClean()`, e por isso cada
+    bloco roda dentro de um guarda que transforma exceção em FALHA.
+
+---
+
+## Onde as coisas ficam
+
+```
+src/renderer/
+├─ core/        Document, SpatialIndex, Camera, Scheduler, History, Selection
+├─ commands/    um comando por mutação — é a base do undo/redo
+├─ tools/       Tool, ToolManager, SelectTool, DrawTool, EraserTool, ShapeTool,
+│               TextTool, NoteTool, CropTool (modo, não fica na barra), DrawStyle
+├─ features/
+│  ├─ selection/  hitTest, frame, transformOps, actions, clipboard
+│  ├─ snapping/   snap (guias de alinhamento + grade)
+│  ├─ search/     busca por texto, sem índice invertido (ver a medição)
+│  ├─ export/     exportBoard (PNG, reusa os painters) e exportSvg (não reusa)
+│  ├─ text/       TextEditor (contentEditable), spans (DOM ↔ RichSpan)
+│  ├─ import/     leitor do export do Whiteboard
+│  ├─ images/     AssetStore, insert (colar e arrastar arquivo)
+│  └─ storage/    boardIO, autosave (a regra, separada de quem grava)
+├─ render/      Renderer (estática + overlay), painters (+ erase: máscara da borracha),
+│               text/layout, SelectionOverlay, SnapGuides, Rulers, PinnedNotes,
+│               SearchHighlight, CropOverlay
+├─ ui/          ToolBar, SearchBar, Lobby, ViewportBar, ContextMenu, ShortcutsModal,
+│               DebugPanel, LayersPanel (M8)
+└─ dev/         selftest, layoutOracle, importCheck, exportCheck, stress
+                ← ferramentas de medição
+```
+
+**Atalhos são registro único:** `src/renderer/shortcuts.ts` alimenta ao mesmo tempo a
+tela de ajuda (`F1`) e o despacho de teclas. Se o atalho aparece na ajuda, ele funciona.
+Adicionar atalho é adicionar linha lá, nunca escrever o texto da ajuda à mão.
+
+**O `Scheduler` tem dois níveis de sujeira:** `invalidate()` redesenha conteúdo +
+overlay; `invalidateOverlay()` só o de cima. Gesto em andamento usa o segundo — é o que
+mantém desenhar barato num quadro cheio.

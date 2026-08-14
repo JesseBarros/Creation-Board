@@ -657,8 +657,8 @@ precisa significar destruir*.
 
 > **Corrigido em 08/08/2026.** Esta seção chegou à conclusão errada, e o motivo vale mais
 > que a conclusão: eu comparei com **uma** pasta e concluí que a tela mentia. O app estava
-> lendo **outra**. Os dois cards eram dois arquivos de verdade, e estão em
-> `C:\Users\<usuario>\Resumos-quadrobranco` — com exatamente as duas datas da captura:
+> lendo **outra**. Os dois cards eram dois arquivos de verdade, e estavam na pasta
+> alternativa (`%USERPROFILE%`) — com exatamente as duas datas da captura:
 > `Quadro B (2).wbd` criado em **05/08 01:38** e `Quadro B.wbd` criado em **30/07 21:48**,
 > os dois com **59 objetos**. Ver o **B11**.
 >
@@ -904,7 +904,7 @@ meta em 144, o medidor está dizendo "ótimo" justamente no número que incomoda
 >    conta própria.
 >
 > **Verificação no `selftest`:** a pasta é pedida **quatro vezes ao mesmo tempo** e as quatro
-> respostas têm de ser idênticas e terminar em `Resumos-quadrobranco`. Uma chamada de cada vez
+> respostas têm de ser idênticas e terminar no nome da pasta de quadros. Uma chamada de cada vez
 > nunca teria pego isto — que é exatamente por que ninguém pegou entre 30/07 e 08/08.
 >
 > **O que ficou sem resposta, e vale dizer:** por que o processo vivo desde as 14:41 gravou
@@ -920,16 +920,21 @@ meta em 144, o medidor está dizendo "ótimo" justamente no número que incomoda
 > Duas delas têm geometria idêntica; a terceira difere em **0,5px de altura média de texto**,
 > que é o ruído de medição de fonte já documentado no `RETOMAR`, e não uma versão melhor.
 >
-> As duas cópias da pasta alternativa foram **estacionadas** em
-> `C:\Resumos-quadrobranco\_substituidos-2026-08-08\`, e não apagadas: 0,29 MB cada não
-> justificam uma decisão irreversível. Elas não aparecem no lobby porque `listBoards()` só
-> lista arquivos, nunca subpastas.
+> As duas cópias da pasta alternativa foram **estacionadas** numa subpasta
+> `_substituidos-2026-08-08\`, e não apagadas: 0,29 MB cada não justificam uma decisão
+> irreversível. Elas não apareciam no lobby porque `listBoards()` só lista arquivos, nunca
+> subpastas.
+>
+> **Fechado por completo em 14/08/2026.** Com a biblioteca conferida e nada faltando, as duas
+> cópias estacionadas foram apagadas e a pasta antiga saiu do disco. O item deixa de ter
+> qualquer ponta solta: existe **uma** pasta de quadros, e o auto-teste verifica isso pedindo
+> o caminho quatro vezes ao mesmo tempo e exigindo quatro respostas idênticas.
 
 
 | Pasta | Conteúdo | Última escrita |
 |---|---|---|
-| `C:\Resumos-quadrobranco` (a documentada) | Continuação (411 obj), Quadro B (59), quadro de referência (1.063), teste (0) | **08/08 14:44** |
-| `C:\Users\<usuario>\Resumos-quadrobranco` (o *fallback*) | Quadro B (59), Quadro B **(2)** (59) | **08/08 15:29** |
+| A pasta documentada, na raiz do disco | Continuação (411 obj), Quadro B (59), quadro de referência (1.063), teste (0) | **08/08 14:44** |
+| A alternativa, em `%USERPROFILE%` (o *fallback*) | Quadro B (59), Quadro B **(2)** (59) | **08/08 15:29** |
 
 **Por que é `crítico` pela régua deste arquivo:** não corrompe e não trava, mas **some com
 trabalho da vista**. Um quadro salvo numa das pastas não aparece no lobby da sessão
@@ -941,9 +946,9 @@ cópias de Quadro B já **divergiram**: uma foi atualizada em 07/08 23:04, a out
 daquele dia: 05/08 01:38 e 30/07 21:48 são os `createdAt` dos dois arquivos do *fallback*.
 Não eram cards pintados duas vezes. Eram dois arquivos.
 
-**Onde a decisão é tomada** (`src/main/storage/wbdFile.ts:61-101`): `ensureBoardsDir()`
-tenta `C:\Resumos-quadrobranco`; se a escrita de prova falhar, cai **calado** para
-`~\Resumos-quadrobranco`. Um `catch {}` vazio decide onde mora o trabalho do usuário, e
+**Onde a decisão é tomada** (`src/main/storage/wbdFile.ts`): `ensureBoardsDir()` tenta a
+pasta na raiz do disco; se a escrita de prova falhar, cai **calado** para a mesma pasta
+dentro de `%USERPROFILE%`. Um `catch {}` vazio decide onde mora o trabalho do usuário, e
 nada é registrado — nem no terminal, nem na interface.
 
 **O que já foi eliminado por medição, em 08/08:**
