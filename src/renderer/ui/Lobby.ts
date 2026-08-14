@@ -2,6 +2,8 @@ import type { BoardSummary } from '@shared/wbd';
 import { formatBytes, formatDate } from '../features/storage/boardIO';
 import { confirmDialog, toast } from './dialogs';
 import { icon, type IconName } from './icons';
+import { LibrarySearch } from './LibrarySearch';
+import { invalidateLibraryIndex } from '../features/search/libraryQuery';
 
 export interface LobbyActions {
   newBoard(): void;
@@ -10,6 +12,8 @@ export interface LobbyActions {
   showShortcuts(): void;
   toggleTheme(): void;
   importWhiteboard(): void;
+  /** Abre o quadro do caminho e leva a camera ate o objeto (busca da biblioteca). */
+  openBoardAt(path: string, objectId: string): void;
 }
 
 /**
@@ -26,6 +30,7 @@ export class Lobby {
   #empty: HTMLElement;
   #folderLabel: HTMLElement;
   #themeBtn!: HTMLButtonElement;
+  #search: LibrarySearch;
 
   constructor(private readonly actions: LobbyActions) {
     this.el = document.createElement('div');
@@ -86,6 +91,16 @@ export class Lobby {
     tools.append(helpBtn, this.#themeBtn, importBtn, newBtn);
     header.append(titleBox, tools);
 
+    // A busca da biblioteca fica ABAIXO do cabecalho, em linha propria, e nao
+    // entre os botoes: ela e a acao mais larga desta tela e a unica que precisa
+    // de espaco para respirar. Espremida na fila de botoes, ela pareceria mais
+    // um controle -- e ela nao e um controle, e a porta de entrada de quem sabe
+    // o que procura mas nao em qual quadro.
+    this.#search = new LibrarySearch({
+      openAt: (path, id) => this.actions.openBoardAt(path, id),
+    });
+    this.#search.el.addEventListener('qb-libsearch-change', () => this.#syncSearchState());
+
     // ---- grade de cards
     this.#grid = document.createElement('div');
     this.#grid.className = 'qb-lobby__grid';
@@ -112,7 +127,26 @@ export class Lobby {
     emptyActions.append(importCta, demoBtn);
     this.#empty.append(emptyTitle, emptyHint, emptyActions);
 
-    this.el.append(header, this.#empty, this.#grid);
+    this.el.append(header, this.#search.el, this.#empty, this.#grid);
+  }
+
+  /**
+   * Buscando, a grade de cards sai da frente.
+   *
+   * Deixar as duas na tela faria a pessoa rolar por cima de uma lista de quadros
+   * que nao tem relacao com o que ela procurou -- e os cards sao altos, entao os
+   * resultados comecariam abaixo da dobra.
+   */
+  #syncSearchState(): void {
+    const buscando = this.#search.active;
+    this.#grid.hidden = buscando;
+    if (buscando) this.#empty.hidden = true;
+    else this.#empty.hidden = this.#grid.childElementCount > 0;
+  }
+
+  /** Foco na busca da biblioteca. O `Ctrl+F` do lobby chama aqui. */
+  focusSearch(): void {
+    this.#search.focus();
   }
 
   setFolder(path: string): void {
@@ -200,6 +234,9 @@ export class Lobby {
       if (!ok) return;
       try {
         await window.quadro.board.remove(summary.path);
+        // O quadro sumiu do disco; a busca da biblioteca nao pode continuar
+        // oferecendo resultados que abririam um arquivo inexistente.
+        invalidateLibraryIndex();
         toast(`"${summary.name}" excluido.`);
         await this.refresh();
       } catch (err) {

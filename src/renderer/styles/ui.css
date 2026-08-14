@@ -151,6 +151,154 @@
   gap: 18px;
 }
 
+/* ============================================ busca em todos os quadros */
+
+/*
+  Ela ocupa a largura toda e fica sozinha na linha, abaixo do cabecalho.
+
+  Nao entrou na fila de botoes de proposito: ali ela viraria mais um controle
+  entre outros quatro, e ela nao e um controle -- e a porta de entrada de quem
+  sabe o que procura e nao em qual quadro. Largura cheia e o que diz isso sem
+  precisar de rotulo.
+*/
+.qb-libsearch {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.qb-libsearch__field {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 13px;
+  height: 40px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  color: var(--fg-muted);
+  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+.qb-libsearch__field:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.qb-libsearch__input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--fg);
+  font: inherit;
+  font-size: 14px;
+}
+
+/* O "x" nativo do type=search tem desenho proprio e destoa da caixa. */
+.qb-libsearch__input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.qb-libsearch__status {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--fg-muted);
+}
+
+.qb-libsearch__results {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.qb-libsearch__group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/*
+  O nome do quadro e a contagem: e por eles que se escolhe por onde entrar, que
+  e a pergunta desta busca (a de dentro do quadro responde outra).
+*/
+.qb-libsearch__board {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  margin: 0 0 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.qb-libsearch__count {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-muted);
+}
+
+.qb-libsearch__hit {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 10px;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  color: var(--fg-muted);
+  font-size: 13px;
+  text-align: left;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.qb-libsearch__hit:hover {
+  background: var(--panel-2);
+  color: var(--fg);
+}
+
+.qb-libsearch__hit:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+/* A marca do tipo em largura fixa: sem isso os trechos comecam desalinhados. */
+.qb-libsearch__mark {
+  flex: none;
+  width: 15px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-muted);
+  text-align: center;
+}
+
+.qb-libsearch__snippet {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.5;
+}
+
+.qb-libsearch__snippet mark {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  color: var(--fg);
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
+.qb-libsearch__more {
+  margin: 4px 0 0 35px;
+  font-size: 12px;
+  color: var(--fg-muted);
+  font-style: italic;
+}
+
 .qb-lobby__empty {
   padding: 48px 0;
   text-align: center;

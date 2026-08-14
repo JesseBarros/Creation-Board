@@ -17,7 +17,7 @@ import { PatchObjects, RestyleNotes, type NoteStyle } from './commands';
 import { snapshotPatch, type ObjectPatch } from './commands/patch';
 import type { Rect } from '@shared/geometry/rect';
 import { contentHeight, styleOf } from './render/text/layout';
-import type { TextObject } from '@shared/model/types';
+import type { ObjectId, TextObject } from '@shared/model/types';
 import { hitTest } from './features/selection/hitTest';
 import { BoardClipboard } from './features/selection/clipboard';
 import {
@@ -30,6 +30,7 @@ import {
 import { DebugPanel } from './ui/DebugPanel';
 import { SearchBar } from './ui/SearchBar';
 import { searchBoard, type SearchHit } from './features/search/search';
+import { invalidateLibraryIndex } from './features/search/libraryQuery';
 import { paintSearchHighlight } from './render/SearchHighlight';
 import { ToolBar } from './ui/ToolBar';
 import { ViewportBar } from './ui/ViewportBar';
@@ -277,6 +278,7 @@ export class App {
       showShortcuts: () => this.#help.toggle(),
       toggleTheme: () => this.toggleTheme(),
       importWhiteboard: () => void this.#pickAndImport(),
+      openBoardAt: (path, id) => void this.openBoardAt(path, id),
     });
 
     this.#help = new ShortcutsModal();
@@ -552,6 +554,58 @@ export class App {
       });
   }
 
+  /**
+   * Abre um quadro pelo caminho e leva a camera ate um objeto.
+   *
+   * E o clique num resultado da busca da biblioteca. Se o quadro ja e o que esta
+   * aberto, nao recarrega -- so navega: reabrir descartaria alteracoes ainda nao
+   * salvas e piscaria a tela por nada.
+   */
+  async openBoardAt(path: string, objectId: string): Promise<void> {
+    if (this.#view === 'board' && this.#session.path === path) {
+      this.focusObject(objectId);
+      return;
+    }
+    try {
+      const result = await window.quadro.board.load(path);
+      await this.assets.load(result.assets, result.document.assets);
+      applyBoard(this.doc, this.camera, result.document);
+      this.#resetEditingState();
+      this.#session = { path: result.path, name: result.name, dirty: false };
+      this.#enterBoard();
+      this.#bar.setZoom(this.camera.zoom);
+      this.focusObject(objectId);
+      this.readImagesInBackground();
+    } catch (err) {
+      toast(`Nao foi possivel abrir o quadro: ${String(err)}`, 'error');
+    }
+  }
+
+  /**
+   * Enquadra um objeto e o seleciona.
+   *
+   * O MESMO caminho que o `Ctrl+F` de dentro do quadro usa, e de proposito:
+   * chegar num resultado tem de parecer igual, venha ele da busca daqui ou da
+   * busca da biblioteca.
+   */
+  focusObject(id: ObjectId): void {
+    const obj = this.doc.get(id);
+    if (!obj) return;
+
+    const b = obj.bbox;
+    const vw = this.#renderer.viewportW;
+    const vh = this.#renderer.viewportH;
+    const pad = 80;
+    const fit = Math.min((vw - pad * 2) / Math.max(b.w, 1), (vh - pad * 2) / Math.max(b.h, 1));
+    const zoom = Math.min(1, fit);
+
+    this.camera.zoom = zoom;
+    this.camera.x = b.x + b.w / 2 - vw / 2 / zoom;
+    this.camera.y = b.y + b.h / 2 - vh / 2 / zoom;
+    this.selection.set([obj.id]);
+    this.#onCameraChanged();
+  }
+
   /** Quadro de demonstracao, para ter conteudo sem precisar desenhar nada ainda. */
   async openDemo(): Promise<void> {
     this.#session = { path: null, name: 'Demonstracao', dirty: true };
@@ -723,6 +777,10 @@ export class App {
 
   /** Grava o estado atual em disco. Devolve null em caso de falha. */
   async #writeBoard(path: string | null, name: string): Promise<SaveBoardResult | null> {
+    // O texto guardado da busca da biblioteca acabou de ficar velho. Derrubar o
+    // cache aqui -- e nao so no salvamento manual -- cobre tambem o autosave, que
+    // e por onde a maior parte das gravacoes deste app acontece.
+    invalidateLibraryIndex();
     try {
       const used = usedAssetIds(this.doc);
       const preview = await renderThumbnail(this.doc, THEMES[this.#theme], (id) =>
@@ -1252,24 +1310,10 @@ export class App {
    */
   #focusSearchHit(): void {
     const hit = this.#search.current;
-    const obj = hit ? this.doc.get(hit.id) : undefined;
-    if (!obj) return;
-
-    const b = obj.bbox;
-    const vw = this.#renderer.viewportW;
-    const vh = this.#renderer.viewportH;
-    const pad = 80;
-    const fit = Math.min((vw - pad * 2) / Math.max(b.w, 1), (vh - pad * 2) / Math.max(b.h, 1));
-    const zoom = Math.min(1, fit);
-
-    this.camera.zoom = zoom;
-    this.camera.x = b.x + b.w / 2 - vw / 2 / zoom;
-    this.camera.y = b.y + b.h / 2 - vh / 2 / zoom;
-
     // Selecionar junto deixa o resultado pronto para `Delete`, `Ctrl+C` ou uma
-    // arrastada -- achar quase sempre e o passo anterior a mexer.
-    this.selection.set([obj.id]);
-    this.#onCameraChanged();
+    // arrastada -- achar quase sempre e o passo anterior a mexer. Quem faz isso
+    // e `focusObject`, compartilhado com a busca da biblioteca.
+    if (hit) this.focusObject(hit.id);
   }
 
   /**
@@ -1884,6 +1928,7 @@ export class App {
       redo: () => this.redo(),
       selectAll: () => selectAll(this.#toolCtx),
       find: () => this.openSearch(),
+      findLibrary: () => this.#lobby.focusSearch(),
       duplicate: () => void duplicateSelection(this.#toolCtx),
       copy: () => this.copySelection(),
       cut: () => this.cutSelection(),
