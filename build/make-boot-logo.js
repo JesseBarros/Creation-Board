@@ -20,7 +20,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { decodePng, resize, encodePng } = require('./png');
 
-const SRC = path.join(__dirname, 'onlycloselogo.png');
+const SRC = path.join(__dirname, 'logo.png');
 const HTML = path.join(__dirname, '..', 'src', 'renderer', 'index.html');
 const INICIO = '<!-- LOGO:INICIO -->';
 const FIM = '<!-- LOGO:FIM -->';

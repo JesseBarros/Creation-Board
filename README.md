@@ -720,7 +720,7 @@ O `build/icon.ico` é gerado a partir da logo, sem dependências de imagem:
 npm run icon
 ```
 
-A origem é `build/onlycloselogo.png` — a versão **só do símbolo**, sem o texto
+A origem é `build/logo.png` — a versão **só do símbolo**, sem o texto
 "Creation Board". Num atalho de 32px o nome escrito viraria uma mancha ilegível,
 enquanto o símbolo sozinho continua reconhecível. O script decodifica o PNG à mão
 (zlib do Node + desfiltragem das linhas), centraliza num quadrado e reduz para 256px
@@ -876,28 +876,39 @@ derruba o frame rate (69 → 38 fps) — o custo migra para a rasterização do 
 gigante na GPU, onde não aparece no `renderMs`. A versão mantida usa `fillRect`
 individual agrupado por cor: 82fps.
 
-## Roadmap
+## Como ele foi construído
 
-A ordem diverge do plano original **de propósito**: o objetivo é migrar os resumos do
-Microsoft Whiteboard, e para isso importar e manipular vêm antes de desenhar. Caneta não
-serve para migrar.
+Em fases, cada uma entregando algo usável de ponta a ponta. **A ordem diverge do que seria
+natural, e isso foi a primeira decisão do projeto:** importar e manipular vieram *antes* de
+desenhar, porque o objetivo era migrar resumos que já existiam. Uma caneta ótima não serve
+para migrar nada.
 
-- [x] **Fase 0** — Setup, janela abrindo, instalador `.exe` validado
-- [x] **Fase 1** — Canvas infinito, modelo de dados, índice espacial, culling, painel de debug (F3)
-- [x] **Fase 1.5** — Lobby com miniaturas, salvar `.wbd` (Ctrl+S), tela de atalhos (F1)
-- [x] **Fase 2** — Importação do Microsoft Whiteboard, conferida contra o motor de layout
-- [x] **Fase 3** — Seleção e manipulação: mover, redimensionar, rotacionar, excluir, duplicar, ordem de camadas, undo/redo
-- [x] **Fase 4** — Caneta, marca-texto, lápis, borracha, cores e espessura
-- [x] **Fase 4.5** — Formas geométricas, régua e snap
-- [x] **Fase 5** — Texto, post-its e alertas
-- [x] **Fase 5.5** — Borracha progressiva (apagar por peça)
-- [x] **Fase 6** — Busca Ctrl+F
-- [x] **Fase 7** — Imagens: colar, arrastar e recortar
-- [x] **Fase 8** — Exportar PNG/SVG/PDF e autosave
-- [ ] **Fase 7.5** — Transcrever imagem em texto (OCR). Viabilidade confirmada:
-      motor nativo do Windows (`Windows.Media.Ocr`), pt-BR já instalado, offline,
-      0 MB no instalador, ~355 ms por imagem. Prosa com acentos sai perfeita;
-      símbolos matemáticos e letras gregas **não** — daí o passo de revisão antes
-      de inserir.
-- [ ] **Fase 8** — Salvar/abrir, autosave, exportação PNG/SVG/PDF
-- [ ] **Fase 9** — Polimento de UI, temas, tela de atalhos, build final
+| Fase | O que entregou |
+|---|---|
+| 0 | Setup, janela, instalador `.exe` validado |
+| 1 | Canvas infinito, modelo de dados, índice espacial, culling, painel `F3` |
+| 1.5 | Lobby com miniaturas, salvar `.wbd`, tela de atalhos |
+| 2 | Importação do Whiteboard, conferida contra o motor de layout do navegador |
+| 3 | Seleção: mover, redimensionar, girar, duplicar, camadas, undo/redo |
+| 4 | Caneta, marca-texto, borracha, cores e espessura |
+| 4.5 | Formas, encaixe com guias, grade magnética, réguas |
+| 5 | Texto rico, post-its e alertas |
+| 5.5 | Borracha que apaga por pedaço |
+| 6 | Busca `Ctrl+F` |
+| 7 | Imagens: colar, arrastar e recortar |
+| 8 | Exportar PNG/SVG/PDF e autosave |
+| 9 | Polimento de interface, temas e build final |
+| 7.5 | OCR: o `Ctrl+F` acha texto dentro das imagens |
+| — | Busca cruzando toda a biblioteca de quadros |
+
+**As duas últimas não estavam no plano.** A 5.5 também não. Todas apareceram de usar o que
+estava pronto e perceber o que faltava — e são, hoje, as partes mais úteis do app. O
+[ENGENHARIA.md](ENGENHARIA.md) registra as decisões e as medições que sustentam cada uma.
+
+---
+
+## Autor
+
+**Jessé Barros** — [github.com/JesseBarros](https://github.com/JesseBarros)
+
+Licenciado sob [MIT](LICENSE).

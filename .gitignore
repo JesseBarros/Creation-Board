@@ -1,8 +1,20 @@
+# Dependencias e artefatos de build
 node_modules/
 out/
 release/
 dist/
+*.tsbuildinfo
+
+# Configuracao local de ferramentas de desenvolvimento.
+#
+# Fica aqui, e nao so no ignore global de quem escreveu: um arquivo de
+# configuracao local costuma guardar caminhos absolutos da maquina, e depender do
+# ignore global significa que ele vaza no primeiro clone feito em outro lugar.
+.claude/
+.vscode/
+.idea/
+
+# Ruido do sistema operacional
 *.log
 .DS_Store
 Thumbs.db
-*.tsbuildinfo

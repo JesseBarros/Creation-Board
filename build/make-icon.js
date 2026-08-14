@@ -25,7 +25,7 @@ const { decodePng, resize, encodePng, cropSquare, encodeIconDib, packIco } = req
 const { renderGlyph } = require('./glyph');
 
 const OUT = process.argv[2];
-const SRC = process.argv[3] ?? path.join(__dirname, 'onlycloselogo.png');
+const SRC = process.argv[3] ?? path.join(__dirname, 'logo.png');
 
 // Os tamanhos que o Windows realmente pede: lista (16), barra de titulo e
 // tarefas (20/24/32), area de trabalho (48), telas grandes (64/128) e a loja e
