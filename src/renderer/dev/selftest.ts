@@ -853,7 +853,7 @@ async function runSelectionTests(
       **Segunda correcao: o teto acompanha a velocidade da maquina.** O `bbox` e
       matematica pura -- sem GPU, sem alocacao, sem vsync -- e ja estava
       impresso aqui como sinal de carga externa, para uma PESSOA interpretar. A
-      regra estava escrita no RETOMAR: *"se o custo de bbox subiu junto, e carga
+      regra estava escrita no ENGENHARIA.md: *"se o custo de bbox subiu junto, e carga
       externa"*. Agora quem aplica a regra e o teste.
 
       O fator so CORRIGE PARA CIMA (`Math.max(1, ...)`): numa maquina mais

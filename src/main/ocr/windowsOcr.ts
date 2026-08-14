@@ -22,7 +22,7 @@ import type { OcrItem, OcrReport, OcrText } from '@shared/ocr';
  *
  * A alternativa era Tesseract em WebAssembly, que traria o motor mais os dados
  * de portugues -- dezenas de MB num instalador que hoje tem 142 MB. E o app e
- * **local e offline** por decisao dele (ver a decisao 0 do RETOMAR), o que tira
+ * **local e offline** por decisao de projeto (decisao 0 do ENGENHARIA.md), o que tira
  * qualquer servico de nuvem da mesa.
  *
  * ## Por que PowerShell, e nao um modulo nativo

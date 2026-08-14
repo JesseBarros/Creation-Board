@@ -1,17 +1,35 @@
 # Creation Board
 
-Quadro branco infinito local para estudos. Substituto pessoal do Microsoft Whiteboard,
-rodando 100% offline no Windows: sem login, sem nuvem, sem servidor.
+**Quadro branco infinito para estudar, que roda inteiro na sua máquina.** Sem login, sem
+nuvem, sem servidor — os arquivos ficam no seu disco e não saem dele.
 
-**Status:** canvas infinito, lobby, importação do Whiteboard, **seleção completa**
-(mover, redimensionar, girar, duplicar, excluir, ordem de camadas, undo/redo), **desenho
-à mão** (caneta, marca-texto e borracha progressiva), **formas com encaixe e
-réguas**, **texto, post-its e alertas**, **busca `Ctrl+F`** e **imagens** (colar, arrastar
-e recortar). Dá para importar um resumo do Whiteboard e trabalhar em cima dele por
-inteiro. Faltam exportação, autosave e o polimento final.
+Ele nasceu de um problema concreto: resumos presos dentro do Microsoft Whiteboard, difíceis
+de reorganizar e impossíveis de pesquisar direito. Por isso a **importação vem primeiro** —
+você traz o que já tem e continua o trabalho ali dentro.
 
-> Retomando o desenvolvimento depois de uma pausa? Comece por **[RETOMAR.md](RETOMAR.md)**:
-> em que pé está e o que fazer a seguir.
+## O que ele faz
+
+- **Importa do Microsoft Whiteboard** (`.zip` ou `.html`), com a geometria conferida contra
+  o motor de layout do próprio navegador — texto, tinta, imagens e post-its caem no lugar
+- **Canvas infinito** que aguenta milhares de objetos, com índice espacial e culling
+- **Escreve à mão** — caneta, marca-texto e borracha que apaga por pedaço, não o traço inteiro
+- **Formas com encaixe**, guias de alinhamento, grade magnética e réguas
+- **Texto rico, post-its e alertas**
+- **Imagens** — colar, arrastar do explorador e recortar
+- **Acha o que você procura**, e é aqui que ele se diferencia:
+  - `Ctrl+F` dentro do quadro
+  - **inclusive dentro das imagens**, por OCR — o texto de uma captura de tela vira
+    pesquisável
+  - e uma busca no menu principal que atravessa **todos os seus quadros de uma vez**
+- **Exporta** PNG, SVG e PDF, em ladrilhos quando o quadro não cabe num arquivo só
+- **Salva sozinho**, e desfaz tudo com `Ctrl+Z`
+- **Tema claro e escuro**, com as cores das marcas adaptadas para continuarem legíveis nos dois
+
+O OCR usa o motor do próprio Windows: **nada é baixado e nada é enviado para lugar nenhum.**
+
+> Vai mexer no código? Comece por **[ENGENHARIA.md](ENGENHARIA.md)** — as decisões que o
+> código não explica sozinho, e como conferir que tudo continua de pé. O
+> **[BUGS.md](BUGS.md)** guarda o que já deu errado, a causa de cada caso e a correção.
 
 ---
 
@@ -487,22 +505,22 @@ $env:QB_IMPORT_SAVE = "1"; $env:QB_IMPORT = "C:\caminho\export.zip"; npm run dev
 
 ## Onde os quadros ficam
 
-Cada quadro é um arquivo `.wbd` em **`C:\Resumos-quadrobranco`**. O botão com o
-caminho, no topo do lobby, abre a pasta no Explorador.
+Cada quadro é um arquivo `.wbd` em **`C:\Creation Board`**. O botão com o caminho, no topo
+do lobby, abre a pasta no Explorador.
 
-O nome da pasta não acompanhou a renomeação do app de propósito: mudá-lo faria os
-resumos já salvos sumirem do lobby. Trocar exige uma migração, como a que já existe
-para a pasta antiga em Documentos.
+A pasta fica na raiz do disco **de propósito, e não em Documentos**: em muitas instalações
+do Windows a pasta Documentos está redirecionada para o OneDrive, e salvar ali faria todo
+quadro sincronizar para a nuvem — o oposto do que o app se propõe a ser. Aqui nada sai da
+máquina. Levar um resumo para a nuvem é uma decisão manual: copiar o `.wbd` para onde
+quiser, e ele reabre normalmente depois.
 
-A pasta fica na raiz do disco **de propósito, e não em Documentos**: a pasta
-Documentos desta máquina está redirecionada para o OneDrive, e salvar ali faria
-todo quadro sincronizar para a nuvem — o oposto do que o app se propõe a ser.
-Aqui nada sai da máquina. Levar um resumo para a nuvem é uma decisão manual:
-copiar o `.wbd` para onde quiser, e ele reabre normalmente depois.
+Se a raiz de `C:` estiver bloqueada por política de grupo, o app cai automaticamente para
+`%USERPROFILE%\Creation Board` — e **avisa no terminal**, em vez de mudar de pasta calado
+(foi um bug sério; está no `BUGS.md` como B11).
 
-Se a raiz de `C:` estiver bloqueada por política de grupo, o app cai
-automaticamente para `%USERPROFILE%\Resumos-quadrobranco`. Quadros salvos por
-versões anteriores em `Documentos\QuadroBranco` são movidos na primeira execução.
+**Quadros de versões anteriores são trazidos sozinhos.** O app conhece os nomes que a pasta
+já teve e move o que encontrar em cada um, na primeira abertura. Ele move e nunca copia:
+duas cópias do mesmo quadro em pastas diferentes é pior que uma biblioteca mudada de lugar.
 
 O lobby lê apenas `manifest.json` + `preview.png` de dentro de cada `.wbd`, sem
 descompactar o documento. Por isso a lista abre rápido mesmo com quadros grandes.

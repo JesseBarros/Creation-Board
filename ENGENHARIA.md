@@ -1,82 +1,34 @@
-# Onde paramos
+# Engenharia
 
-Ponto de retomada do **Creation Board**. O [README](README.md) explica o que o app é e
-como cada parte funciona; este arquivo responde outra pergunta: *em que pé isso está e
-o que fazer a seguir*. Some quando o projeto acabar.
+**Por que o código é assim, e como conferir que continua de pé.**
 
-**Última sessão: 14/08/2026.** A **Fase 9 e a Fase 7.5 acabaram**, e a busca cruzando toda a
-biblioteca entrou junto. **Todas as fases planejadas estão prontas** — o que sobra são três
-itens pequenos, e nenhum bloqueia o uso.
+O [README](README.md) explica *o que* o app faz e como usá-lo. O [BUGS.md](BUGS.md) registra
+*o que já deu errado* e como foi resolvido. Este arquivo responde a terceira pergunta, a que
+não cabe em nenhum dos dois: **as decisões que o código não consegue explicar sozinho, e as
+medições que as sustentam.**
 
-> **Retomar por aqui.** O que falta no projeto:
->
-> 1. **B10** — o custo por frame cresce com o zoom. Medido por ele no `F3`, nunca sentido no
->    uso.
-> 2. **B11** — consolidar as duas pastas de biblioteca; depende de uma decisão dele. As
->    cópias estão estacionadas em `_substituidos-2026-08-08\`, nada perdido. **Não é código.**
->
-> A verificação de arrastar, que reprovava metade das vezes por medir a máquina, foi
-> **corrigida em 14/08** — a variação caiu de 23,5 ms para 1,4 ms, e a correção passou pela
-> prova invertida. O como e o porquê estão em *"A verificação de arrastar"*, mais abaixo.
->
-> O **B15** (verificação que falhou uma vez e não reproduziu) continua aberto no `BUGS.md`,
-> mas não reapareceu em nenhuma das dezenas de execuções de 13 e 14/08.
->
-> **O B8 saiu da lista de pendências em 14/08**, e vale saber por quê antes de reabri-lo: a
-> causa foi localizada na **atualização parcial da composição por GPU**, e as duas flags do
-> app deixaram de ser remendo. Não há conserto pendente do nosso lado — há um teste de
-> reavaliação (`QB_GPU=normal` e olhar) para o dia em que driver ou Windows mudarem. Tudo no
-> [BUGS.md](BUGS.md), no B8, seção de 14/08.
->
-> **Como ele trabalha, e vale respeitar:** ele pede para **aprovar antes de seguir** para o
-> item seguinte. Entregar dois de uma vez tira dele a chance de dizer o que incomodou — e foi
-> assim que o título da janela, a marca duplicada e o peso dos ícones apareceram, cada um
-> depois de uma entrega parada para avaliação.
+Ele existe porque quase toda decisão aqui teve uma alternativa plausível que foi descartada
+por medição — e um comentário no código diz *o que* foi escolhido, nunca *o que foi testado e
+falhou*. Sem este registro, a próxima pessoa refaz a investigação e chega à mesma conclusão
+duas semanas depois.
 
-<details>
-<summary><strong>O que a Fase 9 entregou</strong> — 23 commits, mesclados em 14/08/2026</summary>
->
-> | Item | Estado |
-> |---|---|
-> | `npm run dist` e o executável empacotado | **feito** — e agora se confere por terminal (`npm run check:dist`) |
-> | Verificação de troca de ferramenta, que reprovava | **feita** — a conta é que era impossível, não o código |
-> | Cache de texto | **feito** — 12–13% mais rápido, com as faixas sem se tocar |
-> | **B13** — exportar em ladrilhos | **feito** — 1x/2x/3x voltam a significar o que prometem |
-> | **M8a** — marca-texto sobre imagem | **feito** |
-> | **M8b** — painel de camadas (`C`) | **feito** |
-> | **B9** — o painel do `F3` | **feito** — destaca custo, e o "FPS" virou *Atualizações/s* |
-> | Tela de abertura com a logo | **feita** — `QB_BOOT=hold` a segura para fotografar |
-> | Ícone do sistema | **feito** — nove tamanhos, e glifo próprio abaixo de 48px |
-> | Polimento das barras | **feito** — raios encadeados, sombra em duas camadas, pílula de ligado |
-> | Conjunto de ícones | **feito** — área viva única (16×16), geometria arredondada, lua/sol |
-> | Menu principal | **feito** — utilidades viraram ícone, ações continuam escritas |
-> | Título da janela | **feito** — fixo em "Creation Board", não muda com o quadro aberto |
-> | **B16** — a "sombra" atrás dos ícones | **feito** — era a pílula de ligado em cinza neutro; agora é da cor de destaque, igual à barra lateral |
-> | **Revisão do tema claro** | **feita** — achou o B17 (fechado por decisão dele) e o M10 (corrigido); `QB_THEME` a tornou repetível |
-> | **Subir o Electron** | **feito e DESFEITO** — testado no 41 e no 43; o B8 pisca nos três, e ele decidiu voltar ao 33.4.11. A escada inteira está medida mais abaixo |
-> | **`QB_GPU=normal` no Electron novo** | **conferido por ele — o bug VOLTOU, no 41 e no 43.** As duas flags ficam, e a hipótese de raiz do B8 morreu: não era a idade do Chromium |
-> | **Node 20.18.3 → 22.12.0** | **feito** (na máquina dele, não no repo) — era o que o Electron 42+ exigia. Fica útil mesmo com a volta ao 33, que instala nos dois |
-> | **Instalador regerado** | **feito** — `npm run dist` + `check:dist` passam no `.exe` empacotado |
-> | **B8 — a causa localizada** | **feito** — o degrau `comp`, nunca testado, curou e fechou o mecanismo |
-> | **Mesclagem na `main`** | **feita** — avanço direto, como as fases anteriores |
+**Leia antes de:**
 
-</details>
+| Se você vai… | Leia |
+|---|---|
+| mudar qualquer coisa | **Decisões que não estão óbvias no código** — 20 itens, cada um com o porquê |
+| mexer em desempenho | **Como conferir que está tudo de pé** — as faixas normais e o que cada número significa |
+| atualizar o Electron | **A escada do Electron** — 33, 41 e 43 já foram testados, e o resultado surpreende |
+| procurar onde algo mora | **Onde as coisas ficam** |
 
 ---
 
-## Estado em uma linha
+## Como o app foi construído
 
-**Todas as fases planejadas estão prontas.** Dá para importar um resumo do Microsoft
-Whiteboard, **trabalhar em cima dele por inteiro** (reorganizar com alinhamento assistido,
-escrever à mão, desenhar formas, digitar texto e post-its, apagar tinta por peça,
-colar/arrastar/recortar imagens) e **tirar dali um PNG, SVG ou PDF**, com o quadro gravando
-sozinho, a interface polida nos dois temas e o instalador validado por terminal.
-
-**E achar o que se procura**, que é o que o material dele pede: `Ctrl+F` dentro do quadro,
-**inclusive dentro das imagens** (o OCR lê 3.456 palavras nas 36 imagens do *Cybersec
-resumão*), e uma busca no menu principal que atravessa **todos os quadros** de uma vez.
-
-## O que existe hoje
+Em fases, cada uma entregando algo usável de ponta a ponta. **A ordem diverge do que seria
+natural, e isso é a primeira decisão do projeto:** importar e manipular vieram *antes* de
+desenhar, porque o objetivo era migrar resumos existentes do Microsoft Whiteboard — de nada
+adiantaria uma caneta ótima num app que não abrisse o material.
 
 | Fase | O que entrega | Estado |
 |---|---|---|
@@ -96,15 +48,14 @@ resumão*), e uma busca no menu principal que atravessa **todos os quadros** de 
 | 7.5 | OCR: o `Ctrl+F` acha texto dentro das imagens | **pronta** — 14/08/2026 |
 | — | Busca cruzando **toda a biblioteca**, no menu principal | **pronta** — 14/08/2026, fora do plano original |
 
-A ordem diverge do plano original **de propósito**: o objetivo é migrar os resumos do
-Whiteboard, e para isso importar e manipular vieram antes de desenhar.
+**A Fase 5.5 não estava no plano** — ela nasceu de usar o app. A borracha apagava o traço
+inteiro, e isso não servia para corrigir um resumo; a fase **reverteu uma decisão da Fase 4**.
+O mesmo aconteceu com a busca da biblioteca, que só fez sentido depois que o OCR indexou o
+texto das imagens.
 
-A Fase 5.5 nasceu de um pedido dele ao testar a Fase 5 — a borracha apagando o traço
-inteiro não servia — e **reverteu a decisão da Fase 4**. Está resolvida.
-
-**A `main` está em dia**, com tudo até a Fase 9 (`411ac96`, mesclado em 14/08/2026 por
-avanço direto, como as fases anteriores). A branch `fase-9-polimento` continua no repositório
-apontando para o mesmo commit; pode ser apagada quando quiser.
+É um padrão que vale mais que qualquer roadmap: **as duas funcionalidades mais úteis deste
+app não foram planejadas.** Apareceram porque alguém usou o que estava pronto e disse o que
+incomodava.
 
 ---
 
@@ -194,7 +145,7 @@ E, ao tocar em `Document`, `SpatialIndex`, no importador ou no **layout de texto
 conferir a geometria contra o oráculo:
 
 ```
-$env:QB_IMPORT = "C:\Resumos-quadrobranco\_exports-originais\Cybersec resumão.zip"
+$env:QB_IMPORT = "C:\caminho\para\um-export-do-whiteboard.zip"
 npm run dev
 ```
 
@@ -399,11 +350,26 @@ achar uma palavra que só existe dentro de uma delas, a fase entregou o que prom
    **O que fica no lugar:** o app continua **local e offline**, e mover quadro é assunto de
    importar/exportar arquivo.
 
-1. **A pasta de quadros continua `C:\Resumos-quadrobranco`** mesmo com o app renomeado
+1. **A pasta de quadros é `C:\Creation Board`, e a lista de nomes antigos é o que a torna
+   trocável.** Ela se chamou `Resumos-quadrobranco` até 14/08/2026 — nome provisório do
+   projeto, e a única parte dele que aparecia no disco de quem instalasse o app. Trocar o
+   nome sem mais nada faria os quadros salvos sumirem do lobby, e foi por isso que o nome
+   antigo sobreviveu tanto. O que destravou a troca foi `LEGACY_DIRS` em `wbdFile.ts`: a
+   lista de nomes que a pasta já teve, percorrida a cada abertura. **Ela cresce por
+   acréscimo no começo, nunca por substituição** — apagar uma entrada dali é apagar o
+   caminho de volta dos quadros de quem pulou uma versão.
+
+   <details>
+   <summary>A decisão anterior, que esta substitui</summary>
+
+   **A pasta de quadros continua `C:\Resumos-quadrobranco`** mesmo com o app renomeado
    de QuadroBranco para Creation Board. Trocar o nome faria os resumos já salvos sumirem
    do lobby. É deliberado.
-2. **Reimportar sobrescreve o `.wbd`.** Os `.zip` originais em
-   `C:\Resumos-quadrobranco\_exports-originais\` são a fonte de verdade para reimportar.
+
+   </details>
+
+2. **Reimportar sobrescreve o `.wbd`.** Guarde os `.zip` originais do Whiteboard — eles são
+   a única fonte para reimportar, e o `.wbd` gerado não volta a ser `.zip`.
 3. **Geometria de importação se mede, não se deduz.** Ler o CSS do export já levou a
    hipóteses plausíveis e erradas — três, contando a da Fase 5 (achei que as âncoras de
    texto fossem centradas; o oráculo mostrou `align topLeft`). Existe um oráculo

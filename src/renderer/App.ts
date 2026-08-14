@@ -1517,7 +1517,7 @@ export class App {
    * Muda um campo de um objeto so, com undo.
    *
    * Passa pelo `PatchObjects` como qualquer outra edicao -- ver a decisao 18 do
-   * RETOMAR. Travar e esconder nao merecem comando proprio: sao mudanca de
+   * ENGENHARIA.md. Travar e esconder nao merecem comando proprio: sao mudanca de
    * campo, e o comando generico ja existe.
    */
   #patchOne(id: string, patch: ObjectPatch, rotulo: string): void {
