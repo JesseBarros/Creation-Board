@@ -307,6 +307,32 @@ achar uma palavra que só existe dentro de uma delas, a fase entregou o que prom
 
 ## Decisões que não estão óbvias no código
 
+0. **NADA DE NUVEM. Decidido em 14/08/2026, com a alternativa toda avaliada.** Ele perguntou
+   se dava para ligar uma pasta do Google Drive ao app, e a resposta foi levantada inteira
+   antes de decidir. **Não é para reabrir isto**, a menos que ele peça.
+
+   A integração por API do Drive é um **subsistema, não uma funcionalidade**: projeto no
+   Google Cloud, OAuth de aplicativo instalado, renovação de token (que expira a cada 7 dias
+   sem passar pela verificação do Google), e — a parte cara — semântica de sincronização:
+   mesmo quadro alterado em dois lugares, offline, queda no meio da gravação. Maior que
+   qualquer fase que este projeto teve, e contra a premissa escrita no `wbdFile.ts`.
+
+   O **caminho barato existia** e também foi recusado: o Google Drive para computador monta
+   o Drive como pasta, e uma junção do Windows (`mklink /J`) apontaria a biblioteca para lá
+   sem uma linha de código — e com segurança, porque **a gravação já é atômica** (`.tmp` +
+   rename, `wbdFile.ts`), então o cliente de sincronização nunca vê um `.wbd` pela metade.
+
+   **Dois motivos concretos derrubaram até esse:**
+   - **Sincronizar não é backup.** O Drive replica corrupção e apagamento com a mesma
+     fidelidade. As cópias manuais dele são backup de verdade; o Drive seria só uma segunda
+     cópia do estado atual.
+   - **O autosave regrava o arquivo inteiro** (3 s parado, 30 s no máximo). O *Cybersec
+     resumão* tem 4,7 MB: uma tarde de trabalho seriam dezenas de re-envios completos, e
+     palavra dele — *"pode criar muito lixo eletrônico no meu Drive sem necessidade"*.
+
+   **O que fica no lugar:** o app continua **local e offline**, e mover quadro é assunto de
+   importar/exportar arquivo.
+
 1. **A pasta de quadros continua `C:\Resumos-quadrobranco`** mesmo com o app renomeado
    de QuadroBranco para Creation Board. Trocar o nome faria os resumos já salvos sumirem
    do lobby. É deliberado.
