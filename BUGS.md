@@ -338,14 +338,24 @@ nos dois casos**. O 99,7 era ruído. Conclusão da época: não há custo mensur
 > leitura várias vezes de cada lado e comparar as distribuições, e não os extremos. Ficou sem
 > resposta porque a pergunta perdeu o objeto: a correção saiu (ver abaixo).
 
-> **14/08/2026 — o Electron subiu, o bug voltou, e a hipótese de raiz MORREU.**
->
-> O app foi de **33.4.11 para 41.0.0** — de um Chromium de 2024 para um de 2026. Era o
-> conserto de raiz que esta seção anunciava, com todas as letras: *"é a resposta para 'por
-> que só este programa pisca': é o único Chromium de 2024 rodando numa máquina de 2026"*.
+> **14/08/2026 — o Electron subiu até o 43, piscou em todos, e a hipótese de raiz MORREU. O
+> projeto VOLTOU para o 33.4.11.**
 >
 
->**Então não era a idade do Chromium.** Um Chromium de 2026, na mesma máquina, produz o
+>| Electron | Chromium | Resultado |
+> |---|---|---|
+> | 33.4.11 (o de origem) | ~130, fim de 2024 | pisca |
+> | 41.0.0 | 146.0.7680.65, 2026 | **pisca igual** |
+> | 43.4.0 | o mais novo publicado | **pisca igual** |
+>
+> A captura de teste no 41 mostra o quadro aberto com os **cartões do menu desenhados por cima**,
+> mais um pedaço da barra lateral — região que ninguém repintou, o mesmo desenho de 06/08.
+>
+> **foi decidido voltar ao 33.4.11**, já que a subida não entregou o que a justificava. O que
+> se perde com a volta está medido no [RETOMAR.md](RETOMAR.md) e **não tem relação com este
+> bug**.
+>
+> **Então não era a idade do Chromium.** Um Chromium de 2026, na mesma máquina, produz o
 > mesmo defeito. A tabela de versões abaixo continua verdadeira e deixou de ser relevante:
 > ela explicava um sintoma que sobrevive à explicação.
 >
