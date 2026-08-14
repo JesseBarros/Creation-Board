@@ -4,11 +4,13 @@ Registro do que apareceu usando o app de verdade, antes da Fase 9 (polimento).
 O [RETOMAR.md](RETOMAR.md) diz em que pé o projeto está; este arquivo diz **o que está
 errado e o que falta**. Some quando a lista zerar.
 
-**Última atualização: 13/08/2026.** **4 itens abertos** (B10, B15, B17 e M10), **19 fechados**.
+**Última atualização: 14/08/2026.** **2 itens abertos** (B10 e B15), **21 fechados**.
 
-**A revisão do tema claro da Fase 9 abriu os dois últimos.** Ela foi feita comparando a
-**mesma cena** nos dois temas, lado a lado — e o que ela achou não estava no tema claro
-sozinho, estava na *diferença* entre os dois. Ver o B17 e o M10.
+**A revisão do tema claro da Fase 9 achou dois itens, e os dois já fecharam.** Ela foi feita
+comparando a **mesma cena** nos dois temas, lado a lado — e o que ela achou não estava no
+tema claro sozinho, estava na *diferença* entre os dois: o **B17** (miniaturas do lobby com o
+tema em que foram salvas, que foi decidido deixar como está) e o **M10** (a amostra de tinta
+quase preta sumindo no painel escuro, corrigida com o anel tirado de `--fg`).
 
 **A Fase 9 fechou o B13, o M8 e a parte do B9 que era corrigível.** O que sobrou do B9 não
 é bug: o teto de 60 é taxa de entrega de evento, e o custo de desenho do quadro de teste
@@ -845,7 +847,11 @@ muito maior e licença de fonte para resolver. Isto custa dois atributos.
 tem de conter `spacingAndGlyphs`. É o par que some se alguém simplificar a emissão.
 
 ### B17 — As miniaturas do lobby guardam o tema em que o quadro foi salvo
-`aberto` · `médio` · 13/08/2026
+`fechado — decisão de produto` · `médio` · 13/08/2026, fechado em 14/08/2026
+
+
+>**A investigação fica escrita porque a decisão pode mudar**, e nesse dia as três saídas e o
+> preço de cada uma já estão levantados. Nada foi tocado no código.
 
 A miniatura é desenhada na hora de gravar, com o tema que estava ligado
 (`App.#writeBoard` → `renderThumbnail(doc, THEMES[this.#theme])`), e vai **assada dentro do
@@ -864,7 +870,22 @@ A primeira é a mais barata e a que menos mente; a terceira é a única que nunc
 mexi em nada esperando a decisão.
 
 ### M10 — A amostra de tinta quase preta some no painel, no tema escuro
-`decisão a revisar` · `baixo` · 13/08/2026
+`corrigido` · `baixo` · 13/08/2026, fechado em 14/08/2026
+
+> **Escolha entre as duas saídas: a de número 2** — [...]. A amostra continua sendo a cor que fica gravada no `.wbd`,
+> que era a decisão original do `ToolBar`; o que muda é de onde sai o anel dela.
+>
+
+>| | Antes (`--border`) | Agora (`--fg` 30%) |
+> |---|---|---|
+> | anel, tema escuro | 51,57,71 | **90,98,107** |
+> | painel atrás | 28,31,37 | 28,31,37 |
+> | diferença | +22 | **+62** |
+>
+> **Verificação no `selftest`:** *"o anel da amostra de cor sai do primeiro plano do tema, e
+> não de uma cor fixa"*. Ela compara a matiz do anel com o token `--fg` em vez de exigir um
+> valor — um anel fixo passaria num tema e falharia no outro, que é exatamente o defeito
+> original.
 
 **Medido na mesma cena, nos dois temas:**
 
