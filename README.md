@@ -42,6 +42,7 @@ O OCR usa o motor do próprio Windows: **nada é baixado e nada é enviado para 
 |---|---|
 | **[Guia de uso](docs/USO.md)** | Controles, ferramentas, importar, exportar, temas |
 | **[Compilar e empacotar](docs/BUILD.md)** | Build de produção, instalador `.exe`, armadilhas do Windows |
+| **[Segurança](SECURITY.md)** | Modelo de ameaça, isolamento, integridade dos dados e cadeia de suprimentos |
 | **[Engenharia](ENGENHARIA.md)** | As decisões que o código não explica sozinho, e como verificá-lo |
 | **[Registro de bugs](BUGS.md)** | O que deu errado, a causa de cada caso e a correção |
 
