@@ -98,19 +98,19 @@ Um frame em branco incomoda muito menos que o quadro de outra pessoa.
 ### B2 — A régua: decisão da Fase 4.5 **mantida**
 `fechado — não é bug` · 04/08/2026
 
-Ele avaliou a régua-instrumento do Whiteboard contra a que existe e **decidiu ficar com a
+Ele avaliou a régua-instrumento de outro aplicativo contra a que existe e **decidiu ficar com a
 atual**: [...]. A decisão da Fase 4.5 continua
 valendo, e a documentação não muda.
 
 
 
 
-O que se quer é a régua do Microsoft Whiteboard: **um objeto físico no meio do quadro,
+O que se quer é a régua de outros aplicativos de quadro: **um objeto físico no meio do quadro,
 que se gira 360°** e serve de apoio para riscar linhas retas — a tinta encosta na borda
 dela e sai reta.
 
 **Isto reverte uma decisão da Fase 4.5**, registrada no ENGENHARIA.md: *"régua = réguas nas
-bordas em px/cm, não a régua-transferidor do Whiteboard"*. Foi escolha na época; a
+bordas em px/cm, não a régua-transferidor de outros aplicativos"*. Foi escolha na época; a
 documentação precisa mudar junto, senão a próxima sessão lê a decisão e "conserta" de
 volta.
 
@@ -777,7 +777,7 @@ igual**, e voltou a piscar preto — porque o DirectComposition estava de volta 
 
 | Suspeito | Como caiu |
 |---|---|
-| Conteúdo importado do Whiteboard | Biblioteca vazia via `QB_BOARDS`, bug igual |
+| Conteúdo importado | Biblioteca vazia via `QB_BOARDS`, bug igual |
 | Caches gráficos e `Local Storage` | Apagados, bug igual |
 | CSS (desfoque, sombra, `clip`, transições) | Cinco desligados juntos, bug igual |
 | "Quadros fantasmas" | Eram o bug: disco tem 1 arquivo, tela mostrava 2 |
@@ -1300,11 +1300,11 @@ justamente quando a pessoa acabou de clicar num texto para mudá-lo.
 A regra do estado segue a de qualquer editor: se **tudo** já está formatado, o botão tira;
 senão, aplica em tudo.
 
-### M2 — Renomear o botão de importação do Whiteboard
+### M2 — Renomear o botão de importação
 `corrigido` · `baixo` · 04/08/2026
 
 Virou **"Importar arquivo"**. No lobby vazio o rótulo ficou mais longo de propósito —
-"Importar arquivo do Microsoft Whiteboard" —, porque ali ele é a explicação do que fazer
+"Importar um quadro de outro aplicativo" —, porque ali ele é a explicação do que fazer
 primeiro, e não mais um botão numa fila.
 
 ### M3 — Redesenhar a barra de ferramentas inferior

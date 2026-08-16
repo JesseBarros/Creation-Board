@@ -17,10 +17,15 @@ import type { AssetStore } from '../images/AssetStore';
 import { dataUriToBlob } from '../images/dataUri';
 
 /**
- * Importador da exportacao HTML do Microsoft Whiteboard.
+ * Importador de quadros exportados em HTML por outros aplicativos.
  *
  * Formato de entrada (verificado em exports reais): cada objeto do quadro e uma
  * div `.anchor` com `data-whiteboard-type`, posicionada por `style="left/top"`
+ *
+ * **`data-whiteboard-type` e `whiteboardType` sao nomes de campo DO ARQUIVO DE
+ * ENTRADA**, e nao referencia a produto nenhum: e assim que o atributo se chama
+ * dentro do HTML que este importador le. Renomear aqui faria o seletor deixar de
+ * casar, e a importacao passaria a ler zero objetos.
  * em coordenadas de mundo e opcionalmente escalada por uma matriz CSS. Todo o
  * conteudo vem embutido -- imagens em base64, tinta em SVG -- entao o arquivo e
  * autossuficiente e a importacao funciona offline.
@@ -51,7 +56,7 @@ export interface ImportResult {
   anchorOf: number[];
 }
 
-export async function importWhiteboardHtml(
+export async function importBoardHtml(
   name: string,
   html: string,
   assets: AssetStore,
@@ -151,7 +156,7 @@ function readTransform(anchor: HTMLElement, w: number, h: number): Transform {
   // A matriz CSS carrega rotacao, escala e deslocamento: matrix(a,b,c,d,tx,ty).
   //
   // ATENCAO: ha objetos ROTACIONADOS nesses exports -- 5 grupos de tinta a 90 graus
-  // e 2 textos a 45 no [...]. Ler a escala como `a` e `d` os
+  // e 2 textos a 45 no "quadro de referencia". Ler a escala como `a` e `d` os
   // destroi: numa rotacao de 90 graus a matriz e (0, 1, -1, 0), o que daria
   // escala zero nos dois eixos e o objeto sumiria. Por isso a matriz e
   // decomposta em rotacao + escala, e nao lida posicao a posicao.
@@ -222,7 +227,7 @@ function baseFields(z: string): Omit<BoardObject, 'type' | 'bbox' | 'transform'>
 /**
  * Extrai o texto de um bloco do editor.
  *
- * O Whiteboard usa Draft.js: cada paragrafo e uma div `[data-block]` e o texto
+ * O formato de origem usa Draft.js: cada paragrafo e uma div `[data-block]` e o texto
  * fica em spans `[data-text]`. Concatenar todos os spans direto perderia as
  * quebras de paragrafo, entao a juncao acontece por bloco.
  */
@@ -245,7 +250,7 @@ function readText(anchor: HTMLElement, z: string): TextObject | null {
   if (content.trim() === '') return null; // caixa vazia nao vira objeto
 
   const fontSize = parseFloat(box?.style.fontSize ?? '') || 16;
-  // `max-width` e a largura de quebra que o Whiteboard aplicou; sem ela o texto
+  // `max-width` e a largura de quebra que o aplicativo de origem aplicou; sem ela o texto
   // reflui diferente e o layout do resumo se desfaz.
   const maxWidth = parseFloat(box?.style.maxWidth ?? '') || 400;
   const fontFamily = core.style.fontFamily || "'Segoe UI', sans-serif";
@@ -365,7 +370,7 @@ async function readImage(
  * 2. O `viewBox` do `<svg>`, que pode ter origem diferente de zero. Nesses
  *    resumos 40 dos 473 grupos tem -- `viewBox="116 -78 1087 1087"` empurra o
  *    desenho em (116, -78), e ignorar isso deslocava o traco em ate 5501px no
- *    [...]. Foi o maior erro de posicao que restava.
+ *    "quadro de referencia". Foi o maior erro de posicao que restava.
  */
 function readInk(anchor: HTMLElement, nextZ: () => string): PathObject[] {
   // Tinta usa ancora `topLeft`, entao o tamanho nao participa da conta: os
@@ -410,7 +415,7 @@ function readInk(anchor: HTMLElement, nextZ: () => string): PathObject[] {
 /**
  * Mapeamento do `viewBox` para o espaco do elemento `<svg>`.
  *
- * `viewBox=[...]` faz o canto (minX, minY) do sistema
+ * `viewBox="minX minY largura altura"` faz o canto (minX, minY) do sistema
  * interno cair no canto do elemento, e estica o conteudo ate os atributos
  * `width`/`height`. Sem viewBox, nada muda.
  */

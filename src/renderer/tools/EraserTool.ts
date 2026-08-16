@@ -12,7 +12,7 @@ import type { Tool, ToolContext, ToolPointer } from './types';
  * Borracha, em dois modos (escolhidos na barra).
  *
  * **Peça** apaga por onde passa e deixa o resto do traço no lugar. É o que se
- * espera de uma borracha de verdade, e o que o Microsoft Whiteboard faz: quem
+ * espera de uma borracha de verdade, e o que outros aplicativos de quadro fazem: quem
  * errou uma letra apaga a letra, não a palavra.
  *
  * **Traço inteiro** remove o objeto que ela toca. Continua existindo porque é o

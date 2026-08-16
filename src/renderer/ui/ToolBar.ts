@@ -67,7 +67,7 @@ const TOOLS: ToolDef[] = [
 /**
  * `<input type="color">` so aceita `#rrggbb`.
  *
- * A tinta importada do Whiteboard chega como `rgba(...)`, e a paleta tem cores
+ * A tinta importada chega como `rgba(...)`, e a paleta tem cores
  * de tres digitos; sem normalizar, o seletor abriria no preto em vez de abrir
  * na cor que esta em uso.
  */

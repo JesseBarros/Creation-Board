@@ -3,7 +3,7 @@
  *
  * Feito a mao em vez de `fetch(uri)` por dois motivos. Primeiro, a CSP do app
  * nao permite `data:` em connect-src, e afrouxa-la para conveniencia de parsing
- * seria trocar seguranca por atalho. Segundo, o Whiteboard escreve o tipo como
+ * seria trocar seguranca por atalho. Segundo, o formato importado escreve o tipo como
  * `image/*`, que nao e um MIME valido -- o tipo real precisa ser detectado pelos
  * bytes de assinatura, senao o decodificador de imagem pode recusar o blob.
  */

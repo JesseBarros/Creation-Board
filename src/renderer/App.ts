@@ -68,7 +68,7 @@ import { imageFilesFrom, insertImages } from './features/images/insert';
 import { uncropPatch } from './tools/CropTool';
 import type { ImageObject } from '@shared/model/types';
 import type { Vec2 } from '@shared/geometry/vec2';
-import { importWhiteboardHtml } from './features/import/whiteboard';
+import { importBoardHtml } from './features/import/boardHtml';
 import type { ImportReport, ImportSource } from '@shared/importer';
 import type { SaveBoardResult } from '@shared/wbd';
 import { generateStressBatches } from './dev/stress';
@@ -190,7 +190,7 @@ export class App {
     this.#hint.className = 'qb-hint';
     this.#hint.innerHTML =
       '<strong>Quadro vazio.</strong> Escolha a caneta (<kbd>P</kbd>) e desenhe.<br>' +
-      'Importe um quadro do Whiteboard pelo lobby, ou use <kbd>F3</kbd> para gerar ' +
+      'Importe um quadro pelo lobby, ou use <kbd>F3</kbd> para gerar ' +
       'carga de teste e <kbd>F1</kbd> para ver os atalhos.';
     this.#boardView.append(this.#hint);
 
@@ -277,7 +277,7 @@ export class App {
       openDemo: () => void this.openDemo(),
       showShortcuts: () => this.#help.toggle(),
       toggleTheme: () => this.toggleTheme(),
-      importWhiteboard: () => void this.#pickAndImport(),
+      importBoards: () => void this.#pickAndImport(),
       openBoardAt: (path, id) => void this.openBoardAt(path, id),
     });
 
@@ -661,7 +661,7 @@ export class App {
    * Ctrl+S. Na primeira vez pergunta o nome; depois grava por cima em silencio.
    */
   /**
-   * Importa exportacoes do Microsoft Whiteboard, criando um quadro por arquivo.
+   * Importa quadros exportados por outros aplicativos, criando um quadro por arquivo.
    *
    * Cada arquivo vira um .wbd salvo direto no disco, e nao um quadro aberto na
    * tela: importar tres resumos de uma vez e a situacao normal, e abrir todos
@@ -671,7 +671,7 @@ export class App {
    * ela roda a importacao muitas vezes seguidas, e gravando deixava a pasta de
    * quadros do usuario cheia de copias numeradas do mesmo resumo.
    */
-  async importWhiteboard(
+  async importBoards(
     sources: readonly ImportSource[],
     { save = true }: { save?: boolean } = {},
   ): Promise<ImportReport[]> {
@@ -689,7 +689,7 @@ export class App {
       this.assets.clear();
       this.#resetEditingState();
 
-      const result = await importWhiteboardHtml(source.name, source.html, this.assets);
+      const result = await importBoardHtml(source.name, source.html, this.assets);
       this.doc.add(result.objects);
       if (result.background) this.doc.setPrefs({ background: result.background });
 
@@ -710,7 +710,7 @@ export class App {
     return reports;
   }
 
-  /** Fluxo do botao "Importar do Whiteboard" no lobby. */
+  /** Fluxo do botao de importar, no lobby. */
   async #pickAndImport(): Promise<void> {
     const sources = await window.quadro.importer.pick();
     if (sources.length === 0) return; // cancelado
@@ -723,7 +723,7 @@ export class App {
 
     let reports;
     try {
-      reports = await this.importWhiteboard(sources);
+      reports = await this.importBoards(sources);
     } finally {
       this.#hideProgress();
     }

@@ -78,7 +78,8 @@ export function createColorAdapter(boardBg: string): ColorAdapter {
  * Como esta cor SERA EXIBIDA sobre este fundo.
  *
  * Exposto para o seletor de cor livre. A pergunta util nao e "ela some?" -- o
- * adaptador impede que qualquer cor suma --, e sim *[...]*. Um cinza bem claro escolhido no tema claro e
+ * adaptador impede que qualquer cor suma --, e sim **"ela vai aparecer
+ * diferente do que eu escolhi?"**. Um cinza bem claro escolhido no tema claro e
  * resgatado por inversao e aparece escuro; quem escolheu merece saber disso na
  * hora, e nao ao trocar de tema.
  */
@@ -96,7 +97,7 @@ export function readableTextOn(bg: string): string {
 // --------------------------------------------------------------- utilitarios
 
 function parseColor(color: string): Rgba | null {
-  // rgb()/rgba(): formato do conteudo importado do Microsoft Whiteboard, onde a
+  // rgb()/rgba(): formato do conteudo importado de outros aplicativos, onde a
   // tinta vem como fill="rgba(91,49,141,1)". Sem tratar isso aqui, caligrafia
   // preta importada nao seria adaptada e sumiria no tema escuro.
   if (color.startsWith('rgb')) {

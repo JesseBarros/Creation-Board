@@ -260,7 +260,7 @@ próximo; `Shift+Enter` volta; `Esc` fecha.
 Quatro decisões:
 
 - **Ignora acento e caixa.** Num resumo em português escrito a duas mãos — digitado aqui
-  e importado do Whiteboard — procurar "revisao" e não achar "revisão" seria inutilizável.
+  e importado de outro aplicativo — procurar "revisao" e não achar "revisão" seria inutilizável.
 - **Ordem de leitura do quadro**, de cima para baixo e da esquerda para a direita. A ordem
   de camada (`z`) seria arbitrária para quem lê, e a de criação não descreve o que se vê.
 - **Ir para o resultado leva o zoom a 100%** (ou ao que fizer o objeto caber, o que for
@@ -314,7 +314,7 @@ imagens. Para isso a cópia leva junto os *bytes* da imagem, não só a referên
 `AssetStore` é esvaziado ao trocar de arquivo, então só o `assetId` chegaria do outro
 lado como marcador de imagem ausente.
 
-## Importar do Microsoft Whiteboard
+## Importar de outros aplicativos
 
 
 O conteúdo volta como **objetos editáveis**, não como figura. Medido nos três
@@ -336,7 +336,8 @@ O export é um `.zip` com um `.html` (o DOM do quadro) e um `-comments.json`
 (apenas comentários — vazio na prática). Todo o conteúdo está no HTML e é
 autossuficiente: nada é baixado da internet ao importar.
 
-- Cada objeto é uma div com `data-whiteboard-type` e `style="left/top"` em
+- Cada objeto é uma div com um atributo de tipo (`data-whiteboard-type`, o nome
+  do campo **dentro do arquivo lido**) e `style="left/top"` em
   coordenadas de mundo, mais uma matriz CSS com a escala.
 - Texto vem do Draft.js: parágrafos em `[data-block]`, texto em `[data-text]`.
   Fonte, tamanho, cor e peso estão em estilo **inline**.
@@ -384,7 +385,7 @@ Duas decisões que valem saber:
 - O `data:` URI é decodificado à mão em [dataUri.ts](../src/renderer/features/images/dataUri.ts),
   e não por `fetch()`. A CSP do app não permite `data:` em `connect-src`, e
   afrouxá-la por conveniência de parsing seria trocar segurança por atalho. De
-  quebra, o MIME real é detectado pelos bytes — o Whiteboard escreve `image/*`,
+  quebra, o MIME real é detectado pelos bytes — o formato de origem escreve `image/*`,
   que não é um tipo válido.
 - A fonte original é **Aptos**. Se não estiver instalada, o texto cai para a
   fonte substituta e reflui um pouco.
