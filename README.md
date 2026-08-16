@@ -67,6 +67,9 @@ Baixe o instalador na página de **[Releases](https://github.com/JesseBarros/Cre
 > ```
 > Get-FileHash "Creation Board-Setup-1.0.0.exe" -Algorithm SHA256
 > ```
+>
+> O resultado tem de ser
+> `FF33E30A5951177A561104AA1AB9153FDCD3DCC703B9B746C2D1E2235FE06EB4`.
 
 A instalação **não pede privilégio de administrador**, deixa escolher a pasta e cria atalhos
 no menu Iniciar e na área de trabalho. Desinstalar não apaga seus quadros.
