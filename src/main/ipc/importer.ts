@@ -6,12 +6,12 @@ import { IPC } from '@shared/ipc-contract';
 import type { ImportSource } from '@shared/importer';
 
 /**
- * Leitura dos arquivos de exportacao do Microsoft Whiteboard.
+ * Leitura de quadros exportados por outros aplicativos.
  *
- * O export vem como .zip contendo um .html (o quadro inteiro, com objetos
- * posicionados e imagens embutidas em base64) e um -comments.json. O HTML e o
- * que importa; o processo principal so o extrai e entrega como texto -- toda a
- * interpretacao acontece no renderer, que tem DOMParser.
+ * O formato aceito e um .zip contendo um .html (o quadro inteiro, com objetos
+ * posicionados e imagens embutidas em base64), ou o .html solto. O processo
+ * principal so extrai e entrega como texto -- toda a interpretacao acontece no
+ * renderer, que tem DOMParser.
  */
 
 function unzipAsync(data: Uint8Array): Promise<Unzipped> {
@@ -85,11 +85,11 @@ export function registerImportIpc(): void {
 
 function options(): Electron.OpenDialogOptions {
   return {
-    title: 'Importar do Microsoft Whiteboard',
+    title: 'Importar quadro de outro aplicativo',
     buttonLabel: 'Importar',
     properties: ['openFile', 'multiSelections'],
     filters: [
-      { name: 'Exportacao do Whiteboard', extensions: ['zip', 'html', 'htm'] },
+      { name: 'Quadro exportado', extensions: ['zip', 'html', 'htm'] },
       { name: 'Todos os arquivos', extensions: ['*'] },
     ],
   };

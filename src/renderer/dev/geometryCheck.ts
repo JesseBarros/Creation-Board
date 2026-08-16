@@ -1,4 +1,4 @@
-import { importWhiteboardHtml } from '../features/import/whiteboard';
+import { importBoardHtml } from '../features/import/boardHtml';
 import { AssetStore } from '../features/images/AssetStore';
 import type { Rect } from '@shared/geometry/rect';
 import { measureLayout, type MeasuredRect } from './layoutOracle';
@@ -33,7 +33,7 @@ export async function checkGeometry(html: string): Promise<GeometryError[]> {
   const [measured, result] = await Promise.all([
     measureLayout(html),
     // AssetStore proprio: esta conferencia nao pode sujar os assets do quadro.
-    importWhiteboardHtml('check', html, new AssetStore()),
+    importBoardHtml('check', html, new AssetStore()),
   ]);
 
   // Uniao dos objetos gerados por cada ancora.

@@ -25,7 +25,7 @@ O que sobra, e é onde o esforço foi:
 |---|---|
 | **Perder trabalho** — arquivo corrompido, gravação pela metade, quadro que some da vista | Escrita atômica, falha alta em vez de silenciosa, biblioteca única |
 | **Vazar sem querer** — o dado sair da máquina sem o usuário pedir | Zero rede, zero telemetria, pasta fora do OneDrive |
-| **Conteúdo importado hostil** — o `.zip` do Whiteboard é um arquivo de terceiros interpretado pelo app | Interpretação sem `eval`, no renderer isolado |
+| **Conteúdo importado hostil** — o `.zip` importado é um arquivo de terceiros interpretado pelo app | Interpretação sem `eval`, no renderer isolado |
 | **Cadeia de suprimentos** — dependência comprometida executando na máquina | Duas dependências em produção, zero módulos nativos |
 
 ---

@@ -1,6 +1,6 @@
 /**
  * Oraculo de layout: a posicao VERDADEIRA de cada objeto de um export do
- * Microsoft Whiteboard, medida pelo motor de CSS em vez de deduzida por nos.
+ * outro aplicativo, medida pelo motor de CSS em vez de deduzida por nos.
  *
  * Por que existe: o importador le `left/top` e a matriz do estilo inline e
  * calcula a posicao na mao. Esse calculo tem armadilhas -- a classe `align`

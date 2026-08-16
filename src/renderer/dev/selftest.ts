@@ -1,4 +1,4 @@
-﻿import type { Vec2 } from '@shared/geometry/vec2';
+import type { Vec2 } from '@shared/geometry/vec2';
 import { computeBbox } from '@shared/model/bbox';
 import { keyBetween } from '@shared/model/fractional';
 import type {
@@ -217,7 +217,7 @@ function diagonal(id: string, x: number, y: number, z: string): StrokeObject {
 }
 
 /**
- * Tinta importada: contorno preenchido, como a caligrafia que vem do Whiteboard.
+ * Tinta importada: contorno preenchido, como a caligrafia que vem de um quadro importado.
  * Nao e produzida por nenhuma ferramenta do app -- so pela importacao.
  */
 function inkPath(id: string, x: number, y: number, z: string): PathObject {
@@ -3241,7 +3241,7 @@ function runSearchTests(app: App, check: Check, reset: () => void): void {
 
   // --- acha por trecho, ignorando acento e caixa
   // Num resumo em portugues escrito a duas maos -- digitado aqui e importado do
-  // Whiteboard -- procurar "revisao" e nao achar "revisão" seria inutilizavel.
+  // importado -- procurar "revisao" e nao achar "revisão" seria inutilizavel.
   setup();
   const semAcento = searchBoard(doc, 'REVISAO');
   check(

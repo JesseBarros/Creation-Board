@@ -17,10 +17,15 @@ import type { AssetStore } from '../images/AssetStore';
 import { dataUriToBlob } from '../images/dataUri';
 
 /**
- * Importador da exportacao HTML do Microsoft Whiteboard.
+ * Importador de quadros exportados em HTML por outros aplicativos.
  *
  * Formato de entrada (verificado em exports reais): cada objeto do quadro e uma
  * div `.anchor` com `data-whiteboard-type`, posicionada por `style="left/top"`
+ *
+ * **`data-whiteboard-type` e `whiteboardType` sao nomes de campo DO ARQUIVO DE
+ * ENTRADA**, e nao referencia a produto nenhum: e assim que o atributo se chama
+ * dentro do HTML que este importador le. Renomear aqui faria o seletor deixar de
+ * casar, e a importacao passaria a ler zero objetos.
  * em coordenadas de mundo e opcionalmente escalada por uma matriz CSS. Todo o
  * conteudo vem embutido -- imagens em base64, tinta em SVG -- entao o arquivo e
  * autossuficiente e a importacao funciona offline.
@@ -51,7 +56,7 @@ export interface ImportResult {
   anchorOf: number[];
 }
 
-export async function importWhiteboardHtml(
+export async function importBoardHtml(
   name: string,
   html: string,
   assets: AssetStore,
@@ -222,7 +227,7 @@ function baseFields(z: string): Omit<BoardObject, 'type' | 'bbox' | 'transform'>
 /**
  * Extrai o texto de um bloco do editor.
  *
- * O Whiteboard usa Draft.js: cada paragrafo e uma div `[data-block]` e o texto
+ * O formato de origem usa Draft.js: cada paragrafo e uma div `[data-block]` e o texto
  * fica em spans `[data-text]`. Concatenar todos os spans direto perderia as
  * quebras de paragrafo, entao a juncao acontece por bloco.
  */
@@ -245,7 +250,7 @@ function readText(anchor: HTMLElement, z: string): TextObject | null {
   if (content.trim() === '') return null; // caixa vazia nao vira objeto
 
   const fontSize = parseFloat(box?.style.fontSize ?? '') || 16;
-  // `max-width` e a largura de quebra que o Whiteboard aplicou; sem ela o texto
+  // `max-width` e a largura de quebra que o aplicativo de origem aplicou; sem ela o texto
   // reflui diferente e o layout do resumo se desfaz.
   const maxWidth = parseFloat(box?.style.maxWidth ?? '') || 400;
   const fontFamily = core.style.fontFamily || "'Segoe UI', sans-serif";

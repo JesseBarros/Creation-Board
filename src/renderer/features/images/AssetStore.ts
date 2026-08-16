@@ -9,7 +9,7 @@ import { createId } from '@shared/model/id';
  *
  *  - `bytes`: o arquivo ORIGINAL, exatamente como entrou. E ele que vai para o
  *    .wbd. Guardar o original importa especialmente para migracao: um resumo
- *    exportado do Whiteboard precisa continuar legivel quando voce der zoom.
+ *    de um quadro importado precisa continuar legivel quando voce der zoom.
  *
  *  - `bitmap`: um ImageBitmap para o canvas, com o numero de pixels limitado.
  *    Uma imagem de 12000x9000 viraria ~430 MB de textura na GPU; o teto evita

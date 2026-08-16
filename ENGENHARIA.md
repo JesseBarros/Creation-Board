@@ -33,7 +33,7 @@ duas semanas depois.
 
 Em fases, cada uma entregando algo usável de ponta a ponta. **A ordem diverge do que seria
 natural, e isso é a primeira decisão do projeto:** importar e manipular vieram *antes* de
-desenhar, porque o objetivo era migrar resumos existentes do Microsoft Whiteboard — de nada
+desenhar, porque o objetivo era migrar resumos que já existiam em outros aplicativos — de nada
 adiantaria uma caneta ótima num app que não abrisse o material.
 
 | Fase | O que entrega | Estado |
@@ -41,7 +41,7 @@ adiantaria uma caneta ótima num app que não abrisse o material.
 | 0 | Setup, janela, instalador `.exe` validado | pronta |
 | 1 | Canvas infinito, modelo, índice espacial, culling, `F3` | pronta |
 | 1.5 | Lobby com miniaturas, salvar `.wbd`, `F1` | pronta |
-| 2 | Importação do Whiteboard, conferida contra o motor de layout | pronta |
+| 2 | Importação de quadros exportados, conferida contra o motor de layout | pronta |
 | 3 | Seleção, mover/redimensionar/girar, duplicar, excluir, camadas, undo/redo, copiar/colar | pronta |
 | 4 | Caneta, marca-texto, lápis, borracha, cores e espessura | pronta |
 | 4.5 | Formas, encaixe com guias, grade magnética, réguas | pronta |
@@ -151,7 +151,7 @@ E, ao tocar em `Document`, `SpatialIndex`, no importador ou no **layout de texto
 conferir a geometria contra o oráculo:
 
 ```
-$env:QB_IMPORT = "C:\caminho\para\um-export-do-whiteboard.zip"
+$env:QB_IMPORT = "C:\caminho\para\um-quadro-exportado.zip"
 npm run dev
 ```
 
@@ -300,7 +300,7 @@ ler os três quadros, com um motor de busca só compartilhado com o `Ctrl+F` (`f
 
 **Transcrever imagem em texto.** É a última funcionalidade que falta, e a única fase que
 nunca começou. Foi adiada duas vezes de propósito: o objetivo do projeto é migrar os resumos
-do Whiteboard, e mover/desenhar/exportar vinham antes de ler.
+de outros aplicativos, e mover/desenhar/exportar vinham antes de ler.
 
 **O que ela precisa responder antes de qualquer linha de código, e nenhuma tem resposta
 hoje:**
@@ -374,7 +374,7 @@ achar uma palavra que só existe dentro de uma delas, a fase entregou o que prom
 
    </details>
 
-2. **Reimportar sobrescreve o `.wbd`.** Guarde os `.zip` originais do Whiteboard — eles são
+2. **Reimportar sobrescreve o `.wbd`.** Guarde os `.zip` originais da exportação — eles são
    a única fonte para reimportar, e o `.wbd` gerado não volta a ser `.zip`.
 3. **Geometria de importação se mede, não se deduz.** Ler o CSS do export já levou a
    hipóteses plausíveis e erradas — três, contando a da Fase 5 (achei que as âncoras de
@@ -505,7 +505,7 @@ src/renderer/
 │  ├─ search/     busca por texto, sem índice invertido (ver a medição)
 │  ├─ export/     exportBoard (PNG, reusa os painters) e exportSvg (não reusa)
 │  ├─ text/       TextEditor (contentEditable), spans (DOM ↔ RichSpan)
-│  ├─ import/     leitor do export do Whiteboard
+│  ├─ import/     leitor de quadros exportados
 │  ├─ images/     AssetStore, insert (colar e arrastar arquivo)
 │  └─ storage/    boardIO, autosave (a regra, separada de quem grava)
 ├─ render/      Renderer (estática + overlay), painters (+ erase: máscara da borracha),

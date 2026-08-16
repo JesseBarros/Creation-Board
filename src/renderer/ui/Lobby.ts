@@ -11,7 +11,7 @@ export interface LobbyActions {
   openDemo(): void;
   showShortcuts(): void;
   toggleTheme(): void;
-  importWhiteboard(): void;
+  importBoards(): void;
   /** Abre o quadro do caminho e leva a camera ate o objeto (busca da biblioteca). */
   openBoardAt(path: string, objectId: string): void;
 }
@@ -80,8 +80,8 @@ export class Lobby {
     );
     this.#themeBtn = iconOnlyButton('lua', 'Alternar tema', () => this.actions.toggleTheme());
 
-    const importBtn = textButton('Importar arquivo', () => this.actions.importWhiteboard());
-    importBtn.title = 'Abrir a exportacao (.zip ou .html) do Microsoft Whiteboard';
+    const importBtn = textButton('Importar arquivo', () => this.actions.importBoards());
+    importBtn.title = 'Abrir um quadro exportado de outro aplicativo (.zip ou .html)';
     const newBtn = textButton('Novo quadro', () => this.actions.newBoard());
     newBtn.classList.add('qb-btn--primary');
     // O "+" era texto dentro do rotulo e alinhava mal com a letra; como icone
@@ -119,8 +119,8 @@ export class Lobby {
     emptyActions.className = 'qb-lobby__empty-actions';
     // No lobby vazio o rotulo diz de onde vem, porque ali ele e a explicacao do
     // que fazer primeiro -- e nao mais um botao numa fila.
-    const importCta = textButton('Importar arquivo do Microsoft Whiteboard', () =>
-      this.actions.importWhiteboard(),
+    const importCta = textButton('Importar um quadro de outro aplicativo', () =>
+      this.actions.importBoards(),
     );
     importCta.classList.add('qb-btn--primary');
     const demoBtn = textButton('Abrir quadro de demonstracao', () => this.actions.openDemo());

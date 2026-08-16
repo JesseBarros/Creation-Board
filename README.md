@@ -1,9 +1,9 @@
-﻿# Creation Board
+# Creation Board
 
 **Quadro branco infinito para estudar, que roda inteiro na sua máquina.** Sem login, sem
 nuvem, sem servidor — os arquivos ficam no seu disco e não saem dele.
 
-Ele nasceu de um problema concreto: resumos presos dentro do Microsoft Whiteboard, difíceis
+Ele nasceu de um problema concreto: resumos presos dentro de outros aplicativos, difíceis
 de reorganizar e impossíveis de pesquisar direito. Por isso a **importação vem primeiro** —
 você traz o que já tem e continua o trabalho ali dentro.
 
@@ -16,7 +16,7 @@ na exibição, e o arquivo guarda sempre a cor original.</sub>
 
 ## O que ele faz
 
-- **Importa do Microsoft Whiteboard** (`.zip` ou `.html`), com a geometria conferida contra
+- **Importa quadros de outros aplicativos** (`.zip` ou `.html`), com a geometria conferida contra
   o motor de layout do próprio navegador — texto, tinta, imagens e post-its caem no lugar
 - **Canvas infinito** que aguenta milhares de objetos, com índice espacial e culling
 - **Escreve à mão** — caneta, marca-texto e borracha que apaga por pedaço, não o traço inteiro
@@ -115,7 +115,7 @@ para migrar nada.
 | 0 | Setup, janela, instalador `.exe` validado |
 | 1 | Canvas infinito, modelo de dados, índice espacial, culling, painel `F3` |
 | 1.5 | Lobby com miniaturas, salvar `.wbd`, tela de atalhos |
-| 2 | Importação do Whiteboard, conferida contra o motor de layout do navegador |
+| 2 | Importação de quadros exportados, conferida contra o motor de layout do navegador |
 | 3 | Seleção: mover, redimensionar, girar, duplicar, camadas, undo/redo |
 | 4 | Caneta, marca-texto, borracha, cores e espessura |
 | 4.5 | Formas, encaixe com guias, grade magnética, réguas |

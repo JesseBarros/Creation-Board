@@ -97,7 +97,7 @@ export function readableTextOn(bg: string): string {
 // --------------------------------------------------------------- utilitarios
 
 function parseColor(color: string): Rgba | null {
-  // rgb()/rgba(): formato do conteudo importado do Microsoft Whiteboard, onde a
+  // rgb()/rgba(): formato do conteudo importado de outros aplicativos, onde a
   // tinta vem como fill="rgba(91,49,141,1)". Sem tratar isso aqui, caligrafia
   // preta importada nao seria adaptada e sumiria no tema escuro.
   if (color.startsWith('rgb')) {

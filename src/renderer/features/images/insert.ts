@@ -11,7 +11,7 @@ import type { AssetStore } from './AssetStore';
  * Entrada de imagens pelo app: colar e arrastar arquivo.
  *
  * O caminho de dentro (AssetStore, ImageObject, painter, gravacao no .wbd) ja
- * existia desde a Fase 2, usado pela importacao do Whiteboard. O que a Fase 7
+ * existia desde a Fase 2, usado pela importacao de quadros. O que a Fase 7
  * acrescenta e a porta de entrada.
  *
  * Uma imagem entra em TAMANHO DE TELA, nao no tamanho do arquivo: um print de

@@ -22,7 +22,7 @@ export async function runImportCheck(path: string, app: App, save = false): Prom
     // Por padrao NAO grava: conferir a importacao nao pode criar quadro na
     // pasta do usuario. `QB_IMPORT_SAVE=1` liga a gravacao, para reimportar os
     // resumos por terminal depois de mexer no importador.
-    const reports = await app.importWhiteboard(sources, { save });
+    const reports = await app.importBoards(sources, { save });
     const ms = performance.now() - t0;
 
     for (const r of reports) {

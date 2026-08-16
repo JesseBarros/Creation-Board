@@ -102,7 +102,7 @@ export interface StrokeObject extends BaseObject {
 /**
  * Contorno preenchido, definido por um caminho SVG.
  *
- * Existe para tinta importada. O Microsoft Whiteboard nao exporta o traco como
+ * Existe para tinta importada. O formato de origem nao exporta o traco como
  * linha de centro + espessura: exporta o CONTORNO ja fechado, com a variacao de
  * pressao da caneta embutida na propria forma. Converter isso para um
  * StrokeObject de espessura constante achataria a caligrafia -- justamente o que

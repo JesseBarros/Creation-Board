@@ -154,7 +154,7 @@ Um frame em branco incomoda muito menos que o quadro de outra pessoa.
 ### B2 — A régua: decisão da Fase 4.5 **mantida**
 `fechado — não é bug` · 04/08/2026
 
-Ele avaliou a régua-instrumento do Whiteboard contra a que existe e **decidiu ficar com a
+Ele avaliou a régua-instrumento de outro aplicativo contra a que existe e **decidiu ficar com a
 atual**: *"não vamos alterar, essa régua não está ruim"*. A decisão da Fase 4.5 continua
 valendo, e a documentação não muda.
 
@@ -169,12 +169,12 @@ do que ela precisaria está no histórico deste arquivo (commit `d502ef9`).
 régua *funciona*, mas o que ela faz não é o que ele quer. Hoje ela são duas **faixas
 graduadas nas bordas** da tela (topo e esquerda), em px ou cm.
 
-O que ele quer é a régua do Microsoft Whiteboard: **um objeto físico no meio do quadro,
+O que ele quer é a régua de outros aplicativos de quadro: **um objeto físico no meio do quadro,
 que se gira 360°** e serve de apoio para riscar linhas retas — a tinta encosta na borda
 dela e sai reta.
 
 **Isto reverte uma decisão da Fase 4.5**, registrada no ENGENHARIA.md: *"régua = réguas nas
-bordas em px/cm, não a régua-transferidor do Whiteboard"*. Foi escolha dele na época; a
+bordas em px/cm, não a régua-transferidor de outros aplicativos"*. Foi escolha dele na época; a
 documentação precisa mudar junto, senão a próxima sessão lê a decisão e "conserta" de
 volta.
 
@@ -807,7 +807,7 @@ pinta na hora, `goToLobby()` não. É exatamente o sentido em que ele vê rastro
 
 ### Não é o conteúdo salvo — testado, não suposto
 
-Ele levantou a hipótese de que a importação do Whiteboard tivesse deixado resto, e pediu
+Ele levantou a hipótese de que a importação tivesse deixado resto, e pediu
 para zerar o storage. Feito **sem destruir nada**: `QB_BOARDS=<pasta>` aponta o app para
 outra pasta, e ele abriu com a biblioteca **vazia**, mais `GPUCache`, `DawnGraphiteCache`,
 `DawnWebGPUCache`, `Code Cache`, `Cache`, `Local Storage` e `Session Storage` apagados.
@@ -936,7 +936,7 @@ igual**, e voltou a piscar preto — porque o DirectComposition estava de volta 
 
 | Suspeito | Como caiu |
 |---|---|
-| Conteúdo importado do Whiteboard | Biblioteca vazia via `QB_BOARDS`, bug igual |
+| Conteúdo importado | Biblioteca vazia via `QB_BOARDS`, bug igual |
 | Caches gráficos e `Local Storage` | Apagados, bug igual |
 | CSS (desfoque, sombra, `clip`, transições) | Cinco desligados juntos, bug igual |
 | "Quadros fantasmas" | Eram o bug: disco tem 1 arquivo, tela mostrava 2 |
@@ -1555,11 +1555,11 @@ justamente quando a pessoa acabou de clicar num texto para mudá-lo.
 A regra do estado segue a de qualquer editor: se **tudo** já está formatado, o botão tira;
 senão, aplica em tudo.
 
-### M2 — Renomear o botão de importação do Whiteboard
+### M2 — Renomear o botão de importação
 `corrigido` · `baixo` · 04/08/2026
 
 Virou **"Importar arquivo"**. No lobby vazio o rótulo ficou mais longo de propósito —
-"Importar arquivo do Microsoft Whiteboard" —, porque ali ele é a explicação do que fazer
+"Importar um quadro de outro aplicativo" —, porque ali ele é a explicação do que fazer
 primeiro, e não mais um botão numa fila.
 
 ### M3 — Redesenhar a barra de ferramentas inferior
