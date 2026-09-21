@@ -1807,6 +1807,10 @@ código antigo, o render marcou 0,28 ms mesmo assim, porque o rabisco do cenári
 trivial: o tempo só explode num quadro real. O que discrimina o defeito em qualquer máquina é a
 **área pedida**, e é sobre ela que a checagem falha.
 
+**Confirmado no mesmo dia, num quadro de verdade, a 6400% de zoom** — que é o
+`MAX_ZOOM` do app (`core/Camera.ts`). Para um defeito cujo custo *escalava com o zoom*, o teto
+da faixa é a confirmação mais forte que existe: acima disso não há caso a testar.
+
 ---
 
 ## Fechados nesta rodada
