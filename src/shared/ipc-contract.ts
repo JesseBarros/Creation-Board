@@ -29,6 +29,9 @@ export const IPC = {
   exportSave: 'export:save',
   ocrRecognize: 'ocr:recognize',
   boardSearchIndex: 'board:searchIndex',
+  fundoEscolher: 'fundo:escolher',
+  fundoLer: 'fundo:ler',
+  fundoLimpar: 'fundo:limpar',
 } as const;
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC];
@@ -98,6 +101,24 @@ export interface ExportResult {
   count?: number;
 }
 
+/** Qual dos dois fundos do menu principal. Um por tema. */
+export type TemaFundo = 'claro' | 'escuro';
+
+/**
+ * Uma imagem de fundo escolhida pelo usuario, como ela esta no disco.
+ *
+ * Trafega os BYTES, e nao o caminho: a CSP do aplicativo permite `data:` e
+ * `blob:` em imagem, mas nao `file:` -- entao um caminho nao teria como ser
+ * exibido. O renderer monta um `blob:` com isto.
+ */
+export interface FundoImagem {
+  bytes: ArrayBuffer;
+  /** Deduzido da ASSINATURA dos bytes, nao da extensao. */
+  mime: string;
+  /** Nome original do arquivo, so para o dialogo de Configuracoes mostrar. */
+  nome: string;
+}
+
 /** Superficie exposta em `window.quadro` pelo preload. */
 export interface CreationBoardApi {
   getAppInfo(): Promise<AppInfo>;
@@ -129,6 +150,21 @@ export interface CreationBoardApi {
   exporter: {
     /** Pergunta onde salvar e grava. `path: null` = cancelado. */
     save(req: ExportRequest): Promise<ExportResult>;
+  };
+
+  /**
+   * O plano de fundo do menu principal, um por tema.
+   *
+   * O renderer nunca manda caminho -- so o tema. Nao ha como pedir "copie" ou
+   * "apague" um caminho arbitrario do disco a partir da interface.
+   */
+  fundo: {
+    /** Abre o seletor e COPIA o escolhido para a pasta do app. null = cancelou. */
+    escolher(tema: TemaFundo): Promise<FundoImagem | null>;
+    /** O que ja esta guardado. null = nao ha, usar a imagem que vem com o app. */
+    ler(tema: TemaFundo): Promise<FundoImagem | null>;
+    /** Volta para a imagem que vem com o app. */
+    limpar(tema: TemaFundo): Promise<void>;
   };
 
   ocr: {

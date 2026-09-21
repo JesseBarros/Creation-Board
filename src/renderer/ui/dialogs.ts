@@ -1,3 +1,5 @@
+import type { TemaFundo } from '@shared/ipc-contract';
+
 /**
  * Dialogos modais e avisos temporarios.
  *
@@ -546,6 +548,107 @@ export function toast(message: string, kind: 'ok' | 'error' = 'ok'): void {
 /** O que a tela de Configuracoes devolve. */
 export interface Configuracoes {
   animacoes: boolean;
+  /** Nome do arquivo escolhido por tema, ou null para a imagem que vem com o app. */
+  fundos: { claro: string | null; escuro: string | null };
+}
+
+/**
+ * O que a tela de Configuracoes precisa PEDIR ao aplicativo.
+ *
+ * Separado do estado porque sao coisas diferentes: `Configuracoes` e o que
+ * esta valendo agora, e isto e o que fazer quando alguem mexe. Escolher uma
+ * imagem abre dialogo nativo e mexe em disco, coisas que este arquivo nao faz
+ * nem deve fazer.
+ */
+export interface AcoesConfig {
+  onChange(c: Configuracoes): void;
+  /** Abre o seletor. Devolve o nome do arquivo, ou null se cancelou. */
+  escolherFundo(tema: TemaFundo): Promise<string | null>;
+  restaurarFundo(tema: TemaFundo): Promise<void>;
+}
+
+/**
+ * Linha de "arquivo escolhido": rotulo, o nome atual, e os dois botoes.
+ *
+ * O `group()` acima so faz segmentado, e um seletor de arquivo nao e uma
+ * escolha entre opcoes conhecidas -- por isso um construtor proprio em vez de
+ * torcer aquele.
+ */
+function linhaArquivo(opts: {
+  label: string;
+  nome: string | null;
+  escolher: () => Promise<string | null>;
+  restaurar: () => Promise<void>;
+}): HTMLElement {
+  const row = document.createElement('div');
+  row.className = 'qb-dialog__row';
+
+  const title = document.createElement('span');
+  title.className = 'qb-dialog__row-label';
+  title.textContent = opts.label;
+
+  const caixa = document.createElement('div');
+  caixa.className = 'qb-dialog__arquivo';
+
+  const nome = document.createElement('span');
+  nome.className = 'qb-dialog__arquivo-nome';
+
+  const escolher = document.createElement('button');
+  escolher.type = 'button';
+  escolher.className = 'qb-btn';
+  escolher.textContent = 'Escolher imagem...';
+
+  const restaurar = document.createElement('button');
+  restaurar.type = 'button';
+  restaurar.className = 'qb-btn';
+  restaurar.textContent = 'Restaurar padrao';
+
+  const pintar = (atual: string | null): void => {
+    nome.textContent = atual ?? 'Imagem que vem com o aplicativo';
+    nome.title = atual ?? '';
+    // Sem imagem propria nao ha o que restaurar: o botao aceso prometeria uma
+    // acao que nao faz nada.
+    restaurar.disabled = atual === null;
+  };
+  pintar(opts.nome);
+
+  /*
+    Os dois botoes ficam travados enquanto o dialogo NATIVO estiver aberto.
+
+    Sem isso, um clique duplo abre dois `showOpenDialog`, e o segundo fica orfao
+    atras do modal -- sem foco, sem jeito obvio de fechar, e travando a janela
+    para quem nao percebeu que ele existe.
+  */
+  const enquanto = async (fn: () => Promise<string | null | void>): Promise<void> => {
+    escolher.disabled = true;
+    restaurar.disabled = true;
+    try {
+      return void (await fn());
+    } finally {
+      escolher.disabled = false;
+      // `pintar` decide o estado do restaurar; chamado por quem invocou.
+    }
+  };
+
+  escolher.addEventListener('click', () => {
+    void enquanto(async () => {
+      const novo = await opts.escolher();
+      // Cancelou: mantem o que estava, e nao apaga a escolha anterior.
+      if (novo !== null) pintar(novo);
+      else pintar(nome.title || null);
+    });
+  });
+
+  restaurar.addEventListener('click', () => {
+    void enquanto(async () => {
+      await opts.restaurar();
+      pintar(null);
+    });
+  });
+
+  caixa.append(nome, escolher, restaurar);
+  row.append(title, caixa);
+  return row;
 }
 
 /**
@@ -560,7 +663,7 @@ export interface Configuracoes {
  * atras do dialogo, entao confirmar uma coisa que ja esta acontecendo so
  * acrescenta um passo. Fechar e a unica saida, e nao ha o que desfazer.
  */
-export function settingsDialog(atual: Configuracoes, onChange: (c: Configuracoes) => void): void {
+export function settingsDialog(atual: Configuracoes, acoes: AcoesConfig): void {
   const panel = document.createElement('div');
   panel.className = 'qb-dialog';
 
@@ -579,7 +682,7 @@ export function settingsDialog(atual: Configuracoes, onChange: (c: Configuracoes
     estado.animacoes ? 'on' : 'off',
     (v) => {
       estado.animacoes = v === 'on';
-      onChange({ ...estado });
+      acoes.onChange({ ...estado });
     },
   );
 
@@ -599,7 +702,27 @@ export function settingsDialog(atual: Configuracoes, onChange: (c: Configuracoes
   fechar.addEventListener('click', () => modal.close());
   actions.append(fechar);
 
-  panel.append(h, linha, dica, actions);
+  const fundoClaro = linhaArquivo({
+    label: 'Fundo do tema claro',
+    nome: estado.fundos.claro,
+    escolher: () => acoes.escolherFundo('claro'),
+    restaurar: () => acoes.restaurarFundo('claro'),
+  });
+
+  const fundoEscuro = linhaArquivo({
+    label: 'Fundo do tema escuro',
+    nome: estado.fundos.escuro,
+    escolher: () => acoes.escolherFundo('escuro'),
+    restaurar: () => acoes.restaurarFundo('escuro'),
+  });
+
+  const dicaFundo = document.createElement('p');
+  dicaFundo.className = 'qb-dialog__hint';
+  dicaFundo.textContent =
+    'A imagem escolhida e copiada para a pasta dos quadros, entao ela continua ' +
+    'valendo mesmo que voce mova ou apague o arquivo original.';
+
+  panel.append(h, linha, dica, fundoClaro, fundoEscuro, dicaFundo, actions);
   const modal = openModal(panel, () => modal.close());
   fechar.focus();
 }

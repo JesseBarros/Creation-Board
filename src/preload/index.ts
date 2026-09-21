@@ -5,6 +5,8 @@ import {
   type CreationBoardApi,
   type ExportRequest,
   type ExportResult,
+  type FundoImagem,
+  type TemaFundo,
 } from '@shared/ipc-contract';
 import type {
   BoardSummary,
@@ -45,6 +47,15 @@ const api: CreationBoardApi = {
       ipcRenderer.invoke(IPC.importPick) as Promise<ImportSource[]>,
     read: (paths: string[]): Promise<ImportSource[]> =>
       ipcRenderer.invoke(IPC.importRead, paths) as Promise<ImportSource[]>,
+  },
+
+  fundo: {
+    escolher: (tema: TemaFundo): Promise<FundoImagem | null> =>
+      ipcRenderer.invoke(IPC.fundoEscolher, tema) as Promise<FundoImagem | null>,
+    ler: (tema: TemaFundo): Promise<FundoImagem | null> =>
+      ipcRenderer.invoke(IPC.fundoLer, tema) as Promise<FundoImagem | null>,
+    limpar: (tema: TemaFundo): Promise<void> =>
+      ipcRenderer.invoke(IPC.fundoLimpar, tema) as Promise<void>,
   },
 
   exporter: {

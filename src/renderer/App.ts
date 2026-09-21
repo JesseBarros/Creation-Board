@@ -56,7 +56,7 @@ import {
   type RenderedPng,
   type TilePlan,
 } from './features/export/exportBoard';
-import type { ExportPart } from '@shared/ipc-contract';
+import type { ExportPart, FundoImagem, TemaFundo } from '@shared/ipc-contract';
 import { renderSvg } from './features/export/exportSvg';
 import {
   applyBoard,
@@ -123,6 +123,17 @@ const AUTOSAVE_MAX_MS = 30_000;
 
 const THEME_KEY = 'qb.theme';
 const ANIM_KEY = 'qb.animacoes';
+/**
+ * Só o RÓTULO da imagem de fundo escolhida, por tema — nunca os bytes.
+ *
+ * A verdade é o disco: existe `fundo-claro.*` na pasta do app, há imagem
+ * personalizada. Isto aqui é o nome original do arquivo, para o diálogo de
+ * Configurações ter o que mostrar. Guardar a imagem em `localStorage` seria
+ * inviável de qualquer forma (teto de ~5 MB), mas o motivo principal é outro:
+ * duas fontes de verdade acabam discordando, e aí o app diz que há fundo e não
+ * há, ou o contrário.
+ */
+const FUNDO_KEY = { claro: 'qb.fundo.claro', escuro: 'qb.fundo.escuro' } as const;
 const RULERS_KEY = 'qb.rulers';
 const DEMO_SEED = 2000;
 /** Lote da geracao de carga: grande o bastante para ser eficiente, pequeno o
@@ -499,7 +510,10 @@ export class App {
       // QB_SHOT. Sem isso ela seria a unica parte da interface que nao se
       // confere por terminal: ela dura 642 ms e some sozinha.
       const segurar = params.get('boot') === 'hold';
-      void this.goToLobby().then(() => {
+      // O fundo entra ANTES da tela de abertura sair, pelo mesmo motivo que a
+      // lista de quadros: a foto aparecendo depois seria uma troca visível de
+      // tela -- exatamente o susto que a tela de abertura existe para evitar.
+      void Promise.all([this.goToLobby(), this.#carregarFundos()]).then(() => {
         if (!segurar) dismissBootScreen();
       });
     }
@@ -1078,11 +1092,49 @@ export class App {
    * atrás do diálogo, e é isso que torna a escolha conferível sem sair dela.
    */
   #openSettings(): void {
-    settingsDialog({ animacoes: this.#animacoes }, (c) => {
-      this.#animacoes = c.animacoes;
-      localStorage.setItem(ANIM_KEY, this.#animacoes ? 'on' : 'off');
-      this.#applyAnimacoes();
-    });
+    settingsDialog(
+      {
+        animacoes: this.#animacoes,
+        fundos: {
+          claro: localStorage.getItem(FUNDO_KEY.claro),
+          escuro: localStorage.getItem(FUNDO_KEY.escuro),
+        },
+      },
+      {
+        onChange: (c) => {
+          this.#animacoes = c.animacoes;
+          localStorage.setItem(ANIM_KEY, this.#animacoes ? 'on' : 'off');
+          this.#applyAnimacoes();
+        },
+        escolherFundo: (tema) => this.#escolherFundo(tema),
+        restaurarFundo: (tema) => this.#restaurarFundo(tema),
+      },
+    );
+  }
+
+  async #escolherFundo(tema: TemaFundo): Promise<string | null> {
+    try {
+      const img = await window.quadro.fundo.escolher(tema);
+      if (!img) return null; // cancelou
+
+      this.#trocarFundo(tema === 'claro' ? 'light' : 'dark', img);
+      localStorage.setItem(FUNDO_KEY[tema], img.nome);
+      this.#aplicarFundo();
+      return img.nome;
+    } catch (err) {
+      // O main recusa arquivo grande demais ou que não é imagem, com uma
+      // mensagem escrita para ser lida. Engolir isso deixaria o clique sem
+      // resposta nenhuma, que é o pior desfecho.
+      toast(String(err instanceof Error ? err.message : err), 'error');
+      return null;
+    }
+  }
+
+  async #restaurarFundo(tema: TemaFundo): Promise<void> {
+    await window.quadro.fundo.limpar(tema);
+    this.#trocarFundo(tema === 'claro' ? 'light' : 'dark', null);
+    localStorage.removeItem(FUNDO_KEY[tema]);
+    this.#aplicarFundo();
   }
 
   /**
@@ -1111,6 +1163,41 @@ export class App {
    * CSS descobre que há foto, já que seletor não consegue perguntar pelo valor
    * de uma variável.
    */
+  /**
+   * Lê do disco a imagem de fundo escolhida para cada tema.
+   *
+   * Vira `blob:`, e não data URL. O preview dos cards usa data URL e está certo
+   * lá — são dezenas de imagens de 20 a 60 KB. Aqui é UMA imagem que pode ter
+   * vários megabytes: em base64 ela incharia 33%, atravessaria o IPC como texto,
+   * ficaria viva dentro do CSSOM e seria reanalisada a cada troca de tema. Um
+   * `blob:` deixa no CSS uma URL de ~50 caracteres, e é **revogável** — que é
+   * como a memória volta quando a imagem é trocada.
+   *
+   * Falha em silêncio de propósito: sem fundo personalizado, a imagem que vem
+   * com o aplicativo assume. Um erro aqui não pode impedir o lobby de abrir.
+   */
+  async #carregarFundos(): Promise<void> {
+    for (const [tema, chave] of [
+      ['light', 'claro'],
+      ['dark', 'escuro'],
+    ] as const) {
+      try {
+        const img = await window.quadro.fundo.ler(chave);
+        this.#trocarFundo(tema, img);
+      } catch {
+        this.#trocarFundo(tema, null);
+      }
+    }
+    this.#aplicarFundo();
+  }
+
+  /** Troca o blob de um tema, revogando o anterior. Ver `#carregarFundos`. */
+  #trocarFundo(tema: 'light' | 'dark', img: FundoImagem | null): void {
+    const antigo = this.#fundos[tema];
+    if (antigo) URL.revokeObjectURL(antigo);
+    this.#fundos[tema] = img ? URL.createObjectURL(new Blob([img.bytes], { type: img.mime })) : null;
+  }
+
   #aplicarFundo(): void {
     const raiz = document.documentElement;
     if (this.#semFundo) {

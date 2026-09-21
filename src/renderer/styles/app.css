@@ -987,6 +987,38 @@
 }
 
 /*
+  A linha de "arquivo escolhido" (plano de fundo, em Configuracoes).
+
+  Envolve em vez de espremer: o nome de um arquivo pode ser longo, e dois botoes
+  ao lado dele nao cabem em qualquer largura de dialogo. `flex-wrap` deixa os
+  botoes descerem para a linha de baixo em vez de o nome virar reticencias cedo
+  demais -- o nome e a unica coisa ali que responde [...].
+*/
+.qb-dialog__arquivo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.qb-dialog__arquivo-nome {
+  color: var(--fg-muted);
+  font-size: 12px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Restaurar desabilitado quando ja e o padrao: apagado, e sem o cursor de
+   clique, para nao prometer uma acao que nao faria nada. */
+.qb-dialog__arquivo .qb-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/*
  * O que vai sair, escrito antes de exportar (B13).
  *
  * `min-height` porque o texto troca de uma para duas linhas conforme a escolha,
