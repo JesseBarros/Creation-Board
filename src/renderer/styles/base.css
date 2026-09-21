@@ -396,7 +396,14 @@
 */
 :root {
   --lobby-foto: url('../assets/fundos/praia.webp');
-  /* Enquadramento: no claro o interesse (mar, horizonte) esta em cima. */
+  /*
+    38%, calibrado por captura em 21/09/2026 contra 62%.
+
+    A 62% o enquadramento desce e traz o horizonte para dentro da PRIMEIRA
+    fileira de cards, cortando-a ao meio, e o ceu limpo que fica atras do titulo
+    da lugar ao brilho do por do sol. A 38% o horizonte pousa entre as duas
+    fileiras e o reflexo do sol fica embaixo, na area vazia.
+  */
   --lobby-foco: center 38%;
   --lobby-scrim: linear-gradient(
     to bottom,
@@ -408,13 +415,24 @@
 :root[data-theme='dark'] {
   --lobby-foto: url('../assets/fundos/galaxia.webp');
   /*
-    38% -> 22%: sobe o enquadramento para a FOGUEIRA sair de baixo do painel.
+    22%, mantido quando a foto trocou em 21/09/2026 -- mas o MOTIVO mudou, e
+    vale escrever o novo para ninguem calibrar contra uma imagem que nao existe
+    mais.
 
-    Ela e um ponto quase branco no centro-inferior da imagem, que e exatamente
-    onde o painel e os cards pousam -- e no tema escuro o texto e claro. Desfocar
-    nao escurece um ponto claro, so o espalha. Reforcar o veu resolveria, mas a
-    custa de apagar a foto inteira por causa de um ponto; deslocar o
-    enquadramento preserva a Via Lactea, que e o que da o clima.
+    A galaxia anterior tinha uma FOGUEIRA: um ponto quase branco no
+    centro-inferior, bem onde os cards pousam, e no escuro o texto e claro.
+    Desfocar nao escurece um ponto, so o espalha; era ela que os 22% empurravam
+    para fora. Esta foto nao tem fogueira. O que ela tem e o NUCLEO da Via
+    Lactea, que e claro mas DIFUSO -- e luz difusa e justamente o que o veu e o
+    desfoque seguram bem. A 22% ele cai abaixo da segunda fileira de cards, com
+    o ceu mais escuro sobrando no topo, que e onde o titulo pousa. Conferido por
+    captura.
+
+    O que NAO se deve esperar deste valor aqui: esta imagem e 2560x1514, quase
+    tao larga quanto a janela, entao sobram uns 100 px de curso vertical contra
+    218 px da praia. Mexer neste numero move a foto muito pouco. Se um dia o
+    nucleo atrapalhar de verdade, a resposta e recortar a imagem, nao caçar
+    porcentagem.
   */
   --lobby-foco: center 22%;
   --lobby-scrim: linear-gradient(
