@@ -329,6 +329,13 @@ function createWindow(): void {
   // linha de comando e volta para o repositorio.
   if (process.env['QB_ALPHA'] === '1') query = `${query}${query ? '&' : '?'}alpha=1`;
 
+  // QB_DESYNC=1 liga `desynchronized` nos dois canvas do quadro.
+  //
+  // O outro instrumento para o B18, e o ultimo do nosso lado: ele muda a ENTREGA
+  // do quadro a tela, e o fantasma sao dois frames entregues juntos. Ver o
+  // comentario em render/Renderer.ts, inclusive por que PIORAR tambem informa.
+  if (process.env['QB_DESYNC'] === '1') query = `${query}${query ? '&' : '?'}desync=1`;
+
   // Os modos de verificacao terminam imprimindo um marcador. Fechar a janela
   // nesse ponto e o que torna `QB_IMPORT`/`--selftest`/`QB_BENCH` utilizaveis
   // dentro de um script: sem isso o processo fica aberto esperando alguem

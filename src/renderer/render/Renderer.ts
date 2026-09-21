@@ -129,9 +129,33 @@ export class Renderer {
       percentuais contra o rastro) passa a ser uma decisao de produto, tomada com o
       numero na mao e registrada por escrito.
     */
-    const semAlfa = new URLSearchParams(location.search).get('alpha') !== '1';
-    this.#staticCtx = must(this.staticCanvas.getContext('2d', { alpha: semAlfa ? false : true }));
-    this.#overlayCtx = must(this.overlayCanvas.getContext('2d'));
+    const params = new URLSearchParams(location.search);
+    const semAlfa = params.get('alpha') !== '1';
+
+    /*
+      `QB_DESYNC=1` liga `desynchronized` nos DOIS canvas. Tambem e instrumento
+      para o B18, e e o ultimo lever que resta do nosso lado.
+
+      `desynchronized` pede ao navegador para tirar o canvas da fila normal de
+      composicao e leva-lo a tela por um caminho de baixa latencia, com buffer
+      proprio. Foi feito para caneta, onde o atraso entre riscar e ver incomoda.
+
+      Por que tentar aqui: o fantasma sao DOIS frames na tela ao mesmo tempo, nos
+      dois canvas, e os dois sao limpos por inteiro. Isso e a entrega do quadro,
+      e nao o desenho dele -- e `desynchronized` e a unica coisa que muda a
+      ENTREGA sem sair do nosso codigo para a linha de comando.
+
+      Pode sair pior: o caminho de baixa latencia troca sincronismo por atraso, e
+      "sem sincronismo" tem como sintoma classico justamente a tela partida. Se
+      piorar, a informacao tambem serve -- confirma que o problema esta na
+      entrega, e nao no desenho.
+    */
+    const desync = params.get('desync') === '1';
+
+    this.#staticCtx = must(
+      this.staticCanvas.getContext('2d', { alpha: !semAlfa, desynchronized: desync }),
+    );
+    this.#overlayCtx = must(this.overlayCanvas.getContext('2d', { desynchronized: desync }));
   }
 
   get overlayCtx(): CanvasRenderingContext2D {
