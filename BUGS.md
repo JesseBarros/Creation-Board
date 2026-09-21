@@ -1814,6 +1814,64 @@ provar que o VRR está desligado (com o app produzindo frames, o `requestAnimati
 144 Hz de qualquer jeito), e isso fica dito aqui em vez de virar conclusão. O que ela confirma
 é o segundo monitor a 60 Hz — que é justamente o teste que a tabela do B8 pediu na linha [...] **e que nunca foi feito**, nem para o B8 nem para este.
 
+#### 21/09/2026 (tarde) — o que o fantasma REALMENTE é, descrito frame a frame
+
+
+
+*"cada vez que eu aplico o zoom ele meio que faz uma transição no desenho, ele meio que
+> sobrepõe o desenho criando um rastro durante o tempo de mudança de zoom… esse rastro
+> aparece de 2 formas diferentes: quando mudamos de forma mais lenta ele aparece o desenho
+> inteiro como se fosse uma sombra do próprio desenho em proporção diferente; quando movemos
+> rápido o zoom ele quebra essa sombra, então ele aparece como se não renderizado a tempo."*
+
+**Não são tiles soltos: é o desenho INTEIRO, duas vezes, em duas escalas, ao mesmo tempo** —
+e o fantasma está mais apagado que o real. Nas capturas, zoom saindo deixa o fantasma
+**maior** que o desenho atual e zoom entrando o deixa **menor**. É o estado anterior do zoom
+sobrevivendo na tela junto com o novo.
+
+**A forma "quebrada" do zoom rápido é a mesma coisa sob pressão**: vários estados
+intermediários sobrepostos, cada um pela metade.
+
+#### A régua também fantasmeia — e isso fecha a porta do lado do app
+
+
+Isso é decisivo, e é a mesma prova que o B18 usou em 20/09 — aqui só foi reencontrada por
+outro caminho. **A régua é desenhada no canvas de OVERLAY; os traços, no ESTÁTICO.** São dois
+canvas independentes, limpos por mecanismos diferentes:
+
+| camada | como é limpa | fantasmeia? |
+|---|---|---|
+| estático | `fillRect` com `boardBg` sobre o canvas inteiro | **sim** |
+| overlay | `clearRect` sobre o canvas inteiro — limpeza total, sem cor | **sim** |
+
+Se fosse erro de limpeza do app, teria de ser um erro **diferente** em cada camada, produzindo
+o **mesmo** sintoma no mesmo frame. Descarta, em particular, a hipótese tentadora de que o
+`boardBg` do `fillRect` tivesse alfa e cada frame estivesse lavando o anterior em vez de
+apagá-lo: isso explicaria o estático e **não** explicaria o overlay, que nem usa cor.
+
+#### O que mais caiu nesta rodada
+
+
+#### O dado de carga, medido
+
+`QB_BENCH` com a mesma carga do quadro mais pesado, no monitor de 144 Hz
+(orçamento **6,95 ms** por frame):
+
+| objetos | enquadramento | visíveis | fps | frame | render |
+|---|---|---|---|---|---|
+| 400 | zoom 100% | 22 | 144,0 | 6,95 ms | 0,70 ms |
+| 400 | ajustado à tela | 400 | 121,1 | 8,26 ms | 2,10 ms |
+| 1070 | zoom 100% | 25 | 144,0 | 6,95 ms | 0,80 ms |
+| **1070** | **ajustado à tela** | **1070** | **50,8** | **19,68 ms** | **6,20 ms** |
+
+**Com tudo na tela o app entrega um frame a cada três.** E repare na última linha: o `render`
+é 6,20 ms, mas o frame inteiro é 19,68 — **13 ms não são o nosso desenho**. Tirar o zoom
+rápido é justamente o gesto que atravessa da primeira linha até a última em uma fração de
+segundo.
+
+Isto **não** é a causa do fantasma (ele aparece também com pouca coisa na tela), mas é um
+problema por mérito próprio e provavelmente é o que torna a forma "quebrada" tão visível.
+
 #### O que fazer com isso: partir o `comp` ao meio
 
 O `comp` nunca foi isolado. Ele faz **duas** coisas de uma vez:
