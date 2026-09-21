@@ -26,6 +26,8 @@ export interface LobbyActions {
  */
 export class Lobby {
   readonly el: HTMLElement;
+  /** O que rola. A raiz e palco parado -- ver a montagem no construtor. */
+  #rolagem!: HTMLElement;
   #grid: HTMLElement;
   #empty: HTMLElement;
   #folderLabel: HTMLElement;
@@ -143,7 +145,22 @@ export class Lobby {
     emptyActions.append(importCta, demoBtn);
     this.#empty.append(emptyTitle, emptyHint, emptyActions);
 
-    this.el.append(header, this.#search.el, this.#empty, this.#grid);
+    /*
+      A ROLAGEM MORA NUM FILHO, e nao na raiz do lobby.
+
+      A raiz virou palco: ela nao rola (`overflow: clip`) e e ela que vai
+      carregar a imagem de fundo. Assim o fundo fica parado enquanto a lista
+      corre, DE GRACA -- sem `background-attachment: fixed`, que num elemento
+      que rola obriga o Chromium a repintar o fundo a cada frame, e este app ja
+      tem historico documentado de rastro ao rolar (B8 e B18).
+
+      Efeito colateral bom: a barra de rolagem nasce na borda real da tela, e
+      nao a 32px dela, porque o padding desceu junto com a rolagem.
+    */
+    this.#rolagem = document.createElement('div');
+    this.#rolagem.className = 'qb-lobby__rolagem';
+    this.#rolagem.append(header, this.#search.el, this.#empty, this.#grid);
+    this.el.append(this.#rolagem);
   }
 
   /**

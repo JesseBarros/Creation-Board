@@ -116,12 +116,26 @@
 
 /* ================================================================= lobby */
 
+/*
+  O lobby e um PALCO que nao rola: quem rola e o `__rolagem` dentro dele.
+
+  A separacao existe para a imagem de fundo poder ficar parada enquanto a lista
+  corre. Pintada aqui, num elemento que nunca rola, ela fica fixa sem
+  `background-attachment: fixed` -- que num scroller custa repintura por frame,
+  e e a familia de causa do B8/B18. Ver a montagem em `ui/Lobby.ts`.
+*/
 .qb-lobby {
   position: absolute;
   inset: 0;
+  /* `clip` e nao `hidden`: nao cria contexto de rolagem. Mesma nota do .qb-view. */
+  overflow: clip;
+  background: var(--bg);
+}
+
+.qb-lobby__rolagem {
+  height: 100%;
   overflow-y: auto;
   padding: 28px 32px 48px;
-  background: var(--bg);
 }
 
 .qb-lobby__header {
