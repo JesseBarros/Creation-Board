@@ -16,7 +16,8 @@
     background-color 0.14s ease,
     border-color 0.14s ease,
     color 0.14s ease,
-    transform 0.09s ease;
+    box-shadow 0.16s var(--ease-saida),
+    transform 0.16s var(--ease-saida);
 }
 
 /*
@@ -30,10 +31,20 @@
 .qb-btn:hover {
   background: color-mix(in srgb, var(--fg) 9%, var(--panel-2));
   border-color: color-mix(in srgb, var(--border) 130%, transparent);
+  transform: translateY(var(--levanta));
+  box-shadow: var(--levanta-sombra);
 }
 
+/*
+  Apertar DESFAZ o levantar, e nao encolhe por cima dele.
+
+  `translateY(0) scale(...)` e nao so `scale(...)`: sem zerar o deslocamento, o
+  botao encolheria ainda suspenso no ar, que le como "recuou" e nao como
+  "afundou". O gesto completo e levantar ao aproximar e pousar ao apertar.
+*/
 .qb-btn:active {
-  transform: scale(0.97);
+  transform: translateY(0) scale(0.97);
+  box-shadow: none;
 }
 
 .qb-btn:focus-visible {
@@ -50,6 +61,24 @@
 
 .qb-btn--icon:hover {
   color: var(--fg);
+}
+
+/*
+  Interruptor LIGADO no cabecalho do lobby -- hoje so o vitrificado.
+
+  A mesma pilula preenchida na cor de destaque que a barra do quadro usa para
+  "ligado". Repetir o idioma e o ponto: "ligado" tem uma cor so no aplicativo
+  inteiro, e foi a divergencia entre as duas barras que virou o B16.
+*/
+.qb-btn--active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 38%, transparent);
+  color: var(--accent);
+}
+
+.qb-btn--active:hover {
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+  color: var(--accent);
 }
 
 .qb-btn--primary {
@@ -677,28 +706,79 @@
   transition: width 0.1s linear;
 }
 
-/* ======================================== nome do quadro na barra inferior */
+/* ============================================== paleta de papel do quadro */
 
-.qb-bar__name {
-  padding: 0 8px;
-  font-size: 13px;
-  max-width: 190px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.qb-papers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 4px;
 }
 
-.qb-bar__name--dirty {
-  color: var(--accent);
+/*
+  A amostra é grande (44px) de propósito: o que se está julgando é a COR, e um
+  quadradinho de 16px não mostra cor -- mostra um ponto. A borda é neutra para
+  não tingir a amostra, e o anel de escolhido fica FORA dela, pelo mesmo motivo
+  que vale na paleta de tinta: uma borda colorida por dentro comeria a cor.
+*/
+.qb-paper {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0;
+  transition: transform 0.1s ease, box-shadow 0.12s ease;
 }
 
+/*
+  O ponto que identifica a cor.
+
+  A amostra mostra o papel COMO ELE SERÁ -- claríssimo --, e é isso que a torna
+  honesta e ao mesmo tempo difícil de ler: sete cores a 0,80 de luminância
+  diferem por poucos pontos de saturação, e um monitor mais ou menos saturado
+  achata essa diferença. O ponto resolve sem mentir sobre o papel: ele é a mesma
+  cor, só que escura o bastante para se identificar sozinha.
+
+  No alto e centralizado porque é ali que ele não disputa espaço com o anel de
+  escolhido, que contorna a amostra inteira.
+*/
+.qb-paper::before {
+  content: '';
+  position: absolute;
+  top: 7px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--marca);
+}
+
+.qb-paper:hover {
+  transform: translateY(-2px);
+}
+
+.qb-paper--active {
+  box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent);
+}
+
+.qb-paper:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent);
+}
+
+/* ===================================== botao de salvar da barra inferior */
+
+/*
+  O nome do quadro tinha as proprias regras aqui, e saiu com ele em 20/09/2026
+  (ver ViewportBar). O ponto de [...] que o acompanhava mudou
+  de dono e agora vive no botao de salvar -- a regra esta em app.css, junto das
+  demais da barra.
+*/
 .qb-bar__btn--primary {
   background: var(--accent);
   color: #fff;
-}
-
-.qb-bar__btn--primary:hover {
-  background: color-mix(in srgb, var(--accent) 85%, #000);
 }
 
 .qb-bar__btn--primary:hover {

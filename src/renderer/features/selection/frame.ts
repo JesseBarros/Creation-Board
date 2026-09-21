@@ -2,6 +2,7 @@ import type { Vec2 } from '@shared/geometry/vec2';
 import { localBounds } from '@shared/model/bbox';
 import type { BoardObject } from '@shared/model/types';
 
+
 /**
  * Quadro de manipulacao desenhado em volta da selecao.
  *
@@ -10,7 +11,7 @@ import type { BoardObject } from '@shared/model/types';
  * conjunto de objetos com rotacoes diferentes, e escolher a de um deles faria o
  * quadro pular ao trocar a selecao.
  *
- * O sistema de coordenadas do quadro ([...]) tem origem no canto
+ * O sistema de coordenadas do quadro ("espaco de frame") tem origem no canto
  * `x,y`, eixos girados por `rotation` e a mesma unidade do mundo. Redimensionar
  * e girar sao resolvidos nesse espaco, onde viram contas de retangulo alinhado.
  */
@@ -52,6 +53,32 @@ export const SCALE_HANDLES: ReadonlyArray<{ id: ScaleHandleId; u: number; v: num
 export const SCALE_UV = Object.fromEntries(
   SCALE_HANDLES.map((h) => [h.id, { u: h.u, v: h.v }]),
 ) as Record<ScaleHandleId, { u: number; v: number }>;
+
+/**
+ * Alcas da caixa de texto: os quatro cantos e os dois lados, sem cima e baixo.
+ *
+ * A altura de uma caixa de texto e derivada do conteudo, nunca digitada -- ela e
+ * o resultado de quantas linhas o texto formou na largura atual. Uma alca que
+ * prometesse esticar a altura ou nao faria nada, ou esticaria o desenho da
+ * letra, que e exatamente o defeito que este modelo remove. As duas que sobram
+ * cobrem os dois gestos que existem: canto muda o corpo da fonte, lado muda onde
+ * a linha quebra.
+ *
+ * `u !== 0.5` tira 'n' e 's' -- derivado da tabela, e nao uma segunda lista
+ * capaz de discordar dela.
+ */
+export const TEXT_SCALE_HANDLES = SCALE_HANDLES.filter((h) => h.u !== 0.5);
+
+/** Alcas que a selecao oferece. Texto tem menos; ver TEXT_SCALE_HANDLES. */
+export function scaleHandlesFor(
+  objects: readonly BoardObject[],
+): ReadonlyArray<{ id: ScaleHandleId; u: number; v: number }> {
+  // Selecao MISTA mantem o jogo completo: os outros tipos esticam na vertical, e
+  // esconder a alca deles por causa de um texto junto tiraria uma operacao
+  // legitima.
+  const onlyText = objects.length > 0 && objects.every((o) => o.type === 'text');
+  return onlyText ? TEXT_SCALE_HANDLES : SCALE_HANDLES;
+}
 
 export function computeFrame(objects: readonly BoardObject[]): SelectionFrame | null {
   if (objects.length === 0) return null;
@@ -140,6 +167,7 @@ export function hitHandle(
   world: Vec2,
   zoom: number,
   allowRotate: boolean,
+  handles: ReadonlyArray<{ id: ScaleHandleId; u: number; v: number }> = SCALE_HANDLES,
 ): HandleId | null {
   const reach = HANDLE_HIT_PX / zoom;
 
@@ -148,7 +176,7 @@ export function hitHandle(
     if (Math.hypot(world.x - r.x, world.y - r.y) <= reach) return 'rotate';
   }
 
-  for (const h of SCALE_HANDLES) {
+  for (const h of handles) {
     const p = framePoint(f, h.u, h.v);
     if (Math.abs(world.x - p.x) <= reach && Math.abs(world.y - p.y) <= reach) return h.id;
   }

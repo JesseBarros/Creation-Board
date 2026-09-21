@@ -6,7 +6,6 @@ export interface ViewportBarActions {
   zoomTo(zoom: number): void;
   fitToContent(): void;
   toggleGrid(): void;
-  toggleSnap(): void;
   toggleRulers(): void;
   toggleLayers(): void;
   toggleTheme(): void;
@@ -29,9 +28,13 @@ const PRESETS = [0.01, 0.05, 0.25, 0.5, 1, 2, 4, 8, 16, 64];
  * rotulos lado a lado --, e a leitura de cada um custava mais que o desenho
  * correspondente.
  *
- * O que continua escrito e o que E informacao, e nao rotulo de comando: o nome
- * do quadro (com o ponto de alteracoes nao salvas) e o nivel de zoom. Trocar
- * esses dois por icone esconderia justamente o que se precisa ler.
+ * O unico texto que sobrou e o NIVEL DE ZOOM, porque ele e informacao e nao
+ * rotulo de comando -- trocar "55%" por um icone esconderia justamente o que se
+ * precisa ler. O nome do quadro tambem era escrito aqui e saiu em 20/09/2026:
+ * ver o comentario na construcao.
+ *
+ * Desde 20/09/2026 ela hospeda TAMBEM a fila de ferramentas, que era uma
+ * segunda barra flutuante. Ver `mountTools`.
  *
  * Cada botao carrega `data-action`, e e por ele que o auto-teste encontra os
  * botoes -- procurar pelo texto quebraria a cada mudanca de rotulo, e foi
@@ -42,14 +45,17 @@ export class ViewportBar {
   #zoomLabel: HTMLButtonElement;
   #menu: HTMLElement;
   #gridBtn: HTMLButtonElement;
-  #snapBtn: HTMLButtonElement;
   #rulerBtn: HTMLButtonElement;
   #layersBtn: HTMLButtonElement;
   #themeBtn: HTMLButtonElement;
-  #nameLabel: HTMLElement;
+  /** Lugar reservado da fila de ferramentas; ver `mountTools`. */
+  #toolsSlot: HTMLElement;
+  /** Leva o ponto de [...]; ver o comentario na construcao. */
+  #saveBtn: HTMLButtonElement;
   #undoBtn: HTMLButtonElement;
   #redoBtn: HTMLButtonElement;
   #savedTitle = '';
+  #boardName = 'Quadro sem nome';
 
   constructor(private readonly actions: ViewportBarActions) {
     this.el = document.createElement('div');
@@ -65,12 +71,25 @@ export class ViewportBar {
       this.actions.backToLobby(),
     );
 
-    this.#nameLabel = document.createElement('span');
-    this.#nameLabel.className = 'qb-bar__name';
-    this.#nameLabel.textContent = 'Quadro sem nome';
+    /*
+      O NOME DO QUADRO SAIU DA BARRA em 20/09/2026.
 
-    const saveBtn = iconButton('salvar', 'salvar', 'Salvar (Ctrl+S)', () => this.actions.save());
-    saveBtn.classList.add('qb-bar__btn--primary');
+      Ele ocupava a maior largura da fila e, na esmagadora maioria do tempo,
+      dizia "Quadro sem nome" -- um rotulo que nao informa nada gastando o espaco
+      mais caro da interface. Com as ferramentas agora aqui dentro, esse espaco
+      passou a fazer falta de verdade.
+
+      O nome nao se perdeu: ele esta na BARRA DE TITULO da janela, que e onde o
+      sistema operacional ja o mostra de graca.
+
+      O que NAO podia se perder junto era o aviso de alteracoes nao salvas -- o
+      pontinho que ficava ao lado do nome. Ele mudou de lugar para o botao de
+      salvar, que e, alias, onde ele sempre deveria ter estado: o aviso e um
+      chamado para uma acao, e agora ele mora em cima do botao que a executa.
+    */
+    this.#saveBtn = iconButton('salvar', 'salvar', 'Salvar (Ctrl+S)', () => this.actions.save());
+    this.#saveBtn.classList.add('qb-bar__btn--primary');
+    const saveBtn = this.#saveBtn;
     const exportBtn = iconButton('exportar', 'exportar', 'Exportar PNG, SVG ou PDF (Ctrl+E)', () =>
       this.actions.exportBoard(),
     );
@@ -85,9 +104,6 @@ export class ViewportBar {
 
     this.#gridBtn = iconButton('grade', 'grade', 'Grade de fundo (G)', () =>
       this.actions.toggleGrid(),
-    );
-    this.#snapBtn = iconButton('ima', 'ima', 'Grade magnetica: encaixar na grade (A)', () =>
-      this.actions.toggleSnap(),
     );
     this.#rulerBtn = iconButton('regua', 'regua', 'Reguas nas bordas (R)', () =>
       this.actions.toggleRulers(),
@@ -146,14 +162,19 @@ export class ViewportBar {
 
     const zoomGroup = group(minus, this.#zoomLabel, plus, this.#menu);
 
+    this.#toolsSlot = document.createElement('div');
+    this.#toolsSlot.className = 'qb-bar__group qb-bar__tools';
+
+    // Sair, salvar e exportar juntos na ponta esquerda: sao as tres coisas que
+    // se faz com o ARQUIVO, e agora ocupam o espaco que o nome desperdicava.
     this.el.append(
-      group(backBtn, this.#nameLabel),
+      group(backBtn, saveBtn, exportBtn),
       divider(),
-      group(saveBtn, exportBtn),
+      this.#toolsSlot,
       divider(),
       group(this.#undoBtn, this.#redoBtn),
       divider(),
-      group(this.#gridBtn, this.#snapBtn, this.#rulerBtn, this.#layersBtn, fitBtn),
+      group(this.#gridBtn, this.#rulerBtn, this.#layersBtn, fitBtn),
       divider(),
       group(this.#themeBtn, helpBtn),
       divider(),
@@ -166,6 +187,24 @@ export class ViewportBar {
     });
   }
 
+  /**
+   * Encaixa a fila de ferramentas DENTRO desta barra.
+   *
+   * Ate 20/09/2026 a fila era uma segunda barra flutuante, colada na borda
+   * esquerda. Duas barras e uma escolha cara: elas competem pela mesma atencao,
+   * cada uma traz o proprio fundo, a propria sombra e a propria borda, e o
+   * quadro -- que e o assunto -- fica espremido entre as duas. Uma so.
+   *
+   * A fila entra por injecao e nao por construcao: quem monta os botoes continua
+   * sendo o `ToolBar`, que sabe de ferramenta, cor e espessura. Esta barra so
+   * cede o lugar. Sem isso, um dos dois teria de aprender o assunto do outro.
+   */
+  mountTools(tools: HTMLElement): void {
+    // Logo depois do nome do quadro: o nome ancora a esquerda porque e titulo, e
+    // as ferramentas vem em seguida por serem o que mais se clica.
+    this.#toolsSlot.append(tools);
+  }
+
   setZoom(zoom: number): void {
     this.#zoomLabel.textContent = `${Math.round(zoom * 100)}%`;
   }
@@ -174,9 +213,6 @@ export class ViewportBar {
     this.#gridBtn.classList.toggle('qb-bar__btn--active', on);
   }
 
-  setSnap(on: boolean): void {
-    this.#snapBtn.classList.toggle('qb-bar__btn--active', on);
-  }
 
   setRulers(on: boolean): void {
     this.#rulerBtn.classList.toggle('qb-bar__btn--active', on);
@@ -198,24 +234,36 @@ export class ViewportBar {
     this.#redoBtn.disabled = !canRedo;
   }
 
-  /** O ponto antes do nome sinaliza alteracoes ainda nao gravadas. */
+  /**
+   * Nome do quadro e estado de gravacao.
+   *
+   * O nome nao aparece mais aqui (ver a construcao) -- quem o mostra e a barra
+   * de titulo da janela. O que sobrou para esta barra e o ESTADO: um ponto sobre
+   * o botao de salvar quando ha alteracao pendente. A assinatura continua
+   * recebendo o nome porque ele ainda serve de dica do botao, e e o que responde
+   * "salvar o que?" sem obrigar ninguem a olhar para a moldura da janela.
+   */
   setBoardName(name: string, dirty: boolean): void {
-    this.#nameLabel.textContent = dirty ? `• ${name}` : name;
-    this.#nameLabel.classList.toggle('qb-bar__name--dirty', dirty);
-    this.#nameLabel.title = dirty ? 'Alteracoes nao salvas' : this.#savedTitle || name;
+    this.#saveBtn.classList.toggle('qb-bar__btn--dirty', dirty);
+    this.#saveBtn.title = dirty
+      ? `Salvar "${name}" — alteracoes nao salvas (Ctrl+S)`
+      : `Salvar "${name}" (Ctrl+S)${this.#savedTitle ? ` — ${this.#savedTitle}` : ''}`;
+    this.#saveBtn.setAttribute('aria-label', this.#saveBtn.title);
+    this.#boardName = name;
   }
 
   /**
    * Marca o horario do ultimo salvamento automatico.
    *
-   * Fica na dica do nome, e nao como aviso na tela: autosave que anuncia a cada
-   * gravacao vira ruido -- o que importa e poder conferir quando quiser.
+   * Fica na dica do botao de salvar, e nao como aviso na tela: autosave que
+   * anuncia a cada gravacao vira ruido -- o que importa e poder conferir quando
+   * quiser.
    */
   setAutosaved(at: Date): void {
     const hora = at.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    this.#savedTitle = `Salvo automaticamente as ${hora}`;
-    if (!this.#nameLabel.classList.contains('qb-bar__name--dirty')) {
-      this.#nameLabel.title = this.#savedTitle;
+    this.#savedTitle = `salvo automaticamente as ${hora}`;
+    if (!this.#saveBtn.classList.contains('qb-bar__btn--dirty')) {
+      this.setBoardName(this.#boardName, false);
     }
   }
 

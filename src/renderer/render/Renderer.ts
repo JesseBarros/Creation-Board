@@ -20,7 +20,20 @@ export interface RenderStats {
 }
 
 export interface RenderTheme {
+  /** Cor do quadro NA TELA. */
   boardBg: string;
+  /**
+   * Cor do quadro NO ARQUIVO exportado.
+   *
+   * Separada de `boardBg` porque tela e papel nao pedem a mesma coisa: a tela e
+   * uma fonte de luz e um branco puro em area grande cansa a vista, entao o
+   * quadro claro e um branco quebrado; o arquivo e refletivo, e um fundo cinza
+   * nele so parece sujo -- e gasta tinta ao imprimir.
+   *
+   * No tema escuro as duas sao a mesma cor: o fundo escuro do arquivo E a
+   * intencao de quem exporta um quadro escuro.
+   */
+  exportBg: string;
   gridColor: string;
 }
 
@@ -52,7 +65,7 @@ export class Renderer {
    */
   readonly #raster = new RasterCache();
 
-  #theme: RenderTheme = { boardBg: '#ffffff', gridColor: '#d7dce5' };
+  #theme: RenderTheme = { boardBg: '#f2f4f7', exportBg: '#ffffff', gridColor: '#d3d9e4' };
   #adapt: ColorAdapter = (c) => c;
 
   get theme(): RenderTheme {

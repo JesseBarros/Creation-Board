@@ -111,6 +111,60 @@
   <body>
     <div id="app"></div>
 
+    <!--
+      REFRACAO DO MODO VITRIFICADO.
+
+      Este filtro e a unica parte do vidro que o CSS sozinho nao sabe fazer.
+      `backdrop-filter` desfoca, satura e clareia o que esta atras, mas nao
+      DESLOCA pixel nenhum -- e deslocar e o que separa "vidro fosco" de "vidro".
+
+      Ele deixa de ser enfeite quando a superficie fica TRANSPARENTE: sem tinta,
+      uma barra sem refracao nao e vidro, e uma barra invisivel. E a ondulacao,
+      junto com o aro, que diz onde a peca comeca e termina.
+
+      O `feTurbulence` gera um campo de ruido suave (frequencia baixa = manchas
+      grandes, e nao granulado), e o `feDisplacementMap` usa os canais R e G dele
+      como [...]. O resultado e a ondulacao irregular de
+      um vidro soprado, e nao a distorcao geometrica de uma lente.
+
+      UM deslocamento so, e isto e importante: preserva o alfa exatamente como
+      veio. Houve aqui uma aberracao cromatica com tres deslocamentos, um por
+      canal, e ela VEDAVA o painel -- as matrizes traziam `0 0 0 0 1` na linha do
+      alfa (que fixa em 1 em vez de preservar), e `feBlend` ainda compoe alfa
+      como `aa + ab - aa*ab`, entao empilhar camadas aumenta a opacidade. A
+      franja colorida pede outra tecnica; com tinta 0% nao ha margem para errar
+      no alfa.
+
+      Conferido em 20/09/2026 contra um fundo listrado: as listras entortam.
+      Vale dizer POR QUE o teste precisou de listras -- sobre um gradiente liso o
+      deslocamento e invisivel, porque empurrar uma cor que muda devagar devolve
+      quase a mesma cor. O efeito so existe onde ha detalhe atras.
+
+      INOCENTE do rastro ao rolar a tela: o rastro foi reproduzido com este
+      filtro removido, e tambem no codigo original. Ver docs/nova-versao.
+
+      So e usado no modo vitrificado. Desligado, nada aqui custa nada.
+    -->
+    <svg class="qb-filtros" aria-hidden="true" focusable="false">
+      <filter id="qb-refracao" color-interpolation-filters="sRGB">
+        <feTurbulence
+          type="fractalNoise"
+          baseFrequency="0.006 0.009"
+          numOctaves="2"
+          seed="11"
+          result="ruido"
+        />
+        <feGaussianBlur in="ruido" stdDeviation="3" result="mapa" />
+        <feDisplacementMap
+          in="SourceGraphic"
+          in2="mapa"
+          scale="30"
+          xChannelSelector="R"
+          yChannelSelector="G"
+        />
+      </filter>
+    </svg>
+
     <div id="qb-boot" role="status" aria-label="Abrindo o Creation Board">
       <!--
         A marca, redesenhada em SVG a partir da logo do projeto (build/): o

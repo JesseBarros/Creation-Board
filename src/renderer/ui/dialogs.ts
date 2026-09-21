@@ -144,6 +144,183 @@ export function confirmDialog(opts: {
   });
 }
 
+/**
+ * Papéis do quadro.
+ *
+ * Todos claros, e todos na MESMA faixa de luminância (~0,80) -- o mesmo nível do
+ * fundo de janela do macOS, que foi onde o tema claro parou depois de três
+ * rodadas de ajuste. Escolher papel não pode desfazer esse conserto: uma cor
+ * mais clara que as outras traria de volta o brilho que cansava a vista.
+ *
+ * A cor existe para DESTACAR o que está por cima. Num papel levemente colorido,
+ * um post-it amarelo e uma tag vermelha se separam do fundo; no branco puro
+ * todos competem com ele.
+ *
+ * São sete, e não vinte: a paleta responde "qual clima", não [...].
+ *
+ * CADA PAPEL LEVA UMA `marca` -- a mesma cor, escura o bastante para se
+ * identificar sozinha. Ela vira um ponto no alto da amostra, e existe por um
+ * motivo concreto: a paleta inteira vive em 0,80 de luminância, e a essa altura
+ * as sete cores diferem por poucos pontos de saturação. Num monitor calibrado
+ * para mais ou para menos saturação, "azul claríssimo" e "menta claríssimo"
+ * ficam indistinguíveis -- e a escolha vira adivinhação.
+ *
+ * A marca é explícita, e não derivada por `color-mix` ou `filter: saturate`.
+ * Derivar erraria justamente no Neutro: ele é um cinza levemente azulado, e
+ * qualquer amplificação de saturação o mostraria como azul -- que é o oposto do
+ * que o nome promete.
+ */
+export const BOARD_PAPERS: ReadonlyArray<{ nome: string; cor: string; marca: string }> = [
+  { nome: 'Neutro', cor: '#e3e7ee', marca: '#7b8698' },
+  { nome: 'Azul', cor: '#dceaf7', marca: '#3d7fb0' },
+  { nome: 'Verde', cor: '#dfeee3', marca: '#4a9160' },
+  { nome: 'Areia', cor: '#f1eadf', marca: '#a8824a' },
+  { nome: 'Rosa', cor: '#f7e4ea', marca: '#c25f80' },
+  { nome: 'Lilás', cor: '#e7e3f4', marca: '#7b63c0' },
+  { nome: 'Menta', cor: '#dff0ee', marca: '#3f9e93' },
+];
+
+export const DEFAULT_PAPER = BOARD_PAPERS[0]!.cor;
+
+/**
+ * Escolha do papel ao criar um quadro.
+ *
+ * Aparece na criação porque é ali que a decisão é barata: o quadro está vazio, e
+ * trocar depois muda o fundo de um resumo já montado. Quem não quiser escolher
+ * aperta Enter e leva o neutro -- o diálogo abre com ele em foco.
+ */
+export function newBoardDialog(): Promise<string | null> {
+  return new Promise((resolve) => {
+    const panel = document.createElement('div');
+    panel.className = 'qb-dialog';
+
+    const h = document.createElement('h2');
+    h.className = 'qb-dialog__title';
+    h.textContent = 'Novo quadro';
+
+    const p = document.createElement('p');
+    p.className = 'qb-dialog__message';
+    p.textContent = 'Escolha o papel. Um fundo levemente colorido faz post-its e marcações se destacarem melhor do que o branco.';
+
+    const grade = document.createElement('div');
+    grade.className = 'qb-papers';
+
+    let escolhida = DEFAULT_PAPER;
+    const amostras: HTMLButtonElement[] = [];
+
+    for (const papel of BOARD_PAPERS) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'qb-paper';
+      b.dataset['value'] = papel.cor;
+      b.style.background = papel.cor;
+      // O ponto é desenhado pelo CSS (`::before`) e a cor chega por variável:
+      // assim a marca acompanha o papel sem um segundo elemento por amostra.
+      b.style.setProperty('--marca', papel.marca);
+      b.title = papel.nome;
+      b.setAttribute('aria-label', `Papel ${papel.nome}`);
+      b.addEventListener('click', () => {
+        escolhida = papel.cor;
+        for (const a of amostras) {
+          a.classList.toggle('qb-paper--active', a === b);
+          a.setAttribute('aria-pressed', String(a === b));
+        }
+      });
+      amostras.push(b);
+      grade.append(b);
+    }
+    amostras[0]!.classList.add('qb-paper--active');
+    amostras[0]!.setAttribute('aria-pressed', 'true');
+
+    const actions = document.createElement('div');
+    actions.className = 'qb-dialog__actions';
+
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'qb-btn';
+    cancel.textContent = 'Cancelar';
+
+    const ok = document.createElement('button');
+    ok.type = 'button';
+    ok.className = 'qb-btn qb-btn--primary';
+    ok.textContent = 'Criar quadro';
+
+    actions.append(cancel, ok);
+    panel.append(h, p, grade, actions);
+
+    const done = (value: string | null): void => {
+      modal.close();
+      resolve(value);
+    };
+    const modal = openModal(panel, () => done(null));
+
+    cancel.addEventListener('click', () => done(null));
+    ok.addEventListener('click', () => done(escolhida));
+    ok.focus();
+  });
+}
+
+/** O que fazer com um quadro que tem alteracoes pendentes. */
+export type UnsavedChoice = 'salvar' | 'descartar' | 'cancelar';
+
+/**
+ * Sair com alteracoes nao salvas.
+ *
+ * Tres saidas, e nao duas, porque a pergunta tem tres respostas. O dialogo
+ * anterior oferecia "Descartar" e "Continuar aqui": quem quisesse SALVAR --
+ * que e o desfecho mais provavel de todos -- tinha de cancelar, procurar o
+ * botao de salvar, clicar, e so entao sair. Tres passos para o caminho feliz.
+ *
+ * A ordem dos botoes e deliberada: o destrutivo fica na PONTA ESQUERDA, longe
+ * do foco, e o seguro recebe o destaque e o foco inicial. Enter salva.
+ */
+export function unsavedDialog(nome: string): Promise<UnsavedChoice> {
+  return new Promise((resolve) => {
+    const panel = document.createElement('div');
+    panel.className = 'qb-dialog';
+
+    const h = document.createElement('h2');
+    h.className = 'qb-dialog__title';
+    h.textContent = 'Alterações não salvas';
+
+    const p = document.createElement('p');
+    p.className = 'qb-dialog__message';
+    p.textContent = `“${nome}” tem alterações que ainda não foram gravadas.`;
+
+    const actions = document.createElement('div');
+    actions.className = 'qb-dialog__actions';
+
+    const botao = (rotulo: string, classe: string, valor: UnsavedChoice): HTMLButtonElement => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = classe;
+      b.textContent = rotulo;
+      b.addEventListener('click', () => done(valor));
+      return b;
+    };
+
+    const descartar = botao('Sair sem salvar', 'qb-btn qb-btn--danger', 'descartar');
+    const cancelar = botao('Cancelar', 'qb-btn', 'cancelar');
+    const salvar = botao('Salvar e sair', 'qb-btn qb-btn--primary', 'salvar');
+
+    // O destrutivo primeiro e separado: `margin-right: auto` empurra os outros
+    // dois para a direita, e a distancia fisica e o que evita o clique errado.
+    descartar.style.marginRight = 'auto';
+    actions.append(descartar, cancelar, salvar);
+    panel.append(h, p, actions);
+
+    const done = (value: UnsavedChoice): void => {
+      modal.close();
+      resolve(value);
+    };
+    // Fechar pelo Esc ou pelo fundo e CANCELAR, e nunca descartar: um gesto de
+    // [...] nao pode ser o que apaga o trabalho.
+    const modal = openModal(panel, () => done('cancelar'));
+
+    salvar.focus();
+  });
+}
+
 export interface ExportChoice {
   format: 'png' | 'svg' | 'pdf';
   /** `selection` so aparece quando ha algo selecionado. */

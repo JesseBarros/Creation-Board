@@ -66,9 +66,19 @@ Sempre por terminal — nunca por captura de tela cheia (ver o *porquê* no READ
 
 ```
 npm run typecheck     # tsc nos dois projetos, strict
-npm run selftest      # ~125 verificações, deve terminar com "tudo passou"
+npm run selftest      # 150 verificações, deve terminar com "tudo passou"
 npm run check:colors  # contraste das cores nos dois temas
 npm run check:dist    # o MESMO auto-teste, dentro do .exe empacotado
+```
+
+Modos de diagnóstico, todos por variável de ambiente e nenhum gravando preferência:
+
+```
+QB_GPU=comp|dc|angle|off|normal   # escada de composição do B8
+QB_BLUR=0                         # desliga TODO backdrop-filter (B18)
+QB_THEME=light|dark               # força o tema desta execução
+QB_SHOT=<arquivo.png>             # fotografa só a janela
+QB_BENCH=<n>                      # medição de frame rate com n objetos
 ```
 
 **O `check:dist` é novo e vale explicar por que existe.** O `selftest` mede o app servido
@@ -299,6 +309,82 @@ texto sem índice invertido, e o `selftest` sabe inserir imagem por arraste.
 achar uma palavra que só existe dentro de uma delas, a fase entregou o que prometia.
 
 </details>
+
+---
+
+## A rodada de interface e texto — 20–21/09/2026
+
+Ela nasceu de um uso real: montar resumos no app e esbarrar no que atrapalhava. Quase tudo
+que apareceu estava em **texto** e em **interface**, e o registro completo dos defeitos está
+no [BUGS.md](BUGS.md) (B19 a B23). Aqui ficam as decisões de projeto que sobraram delas.
+
+**Texto deixou de escalar pelo `transform`.** Todo o resto do quadro escala pela matriz, e
+para tinta e imagem isso está certo: o desenho aumenta. Texto não — esticar o desenho da
+letra produz glifo condensado. O modelo passou a ser o do Microsoft Whiteboard: canto muda o
+**corpo da fonte**, lado muda a **largura de quebra**, e a altura sai sempre do conteúdo. O
+`ObjectPatch` ganhou `fontSize`, `autoHeight` e `align` por causa disso.
+
+**Palavra maior que a caixa passou a ser partida.** Valia o contrário —
+`word-wrap: normal`, o padrão do navegador —, escolhido para a importação reproduzir a quebra
+do original. O que derrubou isso foi estreitar uma caixa à mão: a linha continuava inteira e
+saía pela direita, e não havia largura nenhuma em que ela voltasse. Só acontece quando a
+palavra não cabe nem numa linha inteira, então a quebra do quadro importado continua sendo a
+do original.
+
+**Duas barras viraram uma.** A fila de ferramentas era uma segunda barra flutuante. Duas
+barras trazem dois fundos, duas sombras e duas bordas, competem pela mesma atenção e espremem
+o quadro — que é o assunto — entre as duas. A fila entra na barra inferior por injeção
+(`ViewportBar.mountTools`), e não por construção: quem monta os botões continua sendo o
+`ToolBar`, que sabe de ferramenta, cor e espessura. Sem isso, um dos dois teria de aprender o
+assunto do outro.
+
+
+**O acabamento vitrificado é o único**, desde 21/09. Ele nasceu como modo, com interruptor na
+barra e no lobby, e venceu o outro. A superfície é 100% transparente: o que faz a barra
+existir são a refração (`feDisplacementMap` em `backdrop-filter`) e o aro de luz. A tinta
+mudou de lugar — saiu da lâmina e entrou em **pastilhas atrás de cada controle**, porque sem
+superfície nenhuma os ícones somem sobre um resumo denso.
+
+> **A refração foi conferida de um jeito que vale registrar.** Sobre um gradiente liso ela é
+> invisível, e isso levou à conclusão errada de que não funcionava — empurrar uma cor que
+> muda devagar devolve quase a mesma cor. Trocando o fundo por **listras diagonais**, as
+> listras aparecem visivelmente entortadas. O efeito só existe onde há detalhe atrás.
+
+**O papel do quadro é escolhido na criação.** `prefs.background` existia desde a Fase 1, era
+gravado pela importação e **nunca era lido**. Virou a cor do quadro na tela e no arquivo
+exportado, no tema claro. Sete papéis, todos na mesma faixa de luminância (~0,80): escolher
+papel não pode desfazer o conserto do B22.
+
+**O aviso de "não salvo" trocou de forma.** Era um ponto ao lado do nome do quadro; o nome
+saiu da barra (dizia "Quadro sem nome" quase sempre, ocupando a maior largura da fila), e o
+ponto foi para o botão de salvar — onde leu como defeito, não como aviso, e saiu também. A
+informação migrou para o diálogo de saída, que agora tem **três saídas** em vez de duas:
+sair sem salvar, cancelar e **salvar e sair**. Antes, quem quisesse salvar — o desfecho mais
+provável — tinha de cancelar, procurar o botão e clicar.
+
+### O custo em performance foi medido
+
+A pergunta era direta: [...] `QB_BENCH=4000`, três execuções, tema escuro:
+
+| Fase | fps | frame | **render** |
+|---|---|---|---|
+| zoom 100% | 144,0 · 142,4 · 144,0 | 6,95 · 7,02 · 6,95 ms | 0,90 · 1,10 · 0,90 ms |
+| zoom 40% | 135,0 · 128,3 · 140,8 | 7,41 · 7,80 · 7,10 ms | 2,00 · 2,10 · 1,70 ms |
+| ajustado à tela | 21,2 · 19,6 · 22,0 | 47,2 · 51,0 · 45,4 ms | 14,3 · 15,9 · 14,6 ms |
+
+**A coluna que responde é `render`** — o tempo de desenhar o quadro. Ela ficou em 14,3–15,9 ms
+na fase pesada, contra 14,0–14,5 ms medidos antes da rodada: dentro da dispersão entre
+execuções da própria rodada (1,6 ms de espalhamento em três amostras). **Não há custo de
+desenho mensurável.**
+
+E isso é esperado pelo desenho do sistema: as barras são compostas pela GPU e só mudam quando
+o mouse passa por elas; o `backdrop-filter` trabalha sobre uma faixa de ~1000×50 px. A única
+mudança que toca o caminho quente é a quebra por palavra no layout de texto — e o layout é
+cacheado por `id:rev`, então só roda quando o texto muda.
+
+> **A ressalva honesta é a do B8, e ela vale aqui também:** três amostras de um lado só não
+> estabelecem ausência de custo com rigor. O que se pode afirmar é que a diferença, se
+> existe, é menor que o ruído entre execuções na mesma máquina.
 
 ---
 

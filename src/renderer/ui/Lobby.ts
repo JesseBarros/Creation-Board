@@ -9,7 +9,6 @@ export interface LobbyActions {
   newBoard(): void;
   openBoard(summary: BoardSummary): void;
   openDemo(): void;
-  showShortcuts(): void;
   toggleTheme(): void;
   importBoards(): void;
   /** Abre o quadro do caminho e leva a camera ate o objeto (busca da biblioteca). */
@@ -75,9 +74,17 @@ export class Lobby {
     // **Acoes continuam escritas** -- importar e criar. Elas precisam se
     // explicar: quem abre o app pela primeira vez tem de saber o que fazer sem
     // decifrar desenho nenhum.
-    const helpBtn = iconOnlyButton('comandos', 'Atalhos e comandos (F1)', () =>
-      this.actions.showShortcuts(),
-    );
+    /*
+      NAO HA BOTAO DE ATALHOS AQUI, e isto e decisao de 21/09/2026.
+
+      A tela de atalhos continua existindo e `F1` continua abrindo -- o que saiu
+      foi o botao NESTA tela. O lobby responde [...]; a lista de
+      teclas responde [...], que e uma pergunta de dentro do quadro.
+      O botao dela na barra inferior fica, porque ali a pergunta faz sentido.
+
+      Sobraram tres controles no cabecalho, e os tres respondem a pergunta da
+      tela: trocar o tema, importar e criar.
+    */
     this.#themeBtn = iconOnlyButton('lua', 'Alternar tema', () => this.actions.toggleTheme());
 
     const importBtn = textButton('Importar arquivo', () => this.actions.importBoards());
@@ -88,7 +95,7 @@ export class Lobby {
     // ele tem o mesmo peso dos outros glifos e fica na linha de base certa.
     newBtn.prepend(icon('mais', 15));
 
-    tools.append(helpBtn, this.#themeBtn, importBtn, newBtn);
+    tools.append(this.#themeBtn, importBtn, newBtn);
     header.append(titleBox, tools);
 
     // A busca da biblioteca fica ABAIXO do cabecalho, em linha propria, e nao

@@ -133,8 +133,6 @@ export class NoteTool implements Tool {
       doc: this.ctx.doc,
       zoom: this.ctx.camera.zoom,
       exclude: EMPTY_SET,
-      snapToGrid: this.ctx.doc.prefs.snapToGrid,
-      gridSize: this.ctx.doc.prefs.grid.size,
     });
     this.#guides = s.guides;
     return { x: world.x + s.dx, y: world.y + s.dy };

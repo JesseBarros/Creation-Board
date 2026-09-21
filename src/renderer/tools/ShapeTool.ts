@@ -114,8 +114,6 @@ export class ShapeTool implements Tool {
         doc: this.ctx.doc,
         zoom: this.ctx.camera.zoom,
         exclude: EMPTY_SET,
-        snapToGrid: this.ctx.doc.prefs.snapToGrid,
-        gridSize: this.ctx.doc.prefs.grid.size,
       });
       end = { x: end.x + s.dx, y: end.y + s.dy };
       this.#guides = s.guides;

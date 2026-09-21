@@ -1,4 +1,4 @@
-import type { AlertLevel, ShapeKind } from '@shared/model/types';
+import type { AlertLevel, ShapeKind, TextAlign } from '@shared/model/types';
 import {
   ALERT_ICONS,
   NOTE_COLORS,
@@ -39,6 +39,8 @@ export interface ToolBarActions {
   warnIfLowContrast(color: string): void;
   /** Liga/desliga negrito, italico ou sublinhado. Ver `App.toggleTextFormat`. */
   toggleTextFormat(what: 'bold' | 'italic' | 'underline'): void;
+  /** Alinha a caixa de texto. Ver `App.setTextAlign`. */
+  setTextAlign(align: TextAlign): void;
 }
 
 interface ToolDef {
@@ -108,7 +110,10 @@ export class ToolBar {
   #widthRow: HTMLElement;
   #alertRow: HTMLElement;
   #formatRow: HTMLElement;
+  #alignRow: HTMLElement;
   #active: ToolId = 'select';
+  /** Painel fechado a mao pelo segundo clique na ferramenta ativa. */
+  #collapsed = false;
 
   constructor(
     private readonly actions: ToolBarActions,
@@ -127,7 +132,29 @@ export class ToolBar {
       b.append(icon(t.icon, 19));
       b.title = `${t.label} (${t.key})`;
       b.setAttribute('aria-label', t.label);
-      b.addEventListener('click', () => this.actions.setTool(t.id));
+      /*
+        Clicar na ferramenta que JA esta ativa fecha o painel de opcoes, sem
+        troca-la.
+
+        O painel e util na hora de escolher a cor e a espessura, e estorvo em
+        todo o resto do tempo: ele flutua sobre o quadro, bem em cima de onde se
+        esta desenhando. Antes nao havia como fecha-lo a nao ser trocando de
+        ferramenta -- ou seja, para tirar o painel da frente era preciso desistir
+        do que se ia fazer.
+
+        O segundo clique cabe aqui porque o botao ja e o dono do assunto: ele
+        abre o painel ao ativar a ferramenta, e passa a abrir e fechar depois
+        disso. Um X no canto do painel seria mais um alvo na tela para dizer a
+        mesma coisa.
+      */
+      b.addEventListener('click', () => {
+        if (this.#active === t.id) {
+          this.#collapsed = !this.#collapsed;
+          this.#renderOptions();
+          return;
+        }
+        this.actions.setTool(t.id);
+      });
       this.#buttons.set(t.id, b);
       rail.append(b);
     }
@@ -142,6 +169,8 @@ export class ToolBar {
     this.#alertRow.className = 'qb-tools__alerts';
     this.#formatRow = document.createElement('div');
     this.#formatRow.className = 'qb-tools__formats';
+    this.#alignRow = document.createElement('div');
+    this.#alignRow.className = 'qb-tools__aligns';
 
     this.#options = document.createElement('div');
     this.#options.className = 'qb-tools__options';
@@ -150,6 +179,7 @@ export class ToolBar {
       this.#shapeRow,
       this.#colorRow,
       this.#formatRow,
+      this.#alignRow,
       this.#widthRow,
       this.#alertRow,
     );
@@ -166,6 +196,10 @@ export class ToolBar {
   setActive(id: ToolId): void {
     const trocou = this.#active !== id;
     this.#active = id;
+    // Trocar de ferramenta reabre o painel: quem acabou de escolher a caneta
+    // quer ver a cor e a espessura dela. O fechamento a mao vale para a
+    // ferramenta em que foi pedido, e nao para sempre.
+    if (trocou) this.#collapsed = false;
     for (const [toolId, btn] of this.#buttons) {
       btn.classList.toggle('qb-tools__btn--active', toolId === id);
     }
@@ -217,6 +251,13 @@ export class ToolBar {
   #renderOptions(): void {
     const id = this.#active;
 
+    // Fechado a mao: nao ha painel para montar. O conteudo e remontado inteiro
+    // quando ele voltar, entao nada se perde em nao construi-lo agora.
+    if (this.#collapsed) {
+      this.#options.hidden = true;
+      return;
+    }
+
     // O post-it nao tem cor de marca nem espessura: o que ele escolhe e papel e
     // alerta. Por isso ele nao passa por `hasStyle` e monta o proprio painel.
     if (id === 'note') {
@@ -224,6 +265,7 @@ export class ToolBar {
       this.#shapeRow.hidden = true;
       this.#widthRow.hidden = true;
       this.#formatRow.hidden = true;
+      this.#alignRow.hidden = true;
       this.#alertRow.hidden = false;
       this.#renderNoteColors();
       this.#renderAlerts();
@@ -237,7 +279,11 @@ export class ToolBar {
     this.#options.hidden = false;
     // A linha B/I/U so faz sentido escrevendo.
     this.#formatRow.hidden = id !== 'text';
-    if (id === 'text') this.#renderTextFormat();
+    this.#alignRow.hidden = id !== 'text';
+    if (id === 'text') {
+      this.#renderTextFormat();
+      this.#renderTextAlign();
+    }
     // O seletor de forma so existe para a ferramenta de formas; para as de tinta
     // a linha inteira sai do fluxo em vez de ficar como um espaco vazio.
     this.#shapeRow.hidden = id !== 'shape';
@@ -255,12 +301,41 @@ export class ToolBar {
   }
 
   /**
+   * Acende ou apaga o B/I/U conforme a formatacao em vigor.
+   *
+   * "Em vigor" quer dizer duas coisas diferentes conforme o momento, e as duas
+   * sao legitimas: digitando, e o que vale para a PROXIMA letra (o cursor esta
+   * dentro de um trecho em negrito, ou o negrito foi ligado e ainda nao se
+   * digitou nada); com uma caixa selecionada, e o que vale para a caixa inteira.
+   *
+   * Quem calcula isso e o App, que tem acesso ao editor e a selecao. A barra so
+   * mostra -- ela nao sabe de onde veio, e nao precisa saber.
+   */
+  setTextFormat(estado: { bold: boolean; italic: boolean; underline: boolean }): void {
+    for (const el of this.#formatRow.children) {
+      if (!(el instanceof HTMLElement)) continue;
+      const what = el.dataset['value'] as 'bold' | 'italic' | 'underline' | undefined;
+      if (!what) continue;
+      const on = estado[what];
+      el.classList.toggle('qb-tools__format--active', on);
+      // `aria-pressed` e o que transforma um botao em INTERRUPTOR para quem usa
+      // leitor de tela. Sem ele, o destaque visual nao existe para essa pessoa.
+      el.setAttribute('aria-pressed', String(on));
+    }
+  }
+
+  /**
    * Negrito, italico e sublinhado.
    *
    * As tres teclas ja funcionavam dentro da caixa desde a Fase 5, e ninguem
    * descobria: recurso sem controle visivel e recurso que nao existe. Os botoes
    * valem tanto para o texto que esta sendo digitado quanto para a caixa que
    * estiver selecionada.
+   *
+   * Sao INTERRUPTORES, e nao botoes de acao: eles relatam o estado atual e o
+   * invertem ao serem clicados. Antes eles eram mudos -- aplicavam o formato e
+   * nao diziam se ele estava ligado, entao a unica forma de saber era olhar o
+   * texto e deduzir.
    */
   #renderTextFormat(): void {
     if (this.#formatRow.childElementCount > 0) return;
@@ -273,6 +348,24 @@ export class ToolBar {
       b.textContent = letra;
       b.title = label;
       b.setAttribute('aria-label', label);
+
+      /*
+        O clique NAO pode tirar o foco da caixa que esta sendo editada.
+
+        Sem isto o botao era inutil no unico momento em que se quer usa-lo: o
+        `pointerdown` saia da caixa, o TextEditor tratava isso como clique fora e
+        FECHAVA a edicao, e so entao o `click` chegava -- ja com `isEditing`
+        falso, entao o formato caia sobre a caixa INTEIRA. Era por isso que so
+        dava para pedir negrito depois de digitar, e nunca para uma palavra so.
+
+        `preventDefault` no pointerdown e no mousedown segura o cursor onde ele
+        esta (o `click` continua acontecendo normalmente), e o `data-keep-edit`
+        avisa o TextEditor de que este clique age DENTRO da caixa.
+      */
+      b.dataset['keepEdit'] = '1';
+      const segurarFoco = (e: Event): void => e.preventDefault();
+      b.addEventListener('pointerdown', segurarFoco);
+      b.addEventListener('mousedown', segurarFoco);
       b.addEventListener('click', () => this.actions.toggleTextFormat(what));
       this.#formatRow.append(b);
     };
@@ -280,6 +373,54 @@ export class ToolBar {
     add('bold', 'B', 'Negrito (Ctrl+B)');
     add('italic', 'I', 'Italico (Ctrl+I)');
     add('underline', 'U', 'Sublinhado (Ctrl+U)');
+  }
+
+  /**
+   * Alinhamento do paragrafo.
+   *
+   * Fica numa linha propria, separada do B/I/U, porque responde outra pergunta.
+   * Negrito e italico valem para um TRECHO -- uma palavra no meio da frase.
+   * Alinhamento vale para a CAIXA inteira, e nao existe [...].
+   * Misturar os seis botoes na mesma fila sugeriria que todos funcionam igual.
+   *
+   * E o que permite distinguir titulo de paragrafo num resumo: titulo centrado,
+   * corpo a esquerda, nota a direita. Ate 21/09/2026 o campo `align` existia no
+   * modelo, era gravado no `.wbd` e era lido pelo layout -- so nao havia como
+   * mexer nele. Recurso sem controle visivel e recurso que nao existe.
+   */
+  #renderTextAlign(): void {
+    if (this.#alignRow.childElementCount > 0) return;
+
+    const add = (align: TextAlign, nome: IconName, label: string): void => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'qb-tools__align';
+      b.dataset['value'] = align;
+      b.append(icon(nome, 16));
+      b.title = label;
+      b.setAttribute('aria-label', label);
+      // Mesmo cuidado do B/I/U: o clique nao pode fechar a caixa em edicao.
+      b.dataset['keepEdit'] = '1';
+      const segurarFoco = (e: Event): void => e.preventDefault();
+      b.addEventListener('pointerdown', segurarFoco);
+      b.addEventListener('mousedown', segurarFoco);
+      b.addEventListener('click', () => this.actions.setTextAlign(align));
+      this.#alignRow.append(b);
+    };
+
+    add('left', 'alinharEsquerda', 'Alinhar a esquerda');
+    add('center', 'alinharCentro', 'Centralizar');
+    add('right', 'alinharDireita', 'Alinhar a direita');
+  }
+
+  /** Acende o alinhamento em vigor. Ver `App.#syncTextFormat`. */
+  setTextAlign(align: TextAlign | null): void {
+    for (const el of this.#alignRow.children) {
+      if (!(el instanceof HTMLElement)) continue;
+      const on = el.dataset['value'] === align;
+      el.classList.toggle('qb-tools__align--active', on);
+      el.setAttribute('aria-pressed', String(on));
+    }
   }
 
   #renderEraserModes(): void {

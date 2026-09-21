@@ -11,7 +11,6 @@ import type { SnapGuide } from '../features/snapping/snap';
  */
 
 const NEIGHBOR = '#e8590c';
-const GRID = '#868e96';
 
 export function paintSnapGuides(
   ctx: CanvasRenderingContext2D,
@@ -32,10 +31,10 @@ export function paintSnapGuides(
         ? camera.worldToScreen({ x: g.at, y: g.to })
         : camera.worldToScreen({ x: g.to, y: g.at });
 
-    ctx.strokeStyle = g.grid ? GRID : NEIGHBOR;
-    // Grade tracejada, vizinho continuo: o encaixe na grade e mais fraco e nao
-    // deve competir visualmente com o alinhamento que o usuario buscou.
-    ctx.setLineDash(g.grid ? [3, 3] : []);
+    // Linha continua, sempre: com a grade magnetica removida (ver snap.ts) so
+    // existe um tipo de guia -- o alinhamento com um vizinho.
+    ctx.strokeStyle = NEIGHBOR;
+    ctx.setLineDash([]);
     ctx.beginPath();
     // Meio pixel alinha a linha de 1px a grade de pixels; sem isso ela sai
     // borrada em dois pixels de meio tom.

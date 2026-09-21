@@ -2,20 +2,92 @@
   Tokens de tema. O tema claro e o padrao -- e um quadro BRANCO.
   A raiz recebe data-theme="dark" para inverter tudo.
 */
+/*
+  TEMA CLARO: branco quebrado, borda definida.
+
+  Os valores saem de duas queixas, na mesma tarde de 20/09/2026: primeiro [...] e [...]; depois, sobre a PRIMEIRA correcao, [...].
+
+  A primeira rodada mexeu pouco (fundo `#eef1f6` -> `#e7eaf0`, quadro branco ->
+  `#f2f4f7`) e errou por timidez: 10% de luminancia nao se sente numa superficie
+  que ocupa a tela toda. A segunda desceu ate a referencia certa:
+
+  1. FUNDO `#d6dbe5` e quadro `#e3e7ee` (em App.ts), este ultimo em 0,80 de
+     luminancia contra 1,00 do branco puro -- o mesmo nivel do fundo de janela do
+     macOS, que e a tela clara que se encara por horas sem queixa;
+  2. PAINEL `#f1f4f9` -- claro, mas nao branco. Ele continua sendo a coisa mais
+     clara da tela, e e por isso que salta do fundo sem precisar de sombra
+     pesada;
+  3. ICONE `#414b5c`, bem mais escuro que o `#667085` original. `--fg-muted` e o
+     token de TODO icone apagado do aplicativo, da barra ao lobby -- era ele,
+     sozinho, que deixava os icones sumindo no claro. Sobre o painel isso da 8:1
+     de contraste, bem acima dos 4,5:1 que a WCAG pede;
+  4. BORDA `#b3bdcd`. Com tudo claro, o que separa uma superficie da outra e a
+     linha, e a anterior era quase invisivel.
+*/
 :root {
-  --bg: #eef1f6;
-  --panel: #ffffff;
-  --panel-2: #f5f7fa;
-  --border: #d9dee8;
-  --fg: #1b1f27;
-  --fg-muted: #667085;
+  --bg: #d6dbe5;
+  --panel: #f1f4f9;
+  --panel-2: #e4e9f1;
+  --border: #b3bdcd;
+  --fg: #12161d;
+  --fg-muted: #414b5c;
   --accent: #3b6ff0;
   --ok: #2f9e44;
   --warn: #e8a317;
   --bad: #e03131;
-  --shadow: 0 6px 24px rgba(20, 28, 46, 0.14);
+  /*
+    ELEVACAO com presenca LATERAL.
+
+    A sombra anterior descia 6px com 24 de desfoque: quase toda a mancha caia
+    embaixo, e de lado nao sobrava nada -- por isso a barra parecia recortada e
+    nao levantada. Com o desfoque em cerca de TRES VEZES o deslocamento, a mancha
+    escapa pelos lados tambem, e e isso que faz um objeto parecer solto da
+    superficie, como no botao que foi mandado de referencia.
+  */
+  --shadow:
+    0 2px 6px rgba(20, 28, 46, 0.08),
+    0 8px 24px rgba(20, 28, 46, 0.13);
   --font-ui: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif;
   --font-mono: 'Cascadia Mono', 'Consolas', ui-monospace, monospace;
+
+  /*
+    MOVIMENTO -- um gesto só, no aplicativo inteiro.
+
+    O cartão do lobby já levantava ao receber o mouse, e era o único elemento que
+    fazia isso. O resto respondia só trocando de cor. Um app em que uma coisa se
+    move e trinta não é "sóbrio": é inconsistente, e o cartão parecia um caso
+    especial em vez de uma regra.
+
+    Os três valores ficam aqui porque são a REGRA, e não a decoração de cada
+    botão. Mudar o quanto a interface levanta passa a ser um número, num lugar.
+
+    `--ease-saida` desacelera no fim (nunca no começo): o elemento sai rápido do
+    repouso e assenta devagar, que é como uma coisa com massa se move. A curva
+    simétrica do `ease` faz tudo parecer flutuar em óleo.
+
+    2px, e não 4: o alvo do clique não pode fugir do cursor. Levantar demais faz
+    o mouse "perder" o botão em fila apertada, e a barra inferior é uma fila
+    apertada.
+  */
+  --levanta: -2px;
+  --levanta-sombra: 0 4px 12px rgba(20, 28, 46, 0.14);
+  --ease-saida: cubic-bezier(0.22, 0.75, 0.3, 1);
+
+  /*
+    CROMO FLUTUANTE -- a barra de baixo, a fila de ferramentas, o painel de
+    opcoes e o menu de zoom. Os quatro sao a MESMA superficie e por isso vivem em
+    tokens: ate 20/09/2026 cada um repetia a propria sombra, e quando uma era
+    ajustada as outras ficavam para tras.
+
+    A sombra tem duas camadas -- uma curta de contato e uma longa de ambiente.
+    Uma sozinha precisa escolher entre parecer colada ou flutuando longe demais.
+  */
+  /*
+    Os tokens do cromo -- fundo, desfoque, borda, sombra e brilho -- sao
+    declarados mais abaixo, no bloco do vidro, que virou o padrao do aplicativo
+    em 21/09/2026. Antes havia dois acabamentos aqui e um interruptor para
+    escolher; o vidro venceu e o outro saiu, junto com o botao.
+  */
 }
 
 :root[data-theme='dark'] {
@@ -25,11 +97,304 @@
   --border: #333947;
   --fg: #e6e9ef;
   --fg-muted: #8b93a3;
-  --shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  /* Mesma correcao do `--chrome-shadow` abaixo, pela mesma razao: deslocada para
+     baixo, para o escurecimento nao contornar o painel por igual. */
+  --shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
+  /* A sombra do levantar tambem muda de conta no escuro: preto sobre quase
+     preto vira mancha (ver a nota sobre a sombra do cromo, logo abaixo), entao
+     o que marca a elevacao aqui e um filete de LUZ no topo. */
+  --levanta-sombra:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 4px 14px rgba(0, 0, 0, 0.32);
+
+  /*
+    A SOMBRA DO ESCURO E UMA SO, E DIRECIONAL -- o que havia antes nao era
+    sombra, era contorno.
+
+    Relatado tres vezes como [...].
+    Perfil de pixels em volta da barra, com as duas camadas antigas
+    (`0 2px 6px rgba(0,0,0,.3)` + `0 8px 24px rgba(0,0,0,.42)`):
+
+      ESQUERDA  o quadro escurece de #13151A ate #101115 ao encostar na barra
+      ABAIXO    #0B0C0F encostado, subindo ate #0F1115 uns 15px depois
+      quadro    #14161B
+
+    Escurecia a esquerda, a direita, embaixo E em cima, todos parecidos. SOMBRA
+    NAO FAZ ISSO. Sombra cai para um lado, porque a luz vem de um lado -- e e
+    exatamente essa assimetria que o olho le como volume. Escurecimento igual nos
+    quatro lados e uma borda preta desfocada.
+
+    A culpada era a camada CURTA: 2px de deslocamento com 6px de desfoque
+    espalha quase igual para todo lado. A longa, sozinha, ja e direcional.
+
+    O valor final esta no bloco do vidro, mais abaixo.
+  */
+}
+
+/*
+  MODO VITRIFICADO -- ligado pelo botao da barra, atravessa claro e escuro.
+
+  Vidro nao e "mais transparente": e translucidez ALTA com desfoque largo, cor
+  puxada para cima (a saturacao devolve o que o desfoque lava) e, sobretudo,
+  BORDA QUE PEGA LUZ. O brilho de cima e o filete inferior sao o que faz a
+  superficie ter espessura em vez de parecer um retangulo apagado -- e o que o
+  vidro do iOS faz na quina.
+
+  Tudo isto e so aparencia do cromo: nenhuma cor do QUADRO muda, e o desenho dos
+  objetos nao sabe que este modo existe. Por isso ele sai sem deixar rastro.
+*/
+:root {
+  /*
+    TINTA ZERO. A superficie nao existe -- o que se ve atraves da barra e o
+    quadro, inteiro, so que desviado.
+
+    O caminho ate aqui foi 80% -> 58% -> 18% -> 0%, e cada degrau ensinou uma
+    coisa. Aos 40% ainda era plastico fosco: vedava. Aos 18% ja era vidro, mas um
+    vidro com tinta. Em 0% a unica coisa que diz onde a peca comeca sao a
+    REFRACAO e o ARO -- e e exatamente assim na peca do WWDC e no vidro do iOS.
+
+    A saturacao alta nao e enfeite: desfocar lava a cor, e sem devolve-la o que
+    passa por tras chega cinza. Cinza atras de vidro e a aparencia de sujo.
+
+    O desfoque e CURTO (10px, contra os 30 do vidro fosco) de proposito: quem
+    dissolve a imagem agora e a ondulacao, e desfoque forte por cima dela apaga
+    justamente o que ela desenhou. Desfoque e nevoa; refracao e vidro.
+
+    O PRECO esta assumido e medido: sem tinta nao existe piso de contraste para
+    o icone. Um icone escuro sobre uma imagem escura sumiria. Quem paga essa
+    conta e a sombra propria dos icones, em app.css -- o mesmo truque que o iOS
+    usa para sobreviver a qualquer papel de parede.
+  */
+  --chrome-bg: transparent;
+  --chrome-blur: url(#qb-refracao) blur(10px) saturate(190%);
+  --chrome-border: color-mix(in srgb, #ffffff 75%, transparent);
+
+  /*
+    O ARO E O EFEITO INTEIRO.
+
+    Vidro de verdade nao se ve pela face -- ela e transparente. Ve-se pela BORDA,
+    onde a luz entra de raspao e acende: e o aro claro em volta da peca do WWDC,
+    e e por isso que aqui sao quatro sombras internas, uma por lado, em vez de
+    um contorno so. A de cima e a mais forte (a luz vem de cima), e a de baixo
+    vem logo atras dela -- a luz que atravessa o vidro bate na superficie e
+    volta, e esse retorno e o que da ESPESSURA a peca.
+  */
+  --chrome-shadow:
+    inset 0 1.5px 1px -0.5px rgba(255, 255, 255, 0.95),
+    inset 0 -2px 3px -1.5px rgba(255, 255, 255, 0.65),
+    inset 2px 0 3px -2px rgba(255, 255, 255, 0.6),
+    inset -2px 0 3px -2px rgba(255, 255, 255, 0.6),
+    0 2px 8px rgba(20, 28, 46, 0.1),
+    0 16px 44px rgba(20, 28, 46, 0.18);
+
+  /*
+    O reflexo especular fica, e agora ele e uma das poucas coisas que tornam a
+    peca visivel. Mais fraco do que era: com tinta 0% ele nao concorre com um
+    fundo, entao o que antes era brilho vira veu.
+  */
+  --chrome-sheen: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.22),
+    rgba(255, 255, 255, 0.05) 34%,
+    rgba(255, 255, 255, 0) 55%,
+    rgba(255, 255, 255, 0.1)
+  );
+}
+
+:root[data-theme='dark'] {
+  /* Tinta zero tambem aqui: vidro e vidro nos dois temas. O que muda e a forca
+     do aro, porque no escuro ha menos luz atras para acender a borda. */
+  --chrome-bg: transparent;
+  --chrome-border: color-mix(in srgb, #ffffff 30%, transparent);
+  /* Sem `brightness`: com tinta 0% ele clarearia o QUADRO visto atraves da
+     barra, e o que se quer e ver o quadro como ele e, so desviado. */
+  --chrome-blur: url(#qb-refracao) blur(10px) saturate(180%);
+  --chrome-shadow:
+    inset 0 1.5px 1px -0.5px rgba(255, 255, 255, 0.45),
+    inset 0 -2px 3px -1.5px rgba(255, 255, 255, 0.2),
+    inset 2px 0 3px -2px rgba(255, 255, 255, 0.18),
+    inset -2px 0 3px -2px rgba(255, 255, 255, 0.18),
+    /* Direcional, como a do escuro liso: nada de camada curta contornando os
+       quatro lados. Aqui o aro ja marca a borda, entao a sombra so precisa
+       dizer [...]. */
+    0 12px 28px rgba(0, 0, 0, 0.3);
+  --chrome-sheen: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.12),
+    rgba(255, 255, 255, 0.03) 34%,
+    rgba(255, 255, 255, 0) 55%,
+    rgba(255, 255, 255, 0.06)
+  );
+}
+
+/*
+  Sem desfoque no fundo, vidro vira um retangulo lavado e ilegivel. Quando o
+  motor nao tem `backdrop-filter`, o modo cai para uma superficie opaca -- feia,
+  mas legivel, que e a ordem certa das prioridades.
+*/
+/*
+  QB_BLUR=0 -- desliga todo o desfoque de fundo, para diagnostico.
+
+  `backdrop-filter` e a unica coisa na interface que obriga o Chromium a LER o
+  que esta pintado atras do elemento, e para isso ele cria superficies de
+  composicao extras. E a familia de causa do B8. Com este interruptor, [...] vira uma execucao, e nao uma opiniao.
+
+  Vale a raiz inteira: barras, paineis, cards, busca. O que sobra e a cor
+  translucida, entao a interface continua legivel -- so deixa de desfocar.
+*/
+:root[data-noblur] {
+  --chrome-blur: none;
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  :root {
+    --chrome-bg: color-mix(in srgb, var(--panel) 92%, transparent);
+    --chrome-sheen: none;
+  }
+}
+
+/*
+  Os PAINEIS entram no vidro pela mesma porta, e nao um a um.
+
+  Camadas, busca, menu de contexto, aviso e barra de progresso sao superficies
+  flutuantes iguais as barras -- deixa-los opacos enquanto a barra e de vidro
+  produz dois materiais na mesma tela, que e pior do que nenhum vidro. Ficam de
+  fora as janelas modais (`.qb-dialog`): elas existem para PRENDER a atencao, e
+  uma folha translucida faz o contrario.
+
+  O seletor mora aqui, e nao em cada regra, porque a lista e a definicao do que
+  "cromo flutuante" quer dizer neste aplicativo -- e tê-la num lugar so e o que
+  impede a proxima superficie de ser esquecida.
+*/
+:root .qb-layers,
+:root .qb-search,
+:root .qb-menu,
+:root .qb-toast,
+:root .qb-progress,
+:root .qb-card,
+:root .qb-libsearch__field,
+/*
+  Os botoes do CABECALHO DO LOBBY, e so eles.
+
+  As exclusoes nao sao detalhe: `--primary` e o "Novo quadro" e `--active` e o
+  interruptor ligado, e os dois se identificam pelo PREENCHIMENTO. Vidrados,
+  perderiam a cor que os distingue e virariam mais dois botoes iguais aos outros.
+  O escopo `.qb-lobby` deixa de fora os botoes das janelas modais, que ficam
+  opacas de proposito (ver acima).
+*/
+:root .qb-lobby .qb-btn:not(.qb-btn--primary):not(.qb-btn--active):not(.qb-btn--danger) {
+  background: var(--chrome-sheen), var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  border-color: var(--chrome-border);
+  box-shadow: var(--chrome-shadow);
+}
+
+/*
+  O FUNDO AMBIENTE DO LOBBY -- sem ele, o vidro aqui nao seria vidro.
+
+  Vidro nao tem aparencia propria: ele mostra o que esta atras, deformado. Sobre
+  cor CHAPADA nao ha o que deformar, e o resultado e um retangulo levemente
+  esbranquicado -- foi o que apareceu na primeira vez que o modo foi ligado nesta
+  tela. No quadro o problema nao existe, porque atras das barras passam os
+  objetos; o lobby nao tem objeto nenhum atras dos cards.
+
+  Estas tres manchas largas e de baixa opacidade sao o que o `backdrop-filter`
+  tem para misturar. Elas sao quase imperceptiveis olhando direto -- e a
+  intencao: o assunto desta tela sao as miniaturas dos quadros, nao o papel de
+  parede. O que elas fazem e dar ao vidro um gradiente para refratar, e e por
+  isso que so existem no modo vitrificado.
+*/
+:root .qb-lobby {
+  background:
+    radial-gradient(
+      1100px 620px at 8% -12%,
+      color-mix(in srgb, var(--accent) 26%, transparent),
+      transparent 62%
+    ),
+    radial-gradient(
+      900px 540px at 92% 4%,
+      color-mix(in srgb, #7048e8 20%, transparent),
+      transparent 64%
+    ),
+    radial-gradient(
+      820px 600px at 58% 108%,
+      color-mix(in srgb, #12b886 16%, transparent),
+      transparent 60%
+    ),
+    var(--bg);
+}
+
+/* No escuro as manchas precisam de mais corpo: elas competem com um fundo quase
+   preto, e na mesma opacidade do claro simplesmente desapareceriam. */
+:root[data-theme='dark'] .qb-lobby {
+  background:
+    radial-gradient(
+      1100px 620px at 8% -12%,
+      color-mix(in srgb, var(--accent) 34%, transparent),
+      transparent 62%
+    ),
+    radial-gradient(
+      900px 540px at 92% 4%,
+      color-mix(in srgb, #7048e8 30%, transparent),
+      transparent 64%
+    ),
+    radial-gradient(
+      820px 600px at 58% 108%,
+      color-mix(in srgb, #12b886 22%, transparent),
+      transparent 60%
+    ),
+    var(--bg);
+}
+
+/*
+  O LOBBY MANTEM TINTA, e a barra do quadro nao. A diferenca nao e descuido.
+
+  A barra flutua sobre o QUADRO: o que se quer ver atraves dela e o desenho, e
+  ela e estreita -- o olho atravessa e volta. Um card do lobby e uma superficie
+  grande que CARREGA CONTEUDO: nome, data, contagem, miniatura. Zerar a tinta
+  dele nao daria vidro, daria texto solto sobre um gradiente.
+
+  22% e o suficiente para o fundo ambiente atravessar e o card continuar sendo
+  um card.
+*/
+:root .qb-card,
+:root .qb-libsearch__field,
+:root .qb-lobby .qb-btn:not(.qb-btn--primary):not(.qb-btn--active):not(.qb-btn--danger) {
+  background: var(--chrome-sheen), color-mix(in srgb, var(--panel) 22%, transparent);
+}
+
+/* A miniatura continua opaca: lavada pelo desfoque, ela deixaria de servir para
+   reconhecer o quadro, que e a unica funcao dela. */
+:root .qb-card__thumb {
+  background: color-mix(in srgb, var(--panel-2) 92%, transparent);
 }
 
 * {
   box-sizing: border-box;
+}
+
+/*
+  Quem pediu menos movimento ao sistema nao recebe nenhum.
+
+  Nao e formalidade: o levantar dos botoes e a transicao de cor sao enfeite, e
+  para quem tem sensibilidade vestibular enfeite em movimento chega a causar
+  enjoo. O Windows expoe essa preferencia em Acessibilidade > Efeitos visuais, e
+  o Chromium a traduz nesta consulta.
+
+  `0.01ms` e nao `0`: uma transicao de duracao zero nao dispara `transitionend`,
+  e qualquer codigo que espere por esse evento ficaria esperando para sempre.
+*/
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+
+  :root {
+    --levanta: 0px;
+  }
 }
 
 /*

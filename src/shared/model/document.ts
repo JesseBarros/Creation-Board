@@ -21,10 +21,19 @@ export interface WbdManifest {
   objectCount: number;
 }
 
+/**
+ * Preferencias do quadro.
+ *
+ * `snapToGrid` esteve aqui ate 20/09/2026 e foi REMOVIDO -- ver
+ * features/snapping/snap.ts. Quadros gravados antes disso ainda trazem o campo
+ * no JSON; ele e simplesmente ignorado na leitura, porque nada mais o consulta.
+ * Nao ha migracao a fazer: campo a mais em objeto lido nao quebra nada, e tirar
+ * o campo dos arquivos exigiria reescrever quadros que o usuario nao pediu para
+ * mexer.
+ */
 export interface BoardPrefs {
   background: string;
   grid: { enabled: boolean; kind: 'dots' | 'lines'; size: number };
-  snapToGrid: boolean;
   /** Unidade das reguas das bordas. */
   unit: 'px' | 'cm';
 }
@@ -56,9 +65,16 @@ export function createEmptyDocument(): WbdDocument {
     schemaVersion: WBD_SCHEMA_VERSION,
     objects: [],
     prefs: {
-      background: '#ffffff',
+      /*
+        O PAPEL do quadro, escolhido ao criar (ver ui/dialogs.ts).
+
+        Era `#ffffff` e nunca era lido -- só a importação o gravava. Passou a ser
+        a cor do quadro na tela e no arquivo exportado, no tema claro. O padrão
+        acompanha o neutro da paleta, e não o branco: branco puro em tela cheia
+        foi o que cansava a vista.
+      */
+      background: '#e3e7ee',
       grid: { enabled: true, kind: 'dots', size: 20 },
-      snapToGrid: false,
       unit: 'px',
     },
     camera: { x: 0, y: 0, zoom: 1 },

@@ -5,16 +5,20 @@ import type { Document } from '../../core/Document';
 /**
  * Encaixe (snap) de um retangulo em movimento.
  *
- * Duas fontes, nesta ordem de prioridade:
+ * Uma fonte so: os **vizinhos**. As bordas e o centro dos objetos por perto
+ * viram linhas candidatas. E o que serve para reorganizar um resumo importado:
+ * alinhar dois post-its pelo topo e um titulo pelo centro de uma imagem.
  *
- * 1. **Vizinhos.** As bordas e o centro dos objetos por perto viram linhas
- *    candidatas. E o que serve para reorganizar um resumo importado: alinhar
- *    dois post-its pelo topo e um titulo pelo centro de uma imagem.
- * 2. **Grade**, quando `snapToGrid` esta ligado nas preferencias do quadro.
+ * HOUVE UMA SEGUNDA FONTE -- a grade magnetica --, removida em 20/09/2026 a
+ * pedido de quem usa o app: "nao funciona de forma eficiente, e so mais um
+ * recurso inutil". O diagnostico bate com o que o codigo fazia: a grade atrai
+ * para onde ela CALHOU de cair, e nao para onde ha algo com que se alinhar. Num
+ * quadro de estudo, o que importa e a relacao entre os objetos -- e disso o
+ * encaixe por vizinho ja dava conta, sempre com prioridade sobre a grade.
+ * Sobrava uma preferencia a manter, uma tecla a decorar e um botao a ignorar.
  *
- * Vizinho vence a grade quando os dois estao ao alcance: alinhar com o objeto
- * que se esta olhando e uma intencao; cair na celula da grade e so uma
- * consequencia de onde a grade calhou de ficar.
+ * A grade de FUNDO continua existindo: ela e papel pautado, e serve para o olho.
+ * Quem saiu foi o ima.
  *
  * O limiar e em px de TELA. Em unidades de mundo, o encaixe ficaria imperceptivel
  * com o zoom afastado e agarraria tudo com o zoom aproximado.
@@ -40,8 +44,6 @@ export interface SnapGuide {
   /** Extensao da linha no eixo perpendicular, em mundo. */
   from: number;
   to: number;
-  /** Encaixe na grade, e nao num vizinho. Desenhado diferente. */
-  grid: boolean;
 }
 
 export interface SnapResult {
@@ -56,8 +58,6 @@ export interface SnapOptions {
   zoom: number;
   /** Objetos que estao se movendo: nao podem se alinhar consigo mesmos. */
   exclude: ReadonlySet<ObjectId>;
-  snapToGrid: boolean;
-  gridSize: number;
   /** Eixos em que o encaixe pode agir. Shift travando um eixo desliga aquele. */
   axes?: { x?: boolean; y?: boolean };
 }
@@ -91,23 +91,11 @@ export function snapRect(r: Rect, opts: SnapOptions): SnapResult {
   if (x) {
     dx = x.delta;
     guides.push(guideFor('x', x, r, dy));
-  } else if (opts.snapToGrid && useX) {
-    const g = snapToGrid(r.x, r.x + r.w / 2, r.x + r.w, opts.gridSize, tol);
-    if (g) {
-      dx = g.delta;
-      guides.push({ axis: 'x', at: g.line, from: r.y, to: r.y + r.h, grid: true });
-    }
   }
 
   if (y) {
     dy = y.delta;
     guides.push(guideFor('y', y, r, dx));
-  } else if (opts.snapToGrid && useY) {
-    const g = snapToGrid(r.y, r.y + r.h / 2, r.y + r.h, opts.gridSize, tol);
-    if (g) {
-      dy = g.delta;
-      guides.push({ axis: 'y', at: g.line, from: r.x, to: r.x + r.w, grid: true });
-    }
   }
 
   if (dx === 0 && dy === 0 && guides.length === 0) return NONE;
@@ -139,24 +127,12 @@ export function snapPoint(
 
   if (x) {
     dx = x.delta;
-    guides.push({ axis: 'x', at: x.line, from: x.from, to: x.to, grid: false });
-  } else if (opts.snapToGrid && useX) {
-    const g = snapToGrid(px, px, px, opts.gridSize, tol);
-    if (g) {
-      dx = g.delta;
-      guides.push({ axis: 'x', at: g.line, from: py - 40 / opts.zoom, to: py + 40 / opts.zoom, grid: true });
-    }
+    guides.push({ axis: 'x', at: x.line, from: x.from, to: x.to });
   }
 
   if (y) {
     dy = y.delta;
-    guides.push({ axis: 'y', at: y.line, from: y.from, to: y.to, grid: false });
-  } else if (opts.snapToGrid && useY) {
-    const g = snapToGrid(py, py, py, opts.gridSize, tol);
-    if (g) {
-      dy = g.delta;
-      guides.push({ axis: 'y', at: g.line, from: px - 40 / opts.zoom, to: px + 40 / opts.zoom, grid: true });
-    }
+    guides.push({ axis: 'y', at: y.line, from: y.from, to: y.to });
   }
 
   return { dx, dy, guides };
@@ -249,29 +225,6 @@ function bestAxis(
   return best;
 }
 
-function snapToGrid(
-  start: number,
-  center: number,
-  end: number,
-  size: number,
-  tol: number,
-): { delta: number; line: number } | null {
-  if (size <= 0) return null;
-  let best: { delta: number; line: number } | null = null;
-  let bestDist = tol;
-
-  for (const edge of [start, center, end]) {
-    const line = Math.round(edge / size) * size;
-    const delta = line - edge;
-    const dist = Math.abs(delta);
-    if (dist < bestDist) {
-      bestDist = dist;
-      best = { delta, line };
-    }
-  }
-  return best;
-}
-
 /**
  * Guia de um encaixe entre objetos, esticada para incluir o proprio retangulo
  * movido -- ja na posicao corrigida. Sem isso a linha pararia no vizinho e nao
@@ -285,6 +238,5 @@ function guideFor(axis: 'x' | 'y', m: AxisMatch, r: Rect, otherDelta: number): S
     at: m.line,
     from: Math.min(m.from, from),
     to: Math.max(m.to, to),
-    grid: false,
   };
 }

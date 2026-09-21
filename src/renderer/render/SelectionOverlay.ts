@@ -6,7 +6,7 @@ import type { Camera } from '../core/Camera';
 import {
   framePoint,
   rotateHandlePoint,
-  SCALE_HANDLES,
+  scaleHandlesFor,
   HANDLE_PX,
   type SelectionFrame,
 } from '../features/selection/frame';
@@ -94,7 +94,10 @@ export function paintSelection(
         fillHandle(ctx);
       }
 
-      for (const h of SCALE_HANDLES) {
+      // A lista vem da selecao, e nao da tabela completa: a caixa de texto nao
+      // tem alca de cima nem de baixo. Desenhar uma alca que o hit-test ignora
+      // seria prometer um gesto que nao acontece.
+      for (const h of scaleHandlesFor(members)) {
         const p = camera.worldToScreen(framePoint(frame, h.u, h.v));
         ctx.beginPath();
         // Meio pixel de deslocamento alinha a borda de 1px a grade de pixels,

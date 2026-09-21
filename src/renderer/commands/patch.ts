@@ -23,6 +23,22 @@ export interface ObjectPatch {
   /** Marcadores de lista da caixa de texto -- muda o recuo e, com ele, a altura. */
   list?: 'none' | 'bullet';
   /**
+   * Corpo da fonte da caixa de texto.
+   *
+   * Entra no patch de manipulacao porque redimensionar texto pelo canto MUDA O
+   * CORPO DA FONTE, e nao a escala do transform: esticar o desenho da letra e o
+   * que deixava um titulo condensado e ilegivel. Anda junto de `w` e `h` -- o
+   * corpo maior quebra em outros pontos e a caixa cresce com ele.
+   */
+  fontSize?: number;
+  /** Altura derivada do conteudo. Redimensionar texto sempre religa isto. */
+  autoHeight?: boolean;
+  /**
+   * Alinhamento do paragrafo. Anda junto de `h` porque, com lista, o recuo do
+   * marcador entra na conta da largura e pode mudar o numero de linhas.
+   */
+  align?: 'left' | 'center' | 'right';
+  /**
    * Recorte da imagem, normalizado 0..1 sobre o arquivo original.
    * `null` remove o recorte. Anda junto de `w`/`h` e do `transform`: recortar
    * muda o pedaco visivel E o retangulo que ele ocupa no quadro.
@@ -49,6 +65,9 @@ export function snapshotPatch(obj: BoardObject, fields: ObjectPatch): ObjectPatc
   if (fields.z !== undefined) out.z = obj.z;
   if (fields.content !== undefined && 'content' in obj) out.content = obj.content;
   if (fields.list !== undefined && obj.type === 'text') out.list = obj.list;
+  if (fields.fontSize !== undefined && obj.type === 'text') out.fontSize = obj.fontSize;
+  if (fields.autoHeight !== undefined && obj.type === 'text') out.autoHeight = obj.autoHeight;
+  if (fields.align !== undefined && obj.type === 'text') out.align = obj.align;
   if (fields.crop !== undefined && obj.type === 'image') out.crop = obj.crop ?? null;
   if (fields.locked !== undefined) out.locked = obj.locked;
   if (fields.hidden !== undefined) out.hidden = obj.hidden;
@@ -78,6 +97,9 @@ export function applyPatches(
       h?: number;
       content?: RichSpan[];
       list?: 'none' | 'bullet';
+      fontSize?: number;
+      autoHeight?: boolean;
+      align?: 'left' | 'center' | 'right';
       crop?: Rect | undefined;
     };
     if (patch.transform) next.transform = { ...patch.transform };
@@ -86,6 +108,9 @@ export function applyPatches(
     if (patch.z !== undefined) next.z = patch.z;
     if (patch.content !== undefined && 'content' in obj) next.content = [...patch.content];
     if (patch.list !== undefined && obj.type === 'text') next.list = patch.list;
+    if (patch.fontSize !== undefined && obj.type === 'text') next.fontSize = patch.fontSize;
+    if (patch.autoHeight !== undefined && obj.type === 'text') next.autoHeight = patch.autoHeight;
+    if (patch.align !== undefined && obj.type === 'text') next.align = patch.align;
     // `null` no patch significa "sem recorte", e o campo do objeto e opcional:
     // guardar o null cru deixaria `crop` presente e falso ao mesmo tempo.
     if (patch.crop !== undefined && obj.type === 'image') {

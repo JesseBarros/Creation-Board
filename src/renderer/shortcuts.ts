@@ -42,7 +42,6 @@ export type ShortcutId =
   | 'editText'
   | 'thinner'
   | 'thicker'
-  | 'snapToGrid'
   | 'rulers'
   | 'rulerUnit'
   | 'layers'
@@ -154,7 +153,6 @@ export const SHORTCUTS: ShortcutDef[] = [
 
   { group: 'Encaixe', keys: 'Arrastar', label: 'Guias aparecem ao alinhar com as bordas e o centro dos vizinhos' },
   { group: 'Encaixe', keys: 'Ctrl + arrastar', label: 'Ignorar o encaixe neste gesto' },
-  { id: 'snapToGrid', group: 'Encaixe', keys: 'A', label: 'Grade magnetica: encaixar tambem na grade', scope: 'board' },
 
   { group: 'Selecao', keys: 'Clique', label: 'Selecionar o objeto sob o cursor' },
   { group: 'Selecao', keys: 'Shift + clique', label: 'Somar ou tirar da selecao' },

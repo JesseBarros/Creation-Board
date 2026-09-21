@@ -1,6 +1,7 @@
 import type { Vec2 } from '@shared/geometry/vec2';
-import type { BoardObject, ObjectId } from '@shared/model/types';
+import type { BoardObject, ObjectId, TextObject } from '@shared/model/types';
 import type { ObjectPatch } from '../../commands/patch';
+import { contentHeight } from '../../render/text/layout';
 import { frameToWorld, worldToFrame, type SelectionFrame } from './frame';
 
 /**
@@ -22,6 +23,15 @@ import { frameToWorld, worldToFrame, type SelectionFrame } from './frame';
 /** Escala nunca chega a zero: um objeto de tamanho zero tem AABB vazio e some
  *  do indice espacial, ficando impossivel de clicar de volta. */
 const MIN_SCALE = 1e-3;
+
+/** Piso do corpo da fonte, em unidades de mundo. */
+const MIN_FONT_SIZE = 1;
+
+/** Piso da largura de quebra. Abaixo disto a caixa deixa de ser clicavel. */
+const MIN_TEXT_WIDTH = 4;
+
+/** Abaixo desta diferenca os dois fatores contam como iguais -> escala uniforme. */
+const UNIFORM_EPS = 1e-6;
 
 export function moveObjects(
   originals: readonly BoardObject[],
@@ -89,6 +99,13 @@ export function scaleObjects(
       anchor.x + (p.x - anchor.x) * sx,
       anchor.y + (p.y - anchor.y) * sy,
     );
+
+    // Texto nao escala: ele recompoe. Ver `scaleText`.
+    if (o.type === 'text') {
+      out.set(o.id, scaleText(o, moved, sx, sy));
+      continue;
+    }
+
     out.set(o.id, {
       transform: {
         ...t,
@@ -100,6 +117,70 @@ export function scaleObjects(
     });
   }
   return out;
+}
+
+/**
+ * Redimensionamento de uma caixa de texto.
+ *
+ * Todo o resto do quadro escala pelo `transform`, e para tinta e imagem isso
+ * esta certo: o desenho AUMENTA. Texto nao -- esticar o desenho da letra produz
+ * glifo condensado ou achatado, e foi o que deixava um titulo ilegivel. O
+ * modelo aqui e o do Microsoft Whiteboard, e sao duas operacoes distintas:
+ *
+ *   - CANTO (fatores iguais) -> muda o CORPO DA FONTE e a largura pelo mesmo
+ *     fator. O texto quebra exatamente nos mesmos pontos, so que maior: o
+ *     resultado e indistinguivel de um zoom, e nenhuma letra entorta.
+ *
+ *   - LADO (so o fator horizontal) -> muda so a LARGURA DE QUEBRA. O corpo da
+ *     fonte fica intacto e o texto REFLUI -- e o gesto de escolher onde a linha
+ *     termina, que antes nao existia porque a largura de quebra era a unica
+ *     medida que o redimensionamento nao tocava.
+ *
+ * A altura nunca e escalada: ela e sempre remedida a partir do conteudo, entao a
+ * caixa termina exatamente na ultima linha, com qualquer um dos dois gestos.
+ *
+ * A escala que porventura ja estivesse no objeto entra na conta e SAI do
+ * transform. E isto que endireita um texto legado -- importado, ou esticado pelo
+ * modelo antigo -- assim que ele e redimensionado pela primeira vez; ate la ele
+ * fica como estava, que foi a escolha feita para nao mexer em quadro antigo
+ * sozinho.
+ */
+function scaleText(o: TextObject, moved: Vec2, sx: number, sy: number): ObjectPatch {
+  const t = o.transform;
+
+  // Escala antiga absorvida: no eixo Y ela virava corpo de fonte, no eixo X,
+  // largura. Com os dois iguais (o caso comum) o texto sai visualmente igual ao
+  // que estava; diferentes, ele deixa de ser condensado -- que e o conserto.
+  const baseFont = o.fontSize * Math.abs(t.scaleY || 1);
+  const baseWidth = o.w * Math.abs(t.scaleX || 1);
+
+  // O corpo da fonte so muda quando os dois eixos crescem juntos. Um arraste
+  // que mexe em um eixo so e pedido de RELEITURA da largura, nao de texto maior
+  // -- e um fator vertical sozinho (selecao mista, alca de cima) nao muda nada,
+  // porque nao existe "texto mais alto" sem esticar a letra.
+  const uniform = Math.abs(Math.abs(sx) - Math.abs(sy)) < UNIFORM_EPS;
+  const fontSize = Math.max(MIN_FONT_SIZE, baseFont * (uniform ? Math.abs(sx) : 1));
+  const w = Math.max(MIN_TEXT_WIDTH, baseWidth * Math.abs(sx));
+
+  const h = contentHeight(o.content, {
+    width: w,
+    fontSize,
+    fontFamily: o.fontFamily,
+    lineHeight: o.lineHeight,
+    align: o.align,
+    list: o.list,
+  });
+
+  return {
+    transform: { ...t, x: moved.x, y: moved.y, scaleX: 1, scaleY: 1 },
+    w,
+    h,
+    fontSize,
+    // A altura passa a ser derivada: com a alca de cima e de baixo fora do
+    // quadro de texto, nao ha mais gesto que fixe uma altura, e uma caixa presa
+    // numa altura antiga esconderia linha sem dizer.
+    autoHeight: true,
+  };
 }
 
 /**

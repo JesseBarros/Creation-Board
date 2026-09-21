@@ -11,6 +11,7 @@ import {
   handleCursor,
   handleDirection,
   hitHandle,
+  scaleHandlesFor,
   SCALE_UV,
   worldToFrame,
   type ScaleHandleId,
@@ -26,6 +27,9 @@ import { snapPoint, snapRect, type SnapGuide } from '../features/snapping/snap';
 import { paintSelection } from '../render/SelectionOverlay';
 import { paintSnapGuides } from '../render/SnapGuides';
 import { DRAG_THRESHOLD_PX, screenDistance, type Tool, type ToolContext, type ToolPointer } from './types';
+
+/** Fator minimo de um arraste sobre texto; ver o trecho que o aplica. */
+const MIN_TEXT_FACTOR = 0.02;
 
 /**
  * Ferramenta de selecao: escolher objetos e manipula-los.
@@ -103,7 +107,7 @@ export class SelectTool implements Tool {
     const selected = selection.objects(doc);
     const frame = computeFrame(selected);
     if (frame) {
-      const handle = hitHandle(frame, p.world, camera.zoom, true);
+      const handle = hitHandle(frame, p.world, camera.zoom, true, scaleHandlesFor(selected));
       if (handle) {
         this.#mode = 'pending';
         this.#intent = handle === 'rotate' ? 'rotate' : 'scale';
@@ -255,8 +259,22 @@ export class SelectTool implements Tool {
 
     this.#originals = objects;
     this.#frame0 = frame;
+    // Redimensionar texto mexe em corpo de fonte, largura e altura, e nao so no
+    // transform -- o `before` tem de guardar os quatro, senao o Ctrl+Z devolveria
+    // a caixa para o lugar mantendo a fonte nova.
     this.#before = new Map(
-      objects.map((o) => [o.id, { transform: { ...o.transform } } as ObjectPatch]),
+      objects.map((o) => [
+        o.id,
+        o.type === 'text'
+          ? ({
+              transform: { ...o.transform },
+              w: o.w,
+              h: o.h,
+              fontSize: o.fontSize,
+              autoHeight: o.autoHeight,
+            } as ObjectPatch)
+          : ({ transform: { ...o.transform } } as ObjectPatch),
+      ]),
     );
     this.#moving = new Set(objects.map((o) => o.id));
     this.#startBounds = boundsOf(objects);
@@ -309,8 +327,6 @@ export class SelectTool implements Tool {
         doc: this.ctx.doc,
         zoom: this.ctx.camera.zoom,
         exclude: this.#moving,
-        snapToGrid: this.ctx.doc.prefs.snapToGrid,
-        gridSize: this.ctx.doc.prefs.grid.size,
         // Um eixo travado pelo Shift nao pode ser destravado pelo encaixe.
         axes: { x: !lockX, y: !lockY },
       });
@@ -341,14 +357,18 @@ export class SelectTool implements Tool {
     // encaixado.
     const forcedUniform = requiresUniformScale(this.#originals, frame);
     const corner = dir.dx !== 0 && dir.dy !== 0;
-    const locked = forcedUniform || (p.shift && corner);
+    const hasText = this.#originals.some((o) => o.type === 'text');
+    // Canto sobre texto e SEMPRE proporcional, com ou sem Shift: e o gesto que
+    // muda o corpo da fonte, e um canto de proporcao livre traria a letra
+    // esticada de volta por outro caminho. Quem quer mudar so a largura usa a
+    // alca de lado -- sao dois gestos com dois resultados, e nao um so.
+    const textCorner = corner && hasText;
+    const locked = forcedUniform || textCorner || (p.shift && corner);
     if (!p.ctrl && !locked && frame.rotation === 0) {
       const snap = snapPoint(frame.x + targetX, frame.y + targetY, {
         doc: this.ctx.doc,
         zoom: this.ctx.camera.zoom,
         exclude: this.#moving,
-        snapToGrid: this.ctx.doc.prefs.snapToGrid,
-        gridSize: this.ctx.doc.prefs.grid.size,
         // Uma alca de lado so mexe num eixo; encaixar o outro moveria uma borda
         // que o usuario nao esta arrastando.
         axes: { x: dir.dx !== 0, y: dir.dy !== 0 },
@@ -366,13 +386,32 @@ export class SelectTool implements Tool {
     let fx = dir.dx === 0 ? 1 : ratio(targetX - anchor.x, this.#handleAt.x - anchor.x);
     let fy = dir.dy === 0 ? 1 : ratio(targetY - anchor.y, this.#handleAt.y - anchor.y);
 
-    // Proporcao travada: pelo Shift num canto, ou por obrigacao quando a
-    // selecao tem objetos girados (ver requiresUniformScale). E a mesma condicao
-    // que ja desligou o encaixe acima.
-    if (locked) {
+    if (textCorner) {
+      // Um unico fator, tirado da PROJECAO do arraste sobre a diagonal original
+      // da alca. A regra do `max` usada abaixo nao serve aqui: arrastar o canto
+      // reto para a esquerda daria fator 1 no eixo Y e o texto nao encolheria --
+      // a alca andaria e a caixa ficaria parada. A projecao responde a qualquer
+      // direcao, e e a conta que faz o canto seguir o cursor.
+      const ox = this.#handleAt.x - anchor.x;
+      const oy = this.#handleAt.y - anchor.y;
+      const den = ox * ox + oy * oy;
+      fx = fy = den < 1e-9 ? 1 : ((targetX - anchor.x) * ox + (targetY - anchor.y) * oy) / den;
+    } else if (locked) {
+      // Proporcao travada: pelo Shift num canto, ou por obrigacao quando a
+      // selecao tem objetos girados (ver requiresUniformScale). E a mesma
+      // condicao que ja desligou o encaixe acima.
       const f = Math.max(dir.dx === 0 ? 0 : Math.abs(fx), dir.dy === 0 ? 0 : Math.abs(fy));
       fx = f * (fx < 0 ? -1 : 1);
       fy = f * (fy < 0 ? -1 : 1);
+    }
+
+    // Texto nao espelha. Puxar a alca para depois da ancora inverte o sinal do
+    // fator, e uma caixa de texto invertida sairia escrita de tras para frente
+    // ou de cabeca para baixo -- nunca o que se quis pedir. O piso trava a caixa
+    // no minimo em vez de deixa-la atravessar a ancora.
+    if (hasText) {
+      fx = Math.max(fx, MIN_TEXT_FACTOR);
+      fy = Math.max(fy, MIN_TEXT_FACTOR);
     }
 
     this.#apply(scaleObjects(this.#originals, frame, anchor, fx, fy));
@@ -445,9 +484,10 @@ export class SelectTool implements Tool {
     if (this.#mode !== 'idle') return 'default';
 
     const { doc, camera, selection } = this.ctx;
-    const frame = computeFrame(selection.objects(doc));
+    const selected = selection.objects(doc);
+    const frame = computeFrame(selected);
     if (frame) {
-      const h = hitHandle(frame, p.world, camera.zoom, true);
+      const h = hitHandle(frame, p.world, camera.zoom, true, scaleHandlesFor(selected));
       if (h) return handleCursor(h, frame.rotation);
     }
     return hitTest(doc, p.world, camera.zoom) ? 'move' : 'default';

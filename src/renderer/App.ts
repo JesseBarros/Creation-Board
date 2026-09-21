@@ -17,7 +17,7 @@ import { PatchObjects, RestyleNotes, type NoteStyle } from './commands';
 import { snapshotPatch, type ObjectPatch } from './commands/patch';
 import type { Rect } from '@shared/geometry/rect';
 import { contentHeight, styleOf } from './render/text/layout';
-import type { ObjectId, TextObject } from '@shared/model/types';
+import type { ObjectId, TextAlign, TextObject } from '@shared/model/types';
 import { hitTest } from './features/selection/hitTest';
 import { BoardClipboard } from './features/selection/clipboard';
 import {
@@ -40,10 +40,11 @@ import { ShortcutsModal } from './ui/ShortcutsModal';
 import { LayersPanel } from './ui/LayersPanel';
 import { dismissBootScreen } from './bootScreen';
 import {
-  confirmDialog,
   exportDialog,
+  newBoardDialog,
   promptText,
   toast,
+  unsavedDialog,
   type ExportChoice,
 } from './ui/dialogs';
 import {
@@ -75,11 +76,32 @@ import { generateStressBatches } from './dev/stress';
 import { resolve as resolveShortcut, type ShortcutId } from './shortcuts';
 
 const THEMES: Record<'light' | 'dark', RenderTheme> = {
-  light: { boardBg: '#ffffff', gridColor: '#dde2ea' },
+  /*
+    O quadro claro e um BRANCO QUEBRADO, e nao branco puro.
+
+    Ele era `#ffffff` ate 20/09/2026, e o relato que mudou isso foi direto: [...]. A razao e fisica e nao gosto -- o
+    quadro ocupa a tela inteira, e uma tela e fonte de luz: branco maximo em area
+    maxima e brilho maximo na cara de quem estuda por horas.
+
+    A primeira tentativa foi `#f2f4f7` -- 0,90 de luminancia contra 1,00 do
+    branco --, e voltou que [...]. Estava
+    certo: 10% nao se sente numa superficie que ocupa a tela toda.
+
+    `#e3e7ee` fica em 0,80. O numero nao e chutado: e onde o macOS poe o fundo de
+    janela, que e a referencia de tela clara que se usa por horas sem queixa.
+    Medido na foto da janela, e nao no editor de cores -- a grade e o desfoque
+    das barras mudam o que o olho recebe.
+
+    Isso resolve junto a segunda metade da queixa, [...]: os paineis continuam claros, entao agora eles SALTAM do fundo em
+    vez de se dissolverem nele. Duas queixas, um numero.
+
+    O arquivo exportado continua branco puro: ver `exportBg` em RenderTheme.
+  */
+  light: { boardBg: '#e3e7ee', exportBg: '#ffffff', gridColor: '#bfc8d7' },
   // No modo escuro o quadro escurece de verdade; as cores das marcas sao
   // adaptadas na exibicao (ver render/colorAdapt.ts). O arquivo guarda sempre a
   // cor original que o autor escolheu.
-  dark: { boardBg: '#14161b', gridColor: '#282d38' },
+  dark: { boardBg: '#14161b', exportBg: '#14161b', gridColor: '#282d38' },
 };
 
 /**
@@ -87,7 +109,7 @@ const THEMES: Record<'light' | 'dark', RenderTheme> = {
  * interface: ela nao pertence ao quadro nem entra na miniatura gravada.
  */
 const RULER_THEMES: Record<'light' | 'dark', RulerTheme> = {
-  light: { bg: '#f5f7fa', fg: '#667085', line: '#d9dee8', cursor: '#3b6ff0' },
+  light: { bg: '#dce1ea', fg: '#414b5c', line: '#b3bdcd', cursor: '#3b6ff0' },
   dark: { bg: '#1d2027', fg: '#8b93a3', line: '#333947', cursor: '#5b87f5' },
 };
 
@@ -150,6 +172,8 @@ export class App {
   #hint: HTMLElement;
   #progress: HTMLElement;
   #theme: 'light' | 'dark';
+  /** Temporizador do redesenho de parada; ver `#agendarRedesenhoDeParada`. */
+  #redesenhoDeParada = 0;
 
   #rulers: boolean;
   /**
@@ -205,7 +229,6 @@ export class App {
       zoomTo: (z) => this.#setZoomCenter(z),
       fitToContent: () => this.fitToContent(),
       toggleGrid: () => this.toggleGrid(),
-      toggleSnap: () => this.toggleSnapToGrid(),
       toggleRulers: () => this.toggleRulers(),
       toggleLayers: () => this.toggleLayers(),
       toggleTheme: () => this.toggleTheme(),
@@ -225,6 +248,7 @@ export class App {
         // traducao mora aqui para o simbolo sair de um lugar so (DrawStyle).
         warnIfLowContrast: (color) => this.warnIfLowContrast(color),
         toggleTextFormat: (what) => this.toggleTextFormat(what),
+        setTextAlign: (align) => this.setTextAlign(align),
         restyleNotes: ({ bg, alert }) =>
           this.restyleSelectedNotes({
             ...(bg !== undefined ? { bg } : {}),
@@ -235,7 +259,25 @@ export class App {
       },
       this.drawStyle,
     );
-    this.#boardView.append(this.#toolbar.el);
+    // Uma barra so: a fila de ferramentas entra DENTRO da barra inferior em vez
+    // de flutuar sozinha na borda esquerda. Ver `ViewportBar.mountTools`.
+    this.#bar.mountTools(this.#toolbar.el);
+
+    /*
+      O B/I/U precisa acompanhar o cursor, e `selectionchange` e o unico evento
+      que avisa quando ele anda dentro de um `contentEditable`.
+
+      Ele dispara no DOCUMENTO e nao no elemento -- por isso o ouvinte esta aqui,
+      e nao no TextEditor. Andar uma letra para dentro de um trecho em negrito
+      tem de acender o botao, e nenhuma tecla especifica avisa isso: seta,
+      clique, arraste e atalho de selecao produzem o mesmo efeito.
+
+      `#syncTextFormat` sai cedo quando nao ha edicao nem caixa selecionada,
+      entao o custo em repouso e uma comparacao.
+    */
+    document.addEventListener('selectionchange', () => this.#syncTextFormat());
+    // Selecionar uma caixa no quadro tambem muda o que os botoes relatam.
+    this.selection.onChange(() => this.#syncTextFormat());
 
     this.#search = new SearchBar({
       search: (q) => this.#search.setHits(searchBoard(this.doc, q)),
@@ -275,7 +317,6 @@ export class App {
       newBoard: () => void this.newBoard(),
       openBoard: (s) => void this.openBoard(s),
       openDemo: () => void this.openDemo(),
-      showShortcuts: () => this.#help.toggle(),
       toggleTheme: () => this.toggleTheme(),
       importBoards: () => void this.#pickAndImport(),
       openBoardAt: (path, id) => void this.openBoardAt(path, id),
@@ -300,9 +341,15 @@ export class App {
         ? temaForcado
         : ((localStorage.getItem(THEME_KEY) as 'light' | 'dark' | null) ?? 'light');
     this.#rulers = localStorage.getItem(RULERS_KEY) === '1';
+    // Mesmo criterio do tema: o modo forcado vale para esta execucao e nao
+    // grava nada, para a foto de conferencia nao depender da maquina.
+    // QB_BLUR=0: desliga todo `backdrop-filter`. Ver main/index.ts.
+    if (new URLSearchParams(location.search).get('blur') === '0') {
+      document.documentElement.dataset['noblur'] = '1';
+    }
+
     this.#applyTheme();
     this.#bar.setRulers(this.#rulers);
-    this.#bar.setSnap(this.doc.prefs.snapToGrid);
 
     this.#scheduler = new Scheduler(
       () => {
@@ -489,10 +536,19 @@ export class App {
   }
 
   async newBoard(): Promise<void> {
+    // A escolha do papel vem ANTES de o quadro existir: é a única hora em que
+    // ela é barata. Cancelar aqui não cria nada e devolve ao lobby.
+    const papel = await newBoardDialog();
+    if (papel === null) return;
+
     this.doc.clear();
+    this.doc.setPrefs({ background: papel });
     this.#resetEditingState();
     this.#session = { path: null, name: 'Quadro sem nome', dirty: false };
     this.#enterBoard();
+    // O papel entra no tema do renderizador, e com ele no adaptador de cor: as
+    // marcas passam a ser conferidas contra o fundo que existe de verdade.
+    this.#applyTheme();
     this.camera.reset(this.#renderer.viewportW, this.#renderer.viewportH);
     this.#onCameraChanged();
   }
@@ -507,6 +563,9 @@ export class App {
       this.#resetEditingState();
       this.#session = { path: result.path, name: result.name, dirty: false };
       this.#enterBoard();
+      // O papel gravado no arquivo entra no tema: sem isto o quadro abriria com
+      // o papel do quadro ANTERIOR, porque o tema só é montado na inicialização.
+      this.#applyTheme();
       this.#bar.setZoom(this.camera.zoom);
       this.#onCameraChanged();
       this.readImagesInBackground();
@@ -783,7 +842,7 @@ export class App {
     invalidateLibraryIndex();
     try {
       const used = usedAssetIds(this.doc);
-      const preview = await renderThumbnail(this.doc, THEMES[this.#theme], (id) =>
+      const preview = await renderThumbnail(this.doc, this.#themeComPapel(), (id) =>
         this.assets.bitmap(id),
       );
       return await window.quadro.board.save({
@@ -895,17 +954,25 @@ export class App {
     document.title = 'Creation Board';
   }
 
-  /** Pergunta antes de descartar alteracoes nao salvas. */
+  /**
+   * Pergunta o que fazer com alteracoes pendentes antes de sair.
+   *
+   * Devolve `true` quando pode seguir. SALVAR tambem devolve `true`, e so depois
+   * de a gravacao terminar -- por isso o `await`: sair antes de o arquivo fechar
+   * perderia exatamente o que a pessoa pediu para guardar.
+   *
+   * Se a gravacao falhar ou for cancelada no dialogo de arquivo, a saida e
+   * ABORTADA. Um erro ao salvar nao pode virar um descarte silencioso.
+   */
   async #confirmDiscard(): Promise<boolean> {
     if (!this.#session.dirty || this.doc.size === 0) return true;
-    const ok = await confirmDialog({
-      title: 'Alteracoes nao salvas',
-      message: `"${this.#session.name}" tem alteracoes que ainda nao foram gravadas. Sair mesmo assim?`,
-      confirmLabel: 'Descartar',
-      cancelLabel: 'Continuar aqui',
-      danger: true,
-    });
-    return ok;
+
+    const escolha = await unsavedDialog(this.#session.name);
+    if (escolha === 'cancelar') return false;
+    if (escolha === 'descartar') return true;
+
+    await this.save();
+    return !this.#session.dirty;
   }
 
   #guardUnsavedOnClose(): void {
@@ -932,20 +999,6 @@ export class App {
     this.#bar.setGridEnabled(this.doc.prefs.grid.enabled);
   }
 
-  /**
-   * Grade magnetica. E preferencia do QUADRO, e nao do app: um resumo desenhado
-   * a mao livre e um diagrama de caixas querem coisas diferentes, e o `.wbd` ja
-   * guardava esse campo desde a Fase 1.
-   *
-   * As guias de alinhamento entre objetos nao dependem disto -- elas estao
-   * sempre ligadas, e o Ctrl durante o arraste e que as desliga.
-   */
-  toggleSnapToGrid(): void {
-    this.doc.setPrefs({ snapToGrid: !this.doc.prefs.snapToGrid });
-    this.#bar.setSnap(this.doc.prefs.snapToGrid);
-    this.#markDirty();
-  }
-
   toggleRulers(): void {
     this.#rulers = !this.#rulers;
     localStorage.setItem(RULERS_KEY, this.#rulers ? '1' : '0');
@@ -966,15 +1019,42 @@ export class App {
     this.#scheduler.invalidate();
   }
 
+  /*
+    O acabamento vitrificado foi um MODO, com interruptor na barra e no lobby, e
+    virou o padrao unico em 21/09/2026. Saiu daqui o par `toggleGlass`/
+    `#applyGlass`, a chave no localStorage e o `data-glass` na raiz: com um
+    acabamento so, nao ha o que alternar nem o que lembrar.
+
+    O CSS do vidro esta em styles/base.css, agora nos tokens de base.
+  */
+
   toggleBenchmark(): void {
     const next = !this.#scheduler.continuous;
     this.#scheduler.resetSamples();
     this.#scheduler.setContinuous(next);
   }
 
+  /**
+   * O tema do renderizador, já com o PAPEL escolhido para este quadro.
+   *
+   * O papel vale só no tema claro, e a razão é o propósito dele: a cor existe
+   * para destacar o que está por cima, e isso é uma questão de papel claro. No
+   * tema escuro o quadro já é escuro, e pintá-lo de rosa-claro desfaria o tema.
+   *
+   * `exportBg` acompanha o papel, e não fica branco: um resumo montado sobre
+   * papel azul exportado em branco não é o mesmo documento -- as cores que o
+   * autor escolheu foram escolhidas CONTRA aquele fundo.
+   */
+  #themeComPapel(): RenderTheme {
+    const base = THEMES[this.#theme];
+    if (this.#theme === 'dark') return base;
+    const papel = this.doc.prefs.background;
+    return { ...base, boardBg: papel, exportBg: papel };
+  }
+
   #applyTheme(): void {
     document.documentElement.dataset['theme'] = this.#theme;
-    this.#renderer.theme = THEMES[this.#theme];
+    this.#renderer.theme = this.#themeComPapel();
     this.#bar.setGridEnabled(this.doc.prefs.grid.enabled);
     // Os dois interruptores de tema mostram o PROXIMO tema, e por isso trocam de
     // glifo junto. O do lobby existe separado porque o lobby nao tem a barra.
@@ -995,6 +1075,41 @@ export class App {
   #onCameraChanged(): void {
     this.#bar.setZoom(this.camera.zoom);
     this.#scheduler.invalidate();
+    this.#agendarRedesenhoDeParada();
+  }
+
+  /**
+   * UM redesenho extra logo depois que a camera para de se mexer.
+   *
+   * Existe por causa do rastro relatado em 20/09/2026: rolando a tela DEVAGAR,
+   * pedacos do frame anterior ficam na tela -- e ficam varios segundos. A
+   * duplicacao aparece nas duas camadas ao mesmo tempo (o traco na estatica, o
+   * rotulo da regua no overlay), o que descarta erro de desenho: as duas sao
+   * limpas por inteiro a cada frame. O que sobra e a composicao deixando tiles
+   * velhos, a mesma familia do B8.
+   *
+   * Por que ele fica TANTO tempo, e e isto que este metodo ataca: o loop so
+   * desenha quando algo invalidou o frame (ver core/Scheduler.ts). Parou de
+   * rolar, parou de desenhar -- e sem frame novo nao ha troca de tela que
+   * corrija o que ficou velho. O rastro so some quando outra coisa qualquer
+   * pede um desenho, e o primeiro candidato costuma ser o autosave, ocioso por
+   * tres segundos. Bate com [...].
+   *
+   * Um frame a mais por gesto, e nao por tique: o temporizador e reiniciado a
+   * cada movimento, entao rolar continuamente nao agenda nada. O custo e
+   * exatamente um frame depois que a pessoa parou -- o momento mais barato que
+   * existe para gastar um.
+   *
+   * ISTO NAO E A CAUSA, E NAO SE FINGE QUE E. A conta de regiao suja continua
+   * errada; o que muda e que o erro dura um frame em vez de segundos. A causa
+   * esta sendo isolada com `QB_BLUR=0` (ver main/index.ts).
+   */
+  #agendarRedesenhoDeParada(): void {
+    clearTimeout(this.#redesenhoDeParada);
+    this.#redesenhoDeParada = window.setTimeout(() => {
+      this.#scheduler.invalidate();
+      this.#scheduler.invalidateOverlay();
+    }, 120);
   }
 
   // ------------------------------------------------------- selecao e edicao
@@ -1098,8 +1213,10 @@ export class App {
       return;
     }
 
-    const theme = THEMES[this.#theme];
-    const background = choice.background ? theme.boardBg : null;
+    const theme = this.#themeComPapel();
+    // `exportBg` e nao `boardBg`: o quadro claro da tela e um branco quebrado
+    // para nao cansar a vista, e esse cinza no arquivo so pareceria sujo.
+    const background = choice.background ? theme.exportBg : null;
     const name = this.#session.name === 'Quadro sem nome' ? 'quadro' : this.#session.name;
 
     this.#showProgress(`Exportando ${choice.format.toUpperCase()}…`, 0.4);
@@ -1157,7 +1274,7 @@ export class App {
           // As marcas sao adaptadas contra o fundo QUE VAI PARA O ARQUIVO. Num
           // SVG transparente, o fundo de referencia continua sendo o do tema:
           // e sobre ele que o quadro foi desenhado.
-          adaptAgainst: background ?? theme.boardBg,
+          adaptAgainst: background ?? theme.exportBg,
         });
         data = new TextEncoder().encode(svg);
       } else {
@@ -1168,7 +1285,7 @@ export class App {
           padding: EXPORT_PADDING,
           // Um PDF transparente e branco na pratica; deixar o fundo do tema
           // evita um arquivo que parece certo na tela e sai errado no papel.
-          background: background ?? theme.boardBg,
+          background: background ?? theme.exportBg,
           theme,
         });
         data = png.bytes;
@@ -1378,6 +1495,10 @@ export class App {
   toggleTextFormat(what: 'bold' | 'italic' | 'underline'): void {
     if (this.#editor.isEditing) {
       document.execCommand(what);
+      // O `execCommand` nao move o cursor, entao `selectionchange` pode nao
+      // disparar -- e sem ele o interruptor aplicaria o formato e continuaria
+      // apagado, que e justamente o defeito que ele veio consertar.
+      this.#syncTextFormat();
       return;
     }
 
@@ -1404,6 +1525,104 @@ export class App {
     this.history.seal();
     this.#markDirty();
     this.#scheduler.invalidate();
+    this.#syncTextFormat();
+  }
+
+  /**
+   * Manda para a barra qual formatacao esta em vigor agora.
+   *
+   * "Em vigor" tem duas fontes, e a ordem entre elas importa:
+   *
+   * 1. DIGITANDO, quem responde e o proprio Chromium, por `queryCommandState`.
+   *    E a unica fonte que sabe a diferenca entre [...] e [...] --
+   *    os dois significam negrito para a proxima letra, e nenhuma leitura do
+   *    modelo enxergaria o segundo, porque ele ainda nao existe no documento.
+   *
+   * 2. COM UMA CAIXA SELECIONADA, quem responde e o documento: o formato vale
+   *    para a caixa inteira, e so conta como ligado se TODOS os trechos tiverem
+   *    -- a mesma regra que `toggleTextFormat` usa para decidir se aplica ou
+   *    tira.
+   *
+   * Fora desses dois casos a linha B/I/U nem aparece, entao nao ha o que dizer.
+   */
+  #syncTextFormat(): void {
+    if (this.#editor.isEditing) {
+      this.#toolbar.setTextFormat({
+        bold: document.queryCommandState('bold'),
+        italic: document.queryCommandState('italic'),
+        underline: document.queryCommandState('underline'),
+      });
+      this.#toolbar.setTextAlign(this.#editingText()?.align ?? null);
+      return;
+    }
+
+    const caixas = this.selection
+      .objects(this.doc)
+      .filter((o): o is TextObject => o.type === 'text');
+    const ligado = (what: 'bold' | 'italic' | 'underline'): boolean =>
+      caixas.length > 0 && caixas.every((o) => o.content.every((s) => s[what] === true));
+
+    this.#toolbar.setTextFormat({
+      bold: ligado('bold'),
+      italic: ligado('italic'),
+      underline: ligado('underline'),
+    });
+    // So acende quando TODAS as caixas concordam; com alinhamentos diferentes
+    // nao ha resposta certa para [...].
+    const primeiro = caixas[0]?.align ?? null;
+    this.#toolbar.setTextAlign(
+      caixas.length > 0 && caixas.every((o) => o.align === primeiro) ? primeiro : null,
+    );
+  }
+
+  /** A caixa de texto em edicao, quando o que se edita e texto e nao post-it. */
+  #editingText(): TextObject | null {
+    const id = this.#editor.editingId;
+    if (!id) return null;
+    const obj = this.doc.get(id);
+    return obj && obj.type === 'text' ? obj : null;
+  }
+
+  /**
+   * Alinha as caixas de texto -- a esquerda, centralizado ou a direita.
+   *
+   * Vale para a CAIXA inteira, e nao para um trecho: nao existe [...]. Por isso ele nao passa pelo `execCommand` como o B/I/U; ele
+   * patcha o objeto, mesmo com a caixa aberta para edicao.
+   *
+   * A ALTURA e remedida junto, e isso nao e detalhe: alinhar nao muda onde as
+   * linhas quebram, mas muda quando o texto tem lista (o recuo do marcador entra
+   * na conta). Deixar a altura velha faria a caixa cortar a ultima linha.
+   */
+  setTextAlign(align: TextAlign): void {
+    // Com a caixa aberta, o alvo e ela; fora da edicao, a selecao.
+    const emEdicao = this.#editingText();
+    const alvos = emEdicao
+      ? [emEdicao]
+      : this.selection
+          .objects(this.doc)
+          .filter((o): o is TextObject => o.type === 'text' && !o.locked);
+    if (alvos.length === 0) return;
+
+    const before = new Map<string, ObjectPatch>();
+    const after = new Map<string, ObjectPatch>();
+    for (const obj of alvos) {
+      if (obj.align === align) continue;
+      before.set(obj.id, { align: obj.align, h: obj.h });
+      after.set(obj.id, {
+        align,
+        h: obj.autoHeight ? contentHeight(obj.content, { ...styleOf(obj), align }) : obj.h,
+      });
+    }
+    if (after.size === 0) return;
+
+    this.history.push(new PatchObjects(this.doc, before, after, 'Alinhar texto'));
+    this.history.seal();
+    this.#markDirty();
+    this.#scheduler.invalidate();
+    // O editor desenha o proprio texto; sem isto ele continuaria alinhado como
+    // estava ate a caixa fechar.
+    this.#editor.refreshStyle();
+    this.#syncTextFormat();
   }
 
   /**
@@ -1953,7 +2172,6 @@ export class App {
       },
       thinner: () => this.stepStrokeWidth(-1),
       thicker: () => this.stepStrokeWidth(1),
-      snapToGrid: () => this.toggleSnapToGrid(),
       rulers: () => this.toggleRulers(),
       rulerUnit: () => this.toggleRulerUnit(),
       nudge: (e) => {

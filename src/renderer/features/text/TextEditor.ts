@@ -174,6 +174,26 @@ export class TextEditor {
     this.#ctx.markDirty();
   }
 
+  /**
+   * Reaplica o estilo do objeto ao editor aberto.
+   *
+   * Existe para mudancas que valem para a CAIXA e podem acontecer com ela
+   * aberta -- alinhamento e o caso de hoje. Sem isto o texto continuaria
+   * alinhado como estava ate a caixa fechar, e a pessoa veria o botao aceso e o
+   * texto parado.
+   *
+   * Le o objeto do documento de novo: quem patchou foi o App, e a copia guardada
+   * aqui e a de quando a edicao comecou.
+   */
+  refreshStyle(): void {
+    const alvo = this.#target;
+    if (!alvo || this.#isNew) return;
+    const atual = this.#ctx.doc.get(alvo.id);
+    if (!atual || (atual.type !== 'text' && atual.type !== 'note')) return;
+    this.#target = atual;
+    this.#applyStyle(atual);
+  }
+
   /** Fecha sem gravar. Usado ao trocar de quadro. */
   abort(): void {
     if (!this.#target) return;
@@ -295,6 +315,10 @@ export class TextEditor {
       (e) => {
         if (!this.#target) return;
         if (e.target instanceof Node && this.el.contains(e.target)) return;
+        // Controle de formatacao (o B/I/U da barra) age DENTRO da caixa, e nao
+        // fora dela: fechar a edicao aqui era o que fazia o negrito valer para o
+        // objeto inteiro em vez da palavra seguinte. Ver ToolBar.
+        if (e.target instanceof Element && e.target.closest('[data-keep-edit]')) return;
         this.commit();
       },
       { capture: true },

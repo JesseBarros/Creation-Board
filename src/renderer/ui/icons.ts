@@ -25,6 +25,9 @@ export type IconName =
   | 'ajustar'
   | 'sol'
   | 'lua'
+  | 'alinharEsquerda'
+  | 'alinharCentro'
+  | 'alinharDireita'
   | 'comandos'
   | 'menos'
   | 'mais'
@@ -115,6 +118,11 @@ const PATHS: Record<IconName, string[]> = {
     'M7.8 16.2l-1.3 1.3',
   ],
   lua: ['M19.5 14.6A8 8 0 019.4 4.5a8 8 0 1010.1 10.1z'],
+  // Alinhamento: quatro linhas, e a que sobra curta e a que diz o lado. E o
+  // desenho que todo editor usa, e por isso nao precisa de legenda.
+  alinharEsquerda: ['M4.5 6.5h15', 'M4.5 10.8h9.5', 'M4.5 15h15', 'M4.5 19.3h9.5'],
+  alinharCentro: ['M4.5 6.5h15', 'M7.2 10.8h9.6', 'M4.5 15h15', 'M7.2 19.3h9.6'],
+  alinharDireita: ['M4.5 6.5h15', 'M10 10.8h9.5', 'M4.5 15h15', 'M10 19.3h9.5'],
   // Teclado: a tela que ele abre e a lista de teclas. Tres teclas e nao quatro
   // -- a quarta nao acrescentava informacao e fechava os vaos.
   comandos: [

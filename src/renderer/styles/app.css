@@ -80,69 +80,102 @@
   align-items: center;
   gap: 2px;
   padding: 5px;
-  background: color-mix(in srgb, var(--panel) 80%, transparent);
-  backdrop-filter: blur(24px) saturate(160%);
-  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  background: var(--chrome-sheen), var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  border: 1px solid var(--chrome-border);
   border-radius: 15px;
-  box-shadow:
-    0 1px 2px rgba(16, 22, 38, 0.1),
-    0 10px 34px -8px rgba(16, 22, 38, 0.22);
+  box-shadow: var(--chrome-shadow);
+  /* Com as ferramentas dentro, a barra ficou longa. O teto impede que ela passe
+     das bordas da janela; quem cede espaco e o NOME do quadro (ver abaixo), que
+     e o unico item aqui que pode encolher sem virar adivinhacao. */
+  max-width: calc(100vw - 24px);
 }
 
-:root[data-theme='dark'] .qb-bar {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 1px 2px rgba(0, 0, 0, 0.34),
-    0 12px 38px -10px rgba(0, 0, 0, 0.6);
+/*
+  NAO HA MAIS PONTO DE "ALTERACOES NAO SALVAS" no botao de salvar.
+
+  Ele existiu por algumas horas em 20/09/2026, quando o nome do quadro saiu da
+  barra: o pontinho que acompanhava o nome mudou de dono e foi para o canto do
+  botao. A ideia era boa no papel -- o aviso em cima do botao que o resolve --
+  e ruim na tela: uma bolinha amarela grudada num botao azul le como defeito,
+  nao como aviso.
+
+  A informacao nao se perdeu, e isso e o que permite remover sem substituir: ao
+  tentar sair com pendencia, o dialogo pergunta o que fazer e OFERECE SALVAR
+  (ver ui/dialogs.ts). O aviso deixou de ser um enfeite permanente no canto da
+  tela e virou uma pergunta no momento em que ela importa.
+
+  A classe `qb-bar__btn--dirty` continua sendo aplicada pelo ViewportBar: ela
+  ainda alimenta a dica do botao, que diz se ha alteracoes pendentes.
+*/
+
+.qb-bar__tools {
+  /* A fila nunca encolhe: um icone cortado pela metade nao e clicavel. */
+  flex: 0 0 auto;
 }
 
-.qb-bar__group {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
+/*
+  A TINTA MUDA DE LUGAR: SAI DA BARRA, ENTRA NAS PASTILHAS.
 
-/* A marca ancora a esquerda. Nao e alvo de clique -- ver ViewportBar.ts. */
-.qb-bar__brand {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 32px;
-  margin-right: 2px;
+  Com `--chrome-bg: transparent` a barra virou uma lamina limpa, e o preco
+  apareceu sobre um resumo denso: o texto do quadro passa por tras dos icones e
+  colide com eles. Medido na pratica, nao em teoria -- uma captura sobre um
+  quadro de estudo no tema claro mostrou os glifos ilegiveis.
+
+  A PRIMEIRA TENTATIVA foi dar sombra propria a cada glifo (`drop-shadow` em
+  duas camadas, na cor oposta). Funciona sobre fundo uniforme e falha sobre
+  texto: o halo se mistura com as letras de tras e vira sujeira, porque nao ha
+  contraste consistente com que competir.
+
+  O que resolve e dar uma SUPERFICIE a cada controle. A lamina continua 100%
+  transparente -- o vao entre as pastilhas mostra o quadro inteiro --, e o que
+  ganha corpo e so o alvo clicavel. E a mesma divisao do iOS: a barra e vidro,
+  os controles sao objetos POUSADOS nela.
+
+  Nao ha `backdrop-filter` aqui de proposito: a barra ja desfoca e refrata o
+  fundo, e a pastilha compoe por cima do resultado. Um filtro dentro de outro
+  multiplicaria superficies de composicao sem acrescentar nada visivel.
+*/
+.qb-bar__btn,
+.qb-tools__btn {
+  color: var(--fg);
+  background: color-mix(in srgb, var(--panel) 62%, transparent);
+  /* O filete claro no topo da pastilha e o mesmo idioma do aro da barra: ele
+     separa o controle do que passa por tras sem precisar de contorno. */
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 22%, transparent);
 }
 
 .qb-bar__btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
   border: none;
   border-radius: 10px;
   padding: 6px 10px;
-  /*
-    Apagado por padrao, cheio no hover. Catorze icones todos em contraste
-    maximo competem entre si e nenhum se destaca; apagados, a fila vira textura
-    e o que estiver ligado aparece sozinho.
-  */
-  color: var(--fg-muted);
   font-size: 13px;
   line-height: 1;
   white-space: nowrap;
   transition:
     background-color 0.14s ease,
     color 0.14s ease,
-    transform 0.09s ease;
+    box-shadow 0.16s var(--ease-saida),
+    transform 0.16s var(--ease-saida);
 }
 
-.qb-bar__btn:hover {
-  background: color-mix(in srgb, var(--fg) 8%, transparent);
-  color: var(--fg);
+.qb-bar__btn:hover,
+.qb-tools__btn:hover {
+  background: color-mix(in srgb, var(--panel) 82%, transparent);
+  transform: translateY(var(--levanta));
 }
 
-/* 0,96 e nao 0,9: o afundar tem de ser sentido, nao visto. */
-.qb-bar__btn:active {
-  transform: scale(0.96);
+/*
+  Apertar DESFAZ o levantar, e nao encolhe por cima dele: sem zerar o
+  deslocamento o botao encolheria ainda suspenso, que le como "recuou" e nao
+  como "afundou". 0,96 e nao 0,9 -- o afundar tem de ser sentido, nao visto.
+*/
+.qb-bar__btn:active,
+.qb-tools__btn:active {
+  transform: translateY(0) scale(0.96);
 }
 
 /* Anel de foco so para quem navega por teclado -- o mouse ja tem o hover. */
@@ -159,44 +192,40 @@
 }
 
 /*
-  Ligado = pilula preenchida com a COR DE DESTAQUE, igual a barra lateral.
+  LIGADO e o AZUL DE SEMPRE, e nao um azul proprio do vidro.
 
-  Ate 12/08/2026 era uma barrinha embaixo do icone, no idioma da barra de
-  tarefas do Windows. A barrinha saiu, que quis a estetica de
-  aplicativo Apple -- ali um interruptor ligado e um retangulo arredondado
-  preenchido, nao um sublinhado. A pilula fica; o que mudou foi a cor dela.
+  A pastilha continua por baixo -- e ela quem garante a legibilidade sobre
+  qualquer conteudo do quadro --, e o azul entra como uma CAMADA por cima dela.
+  Por isso duas camadas de fundo em vez de uma cor so: trocar o fundo pelo azul
+  jogaria a pastilha fora, e o botao ligado ficaria MENOS legivel que os
+  desligados.
 
-  **O preenchimento foi NEUTRO por um dia, e era o B16.** O raciocinio era que
-  grade, ima, regua e camadas podem estar ligados ao mesmo tempo e quatro
-  pilulas azuis manchariam a fila. foi relatado [...] -- e a medicao, tirada de uma foto da janela no tema escuro, explica
-  o que se viu:
-
-  | | RGB medido | Passo em luminancia |
-  |---|---|---|
-  | quadro, fora da barra | 19,21,26 | -- |
-  | barra | 27,30,37 | +8 sobre o quadro |
-  | pilula NEUTRA (--fg 11%) | 48,53,59 | **+22 sobre a barra** |
-  | pilula de DESTAQUE (16%) | 32,43,70 | +13 sobre a barra |
-
-  Duas coisas saem dai, e nenhuma era visivel no CSS. Primeira: o cinza
-  neutro dava um degrau de luminancia quase TRES VEZES maior que o da propria
-  barra contra o quadro -- o indicador de estado gritava mais alto que a
-  superficie em que ele mora. Segunda, e e a que fecha o "parece sombra": o
-  tema escuro inteiro e azulado (B/R = 1,37 no fundo e na barra), e a pilula
-  neutra caia para 1,23. Uma mancha CINZA sobre uma interface azulada nao le
-  como destaque, le como sujeira.
-
-  O azul faz o contrario: metade do degrau de luminancia, e a diferenca vai
-  para a cor. E como o glifo ja e azul, pilula e icone viram um objeto so, em
-  vez de um icone azul pousado sobre um borrao cinza.
+  O tom vem do B16, e a medicao esta registrada la: pilula NEUTRA dava um degrau
+  de luminancia quase tres vezes maior que o da propria barra contra o quadro --
+  o indicador gritava mais alto que a superficie em que mora --, e cinza sobre
+  uma interface azulada le como sujeira, nao como destaque. Azul faz o
+  contrario: metade do degrau, e a diferenca vai para a cor.
 */
-.qb-bar__btn--active {
+.qb-bar__btn--active,
+.qb-tools__btn--active {
+  background:
+    linear-gradient(
+      color-mix(in srgb, var(--accent) 34%, transparent),
+      color-mix(in srgb, var(--accent) 34%, transparent)
+    ),
+    color-mix(in srgb, var(--panel) 62%, transparent);
   color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
 }
 
-.qb-bar__btn--active:hover {
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
+.qb-bar__btn--active:hover,
+.qb-tools__btn--active:hover {
+  background:
+    linear-gradient(
+      color-mix(in srgb, var(--accent) 46%, transparent),
+      color-mix(in srgb, var(--accent) 46%, transparent)
+    ),
+    color-mix(in srgb, var(--panel) 62%, transparent);
+  color: var(--accent);
 }
 
 .qb-bar__btn:disabled {
@@ -204,30 +233,32 @@
   pointer-events: none;
 }
 
+/* O rotulo do zoom e o unico texto da barra, e recebe a mesma pastilha. */
 .qb-bar__zoom {
   min-width: 52px;
   font-variant-numeric: tabular-nums;
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--fg-muted);
-}
-
-.qb-bar__zoom:hover {
-  color: var(--fg);
 }
 
 /*
   Filete curto e fraco, com folga generosa dos dois lados.
 
   O que separa os grupos e principalmente o ESPACO; a linha so confirma. Um
-  filete alto e forte a cada quatro icones cortaria a barra em pedacos e faria
-  ela parecer mais cheia do que esta -- e ela ja tem catorze controles.
+  filete alto e forte a cada quatro icones cortaria a barra em pedacos.
 */
 .qb-bar__divider {
   width: 1px;
   height: 16px;
-  background: color-mix(in srgb, var(--border) 55%, transparent);
+  background: color-mix(in srgb, var(--fg) 14%, transparent);
   margin: 0 7px;
+}
+
+.qb-bar__group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .qb-bar__menu {
@@ -237,13 +268,11 @@
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
-  background: color-mix(in srgb, var(--panel) 88%, transparent);
-  backdrop-filter: blur(24px) saturate(160%);
-  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  background: var(--chrome-sheen), var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  border: 1px solid var(--chrome-border);
   border-radius: 12px;
-  box-shadow:
-    0 1px 2px rgba(16, 22, 38, 0.1),
-    0 10px 34px -8px rgba(16, 22, 38, 0.24);
+  box-shadow: var(--chrome-shadow);
   padding: 5px;
   z-index: 10;
 }
@@ -261,70 +290,56 @@
 }
 
 .qb-bar__menu-item:hover {
-  background: var(--panel-2);
+  background: color-mix(in srgb, var(--fg) 10%, transparent);
+  color: var(--fg);
 }
 
 /* --------------------------------------------------- barra de ferramentas */
 
+/*
+  A FILA DE FERRAMENTAS VIVE DENTRO DA BARRA INFERIOR.
+
+  Ela foi uma segunda barra flutuante ate 20/09/2026, colada na borda esquerda.
+  O que a trouxe para ca foi poluicao visual: duas barras trazem dois fundos,
+  duas sombras e duas bordas, competem pela mesma atencao e espremem o quadro --
+  que e o assunto -- entre as duas.
+
+  Por viver dentro de outra superficie, ela nao tem mais superficie PROPRIA:
+  fundo, desfoque, borda e sombra saem daqui. Deixa-los seria desenhar uma
+  pilula dentro da outra, que e o defeito que se veio consertar.
+
+  `position: relative` fica: e a ancora do painel de opcoes, que flutua acima.
+*/
 .qb-tools {
-  position: absolute;
-  top: 50%;
-  left: 16px;
-  transform: translateY(-50%);
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
 }
 
-/* Mesmo material e a mesma conta de raios da barra inferior. */
 .qb-tools__rail {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 2px;
-  padding: 5px;
-  background: color-mix(in srgb, var(--panel) 80%, transparent);
-  backdrop-filter: blur(24px) saturate(160%);
-  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  border-radius: 16px;
-  box-shadow:
-    0 1px 2px rgba(16, 22, 38, 0.1),
-    0 10px 34px -8px rgba(16, 22, 38, 0.22);
 }
 
-:root[data-theme='dark'] .qb-tools__rail {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 1px 2px rgba(0, 0, 0, 0.34),
-    0 12px 38px -10px rgba(0, 0, 0, 0.6);
-}
-
+/* 32px e raio 10, iguais aos da barra que agora a hospeda: dentro de uma fila
+   unica, um botao maior que o vizinho le como desalinhamento, e nao como
+   hierarquia. */
 .qb-tools__btn {
   position: relative;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
   border: none;
-  border-radius: 11px;
-  /* Apagado por padrao, igual a barra inferior: a ferramenta ATIVA e a unica
-     informacao que a fila precisa dar de longe. */
-  color: var(--fg-muted);
+  border-radius: 10px;
   line-height: 1;
   transition:
     background-color 0.14s ease,
     color 0.14s ease,
-    transform 0.09s ease;
-}
-
-.qb-tools__btn:hover {
-  background: color-mix(in srgb, var(--fg) 8%, transparent);
-  color: var(--fg);
-}
-
-.qb-tools__btn:active {
-  transform: scale(0.96);
+    box-shadow 0.16s var(--ease-saida),
+    transform 0.16s var(--ease-saida);
 }
 
 .qb-tools__btn:focus-visible {
@@ -333,41 +348,28 @@
 }
 
 /*
-  A MESMA pilula da barra inferior, de proposito: "ligado" tem uma cor so no
-  aplicativo inteiro. Ate o B16 as duas barras divergiam -- azul aqui, cinza
-  neutro ali --, e a divergencia foi o bug.
+  As opcoes da ferramenta agora sobem, em vez de sair pelo lado.
 
-  Isso tambem aposenta a barrinha lateral que existia: com a pilula cheia, ela
-  virava um segundo indicador dizendo a mesma coisa.
+  Com a fila na vertical elas ficavam a direita dela, que era o unico lado livre.
+  Na horizontal esse lugar nao existe mais, e o lugar certo passa a ser ACIMA do
+  botao que as abriu -- e a direcao que o menu de zoom desta mesma barra ja usa,
+  e a leitura e a mesma: [...].
 */
-.qb-tools__btn--active {
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
-  color: var(--accent);
-}
-
-.qb-tools__btn--active:hover {
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
-}
-
 .qb-tools__options {
+  position: absolute;
+  bottom: calc(100% + 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
   display: flex;
   flex-direction: column;
   gap: 9px;
   padding: 9px;
-  background: color-mix(in srgb, var(--panel) 80%, transparent);
-  backdrop-filter: blur(24px) saturate(160%);
-  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  background: var(--chrome-sheen), var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  border: 1px solid var(--chrome-border);
   border-radius: 16px;
-  box-shadow:
-    0 1px 2px rgba(16, 22, 38, 0.1),
-    0 10px 34px -8px rgba(16, 22, 38, 0.22);
-}
-
-:root[data-theme='dark'] .qb-tools__options {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 1px 2px rgba(0, 0, 0, 0.34),
-    0 12px 38px -10px rgba(0, 0, 0, 0.6);
+  box-shadow: var(--chrome-shadow);
 }
 
 /* Seis formas + o preenchimento, num bloco de duas colunas como as cores. */
@@ -506,8 +508,89 @@
   transition: background-color 0.12s ease;
 }
 
+/*
+  DESLIGADO tambem tem superficie.
+
+  Com o painel de vidro, um botao de fundo transparente nao tem forma -- e uma
+  letra solta sobre o quadro. E sem forma DESLIGADA nao existe contraste com a
+  forma LIGADA, que era a queixa: [...].
+  Um interruptor precisa dos dois estados desenhados, e nao so do aceso.
+*/
+.qb-tools__format {
+  background: color-mix(in srgb, var(--panel) 55%, transparent);
+}
+
 .qb-tools__format:hover {
-  background: var(--panel-2);
+  background: color-mix(in srgb, var(--panel) 85%, transparent);
+  transform: translateY(var(--levanta));
+}
+
+/*
+  LIGADO e a pilula CHEIA na cor de destaque, com o glifo branco.
+
+  A primeira tentativa usou 18% de destaque, o mesmo valor dos interruptores da
+  barra, e ficou ilegivel: aqueles 18% pousam sobre uma pastilha opaca, e aqui
+  pousavam sobre vidro transparente -- 18% de alguma coisa sobre o proprio
+  quadro nao e destaque, e um veu.
+
+  Cheio e nao tingido, entao, e pela mesma razao que a barra de tarefas do
+  aplicativo usa pilula cheia: negrito ligado e um estado que se le de relance,
+  no meio da digitacao, sem parar para comparar tons.
+*/
+.qb-tools__format--active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.qb-tools__format--active:hover {
+  background: color-mix(in srgb, var(--accent) 85%, #000);
+  color: #fff;
+}
+
+/*
+  ALINHAMENTO -- linha propria, logo abaixo do B/I/U.
+
+  Separada de proposito: negrito vale para um TRECHO, alinhamento vale para a
+  CAIXA. Na mesma fila, os seis botoes sugeririam que funcionam igual.
+
+  Ao contrario do B/I/U, aqui sempre HA um ativo: todo paragrafo esta alinhado
+  de alguma forma. Por isso o desligado e discreto e so o ativo ganha corpo --
+  tres pilulas cheias lado a lado competiriam entre si.
+*/
+.qb-tools__aligns {
+  display: flex;
+  gap: 3px;
+  padding-top: 6px;
+}
+
+.qb-tools__align {
+  flex: 1;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--panel) 55%, transparent);
+  border: none;
+  border-radius: 7px;
+  color: var(--fg-muted);
+  line-height: 1;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.qb-tools__align:hover {
+  background: color-mix(in srgb, var(--panel) 85%, transparent);
+  color: var(--fg);
+  transform: translateY(var(--levanta));
+}
+
+.qb-tools__align--active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.qb-tools__align--active:hover {
+  background: color-mix(in srgb, var(--accent) 85%, #000);
+  color: #fff;
 }
 
 .qb-tools__format--bold {
@@ -973,9 +1056,13 @@
   border: none;
   outline: none;
   background: transparent;
-  /* Preserva os espacos digitados e quebra por palavra, como o layout do canvas. */
+  /* Preserva os espacos digitados e quebra por palavra, como o layout do canvas.
+     `break-word` parte a palavra que nao cabe nem numa linha inteira -- e o par
+     do `breakAtom` em render/text/layout.ts. Com `normal` aqui, o texto pulava
+     para fora da caixa enquanto se digitava e voltava para dentro ao sair da
+     edicao, porque o canvas quebrava e o editor nao. */
   white-space: pre-wrap;
-  overflow-wrap: normal;
+  overflow-wrap: break-word;
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
   caret-color: var(--accent);
   z-index: 3;

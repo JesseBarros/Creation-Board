@@ -15,8 +15,18 @@
 | Algo **visual** incomoda (sombra, cor, ícone) | **[B16](#b16--uma-sombra-atrás-dos-ícones-da-barra-polui-a-interface)** e **[M10](#m10--a-amostra-de-tinta-quase-preta-some-no-painel-no-tema-escuro)** |
 | Uma verificação do auto-teste **reprovou** | **[B15](#b15--uma-verificação-do-auto-teste-falhou-uma-vez-e-não-reproduziu)**, e o `ENGENHARIA.md` em *"A verificação de arrastar"* |
 | `Ctrl+V` não cola, atalho não responde | **[B6](#b6--ctrlv-não-cola-imagem-da-área-de-transferência)** — o caminho até o atalho, não o atalho |
+| **Texto** distorce, quebra sozinho ou some ao sair da caixa | **[B19](#b19--redimensionar-texto-distorcia-o-desenho-da-letra)** e **[B21](#b21--a-quebra-de-linha-mudava-ao-sair-da-caixa)** |
+| Rastro ao **rolar devagar** | **[B18](#b18--rastro-de-tinta-ao-rolar-a-tela-devagar)** — em aberto, parente do B8 |
 
-**Estado: 2 itens abertos** (B10 e B15), **21 fechados**. Última atualização: 14/08/2026.
+**Estado: 3 itens abertos** (B10, B15 e **B18**), **26 fechados**. Última atualização: 21/09/2026.
+
+**A rodada de 20–21/09/2026 fechou cinco itens e abriu um.** Ela veio de usar o app para
+montar resumos de verdade, e quase tudo que apareceu estava em texto e em interface: o
+redimensionamento que distorcia títulos (**B19**), o negrito que só funcionava depois de
+digitar (**B20**), a quebra que mudava ao sair da caixa (**B21**), o tema claro que cansava a
+vista (**B22**) e a "sombra bugada" que ele apontou três vezes até eu ler a medição direito
+(**B23**). O item aberto é o **B18** — rastro de tinta ao rolar a tela devagar, que **não é
+desta rodada**: foi reproduzido no código original.
 
 **O dia 14/08 fechou a investigação do B8**, que era o item mais antigo em aberto de fato —
 formalmente corrigido desde 06/08, mas com a causa desconhecida e um [...]
@@ -1526,6 +1536,177 @@ cor (M6) e a linha B/I/U do texto (M1). O cursor (B4) entra junto por ser da mes
 
 Última de propósito: é a etapa que mais mexe em interface, e vai partir de uma barra já
 redesenhada e de um app que não trava mais.
+
+---
+
+### B19 — Redimensionar texto distorcia o desenho da letra
+`corrigido` · `alto` · 20/09/2026
+
+
+**Causa.** `scaleObjects` gravava a escala em `transform.scaleX/scaleY` para **todo** tipo de
+objeto. Para traço e imagem está certo — o desenho aumenta. Para texto, esticar o desenho da
+letra produz glifo condensado ou achatado. Somava-se um segundo defeito: a largura de quebra
+(`obj.w`) era a única medida que o redimensionamento **não** tocava, então a linha vazava
+para fora da caixa e nenhuma largura a trazia de volta.
+
+**Correção.** Texto ganhou caminho próprio em `transformOps.scaleText`:
+
+| Gesto | Agora |
+|---|---|
+| Canto (fatores iguais) | muda o **corpo da fonte** e a largura pelo mesmo fator — a quebra fica idêntica |
+| Lado (só o horizontal) | muda só a **largura de quebra**; a fonte fica intacta e o texto reflui |
+| Cima/baixo | não existe para texto: a altura sai sempre do conteúdo |
+
+O fator do canto vem da **projeção do arraste sobre a diagonal original da alça**, e não da
+regra do `max` usada no Shift: arrastar o canto reto para a esquerda daria fator 1 no eixo Y,
+e a caixa ficaria parada enquanto a alça anda.
+
+Texto legado esticado se endireita no primeiro redimensionamento — a escala é absorvida em
+corpo de fonte e largura. Quadros salvos não são tocados ao abrir, que foi a escolha.
+
+> **Verificação no `selftest`:** sete checagens, com as métricas reais do Chromium. A que
+> vale é *"o canto dobra o corpo da fonte e a quebra continua exatamente nos mesmos
+> pontos"* — se ela passa, o redimensionamento é indistinguível de um zoom.
+
+---
+
+### B20 — O negrito só funcionava depois de digitar
+`corrigido` · `medio` · 20/09/2026
+
+
+**Causa, e é específica.** O botão **B** não impedia o `pointerdown`. O `TextEditor` tem um
+ouvinte de clique-fora que **fecha a edição**; ele disparava antes do `click`, e quando o
+`click` chegava `isEditing` já era falso — então o formato caía sobre a caixa inteira.
+
+**Correção.** Os botões B/I/U seguram o foco (`preventDefault` no `pointerdown` e no
+`mousedown`) e se marcam com `data-keep-edit`, que o editor reconhece como [...].
+
+Em 21/09 eles viraram **interruptores**: relatam o estado em vigor — `queryCommandState` do
+Chromium enquanto se digita, o conteúdo da caixa quando há uma selecionada. Digitando, é a
+única fonte que distingue [...] de [...]: os dois significam negrito para a próxima letra, e nenhuma
+leitura do documento enxergaria o segundo, porque ele ainda não existe.
+
+**Falha intermediária registrada:** a primeira versão do destaque usou 18% da cor de destaque,
+o mesmo valor dos interruptores da barra, e ficou ilegível. Aqueles 18% pousam sobre uma
+pastilha opaca; sobre o vidro transparente, 18% de qualquer coisa é um véu. Virou pílula
+cheia.
+
+---
+
+### B21 — A quebra de linha mudava ao sair da caixa
+`corrigido` · `medio` · 21/09/2026
+
+
+**Causa.** O `tokenize` separava palavras **dentro de cada span**. Quando metade de uma
+palavra está sublinhada e a outra metade não, ela chegava ao layout como **dois átomos** — e
+a quebra, que operava por átomo, podia quebrar no meio dela. O editor nunca fazia isso,
+porque para o navegador `<i>abc</i><u>def</u>` é **uma palavra só**: elemento em linha não
+cria oportunidade de quebra.
+
+**Correção.** A unidade de **quebra** passou a ser a palavra (`groupWords`) e a unidade de
+**desenho** continua sendo o átomo, cada um com a formatação do seu span. O `breakWord`
+também atravessa a fronteira de formatação, para uma palavra longa meio sublinhada não ganhar
+quebra só porque o estilo mudou.
+
+---
+
+### B22 — O tema claro cansava a vista
+`corrigido` · `medio` · 20/09/2026
+
+
+**A primeira correção foi tímida e errou.** Fundo `#eef1f6` → `#e7eaf0`, quadro branco →
+`#f2f4f7`. voltou que continuava, e estava certo: **10% de luminância não se
+sente** numa superfície que ocupa a tela toda.
+
+Medido nas fotos da janela, e não no editor de cores — a grade e o desfoque das barras mudam
+o que o olho recebe:
+
+| versão | quadro | luminância |
+|---|---|---|
+| original | `#ffffff` | 1,000 |
+| 1ª tentativa | `#f2f4f7` | 0,903 |
+| 2ª tentativa | `#ebeef3` | 0,853 |
+| final | `#e3e7ee` | **0,797** |
+
+0,80 é onde o macOS põe o fundo de janela — a referência de tela clara que se encara por
+horas sem queixa. **A segunda metade da queixa** tinha um culpado único: `--fg-muted`, o token
+de *todo* ícone apagado do aplicativo, da barra ao lobby. `#667085` → `#414b5c`, que dá 8:1
+sobre o painel (a WCAG pede 4,5:1).
+
+`RenderTheme` ganhou `exportBg`: tela é fonte de luz e pede branco quebrado; papel é
+refletivo, e cinza nele só parece sujo e gasta tinta.
+
+---
+
+### B23 — A "sombra bugada" em volta das barras
+`corrigido` · `medio` · 20/09/2026
+
+
+**Minhas duas primeiras correções erraram o alvo, e vale registrar por quê.** A primeira
+reduziu a **opacidade** da sombra — duas vezes, sem resolver. A segunda culpou a **borda**,
+depois de eu ler um filete claro no perfil de pixels.
+
+**A causa era GEOMETRIA**, e a medição já estava na minha frente. Perfil em volta da barra,
+com `0 2px 6px rgba(0,0,0,.3)` + `0 8px 24px rgba(0,0,0,.42)`:
+
+```
+ESQUERDA  o quadro escurece de #13151A até #101115 ao encostar na barra
+ABAIXO    #0B0C0F encostado, subindo até #0F1115 uns 15px depois
+quadro    #14161B
+```
+
+Escurecia nos **quatro lados**, em ordens de grandeza parecidas. **Sombra não faz isso.**
+Sombra cai para um lado, porque a luz vem de um lado — e é essa assimetria que o olho lê como
+volume. Escurecimento igual em volta é uma borda preta desfocada, e foi exatamente assim que
+foi descrita assim.
+
+A culpada era a camada **curta**: 2px de deslocamento com 6px de desfoque espalha quase igual
+para todo lado. **Correção:** uma camada só, `0 12px 28px rgba(0,0,0,.30)`.
+
+| | esquerda | abaixo | acima |
+|---|---|---|---|
+| antes | 13 | 28 | 10 |
+| depois | 6 | 16 | 3 |
+
+**A lição:** quando alguém descreve um defeito com uma palavra ("borda", "mancha"), essa
+palavra costuma ser literal. "Mancha" não era metáfora de sombra feia — era a descrição
+correta do que estava desenhado.
+
+---
+
+### B18 — Rastro de tinta ao rolar a tela devagar
+`aberto` · `medio` · 21/09/2026
+
+**Sintoma.** Rolando a tela **devagar** (roda do mouse, com ou sem Ctrl), pedaços do frame
+anterior ficam na tela. Rolando rápido, não aparece. O rastro permanecia **vários segundos**.
+
+**A prova de que não é erro de desenho** está numa captura das réguas: os rótulos aparecem
+**duplicados e deslocados** (`-700` sobre `-5700`, `-250` sobre `-20000`). A régua é desenhada
+no canvas de **overlay**; os traços, no **estático**. Dois caminhos independentes mostrando
+dois frames ao mesmo tempo. As duas camadas se limpam por inteiro a cada frame, e o overlay é
+repintado dentro do frame de conteúdo.
+
+O que sobra é a composição deixando tiles antigos — a família do [B8](#b8--a-tela-pisca-preto-ao-passar-o-mouse-sobre-ícones-e-cartões),
+com as duas flags instaladas **e ainda assim passando**.
+
+**Hipóteses eliminadas, cada uma por um teste:**
+
+| hipótese | como caiu |
+|---|---|
+| as mudanças de 20–21/09 | `git stash` → o bug aparece no código original |
+| filtro SVG de refração do vidro | removido → continuou |
+| `backdrop-filter` | `QB_BLUR=0` desliga todos → continuou |
+| G-Sync / VRR do monitor | desligado no driver → continuou |
+| RivaTuner (RTSS) enganchando a apresentação | fechado → continuou |
+| erro de limpeza de canvas | as duas camadas limpam por inteiro; verificado no código |
+
+**`QB_GPU=comp` deixa o bug imperceptível** — esse modo tira a composição da GPU. Não foi
+adotado como padrão: é contorno, e degradaria a composição de todo mundo por um defeito que
+ainda não tem causa estabelecida.
+
+
+**Ferramenta nova para a caçada:** `QB_BLUR=0` desliga todo `backdrop-filter`, no mesmo idioma
+do `QB_GPU`.
 
 ---
 
