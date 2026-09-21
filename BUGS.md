@@ -18,10 +18,11 @@
 | **Texto** distorce, quebra sozinho ou some ao sair da caixa | **[B19](#b19--redimensionar-texto-distorcia-o-desenho-da-letra)** e **[B21](#b21--a-quebra-de-linha-mudava-ao-sair-da-caixa)** |
 | Rastro ao **rolar devagar** | **[B18](#b18--rastro-de-tinta-ao-rolar-a-tela-devagar)** — em aberto, parente do B8 |
 | **Borracha** apaga em bolas ou trava o app | **[B24](#b24--a-borracha-apagava-em-bolas-e-travava-o-aplicativo)** |
+| **Borracha** trava só com **zoom alto** | **[B25](#b25--a-borracha-travava-o-app-com-zoom-alto)** — outro defeito, não o B24 |
 
-**Estado: 3 itens abertos** (B10, B15 e **B18**), **27 fechados**. Última atualização: 21/09/2026.
+**Estado: 3 itens abertos** (B10, B15 e **B18**), **28 fechados**. Última atualização: 21/09/2026.
 
-**A rodada de 20–21/09/2026 fechou seis itens e abriu um.** Ela veio de usar o app para
+**A rodada de 20–21/09/2026 fechou sete itens e abriu um.** Ela veio de usar o app para
 montar resumos de verdade, e quase tudo que apareceu estava em texto e em interface: o
 redimensionamento que distorcia títulos (**B19**), o negrito que só funcionava depois de
 digitar (**B20**), a quebra que mudava ao sair da caixa (**B21**), o tema claro que cansava a
@@ -1764,6 +1765,47 @@ já está em `#before`, que é o que o desfazer usa.
 exige um rastro contínuo sem nenhum disco solto; a outra pergunta direto se o canvas de recorte
 continua acelerado. A segunda é binária de propósito — o custo da bandeira só apareceria como
 ms de render, que varia de máquina para máquina.
+
+---
+
+### B25 — A borracha travava o app com zoom alto
+`corrigido` · `alto` · 21/09/2026
+
+
+Veio logo depois do [B24](#b24--a-borracha-apagava-em-bolas-e-travava-o-aplicativo) e **não é
+o mesmo defeito** — o B24 já estava corrigido e este continuava. Vale registrar a diferença,
+porque os dois se manifestam como "a borracha laga":
+
+| | B24 | B25 |
+|---|---|---|
+| o custo acompanhava | a bandeira do canvas (CPU) | o **tamanho do objeto** em pixel de tela |
+| aparecia | em qualquer zoom | só com zoom alto |
+
+**A causa.** O `withErase` dimensionava o canvas intermediário pelo retângulo **inteiro** do
+objeto, à resolução da tela. A 2579%, um rabisco grande pede dezenas de milhares de pixels de
+lado; isso estoura o teto de `MAX_PIXELS` e o canvas é **reduzido para caber** — ou seja, o app
+montava **exatamente 4 megapixels por objeto, por frame**, para mostrar a fatia que cabia na
+tela. Com dois objetos apagados no viewport, 8 MP de limpeza, desenho e composição por frame.
+
+O teto disfarçava o problema em vez de resolvê-lo: ele impedia o estouro de memória, mas
+garantia que o pior caso fosse pago **sempre** que o zoom subisse.
+
+
+
+**Medido**, com a guarda nova rodada também com o código antigo de volta:
+
+| | recorte pedido | tela |
+|---|---|---|
+| dimensionando pelo objeto | **4,0016 MP** (2512×1593) | 1,23 MP (1424×861) |
+| dimensionando pela tela | **1,2352 MP** (1428×865) | 1,23 MP (1424×861) |
+
+Os 4 px de sobra são a folga de 2 px físicos por lado, que existe para a borda anti-serrilhada
+do traço não ser cortada rente ao limite da tela.
+
+**A checagem afirma sobre PIXEL, e não sobre ms — de propósito.** Rodando a guarda com o
+código antigo, o render marcou 0,28 ms mesmo assim, porque o rabisco do cenário de teste é
+trivial: o tempo só explode num quadro real. O que discrimina o defeito em qualquer máquina é a
+**área pedida**, e é sobre ela que a checagem falha.
 
 ---
 

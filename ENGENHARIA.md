@@ -66,7 +66,7 @@ Sempre por terminal — nunca por captura de tela cheia (ver o *porquê* no READ
 
 ```
 npm run typecheck     # tsc nos dois projetos, strict
-npm run selftest      # 152 verificações, deve terminar com "tudo passou"
+npm run selftest      # 153 verificações, deve terminar com "tudo passou"
 npm run check:colors  # contraste das cores nos dois temas
 npm run check:dist    # o MESMO auto-teste, dentro do .exe empacotado
 ```
@@ -439,6 +439,23 @@ seguinte; a pergunta [...] tem a mesma resposta em qualquer PC.
 
 O resto do caso — a fileira de bolas, que era um defeito **separado**, de continuidade de
 rastro — está no [B24](BUGS.md#b24--a-borracha-apagava-em-bolas-e-travava-o-aplicativo).
+
+
+**A regra que fica, e ela é mais geral que a borracha:** superfície intermediária se dimensiona
+pelo que vai ser **visto**, não pelo que existe. Quando o custo de desenhar acompanha o tamanho
+do objeto em pixel de tela, o zoom vira multiplicador de trabalho jogado fora.
+
+A janela de visão não precisou entrar no `PaintContext` para isso. O `ctx` que chega ao painter
+já carrega a matriz local → pixel físico montada pelo renderer, e invertê-la leva os quatro
+cantos do canvas para o espaço local do objeto — inclusive com rotação, porque o AABB do
+losango resultante contém tudo que aparece. Acrescentar um campo teria obrigado todos os
+chamadores (quadro, miniatura do lobby, ladrilhos de exportação) a preenchê-lo corretamente,
+e o dado já estava ali.
+
+Essa guarda também afirma sobre **pixel**, e não sobre ms, pelo mesmo motivo da anterior — e
+aqui com uma evidência concreta: rodada com o código antigo de volta, ela acusa 4,0016 MP
+pedidos para uma tela de 1,23 MP, enquanto o render do cenário de teste marca 0,28 ms nos dois
+casos. O tempo só explode num quadro de verdade; a área denuncia em qualquer máquina.
 
 ### O custo em performance foi medido
 

@@ -61,11 +61,20 @@ export function withErase<T extends InkObject>(obj: T, p: PaintContext, paint: P
   // Escala local -> pixel fisico. Sem ela o buraco sairia serrilhado com zoom
   // aproximado, porque o canvas intermediario teria menos pixel que a tela.
   const wanted = Math.max(p.deviceScale * p.objectScale, 0.01);
-  const fit = Math.sqrt(MAX_PIXELS / Math.max(1, bounds.w * bounds.h));
+
+  // So o pedaco VISIVEL do objeto entra no canvas intermediario (B25). Com o
+  // objeto inteiro, o custo acompanhava o TAMANHO DO OBJETO em pixel de tela, e
+  // nao o tanto dele que aparece -- com zoom alto um traco que mal cabe na tela
+  // pedia um canvas de milhoes de pixels por frame, para mostrar uma fatia.
+  const area = recorteVisivel(bounds, p.ctx, wanted);
+  if (!area) return; // tem marca, mas nenhum pedaco dele esta na tela
+
+  const fit = Math.sqrt(MAX_PIXELS / Math.max(1, area.w * area.h));
   const f = Math.min(wanted, fit);
 
-  const w = Math.max(1, Math.ceil(bounds.w * f));
-  const h = Math.max(1, Math.ceil(bounds.h * f));
+  const w = Math.max(1, Math.ceil(area.w * f));
+  const h = Math.max(1, Math.ceil(area.h * f));
+  ultimoRecorte = { w, h };
   const ctx = scratchContext(w, h);
   if (!ctx) {
     // Sem canvas intermediario, desenhar sem o buraco e melhor que nao desenhar:
@@ -74,21 +83,92 @@ export function withErase<T extends InkObject>(obj: T, p: PaintContext, paint: P
     return;
   }
 
-  ctx.setTransform(f, 0, 0, f, -bounds.x * f, -bounds.y * f);
+  ctx.setTransform(f, 0, 0, f, -area.x * f, -area.y * f);
   paint(obj, { ...p, ctx });
 
   cutMarks(ctx, marks);
 
   // De volta ao quadro no MESMO retangulo local, para o bitmap cair pixel a
   // pixel onde a tinta estaria.
-  p.ctx.drawImage(scratch!, 0, 0, w, h, bounds.x, bounds.y, w / f, h / f);
+  p.ctx.drawImage(scratch!, 0, 0, w, h, area.x, area.y, w / f, h / f);
+}
+
+interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Tamanho do ultimo recorte pedido, em pixel. Diagnostico do selftest. */
+let ultimoRecorte: { w: number; h: number } = { w: 0, h: 0 };
+
+/** Ver `ultimoRecorte`. */
+export function recorteDaBorracha(): { w: number; h: number } {
+  return ultimoRecorte;
+}
+
+/**
+ * O pedaco do objeto que a tela mostra, em coordenadas LOCAIS dele.
+ *
+ * A janela de visao nao chega aqui pelo `PaintContext` -- e nem precisa. O
+ * proprio `ctx` ja carrega a matriz local -> pixel fisico que o renderer montou;
+ * invertendo-a e levando os quatro cantos do canvas para o espaco local, sai o
+ * retangulo procurado. Vale com rotacao: os quatro cantos viram um losango, e o
+ * AABB dele contem tudo que aparece.
+ *
+ * Devolve `null` quando nao sobra intersecao -- o objeto esta fora da tela e nao
+ * ha nada a recortar.
+ */
+function recorteVisivel(bounds: Rect, ctx: CanvasRenderingContext2D, escala: number): Rect | null {
+  const tela = telaEmLocal(ctx);
+  if (!tela) return bounds; // matriz degenerada: melhor desenhar demais que de menos
+
+  // Dois pixels fisicos de folga, para a borda anti-serrilhada do traco nao ser
+  // cortada rente ao limite da tela.
+  const folga = 2 / escala;
+  const x = Math.max(bounds.x, tela.x - folga);
+  const y = Math.max(bounds.y, tela.y - folga);
+  const x2 = Math.min(bounds.x + bounds.w, tela.x + tela.w + folga);
+  const y2 = Math.min(bounds.y + bounds.h, tela.y + tela.h + folga);
+  if (x2 <= x || y2 <= y) return null;
+  return { x, y, w: x2 - x, h: y2 - y };
+}
+
+/** O retangulo do canvas inteiro, trazido para o espaco local do objeto. */
+function telaEmLocal(ctx: CanvasRenderingContext2D): Rect | null {
+  const m = ctx.getTransform();
+  const det = m.a * m.d - m.b * m.c;
+  if (!Number.isFinite(det) || det === 0) return null;
+
+  const inv = m.inverse();
+  const { width, height } = ctx.canvas;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const [cx, cy] of [
+    [0, 0],
+    [width, 0],
+    [0, height],
+    [width, height],
+  ] as const) {
+    const x = inv.a * cx + inv.c * cy + inv.e;
+    const y = inv.b * cx + inv.d * cy + inv.f;
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
 }
 
 /**
  * O objeto ficou sem nenhum pixel visivel?
  *
  * Decidido pelo RESULTADO, e nao pela geometria: com um `PathObject` nao ha
- * [...] para conferir um a um, e para o traco de caneta a conta de
+ * "pontos do traco" para conferir um a um, e para o traco de caneta a conta de
  * cobertura erraria nas pontas. Rasterizar pequeno e perguntar se sobrou alfa
  * responde igual para os dois tipos, e roda uma vez por objeto no fim do gesto.
  */
@@ -99,7 +179,7 @@ export function isFullyErased(obj: InkObject, p: PaintContext): boolean {
   const bounds = localBounds(obj);
   if (bounds.w <= 0 || bounds.h <= 0) return true;
 
-  // Resolucao baixa de proposito: a pergunta e [...], nao "o
+  // Resolucao baixa de proposito: a pergunta e "sobrou alguma coisa?", nao "o
   // que sobrou". Um traco de 3.000px vira 64px e a resposta continua a mesma.
   const f = Math.min(1, PROBE_PX / Math.max(bounds.w, bounds.h));
   const w = Math.max(1, Math.ceil(bounds.w * f));
