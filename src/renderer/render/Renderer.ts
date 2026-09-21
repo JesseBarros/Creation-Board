@@ -192,7 +192,25 @@ export class Renderer {
     const zoom = this.camera.zoom;
     const lod = lodForZoom(zoom);
 
+    /*
+      A LIMPEZA NAO PODE DEPENDER DE NINGUEM TER SE COMPORTADO.
+
+      `fillRect` obedece ao `globalAlpha` e ao `globalCompositeOperation`. Se um
+      pintor baixar o alfa e nao devolver -- o marca-texto trabalha a 0,4 --, o
+      "apagar" do frame seguinte vira uma LAVAGEM translucida e o frame anterior
+      sobrevive por baixo, mais apagado. Some depois de varios frames, um pouco a
+      cada lavagem.
+
+      Os pintores devolvem o alfa A MAO (`= 1` no fim) em vez de `save`/
+      `restore`, entao basta uma saida antecipada entre os dois para vazar. Auditar
+      todos hoje nao resolve: o proximo pintor nasce sem saber da regra.
+
+      Tres linhas aqui tornam a limpeza incondicional, e o selftest tem uma guarda
+      que acusa o vazamento se ele existir ([...]). Ver o B18 no BUGS.md.
+    */
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
     ctx.fillStyle = this.#theme.boardBg;
     ctx.fillRect(0, 0, this.staticCanvas.width, this.staticCanvas.height);
 
@@ -311,6 +329,10 @@ export class Renderer {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
     }
+    // Mesma razao do reset na camada estatica: quem desenha aqui tambem mexe em
+    // alfa (o laco de selecao trabalha a 0,1) e tambem devolve a mao.
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
     this.#overlayHasContent = true;
     const s = this.camera.zoom * this.#dpr;
     ctx.setTransform(s, 0, 0, s, -this.camera.x * s, -this.camera.y * s);
@@ -332,6 +354,8 @@ export class Renderer {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
     }
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
     this.#overlayHasContent = true;
     ctx.setTransform(this.#dpr, 0, 0, this.#dpr, 0, 0);
     return ctx;
