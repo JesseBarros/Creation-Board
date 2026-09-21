@@ -11,7 +11,46 @@ import { registerOcrIpc } from './ipc/ocr';
 const isDev = !app.isPackaged;
 
 /**
- * REPINTURA COMPLETA -- correcao do B8, e com ele do B7 e do B1.
+ * COMPOSICAO PELA CPU + REPINTURA COMPLETA -- correcao do B18 e do B8.
+ *
+ * O padrao aplica TRES chaves, e elas consertam DOIS bugs diferentes. Que
+ * sejam dois importa: eles tem sintomas, historias e provas distintas, e
+ * junta-los num so foi exatamente o erro que atrasou o B1/B7/B8 por oito dias.
+ *
+ * `disable-gpu-compositing` -- correcao do B18, o FANTASMA ao dar zoom.
+ *
+ * Adotada em 21/09/2026, por decisao de produto, depois de uma caçada que eliminou
+ * todo o resto. O sintoma: ao mudar o zoom, o desenho inteiro aparecia DUAS
+ * VEZES na tela, em duas escalas, com o estado anterior mais apagado. Acontecia
+ * nas duas camadas de canvas ao mesmo tempo e saia na captura de tela.
+ *
+ * Foram testados e NAO curaram: `swap` (as duas chaves abaixo), `dc`, `angle`,
+ * `canvas` e `raster`, alem de `QB_ALPHA=1` e `QB_DESYNC=1`, que mexem no que o
+ * app pede ao navegador. Do lado do codigo foram auditadas e descartadas a
+ * limpeza das duas camadas, o cache de rasterizacao, o reuso de frame anterior
+ * e o vazamento de estado do contexto (este ultimo por guarda no selftest, que
+ * ficou). Tambem cairam o VRR e a idade do Chromium.
+ *
+ * O PRECO ESTA MEDIDO E ASSUMIDO. `QB_BENCH=1070`, TRES execucoes de cada lado
+ * -- e as tres importam, ver a nota logo abaixo:
+ *
+ *   fase                      antes (swap)    agora (padrao)
+ *   zoom 100% (26 visiveis)   144,0 fps       111,7 / 108,0 / 112,7    -22%
+ *   zoom 40%  (124 visiveis)  144,0 fps        87,6 /  83,1 /  91,3    -39%
+ *   ajustado a tela (1070)     ~57 fps         68,9 /  67,8 /  63,5    +20%
+ *
+ * Compor pela CPU custa por frame independente do conteudo, entao a perda
+ * aparece onde o app seria rapido e DESAPARECE onde ele ja estava lento -- na
+ * fase pesada o padrao novo e MAIS rapido, porque ali o gargalo nunca foi a
+ * composicao. no teste com a mao e escolheu o fantasma fora.
+ *
+ * NOTA SOBRE COMO ESTE NUMERO FOI OBTIDO, porque ele quase entrou errado: a
+ * primeira medicao usou UMA amostra de cada lado e deu "144 -> 77 fps", numero
+ * que foi usado para argumentar CONTRA a adocao. Repetindo tres vezes, o 77 era
+ * ruido -- a maquina estava ocupada com outras medicoes. E o mesmo erro que o
+ * BUGS.md ja registrava duas vezes ([...]), cometido pela terceira. Nao meça isto com uma rodada.
+ *
+ * As duas abaixo sao a correcao do B8, e continuam.
  *
  * Tres sintomas que estavam catalogados como bugs diferentes eram um so: a tela
  * piscando (preto ou branco) a cada movimento do mouse sobre um botao, a janela
@@ -38,7 +77,12 @@ const isDev = !app.isPackaged;
  * Electron e o conserto de verdade, e esta registrado como item da Fase 9.
  *
  * `QB_GPU=<modo>` substitui este padrao -- inclusive `QB_GPU=normal`, que nao
- * aplica nada e serve para reproduzir o bug de novo.
+ * aplica nada e serve para reproduzir os bugs de novo.
+ *
+ * POR QUE O PADRAO E UM MODO PROPRIO, e nao `comp`: a escada e EXCLUSIVA, um
+ * modo por execucao. Fazer de `comp` o padrao derrubaria as duas chaves do B8
+ * junto, e o B8 ja sumiu sozinho uma vez -- e pode voltar do mesmo jeito. Os
+ * degraus puros continuam puros, para bisseccao; o padrao e a soma deles.
  *
  * Precisa vir ANTES do app ficar pronto; depois disso nao tem efeito.
  */
@@ -61,7 +105,26 @@ const GPU_MODOS: Record<string, { nota: string; aplicar: () => void }> = {
       app.commandLine.appendSwitch('disable-direct-composition-video-overlays');
     },
   },
-  // O MODO PADRAO. Ver o cabecalho deste arquivo para a investigacao inteira.
+  /*
+    O MODO PADRAO: a soma do `comp` com o `swap`.
+
+    Existe como entrada propria porque a escada e exclusiva -- um modo por
+    execucao. Se o padrao fosse `comp`, as duas chaves do B8 sairiam junto, e o
+    B8 ja sumiu sozinho uma vez, o que significa que pode voltar do mesmo jeito.
+    Os degraus puros abaixo continuam puros, para bisseccao.
+
+    Ver o cabecalho deste arquivo para as duas investigacoes inteiras.
+  */
+  padrao: {
+    nota: 'composicao pela CPU + repintura completa (correcao do B18 e do B8)',
+    aplicar: () => {
+      app.commandLine.appendSwitch('disable-gpu-compositing');
+      app.commandLine.appendSwitch('ui-disable-partial-swap');
+      app.commandLine.appendSwitch('disable-partial-raster');
+    },
+  },
+  // Degrau puro: so as duas chaves do B8. Foi o padrao ate 21/09/2026, e NAO
+  // cura o fantasma do B18 -- conferido, se comporta igual ao `normal` no zoom.
   swap: {
     nota: 'sem repintura parcial: troca a tela inteira a cada frame',
     aplicar: () => {
@@ -126,19 +189,19 @@ const GPU_MODOS: Record<string, { nota: string; aplicar: () => void }> = {
   },
 };
 
-const gpuModo = process.env['QB_GPU'] ?? (process.env['QB_NOGPU'] === '1' ? 'off' : 'swap');
+const gpuModo = process.env['QB_GPU'] ?? (process.env['QB_NOGPU'] === '1' ? 'off' : 'padrao');
 const escolhido = GPU_MODOS[gpuModo];
 if (escolhido) {
   escolhido.aplicar();
   // So anuncia o que foge do padrao: uma linha por abertura dizendo que esta
   // tudo normal e ruido no terminal.
-  if (gpuModo !== 'swap') console.log(`[gpu] modo "${gpuModo}": ${escolhido.nota}`);
+  if (gpuModo !== 'padrao') console.log(`[gpu] modo "${gpuModo}": ${escolhido.nota}`);
 } else {
   // Nome errado cai no padrao, e nao no nada: um QB_GPU com erro de digitacao
   // faria o bug voltar calado, que e o pior desfecho possivel.
-  GPU_MODOS['swap']!.aplicar();
+  GPU_MODOS['padrao']!.aplicar();
   console.log(
-    `[gpu] modo "${gpuModo}" nao existe; usando "swap". Opcoes: ${Object.keys(GPU_MODOS).join(', ')}`,
+    `[gpu] modo "${gpuModo}" nao existe; usando "padrao". Opcoes: ${Object.keys(GPU_MODOS).join(', ')}`,
   );
 }
 

@@ -74,7 +74,15 @@ npm run check:dist    # o MESMO auto-teste, dentro do .exe empacotado
 Modos de diagnóstico, todos por variável de ambiente e nenhum gravando preferência:
 
 ```
-QB_GPU=comp|dc|angle|off|normal   # escada de composição do B8
+QB_GPU=padrao|comp|swap|canvas|raster|dc|angle|off|normal
+                                  # escada de composição do B8 e do B18.
+                                  # `padrao` é o que o app usa e é a SOMA de
+                                  # `comp` + `swap`; os outros são degraus
+                                  # puros, para bissecção. `normal` não aplica
+                                  # nada e traz os dois bugs de volta.
+QB_ALPHA=1                        # devolve o canal alfa à camada estática (B18)
+QB_DESYNC=1                       # `desynchronized` nos dois canvas (B18).
+                                  # ATENÇÃO: introduz um piscar preto ao clicar
 QB_BLUR=0                         # desliga TODO backdrop-filter (B18)
 QB_FUNDO=off                      # tira a foto de fundo do menu principal
 QB_THEME=light|dark               # força o tema desta execução

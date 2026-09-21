@@ -16,20 +16,20 @@
 | Uma verificação do auto-teste **reprovou** | **[B15](#b15--uma-verificação-do-auto-teste-falhou-uma-vez-e-não-reproduziu)**, e o `ENGENHARIA.md` em *"A verificação de arrastar"* |
 | `Ctrl+V` não cola, atalho não responde | **[B6](#b6--ctrlv-não-cola-imagem-da-área-de-transferência)** — o caminho até o atalho, não o atalho |
 | **Texto** distorce, quebra sozinho ou some ao sair da caixa | **[B19](#b19--redimensionar-texto-distorcia-o-desenho-da-letra)** e **[B21](#b21--a-quebra-de-linha-mudava-ao-sair-da-caixa)** |
-| Rastro ao **rolar devagar** | **[B18](#b18--rastro-de-tinta-ao-rolar-a-tela-devagar)** — em aberto, parente do B8 |
+| **Fantasma** do desenho ao dar zoom, ou rastro ao rolar | **[B18](#b18--rastro-de-tinta-ao-rolar-a-tela-devagar)** — corrigido em 21/09 com composição pela CPU, e o preço está escrito |
 | **Borracha** apaga em bolas ou trava o app | **[B24](#b24--a-borracha-apagava-em-bolas-e-travava-o-aplicativo)** |
 | **Borracha** trava só com **zoom alto** | **[B25](#b25--a-borracha-travava-o-app-com-zoom-alto)** — outro defeito, não o B24 |
 | **Animações** de hover não acontecem | **[B26](#b26--as-animações-pararam-de-funcionar--e-não-tinham-parado)** |
 
-**Estado: 3 itens abertos** (B10, B15 e **B18**), **29 fechados**. Última atualização: 21/09/2026.
+**Estado: 2 itens abertos** (B10 e B15), **30 fechados**. Última atualização: 21/09/2026.
 
 **A rodada de 20–21/09/2026 fechou oito itens e abriu um.** Ela veio de usar o app para
 montar resumos de verdade, e quase tudo que apareceu estava em texto e em interface: o
 redimensionamento que distorcia títulos (**B19**), o negrito que só funcionava depois de
 digitar (**B20**), a quebra que mudava ao sair da caixa (**B21**), o tema claro que cansava a
 vista (**B22**) e a "sombra bugada" que ele apontou três vezes até eu ler a medição direito
-(**B23**). O item aberto é o **B18** — rastro de tinta ao rolar a tela devagar, que **não é
-desta rodada**: foi reproduzido no código original.
+(**B23**). O item que ela abriu, o **B18**, foi fechado na tarde do dia 21 — e ele **não era
+daquela rodada**: tinha sido reproduzido no código original.
 
 **O dia 14/08 fechou a investigação do B8**, que era o item mais antigo em aberto de fato —
 formalmente corrigido desde 06/08, mas com a causa desconhecida e um [...]
@@ -1677,8 +1677,14 @@ correta do que estava desenhado.
 
 ---
 
-### B18 — Rastro de tinta ao rolar a tela devagar
-`aberto` · `medio` · 21/09/2026
+### B18 — Rastro de tinta ao rolar, e fantasma do desenho ao dar zoom
+`corrigido` · `medio` · 20/09/2026, fechado em 21/09/2026
+
+> **Corrigido desligando a composição por GPU** (`disable-gpu-compositing`, no modo `padrao`
+> do `QB_GPU`), por decisão de produto, depois de uma caçada que eliminou todo o resto. **O preço
+> está medido e assumido: 144,0 para 77,1 fps na fase leve.** O fim da história está na seção
+> *"Como isto foi fechado"*, no fim deste item — leia por lá se quiser só a conclusão. O que
+> vem primeiro é a investigação, na ordem em que aconteceu.
 
 **Sintoma.** Rolando a tela **devagar** (roda do mouse, com ou sem Ctrl), pedaços do frame
 anterior ficam na tela. Rolando rápido, não aparece. O rastro permanecia **vários segundos**.
@@ -1942,6 +1948,46 @@ $env:QB_GPU='raster'; npm run dev    # rasterizacao fora do processo da GPU
 CPU custa caro: o `Render` do F3 foi de 1,2 ms para 31,3 ms quando uma bandeira empurrou **um**
 canvas intermediário para a CPU. `disable-accelerated-2d-canvas` empurra **todos**. Medir com
 `QB_BENCH` e com a borracha antes de trocar qualquer coisa.
+
+*(Os dois degraus foram criados e testados no mesmo dia. Nenhum curou: o rastro não está na
+textura do canvas nem na rasterização fora do processo. Ver o placar acima.)*
+
+---
+
+#### Como isto foi fechado — 21/09/2026
+
+**Decisão de produto, depois de testar com a mão:** adotar `disable-gpu-compositing` como padrão.
+Foi o único modo que curou, e a caçada eliminou todo o resto. O bug fecha como **corrigido
+por contorno de composição**, e não por causa encontrada — a conta de dano do compositor
+continua errada, e o que muda é que ela deixou de ser usada.
+
+**O padrão virou um modo próprio, `padrao`, e não `comp`.** A escada do `QB_GPU` é exclusiva:
+um modo por execução. Trocar o padrão para `comp` derrubaria junto as duas chaves do
+[B8](#b8--a-tela-pisca-preto-ao-passar-o-mouse-sobre-ícones-e-cartões) — e o B8 **já sumiu
+sozinho uma vez**, o que significa que pode voltar do mesmo jeito. O `padrao` aplica as três;
+os degraus puros continuam puros, para bissecção.
+
+**O preço, com três execuções de cada lado:**
+
+| fase | antes (`swap`) | agora (`padrao`) | |
+|---|---|---|---|
+| zoom 100% — 26 visíveis | 144,0 · 144,0 · 144,0 | 111,7 · 108,0 · 112,7 | **−22%** |
+| zoom 40% — 124 visíveis | 144,0 · 144,0 · 144,0 | 87,6 · 83,1 · 91,3 | **−39%** |
+| ajustado à tela — 1070 | 60,6 · 56,6 · 56,1 | 68,9 · 67,8 · 63,5 | **+20%** |
+
+Compor pela CPU custa **por frame, independente do conteúdo**. Por isso a perda aparece onde o
+app seria rápido e **desaparece onde ele já estava lento** — na fase pesada o padrão novo é
+*mais* rápido, porque ali o gargalo nunca foi a composição.
+
+
+**O que continua verdadeiro e não deve ser esquecido:**
+
+- A causa **não** foi encontrada. Isto é contorno.
+- `QB_GPU=normal` continua trazendo os dois bugs de volta, e é assim que se confere, um dia,
+  se o contorno ainda é necessário. Sem isso, o dia em que ele virar desnecessário passa
+  despercebido e o custo fica para sempre.
+- Subir de Electron **não** foi testado contra este bug. A escada de versões do
+  `ENGENHARIA.md` mediu o piscar do B8, não o fantasma do zoom.
 
 ---
 
