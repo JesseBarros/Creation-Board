@@ -76,6 +76,7 @@ Modos de diagnóstico, todos por variável de ambiente e nenhum gravando prefer�
 ```
 QB_GPU=comp|dc|angle|off|normal   # escada de composição do B8
 QB_BLUR=0                         # desliga TODO backdrop-filter (B18)
+QB_FUNDO=off                      # tira a foto de fundo do menu principal
 QB_THEME=light|dark               # força o tema desta execução
 QB_SHOT=<arquivo.png>             # fotografa só a janela
 QB_BENCH=<n>                      # medição de frame rate com n objetos
@@ -487,6 +488,57 @@ outra metade. A lista agora vive num bloco único no fim do `app.css`, e a checa
 percorre o CSSOM exigindo duas coisas de treze seletores — que cada um tenha regra de levantar,
 e que **nenhum** use valor cravado, porque valor cravado é exatamente o que escapa do
 interruptor.
+
+### O menu principal ganhou fundo, e a rolagem teve de mudar de lugar
+
+Registrado porque a mudança estrutural parece gratuita e não é.
+
+Para uma imagem de fundo ficar **parada** enquanto a lista corre, o caminho
+óbvio é `background-attachment: fixed`. Num elemento que rola, isso obriga o
+Chromium a repintar o fundo a cada frame — e este projeto tem histórico
+documentado de rastro ao rolar (B8 e B18). Então a raiz `.qb-lobby` virou um
+palco que **nunca rola** (`overflow: clip`) e a rolagem desceu para um filho.
+Pintado num elemento parado, o fundo é fixo de graça: sem `attachment: fixed`,
+sem elemento extra, sem `z-index`.
+
+Medido numa janela à parte: o palco fica com `scrollTop` 0 depois de rolar
+300 px no filho.
+
+**A foto substitui as manchas ambiente, e não soma com elas.** As três manchas
+radiais existem para uma coisa só — dar ao `backdrop-filter` um gradiente para
+refratar. Uma foto faz isso com sobra. Mantidas por cima, deixariam de ser [...] e passariam a ser um véu de azul, roxo e verde sujando a
+imagem que o usuário escolheu.
+
+**O véu virou token.** Os 22% de tinta do lobby estavam cravados na regra. Sobre
+gradiente 22% basta; sobre fotografia não, porque foto tem detalhe e contraste
+local. Agora é `--veu-lobby`, e o escuro pede mais que o claro (54% contra 46%)
+porque uma galáxia é luz **pontual** contra preto: o contraste local varia muito
+mais do que numa praia difusa. A lista de quem recebe tinta já morava num lugar
+só; agora o número também.
+
+### A imagem do usuário trafega por bytes, não por caminho
+
+A CSP do aplicativo (`renderer/index.html`) permite `data:` e `blob:` em imagem,
+mas **não `file:`** — e `webSecurity` está ligado com `sandbox: true`. Um
+caminho de arquivo não teria como ser exibido. Então o IPC devolve os bytes.
+
+**Como `ArrayBuffer` → `Blob` → `blob:`, e não data URL.** O precedente do
+projeto é data URL (o preview dos cards, montado no main), e está certo *lá*:
+dezenas de imagens de 20 a 60 KB. Aqui é uma imagem só, de vários megabytes, e a
+conta inverte — base64 infla 33%, atravessa o IPC como string, fica viva dentro
+do CSSOM e é reanalisada a cada troca de tema. Um `blob:` deixa no CSS uma URL
+de ~50 caracteres e é **revogável**, que é como a memória volta.
+
+Três decisões de contorno que valem além deste caso:
+
+1. **Copiar o arquivo, não guardar o caminho.** Guardar caminho faria o fundo
+   sumir sem aviso no dia em que ele movesse a foto, e romperia a autocontenção
+   da pasta `Creation Board`.
+2. **O renderer nunca manda caminho — só o tema.** Não há como a interface pedir
+   "copie" ou "apague" um caminho arbitrário do disco.
+3. **O tipo vem da assinatura dos bytes, não da extensão.** Um arquivo que mente
+   vira erro legível em vez de imagem quebrada silenciosa, e o `blob:` nunca sai
+   com um mime que não corresponde ao conteúdo.
 
 ### O custo em performance foi medido
 
