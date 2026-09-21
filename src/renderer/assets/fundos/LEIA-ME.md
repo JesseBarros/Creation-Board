@@ -35,9 +35,21 @@ um hash. Recomendações:
 
 - **WebP**, qualidade 75–80. PNG é o container errado para fotografia: a mesma
   imagem sai várias vezes maior sem ganho visível.
-- **1920×1080 ou mais.** As atuais estão abaixo disso e é a fraqueza conhecida
+- **2560×1440, e não mais que isso.** Há um piso e um teto, e os dois têm
+  motivo.
+
+  O piso é 1920×1080: as atuais estão abaixo disso e é a fraqueza conhecida
   delas — no meio da tela não aparece, porque o painel de vidro desfoca; nas
   margens, onde a foto fica nítida, um olhar atento nota.
+
+  O teto existe porque **o que pesa não é o arquivo, é o bitmap decodificado**,
+  e ele é `largura × altura × 4 bytes` independente de quão bem o WebP
+  comprimiu. Um original de câmera a 6016×4016 são 24 MP, ou seja **~97 MB de
+  RAM viva** — contra ~15 MB a 2560×1440. Seis vezes e meia a memória para
+  pintar uma imagem que, por desenho, fica quase toda atrás de `blur(10px)` e
+  sob um véu de 46–54%: os pixels a mais são descartados pelo próprio desfoque.
+  A 2560×1440 a imagem é 1:1 num monitor 1440p, reduz num 1080p, e sobe 1,5×
+  num 4K a 150% — onde a diferença só aparece nas margens.
 - **Cuidado com ponto de luz no centro-inferior.** É onde o painel e os cards
   ficam, e no tema escuro o texto é claro. A `galaxia.webp` tem uma fogueira
   justamente ali; o enquadramento no CSS foi deslocado por causa disso. Borrar
