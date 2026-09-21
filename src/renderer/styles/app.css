@@ -1175,3 +1175,76 @@
   line-height: 1.45;
   color: var(--fg-muted);
 }
+
+/*
+  ================================================================= levantar
+
+  O LEVANTAR DO HOVER, NUM LUGAR SO.
+
+  Ele chegou em 20/09/2026 -- [...] -- mas chegou
+  espalhado: cada regra `:hover` que ja existia ganhou a sua linha de
+  `transform`, e as que ninguem lembrou ficaram sem. Em 21/09 a conta era seis
+  controles interativos com hover e SEM levantar: camadas, busca, segmentado,
+  amostra de cor, escolha de forma e alerta.
+
+  Espalhar assim contraria o proprio motivo de `--levanta` existir, que o
+  comentario dele no base.css declara: [...]. Um token num lugar so nao serve de nada se a
+  LISTA de quem o usa estiver espalhada por trinta regras.
+
+  Entao a lista vive aqui. Quem for interativo entra nesta linha, e ganha o
+  gesto completo de graca -- inclusive o respeito a `prefers-reduced-motion`,
+  que zera o token (ver base.css).
+*/
+.qb-layers__btn,
+.qb-search__btn,
+.qb-seg__btn,
+.qb-tools__color,
+.qb-tools__shape,
+.qb-tools__alert,
+.qb-debug__btn {
+  transition:
+    background-color 0.14s ease,
+    color 0.14s ease,
+    box-shadow 0.16s var(--ease-saida),
+    transform 0.16s var(--ease-saida);
+}
+
+.qb-layers__btn:hover,
+.qb-search__btn:hover,
+.qb-seg__btn:hover,
+.qb-tools__color:hover,
+.qb-tools__shape:hover,
+.qb-tools__alert:hover,
+.qb-debug__btn:hover {
+  transform: translateY(var(--levanta));
+}
+
+/*
+  Apertar desfaz o levantar, e nao encolhe por cima dele -- mesma conta do
+  `.qb-btn`. Sem zerar o deslocamento o botao encolhe ainda suspenso, que le
+  como "recuou" e nao como "afundou".
+*/
+.qb-layers__btn:active,
+.qb-search__btn:active,
+.qb-seg__btn:active,
+.qb-tools__color:active,
+.qb-tools__shape:active,
+.qb-tools__alert:active,
+.qb-debug__btn:active {
+  transform: translateY(0) scale(0.96);
+}
+
+/*
+  A BARRA TAMBEM GANHA A SOMBRA, e nao so o deslocamento.
+
+  Dois pixels de subida sem sombra quase nao se leem: o que o olho registra como
+  "isto levantou" e a sombra aparecendo embaixo, nao o deslocamento em si. O
+  `.qb-btn` do lobby ja fazia os dois; a barra fazia so metade, e por isso o
+  mesmo gesto parecia mais fraco la dentro do quadro.
+*/
+.qb-bar__btn:hover,
+.qb-tools__btn:hover,
+.qb-tools__format:hover,
+.qb-tools__align:hover {
+  box-shadow: var(--levanta-sombra);
+}

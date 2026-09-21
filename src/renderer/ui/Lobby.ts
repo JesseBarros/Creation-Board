@@ -10,6 +10,7 @@ export interface LobbyActions {
   openBoard(summary: BoardSummary): void;
   openDemo(): void;
   toggleTheme(): void;
+  openSettings(): void;
   importBoards(): void;
   /** Abre o quadro do caminho e leva a camera ate o objeto (busca da biblioteca). */
   openBoardAt(path: string, objectId: string): void;
@@ -87,6 +88,14 @@ export class Lobby {
     */
     this.#themeBtn = iconOnlyButton('lua', 'Alternar tema', () => this.actions.toggleTheme());
 
+    // Configuracoes entrou em 21/09/2026, depois de o botao de atalhos ter
+    // SAIDO daqui ([...]). A
+    // diferenca entre os dois: aquele so contava coisas, este MUDA coisas --
+    // e uma preferencia do aplicativo precisa de um lugar onde ser encontrada.
+    const configBtn = iconOnlyButton('ajustes', 'Configurações', () =>
+      this.actions.openSettings(),
+    );
+
     const importBtn = textButton('Importar arquivo', () => this.actions.importBoards());
     importBtn.title = 'Abrir um quadro exportado de outro aplicativo (.zip ou .html)';
     const newBtn = textButton('Novo quadro', () => this.actions.newBoard());
@@ -95,7 +104,7 @@ export class Lobby {
     // ele tem o mesmo peso dos outros glifos e fica na linha de base certa.
     newBtn.prepend(icon('mais', 15));
 
-    tools.append(this.#themeBtn, importBtn, newBtn);
+    tools.append(this.#themeBtn, configBtn, importBtn, newBtn);
     header.append(titleBox, tools);
 
     // A busca da biblioteca fica ABAIXO do cabecalho, em linha propria, e nao

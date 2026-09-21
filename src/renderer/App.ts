@@ -43,6 +43,7 @@ import {
   exportDialog,
   newBoardDialog,
   promptText,
+  settingsDialog,
   toast,
   unsavedDialog,
   type ExportChoice,
@@ -121,6 +122,7 @@ const AUTOSAVE_IDLE_MS = 3_000;
 const AUTOSAVE_MAX_MS = 30_000;
 
 const THEME_KEY = 'qb.theme';
+const ANIM_KEY = 'qb.animacoes';
 const RULERS_KEY = 'qb.rulers';
 const DEMO_SEED = 2000;
 /** Lote da geracao de carga: grande o bastante para ser eficiente, pequeno o
@@ -176,6 +178,8 @@ export class App {
   #redesenhoDeParada = 0;
 
   #rulers: boolean;
+  /** Levantar dos botões e transições de cor. Ver `#applyAnimacoes`. */
+  #animacoes: boolean;
   /**
    * Geracao da leitura de imagens em curso (Fase 7.5).
    *
@@ -318,6 +322,7 @@ export class App {
       openBoard: (s) => void this.openBoard(s),
       openDemo: () => void this.openDemo(),
       toggleTheme: () => this.toggleTheme(),
+      openSettings: () => this.#openSettings(),
       importBoards: () => void this.#pickAndImport(),
       openBoardAt: (path, id) => void this.openBoardAt(path, id),
     });
@@ -341,6 +346,11 @@ export class App {
         ? temaForcado
         : ((localStorage.getItem(THEME_KEY) as 'light' | 'dark' | null) ?? 'light');
     this.#rulers = localStorage.getItem(RULERS_KEY) === '1';
+    // LIGADO por padrao, e de propósito independente do Windows -- decisão de produto
+    // em 21/09/2026. Só desliga quem gravou 'off' aqui, pelo diálogo de
+    // Configurações. O porquê está no comentário do `[data-anim]` no base.css.
+    this.#animacoes = localStorage.getItem(ANIM_KEY) !== 'off';
+    this.#applyAnimacoes();
     // Mesmo criterio do tema: o modo forcado vale para esta execucao e nao
     // grava nada, para a foto de conferencia nao depender da maquina.
     // QB_BLUR=0: desliga todo `backdrop-filter`. Ver main/index.ts.
@@ -1050,6 +1060,33 @@ export class App {
     if (this.#theme === 'dark') return base;
     const papel = this.doc.prefs.background;
     return { ...base, boardBg: papel, exportBg: papel };
+  }
+
+  /**
+   * Configurações do aplicativo, abertas pelo menu principal.
+   *
+   * Aplica a cada clique, e não ao fechar: o efeito aparece na própria tela
+   * atrás do diálogo, e é isso que torna a escolha conferível sem sair dela.
+   */
+  #openSettings(): void {
+    settingsDialog({ animacoes: this.#animacoes }, (c) => {
+      this.#animacoes = c.animacoes;
+      localStorage.setItem(ANIM_KEY, this.#animacoes ? 'on' : 'off');
+      this.#applyAnimacoes();
+    });
+  }
+
+  /**
+   * O interruptor vira um `data-anim` na raiz, e o resto é CSS.
+   *
+   * Mesmo desenho do tema: um atributo num lugar, e as folhas reagem. A
+   * alternativa -- percorrer os elementos desligando transições no estilo
+   * embutido -- teria de rodar de novo a cada botão criado depois, e o app
+   * cria botões o tempo todo (painel de opções, camadas, busca).
+   */
+  #applyAnimacoes(): void {
+    if (this.#animacoes) delete document.documentElement.dataset['anim'];
+    else document.documentElement.dataset['anim'] = 'off';
   }
 
   #applyTheme(): void {

@@ -57,6 +57,7 @@ export type IconName =
   | 'alinharEsquerda'
   | 'alinharCentro'
   | 'alinharDireita'
+  | 'ajustes'
   | 'comandos'
   | 'menos'
   | 'mais'
@@ -147,6 +148,16 @@ const ICONS: Record<IconName, IconSpec> = {
   },
   menos: { svg: '<path d="M5 12h14" />' },
   mais: { svg: '<path d="M5 12h14" /><path d="M12 5v14" />' },
+
+  /*
+    `sliders-horizontal` do Lucide, e nao a engrenagem.
+
+    Engrenagem e o simbolo generico de [...] e promete mais
+    do que esta tela tem. Os controles deslizantes dizem [...], que e exatamente o conteudo: hoje so as animacoes.
+  */
+  ajustes: {
+    svg: '<path d="M10 5H3" /><path d="M12 19H3" /><path d="M14 3v4" /><path d="M16 17v4" /><path d="M21 12h-9" /><path d="M21 19h-5" /><path d="M21 5h-7" /><path d="M8 10v4" /><path d="M8 12H3" />',
+  },
 
   // A LUPA -- ela nao existia no conjunto anterior, e o campo "buscar em todos
   // os quadros" usava o icone de TECLADO no lugar dela.

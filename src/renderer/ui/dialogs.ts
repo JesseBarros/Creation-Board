@@ -542,3 +542,64 @@ export function toast(message: string, kind: 'ok' | 'error' = 'ok'): void {
 
   toastTimer = window.setTimeout(() => el.remove(), kind === 'error' ? 6000 : 2600);
 }
+
+/** O que a tela de Configuracoes devolve. */
+export interface Configuracoes {
+  animacoes: boolean;
+}
+
+/**
+ * Configuracoes do aplicativo, abertas pelo menu principal.
+ *
+ * Hoje tem um item so, e isso e de proposito: ela nasceu em 21/09/2026 para
+ * abrigar o interruptor de animacoes, e encher a tela de opcoes que ninguem
+ * pediu seria inventar trabalho. O formato ja comporta a proxima -- e uma
+ * lista de linhas, e cada linha e uma pergunta.
+ *
+ * Aplica NA HORA, sem botao de confirmar: o efeito e visivel na propria tela
+ * atras do dialogo, entao confirmar uma coisa que ja esta acontecendo so
+ * acrescenta um passo. Fechar e a unica saida, e nao ha o que desfazer.
+ */
+export function settingsDialog(atual: Configuracoes, onChange: (c: Configuracoes) => void): void {
+  const panel = document.createElement('div');
+  panel.className = 'qb-dialog';
+
+  const h = document.createElement('h2');
+  h.className = 'qb-dialog__title';
+  h.textContent = 'Configurações';
+
+  const estado: Configuracoes = { ...atual };
+
+  const linha = group(
+    'Animações',
+    [
+      ['Ligadas', 'on'],
+      ['Desligadas', 'off'],
+    ],
+    estado.animacoes ? 'on' : 'off',
+    (v) => {
+      estado.animacoes = v === 'on';
+      onChange({ ...estado });
+    },
+  );
+
+  const dica = document.createElement('p');
+  dica.className = 'qb-dialog__hint';
+  dica.textContent =
+    'Desligar remove o levantar dos botões e as transições de cor. ' +
+    'Ajuda em computadores mais fracos e serve a quem prefere menos movimento na tela.';
+
+  const actions = document.createElement('div');
+  actions.className = 'qb-dialog__actions';
+
+  const fechar = document.createElement('button');
+  fechar.type = 'button';
+  fechar.className = 'qb-btn qb-btn--primary';
+  fechar.textContent = 'Fechar';
+  fechar.addEventListener('click', () => modal.close());
+  actions.append(fechar);
+
+  panel.append(h, linha, dica, actions);
+  const modal = openModal(panel, () => modal.close());
+  fechar.focus();
+}

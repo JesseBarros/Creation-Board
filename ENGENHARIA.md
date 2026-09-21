@@ -66,7 +66,7 @@ Sempre por terminal — nunca por captura de tela cheia (ver o *porquê* no READ
 
 ```
 npm run typecheck     # tsc nos dois projetos, strict
-npm run selftest      # 153 verificações, deve terminar com "tudo passou"
+npm run selftest      # 156 verificações, deve terminar com "tudo passou"
 npm run check:colors  # contraste das cores nos dois temas
 npm run check:dist    # o MESMO auto-teste, dentro do .exe empacotado
 ```
@@ -456,6 +456,37 @@ Essa guarda também afirma sobre **pixel**, e não sobre ms, pelo mesmo motivo d
 aqui com uma evidência concreta: rodada com o código antigo de volta, ela acusa 4,0016 MP
 pedidos para uma tela de 1,23 MP, enquanto o render do cenário de teste marca 0,28 ms nos dois
 casos. O tempo só explode num quadro de verdade; a área denuncia em qualquer máquina.
+
+### O movimento virou preferência do app, e não do sistema
+
+Vale registrar porque é uma decisão que **troca uma coisa por outra**, e não uma melhoria
+pura.
+
+
+**A decisão de produto:** o app anima por padrão, independente do Windows, com um interruptor em
+Configurações no menu principal.
+
+**O que se perde, dito com todas as letras:** o app deixa de atender sozinho quem pede menos
+movimento ao sistema por sensibilidade vestibular. O que fica no lugar é um interruptor
+visível na tela inicial — mais fácil de achar que a página de acessibilidade do Windows, mas
+que **precisa ser encontrado**, e a preferência do sistema não precisava. Se algum dia isso
+for revisto, o caminho é usar o valor do sistema como **padrão inicial** do interruptor, em
+vez de ignorá-lo: atende os dois casos e não custa nada além de uma linha na inicialização.
+
+### Um token num lugar só não serve se a LISTA estiver espalhada
+
+O `--levanta` nasceu com um objetivo declarado no próprio comentário: [...]. E o número estava mesmo num lugar.
+
+Só que a **lista de quem usa o número** foi espalhada por trinta regras `:hover`, uma linha de
+`transform` de cada vez. O resultado, medido em 21/09: **seis controles interativos com hover
+e sem levantar** — camadas, busca, segmentado, amostra de cor, escolha de forma e alerta.
+Ninguém "decidiu" deixá-los de fora; eles só não estavam na cabeça de quem editou as outras.
+
+**A lição:** centralizar o VALOR e espalhar a APLICAÇÃO resolve metade do problema e esconde a
+outra metade. A lista agora vive num bloco único no fim do `app.css`, e a checagem do selftest
+percorre o CSSOM exigindo duas coisas de treze seletores — que cada um tenha regra de levantar,
+e que **nenhum** use valor cravado, porque valor cravado é exatamente o que escapa do
+interruptor.
 
 ### O custo em performance foi medido
 

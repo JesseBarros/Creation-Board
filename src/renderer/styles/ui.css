@@ -366,10 +366,19 @@
     transform 0.12s;
 }
 
+/*
+  O `-2px` daqui era CRAVADO, e o cartao virou a unica coisa do app que
+  desobedecia `prefers-reduced-motion`.
+
+  Isso apareceu de um jeito confuso em 21/09/2026: com a preferencia ligada no
+  Windows de teste, o cartao era o UNICO elemento que ainda se mexia, e a leitura
+  natural foi [...]. Nao tinham quebrado --
+  o resto estava obedecendo, e o cartao e que era a excecao.
+*/
 .qb-card:hover,
 .qb-card:focus-visible {
   border-color: var(--accent);
-  transform: translateY(-2px);
+  transform: translateY(var(--levanta));
   outline: none;
 }
 
@@ -755,8 +764,10 @@
   background: var(--marca);
 }
 
+/* Pelo mesmo motivo do `.qb-card` logo acima: o valor cravado ignorava a
+   preferencia do sistema. */
 .qb-paper:hover {
-  transform: translateY(-2px);
+  transform: translateY(var(--levanta));
 }
 
 .qb-paper--active {

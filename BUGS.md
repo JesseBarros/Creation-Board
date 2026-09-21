@@ -19,10 +19,11 @@
 | Rastro ao **rolar devagar** | **[B18](#b18--rastro-de-tinta-ao-rolar-a-tela-devagar)** — em aberto, parente do B8 |
 | **Borracha** apaga em bolas ou trava o app | **[B24](#b24--a-borracha-apagava-em-bolas-e-travava-o-aplicativo)** |
 | **Borracha** trava só com **zoom alto** | **[B25](#b25--a-borracha-travava-o-app-com-zoom-alto)** — outro defeito, não o B24 |
+| **Animações** de hover não acontecem | **[B26](#b26--as-animações-pararam-de-funcionar--e-não-tinham-parado)** |
 
-**Estado: 3 itens abertos** (B10, B15 e **B18**), **28 fechados**. Última atualização: 21/09/2026.
+**Estado: 3 itens abertos** (B10, B15 e **B18**), **29 fechados**. Última atualização: 21/09/2026.
 
-**A rodada de 20–21/09/2026 fechou sete itens e abriu um.** Ela veio de usar o app para
+**A rodada de 20–21/09/2026 fechou oito itens e abriu um.** Ela veio de usar o app para
 montar resumos de verdade, e quase tudo que apareceu estava em texto e em interface: o
 redimensionamento que distorcia títulos (**B19**), o negrito que só funcionava depois de
 digitar (**B20**), a quebra que mudava ao sair da caixa (**B21**), o tema claro que cansava a
@@ -1810,6 +1811,50 @@ trivial: o tempo só explode num quadro real. O que discrimina o defeito em qual
 **Confirmado no mesmo dia, num quadro de verdade, a 6400% de zoom** — que é o
 `MAX_ZOOM` do app (`core/Camera.ts`). Para um defeito cujo custo *escalava com o zoom*, o teto
 da faixa é a confirmação mais forte que existe: acima disso não há caso a testar.
+
+---
+
+### B26 — "As animações pararam de funcionar" — e não tinham parado
+`corrigido` · `medio` · 21/09/2026
+
+
+**A causa não estava no app.** O Windows de teste pede **menos movimento**
+(Acessibilidade → Efeitos visuais → Efeitos de animação), o `base.css` obedecia zerando
+`--levanta`, e **o app inteiro estava certo**.
+
+
+**Como foi estabelecido**, já que o palpite inicial errou: a primeira leitura foi do registro do
+Windows (`UserPreferencesMask`), e a interpretação dos bits deu "animação LIGADA" — **errado**.
+Quem respondeu foi uma sonda que abre uma janela Electron à parte, injeta as três folhas de
+estilo e passa um **mouse de verdade** (`sendInputEvent`) sobre cada controle:
+
+```
+prefers-reduced-motion: true
+--levanta: "0px"
+.qb-btn   -> hover aplicou (a sombra --levanta-sombra apareceu), deslocou 0px
+.qb-card  -> deslocou -2px   <- o valor cravado
+```
+
+A sombra é o que fecha o argumento: ela **só existe dentro da regra `:hover`**, então a regra
+disparou e mesmo assim o deslocamento foi zero. Sem isso, "não moveu" seria indistinguível de
+[...] — que foi, aliás, o defeito das duas primeiras versões da sonda.
+
+**Dois defeitos reais apareceram na investigação:**
+
+1. **Seis controles interativos tinham `:hover` e nenhum levantar** — camadas, busca,
+   segmentado, amostra de cor, escolha de forma e alerta. A implementação de 20/09 espalhou uma
+   linha de `transform` por cada regra que já existia, e essas seis ninguém lembrou.
+2. **A barra levantava sem sombra.** Dois pixels de subida quase não se leem; o que o olho
+   registra como "levantou" é a sombra aparecendo embaixo. O lobby fazia os dois, a barra só
+   metade — e por isso o mesmo gesto parecia mais fraco dentro do quadro.
+
+**Correção.** A lista de quem levanta passou a viver **num bloco só** no fim do `app.css`, e os
+dois valores cravados (`.qb-card`, `.qb-paper`) viraram o token. **13 controles conferidos,
+nenhum cravado.**
+
+**E a decisão de produto:** o app anima **por padrão, independente do Windows**, com um
+interruptor em **Configurações** no menu principal. A troca está assumida e não é neutra —
+o registro de engenharia diz o que se perde.
 
 ---
 

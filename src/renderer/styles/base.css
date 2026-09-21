@@ -402,27 +402,42 @@
 }
 
 /*
-  Quem pediu menos movimento ao sistema nao recebe nenhum.
+  O MOVIMENTO AGORA E UMA PREFERENCIA DO APP, e nao do sistema.
 
-  Nao e formalidade: o levantar dos botoes e a transicao de cor sao enfeite, e
-  para quem tem sensibilidade vestibular enfeite em movimento chega a causar
-  enjoo. O Windows expoe essa preferencia em Acessibilidade > Efeitos visuais, e
-  o Chromium a traduz nesta consulta.
+  Ate 21/09/2026 isto era `@media (prefers-reduced-motion: reduce)`, e a
+  consulta zerava `--levanta`. A troca aconteceu porque a versao anterior
+  produziu uma confusao concreta, que vale registrar:
+
+  foi pedido o levantar em todos os botoes, recebeu, e relatou dias depois que
+  [...]. Nada
+  tinha parado. O Windows de teste pede menos movimento (Acessibilidade > Efeitos
+  visuais > Efeitos de animacao), o app obedecia, e o cartao era o UNICO
+  elemento que desobedecia -- porque tinha `-2px` cravado em vez do token. O
+  app inteiro estava certo e parecia quebrado.
+
+  Duas coisas sairam disso. O cartao passou a usar o token, como todo o resto
+  (ver ui.css). E a decisao de produto: o app anima por padrao,
+  independente do Windows, e quem quiser desligar usa o interruptor em
+  Configuracoes, no menu principal.
+
+  A TROCA ESTA ASSUMIDA, e nao e neutra: o app deixa de atender sozinho quem
+  pede menos movimento ao sistema por sensibilidade vestibular. O que fica no
+  lugar e um interruptor visivel na propria tela inicial, que e mais facil de
+  achar que a pagina de acessibilidade do Windows -- mas ele precisa ser
+  encontrado, e a preferencia do sistema nao precisava.
 
   `0.01ms` e nao `0`: uma transicao de duracao zero nao dispara `transitionend`,
   e qualquer codigo que espere por esse evento ficaria esperando para sempre.
 */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
+:root[data-anim='off'] *,
+:root[data-anim='off'] *::before,
+:root[data-anim='off'] *::after {
+  transition-duration: 0.01ms !important;
+  animation-duration: 0.01ms !important;
+}
 
-  :root {
-    --levanta: 0px;
-  }
+:root[data-anim='off'] {
+  --levanta: 0px;
 }
 
 /*
