@@ -80,6 +80,44 @@ const GPU_MODOS: Record<string, { nota: string; aplicar: () => void }> = {
     nota: 'composicao pela CPU (a GPU ainda desenha)',
     aplicar: () => app.commandLine.appendSwitch('disable-gpu-compositing'),
   },
+
+  /*
+    DOIS DEGRAUS QUE PARTEM O `comp` AO MEIO. Acrescentados em 21/09/2026.
+
+    O `comp` cura o rastro do zoom (B18), e ele foi o unico que curou -- mas ele
+    e grosso: desliga a composicao por GPU INTEIRA, e o preco aparece como
+    lentidao ao mover a tela. Relato, testando: [...].
+
+    O problema de diagnostico e que o `comp` faz DUAS coisas de uma vez, e
+    nenhuma das duas tinha sido isolada:
+
+      1. tira a COMPOSICAO DA PAGINA da GPU;
+      2. junto com ela, derruba o canvas 2D acelerado para a CPU, porque sem
+         composicao por GPU nao ha para onde mandar a textura dele.
+
+    Se o rastro esta na textura do CANVAS, o degrau `canvas` abaixo cura
+    sozinho, e sem pagar a composicao da pagina inteira -- que e de onde vem a
+    lentidao que ele sentiu. Se o rastro esta na conta de dano do COMPOSITOR,
+    `canvas` nao cura e so o `comp` cura, e ai a escolha volta a ser entre
+    rastro e lentidao.
+
+    Isto explicaria tambem por que o `swap` conserta o B8 e NAO conserta o B18:
+    `ui-disable-partial-swap` e `disable-partial-raster` agem na pagina, e nao
+    na textura do canvas.
+
+    ATENCAO ao adotar qualquer um dos dois como padrao: o B24 e o registro de
+    que canvas na CPU custa caro -- o Render do F3 foi de 1,2 ms para 31,3 ms
+    quando uma bandeira empurrou UM canvas intermediario para a CPU. Antes de
+    trocar o padrao, medir com `QB_BENCH` e com a borracha.
+  */
+  canvas: {
+    nota: 'canvas 2D na CPU, composicao da pagina ainda na GPU',
+    aplicar: () => app.commandLine.appendSwitch('disable-accelerated-2d-canvas'),
+  },
+  raster: {
+    nota: 'rasterizacao fora do processo da GPU (composicao segue na GPU)',
+    aplicar: () => app.commandLine.appendSwitch('disable-oop-rasterization'),
+  },
   // Fim da escada: nada de aceleracao. Lento de proposito -- e teste, nao
   // destino.
   off: {

@@ -1745,6 +1745,44 @@ $env:QB_GPU='normal'; npm run dev   # nada aplicado — controle, tem de PIORAR 
 - `normal` **não piorar** significaria que as flags não estão pegando nesta execução, e aí o
   problema é de configuração e não de composição.
 
+#### O resultado do teste, no mesmo dia
+
+Palavras do teste:
+
+| modo | rastro no zoom | fluidez |
+|---|---|---|
+| `comp` | **sumiu** | [...] |
+| `normal` | **presente** | [...] |
+| `swap` (o padrão, que ele já vinha usando) | presente | lisa |
+
+
+
+#### O que fazer com isso: partir o `comp` ao meio
+
+O `comp` nunca foi isolado. Ele faz **duas** coisas de uma vez:
+
+
+
+Dois degraus novos na escada `QB_GPU` (`main/index.ts`), para separá-las:
+
+```powershell
+$env:QB_GPU='canvas'; npm run dev    # canvas 2D na CPU, pagina ainda composta na GPU
+$env:QB_GPU='raster'; npm run dev    # rasterizacao fora do processo da GPU
+```
+
+- **`canvas` cura sem lentidão** → o rastro mora na **textura do canvas**, e não na conta de
+  dano do compositor. É o melhor desfecho possível: cura barata e dirigida. Explicaria também
+  por que o `swap` conserta o B8 e não o B18 — `ui-disable-partial-swap` e
+  `disable-partial-raster` agem na página, não na textura do canvas.
+- **`canvas` não cura** → é a conta de dano do compositor, e só o `comp` cura. A escolha volta
+  a ser entre rastro e lentidão, e aí a saída de verdade é subir de Electron (Fase 9).
+
+**Se `canvas` virar candidato a padrão, ele tem de ser MEDIDO antes de ser adotado.** O
+[B24](#b24--a-borracha-apagava-em-bolas-e-travava-o-aplicativo) é o registro de que canvas na
+CPU custa caro: o `Render` do F3 foi de 1,2 ms para 31,3 ms quando uma bandeira empurrou **um**
+canvas intermediário para a CPU. `disable-accelerated-2d-canvas` empurra **todos**. Medir com
+`QB_BENCH` e com a borracha antes de trocar qualquer coisa.
+
 ---
 
 ### B24 — A borracha apagava em bolas e travava o aplicativo
