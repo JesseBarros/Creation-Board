@@ -612,6 +612,64 @@ correção foi fazer o instrumento se conferir sozinho: fotografa até o quadro 
 
 ---
 
+## O painel de vidro do lobby não custou nada — medido em 21/09/2026
+
+O plano da Parte 2 marcou isto como **o maior risco de toda a repaginação**: um
+`backdrop-filter` com `feTurbulence` numa área quase de tela cheia é a família de
+causa do B8. Havia um plano B escrito — dar ao painel um `--chrome-blur-liso`,
+sem o deslocamento, assumido por escrito. **Ele não foi necessário.**
+
+Instrumento em `scratchpad/medir/painel.{html,js}`, fora do repositório. A página
+monta o DOM do lobby com as classes reais e **carrega a folha de estilo
+construída pelo Vite** — copiar o CSS para o instrumento mediria uma cópia, e
+bastaria uma divergência de valor para o número deixar de dizer respeito ao app.
+Rola 60 passos por caso e mede o intervalo entre frames. Três execuções.
+
+| tema | cards | desfoque | painel | rolagem | mediana | pior | frames > 25 ms |
+|---|---|---|---|---|---|---|---|
+| claro | 5 | ligado | 615/835 | não rola | — | — | 0 |
+| claro | 40 | **ligado** | 2035/835 | 1420 px | **7,0 ms** | 13,9–20,7 | 0 |
+| claro | 40 | off | 2035/835 | 1420 px | **7,0 ms** | 13,9–34,7 | 0–1 |
+| escuro | 40 | **ligado** | 2035/835 | 1420 px | **6,9 ms** | 7,1 | 0 |
+| escuro | 40 | off | 2035/835 | 1420 px | **6,9 ms** | 7,1 | 0 |
+
+6,9–7,0 ms é o intervalo do monitor desta máquina. **A mediana é idêntica com o
+desfoque ligado e desligado**, nos dois temas.
+
+O dado que fecha a questão não é a mediana, é um acidente da rodada 2: **o pior
+frame de toda a medição (34,7 ms) aconteceu com o desfoque DESLIGADO.** Se a
+lâmina custasse, isso não poderia acontecer. Os "piores" variam de 7 a 35 ms sem
+correlação nenhuma com o filtro — é ruído de agendamento, e não custo.
+
+A coluna `filtro` do instrumento existe por desconfiança de instrumento: ela lê o
+`backdropFilter` computado do painel em cada rodada. Um número bom medido com o
+desfoque desligado por engano não valeria nada, e essa é a forma mais fácil de
+essa medição mentir.
+
+**Por que provavelmente saiu de graça, e o que isso ensina:** a troca da Parte 2
+foi uma por outra — o painel entrou na lista de vidro e **o `.qb-card` saiu**.
+Antes, um lobby com quarenta quadros eram quarenta `backdrop-filter`, cada um
+obrigando a uma leitura separada do fundo. Agora é **um**. A área cresceu e o
+número de passes despencou, e é o número de passes que pesa. A decisão já estava
+escrita no `app.css` sob [...]: a lâmina desfoca, os
+controles são objetos pousados nela.
+
+> **A ressalva honesta é a mesma do B8:** três execuções numa máquina não
+> estabelecem ausência de custo com rigor. O que se pode afirmar é que a
+> diferença, se existe, é menor que o ruído entre execuções — e que num teste
+> desenhado para encontrá-la ela não apareceu.
+
+**Armadilha do instrumento, que custou uma rodada:** a primeira versão contava 61
+frames e só terminava neles. Se cada frame custasse um segundo — que é
+exatamente o desastre procurado — ela nunca terminaria, e "muito lento" ficaria
+indistinguível de "o instrumento travou". Foi o que pareceu acontecer na
+primeira execução, que pendurou nos 40 cards. Com um orçamento de tempo de
+**parede** a lentidão vira número em vez de silêncio; com ele, as três execuções
+seguintes passaram sem encostar no orçamento. (A causa provável do travamento
+original é oclusão da janela parando o `requestAnimationFrame`, e não custo.)
+
+---
+
 ## Decisões que não estão óbvias no código
 
 0. **NADA DE NUVEM. Decidido em 14/08/2026, com a alternativa toda avaliada.** foi perguntado

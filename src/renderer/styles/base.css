@@ -299,7 +299,22 @@
 :root .qb-menu,
 :root .qb-toast,
 :root .qb-progress,
-:root .qb-card,
+/*
+  O PAINEL do lobby entrou aqui em 21/09/2026, e o `.qb-card` SAIU na mesma
+  linha. A troca nao e arrumacao: e uma por outra, de proposito.
+
+  Ate aqui cada card era uma lamina de vidro propria. Num lobby com quarenta
+  quadros isso sao quarenta `backdrop-filter` -- cada um obrigando o Chromium a
+  ler o fundo num passe separado e a criar superficie de composicao propria.
+  Era a familia de causa do B8 multiplicada por quarenta.
+
+  A decisao ja estava escrita no `app.css`, no bloco [...]:
+  a lamina desfoca, e os controles sao objetos POUSADOS nela. Aqui vale igual --
+  o painel virou a lamina, o card virou a pastilha. Um `backdrop-filter` no
+  lugar de N, e o card continua legivel porque a tinta dele nao mudou: ele
+  segue na segunda lista, a do `--veu-lobby`.
+*/
+:root .qb-lobby__painel,
 :root .qb-libsearch__field,
 /*
   Os botoes do CABECALHO DO LOBBY, e so eles.
@@ -484,6 +499,7 @@
   --veu-lobby: color-mix(in srgb, var(--panel) 54%, transparent);
 }
 
+:root .qb-lobby__painel,
 :root .qb-card,
 :root .qb-libsearch__field,
 :root .qb-lobby .qb-btn:not(.qb-btn--primary):not(.qb-btn--active):not(.qb-btn--danger) {

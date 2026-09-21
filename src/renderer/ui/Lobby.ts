@@ -28,6 +28,7 @@ export class Lobby {
   readonly el: HTMLElement;
   /** O que rola. A raiz e palco parado -- ver a montagem no construtor. */
   #rolagem!: HTMLElement;
+  #painel!: HTMLElement;
   #grid: HTMLElement;
   #empty: HTMLElement;
   #folderLabel: HTMLElement;
@@ -157,9 +158,25 @@ export class Lobby {
       Efeito colateral bom: a barra de rolagem nasce na borda real da tela, e
       nao a 32px dela, porque o padding desceu junto com a rolagem.
     */
+    /*
+      O PAINEL DE VIDRO, e o que fica DENTRO dele.
+
+      Cabecalho e busca ficam FORA: nos mockups eles pousam direto sobre a foto,
+      e a busca nao e um controle da grade -- ela procura dentro dos quadros,
+      nao entre eles. O que entra e a grade e o estado vazio.
+
+      O estado vazio entra por um motivo pratico: deixado de fora, o lobby de
+      quem acabou de instalar abriria com a mensagem [...]
+      e, logo abaixo dela, uma lamina de vidro vazia. E a pior primeira imagem
+      possivel da tela.
+    */
+    this.#painel = document.createElement('div');
+    this.#painel.className = 'qb-lobby__painel';
+    this.#painel.append(this.#empty, this.#grid);
+
     this.#rolagem = document.createElement('div');
     this.#rolagem.className = 'qb-lobby__rolagem';
-    this.#rolagem.append(header, this.#search.el, this.#empty, this.#grid);
+    this.#rolagem.append(header, this.#search.el, this.#painel);
     this.el.append(this.#rolagem);
   }
 
@@ -169,12 +186,15 @@ export class Lobby {
    * Deixar as duas na tela faria a pessoa rolar por cima de uma lista de quadros
    * que nao tem relacao com o que ela procurou -- e os cards sao altos, entao os
    * resultados comecariam abaixo da dobra.
+   *
+   * QUEM SOME E O PAINEL, e nao a grade. Enquanto a grade era o elemento de
+   * cima, esconde-la bastava; com o vidro em volta, esconder so o conteudo
+   * deixaria uma lamina vazia pousada sob os resultados da busca.
    */
   #syncSearchState(): void {
     const buscando = this.#search.active;
-    this.#grid.hidden = buscando;
-    if (buscando) this.#empty.hidden = true;
-    else this.#empty.hidden = this.#grid.childElementCount > 0;
+    this.#painel.hidden = buscando;
+    this.#empty.hidden = buscando || this.#grid.childElementCount > 0;
   }
 
   /** Foco na busca da biblioteca. O `Ctrl+F` do lobby chama aqui. */

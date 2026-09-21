@@ -132,10 +132,56 @@
   background: var(--bg);
 }
 
+/*
+  A rolagem e uma COLUNA FLEX, e e isso que da altura ao painel.
+
+  Sem flex, o painel teria a altura do conteudo: com um unico quadro salvo, a
+  lamina de vidro viraria uma faixa fina de 200px no alto de uma tela de foto.
+  Com `flex: 1 0 auto` nele, ele cresce para ocupar o que sobra -- e, quando o
+  conteudo passa da tela, para de crescer e quem rola e esta caixa.
+
+  `calc(100vh - ...)` faria o mesmo e estaria errado: a conta teria de repetir o
+  padding, a altura do cabecalho e a da busca, e passaria a mentir no dia em que
+  qualquer um dos tres mudasse. O flex nao precisa saber nenhum dos numeros.
+*/
 .qb-lobby__rolagem {
   height: 100%;
   overflow-y: auto;
   padding: 28px 32px 48px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Cabecalho e busca nao esticam nem encolhem: sao a altura que pedirem. */
+.qb-lobby__header,
+.qb-lobby__rolagem > .qb-libsearch {
+  flex: none;
+}
+
+/*
+  O PAINEL DE VIDRO -- so forma aqui.
+
+  A materia (desfoque, tinta, borda, sombra) vem das duas listas centralizadas
+  do `base.css`. Este arquivo nao tem regra de vidro propria, e essa separacao e
+  o que impede a proxima superficie de nascer com um desfoque ligeiramente
+  diferente das outras.
+*/
+.qb-lobby__painel {
+  flex: 1 0 auto;
+  padding: 20px;
+  border-radius: 18px;
+}
+
+/*
+  `hidden` precisa ganhar do `display` da regra acima.
+
+  A regra de vidro nao poe `display`, mas o dia em que alguem puser um
+  `display: flex` aqui, o `[hidden]` do `#syncSearchState` para de funcionar em
+  silencio e a lamina vazia volta a aparecer sob os resultados da busca. Uma
+  linha agora custa menos que o relato depois.
+*/
+.qb-lobby__painel[hidden] {
+  display: none;
 }
 
 .qb-lobby__header {
