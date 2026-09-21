@@ -1711,6 +1711,40 @@ ainda não tem causa estabelecida.
 **Ferramenta nova para a caçada:** `QB_BLUR=0` desliga todo `backdrop-filter`, no mesmo idioma
 do `QB_GPU`.
 
+#### 21/09/2026 — o zoom RÁPIDO produz o rastro, e isso contradiz o sintoma registrado
+
+
+Duas leituras, e as duas importam:
+
+1. **A mitigação está funcionando.** "Está saindo rápido" é exatamente o que ela promete —
+   um frame em vez de segundos. O caminho do zoom passa por ela: `ViewportInput.#onWheel`
+   → `camera.zoomAt` → `onChange()` → `App.#onCameraChanged` → `#agendarRedesenhoDeParada`.
+   Conferido no código.
+2. **Mas o gesto contradiz o sintoma acima.** Esta seção diz [...].
+   Ele vê com **zoom rápido**. Não é a mesma coisa que rolar rápido, e a diferença sugere
+   onde procurar: rolar **transloca** o conteúdo, e o compositor consegue reaproveitar tiles
+   deslocando-os; dar zoom muda **a escala de todos os pixels ao mesmo tempo**, e nenhum tile
+   se reaproveita. Se a conta de região suja erra, o zoom é o gesto que mais a expõe.
+   **É hipótese, e ainda não foi testada.**
+
+**Não é regressão da rodada de 21/09.** Conferido no diff: nada entre `360d612` e `54fc8e1`
+encosta no desenho do quadro — são lobby, validação no processo principal, imagens de fundo e
+testes. A correção do B8 continua ativa (`swap` é o modo padrão e aplica
+`ui-disable-partial-swap` + `disable-partial-raster`).
+
+
+```powershell
+$env:QB_GPU='comp'; npm run dev     # composição pela CPU — curou o B8 e o B18
+$env:QB_GPU='normal'; npm run dev   # nada aplicado — controle, tem de PIORAR muito
+```
+
+- `comp` **cura** o rastro no zoom → mesma família do B8/B18, confirmada por um segundo
+  gesto, e a caçada continua na conta de região suja.
+- `comp` **não cura** → é outra coisa, fora da composição, e isso seria o achado mais
+  importante desde 14/08. Nenhuma das hipóteses já eliminadas cobriria.
+- `normal` **não piorar** significaria que as flags não estão pegando nesta execução, e aí o
+  problema é de configuração e não de composição.
+
 ---
 
 ### B24 — A borracha apagava em bolas e travava o aplicativo
