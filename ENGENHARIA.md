@@ -566,6 +566,52 @@ cacheado por `id:rev`, então só roda quando o texto muda.
 
 ---
 
+## Quanto custa uma foto de fundo grande — medido em 21/09/2026
+
+A pergunta foi direta: mandar as fotos do Unsplash no tamanho original (14 e 21
+megapixels) é problema? E o critério que ele deu foi o certo — **nitidez e desempenho**,
+não tamanho de instalador.
+
+Eu tinha respondido com aritmética de memória e um receio de engasgo na troca de tema.
+**A medição desmontou o receio.** Instrumento em `scratchpad/medir/` (fora do
+repositório): Electron próprio, página gravada em disco e carregada por `loadFile`,
+janela de 1600×900, três execuções.
+
+| | megapixels | bitmap | decode frio | maior frame na troca | nitidez |
+|---|---|---|---|---|---|
+| praia original 4621×3072 | 14,2 MP | 57 MB | 80–90 ms | 7,1 ms¹ | — |
+| praia 2560×1702 | 4,4 MP | 17 MB | 32 ms | 7,1 ms | igual ou um fio melhor |
+| galáxia original 5949×3518 | 20,9 MP | 84 MB | 138–139 ms | 7,1 ms | — |
+| galáxia 2560×1514 | 3,9 MP | 16 MB | 43–48 ms | 7,1 ms | igual |
+
+¹ Deu 20,9 e 13,9 ms em duas das três execuções, mas **a praia original é sempre o
+primeiro caso do laço** e come o aquecimento. A galáxia original, que é 47% maior, deu
+7,1 ms nas três. Não é efeito de resolução.
+
+**O que a medição mostrou, e é o ponto principal:** o Chromium decodifica imagem numa
+thread própria. Os 138 ms de decode da galáxia original **não aparecem como engasgo** —
+o compositor segue em 7,1 ms por frame, que é o intervalo do monitor desta máquina. Pelo
+critério do desempenho, a foto original não custa nada que o usuário sinta, e ele estava
+certo.
+
+
+**Conclusão: 2560 de largura, e o motivo mudou.** Não é "o original engasga", que é falso
+e medido. É que o original cobra 3,5–5× o bitmap e 2,5–3× o trabalho de decodificação
+**para entregar exatamente a mesma imagem na tela**. O teto continua, o argumento é que
+ficou honesto.
+
+**Onde isto deixaria de valer:** num monitor a `dpr` 2 a janela pediria ~3168 px físicos e
+o 2560 passaria a subir de escala. Esta medição é `dpr` 1, que é a máquina de teste. Se ele
+trocar de monitor, a conta se refaz.
+
+**Duas armadilhas do instrumento**, as duas já registradas no `CONTINUAR.md`: o ambiente
+traz `ELECTRON_RUN_AS_NODE=1`, e com ela o binário do Electron roda como Node puro e
+`require('electron')` não resolve; e `capturePage` atrasou uma imagem mesmo com os dois
+`requestAnimationFrame` de espera — a galáxia saiu byte a byte igual à praia anterior. A
+correção foi fazer o instrumento se conferir sozinho: fotografa até o quadro **mudar**.
+
+---
+
 ## Decisões que não estão óbvias no código
 
 0. **NADA DE NUVEM. Decidido em 14/08/2026, com a alternativa toda avaliada.** foi perguntado
