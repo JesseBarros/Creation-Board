@@ -111,9 +111,26 @@ export class Renderer {
     this.overlayCanvas = createLayer('qb-layer qb-layer--overlay');
     host.append(this.staticCanvas, this.overlayCanvas);
 
-    // `alpha: false` na camada estatica: sem canal alfa o compositor pode pular
-    // a mistura com o fundo, o que mede alguns pontos percentuais de ganho.
-    this.#staticCtx = must(this.staticCanvas.getContext('2d', { alpha: false }));
+    /*
+      `alpha: false` na camada estatica: sem canal alfa o compositor pode pular
+      a mistura com o fundo, o que mede alguns pontos percentuais de ganho.
+
+      `QB_ALPHA=1` DESLIGA essa escolha, e existe para caçar o B18 -- o rastro
+      ao dar zoom. E a unica coisa no NOSSO codigo que muda como o compositor
+      trata esta superficie, e ate 21/09/2026 nunca tinha sido testada.
+
+      A tese: canvas opaco entra por um caminho de composicao diferente do
+      translucido. Um compositor que se permite pular a mistura tambem se
+      permite contas de cobertura mais agressivas, e uma conta de cobertura
+      agressiva com dano mal calculado e exatamente como conteudo velho
+      sobrevive em retangulos -- a forma que o rastro tem na captura de teste.
+
+      E instrumento, e nao conserto: se curar, a troca (alguns pontos
+      percentuais contra o rastro) passa a ser uma decisao de produto, tomada com o
+      numero na mao e registrada por escrito.
+    */
+    const semAlfa = new URLSearchParams(location.search).get('alpha') !== '1';
+    this.#staticCtx = must(this.staticCanvas.getContext('2d', { alpha: semAlfa ? false : true }));
     this.#overlayCtx = must(this.overlayCanvas.getContext('2d'));
   }
 

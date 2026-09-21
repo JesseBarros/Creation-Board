@@ -317,6 +317,18 @@ function createWindow(): void {
   // capturas deixaria de significar alguma coisa. Nao grava nada.
   if (process.env['QB_FUNDO'] === 'off') query = `${query}${query ? '&' : '?'}fundo=off`;
 
+  // QB_ALPHA=1 devolve o canal alfa a camada estatica do quadro.
+  //
+  // Instrumento para o B18 (rastro ao dar zoom). A camada estatica e criada com
+  // `alpha: false`, e essa e a UNICA coisa no nosso codigo que muda como o
+  // compositor trata aquela superficie -- canvas opaco segue um caminho
+  // diferente do translucido. Ver o comentario inteiro em render/Renderer.ts.
+  //
+  // Fica ao lado do QB_GPU de propósito: aquele mexe no Chromium por fora, este
+  // mexe no que NOS pedimos a ele. Se o rastro responde a este, a caçada sai da
+  // linha de comando e volta para o repositorio.
+  if (process.env['QB_ALPHA'] === '1') query = `${query}${query ? '&' : '?'}alpha=1`;
+
   // Os modos de verificacao terminam imprimindo um marcador. Fechar a janela
   // nesse ponto e o que torna `QB_IMPORT`/`--selftest`/`QB_BENCH` utilizaveis
   // dentro de um script: sem isso o processo fica aberto esperando alguem
