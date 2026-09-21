@@ -1872,6 +1872,51 @@ segundo.
 Isto **não** é a causa do fantasma (ele aparece também com pouca coisa na tela), mas é um
 problema por mérito próprio e provavelmente é o que torna a forma "quebrada" tão visível.
 
+#### O `comp` como padrão está morto — e agora com número
+
+`QB_BENCH=1070` no monitor de 144 Hz (orçamento **6,95 ms** por frame):
+
+| fase | `swap` (padrão) | `comp` |
+|---|---|---|
+| zoom 100% (26 visíveis) | **144,0 fps** · 6,95 ms | **77,1 fps** · 12,97 ms |
+| zoom 40% (124 visíveis) | 123,4 fps · 8,10 ms | 68,6 fps · 14,59 ms |
+| ajustado à tela (1070) | 48,9 fps · 20,45 ms | 52,9 fps · 18,91 ms |
+
+**Ele corta a taxa pela metade exatamente onde o app é rápido**, que é o uso normal. Com
+quase nada na tela o `render` é 1,40 ms e o frame é 12,97 — o gargalo é a composição pela
+CPU, não o nosso desenho. Sob carga pesada empata, dentro do ruído.
+
+
+#### `QB_DESYNC=1` piora, e o jeito como piora informa
+
+Instrumento criado no mesmo dia: liga `desynchronized` nos dois canvas, tirando-os da fila
+normal de composição para um caminho de baixa latência com buffer próprio. Era o último
+lever do nosso lado que mexe na **entrega** do quadro. Medido antes de ir para as mãos:
+não custa nada (144,0 / 123,4 / 52,5 fps, igual ao padrão).
+
+
+O artefato novo é o achado. Piscar preto é o sintoma clássico de apresentação sem
+sincronismo — e é, de passagem, o mesmo sintoma do
+[B8](#b8--a-tela-pisca-preto-ao-passar-o-mouse-sobre-ícones-e-cartões). Que uma opção de
+**entrega** produza o sintoma do B8 reforça que esta família inteira é de entrega de frame, e
+não de desenho. **O interruptor fica, mas com este aviso: ligá-lo introduz um defeito.**
+
+#### O que já foi verificado no nosso código, e está limpo
+
+Para ninguém refazer:
+
+| verificado | resultado |
+|---|---|
+| limpeza da camada estática | `fillRect` sobre o canvas inteiro, todo `render()`. Incondicional. |
+| limpeza do overlay | `clearRect` sobre o canvas inteiro. Condicional a `#overlayHasContent`, e a máquina de estados está **correta**. |
+| limpeza dupla do overlay | `beginOverlay` e `beginOverlayScreen` ambos limpam; se os dois fossem chamados no mesmo frame, o segundo apagaria o primeiro. **Só `beginOverlayScreen` é chamado**, uma vez por frame, em `App.#paintOverlay`. |
+| reúso do frame anterior | Não existe. O único `drawImage` do caminho de desenho é o do cache de texto/post-it. |
+| cache de rasterização | Só texto e post-it. O que fantasmeia são traços. |
+
+**E o fantasma aparece na CAPTURA DE TELA.** Isso importa e elimina uma hipótese inteira:
+artefato de resposta do monitor (o "ghosting" do vocabulário de monitor) **não sai em
+screenshot**. Se está no arquivo PNG, está no framebuffer — alguém compôs aquilo.
+
 #### O que fazer com isso: partir o `comp` ao meio
 
 O `comp` nunca foi isolado. Ele faz **duas** coisas de uma vez:
