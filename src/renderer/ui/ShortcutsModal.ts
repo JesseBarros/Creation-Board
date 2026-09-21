@@ -1,4 +1,5 @@
 import { displayKeys, groupedShortcuts } from '../shortcuts';
+import { icon } from './icons';
 
 /**
  * Tela de ajuda com todos os atalhos.
@@ -26,7 +27,7 @@ export class ShortcutsModal {
     const close = document.createElement('button');
     close.type = 'button';
     close.className = 'qb-help__close';
-    close.textContent = '✕';
+    close.append(icon('fechar', 15));
     close.title = 'Fechar (Esc)';
     close.addEventListener('click', () => this.hide());
     header.append(h, close);

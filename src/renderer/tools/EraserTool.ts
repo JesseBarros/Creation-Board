@@ -1,6 +1,12 @@
 import type { Vec2 } from '@shared/geometry/vec2';
 import { worldToLocal } from '@shared/model/bbox';
-import { isInk, type BoardObject, type InkObject, type ObjectId } from '@shared/model/types';
+import {
+  isInk,
+  type BoardObject,
+  type EraseMark,
+  type InkObject,
+  type ObjectId,
+} from '@shared/model/types';
 import { EraseInk, EraseObjects } from '../commands';
 import type { Camera } from '../core/Camera';
 import { hitsObject } from '../features/selection/hitTest';
@@ -37,12 +43,13 @@ export class EraserTool implements Tool {
   /** Objetos removidos por inteiro no modo traço. */
   #removed: BoardObject[] = [];
   /**
-   * Em que passo do gesto cada objeto foi tocado pela última vez. É o que
-   * decide se o rastro CONTINUA ou se começa outro: sair de um traço e voltar
-   * nele depois não pode apagar a linha reta entre a saída e a volta.
+   * O rastro que cada objeto está recebendo NESTE gesto.
+   *
+   * É contra ele que se decide continuar ou começar outro — sair de um traço e
+   * voltar nele depois não pode apagar a linha reta entre a saída e a volta.
+   * Ver `#eraseSpot`.
    */
-  #lastTouch = new Map<ObjectId, number>();
-  #step = 0;
+  #markInProgress = new Map<ObjectId, EraseMark>();
 
   /** Última posição do ponteiro, em px de tela. Null até ele entrar no quadro. */
   #cursor: Vec2 | null = null;
@@ -59,9 +66,8 @@ export class EraserTool implements Tool {
   onPointerDown(p: ToolPointer): void {
     this.#erasing = true;
     this.#before.clear();
-    this.#lastTouch.clear();
+    this.#markInProgress.clear();
     this.#removed = [];
-    this.#step = 0;
     this.#lastWorld = p.world;
     this.#cursor = p.screen;
     this.#eraseAt(p.world);
@@ -148,7 +154,6 @@ export class EraserTool implements Tool {
     const { doc } = this.ctx;
     const r = this.#radiusWorld();
     const probe = { x: world.x - r, y: world.y - r, w: r * 2, h: r * 2 };
-    this.#step++;
 
     const touched: InkObject[] = [];
     for (const obj of doc.queryVisible(probe)) {
@@ -178,7 +183,30 @@ export class EraserTool implements Tool {
     this.ctx.markDirty();
   }
 
-  /** Modo peça: acrescenta o ponto ao rastro de cada objeto tocado. */
+  /**
+   * Modo peça: acrescenta o ponto ao rastro de cada objeto tocado.
+   *
+   * CONTINUIDADE POR DISTÂNCIA, e não por passo adjacente. Isto era o bug das
+   * "bolas", relatado em 21/09/2026.
+   *
+   * O critério anterior era `lastTouch === step - 1`: o objeto tinha de ser
+   * tocado no passo imediatamente anterior para o rastro continuar. Mas `#step`
+   * conta TODA posição varrida, inclusive as que não tocam nada — e ao apagar
+   * sobre um rabisco a borracha encosta num traço, perde contato por um passo, e
+   * encosta de novo. O passo vazio quebrava a sequência, e cada retoque criava um
+   * rastro NOVO de um ponto só, que o painter desenha como disco. Daí a fileira
+   * de bolas com beirada serrilhada.
+   *
+   * Agora o que decide é a distância: se o ponto novo está perto do fim do
+   * rastro em curso, ele CONTINUA aquele rastro; se está longe, começa um novo.
+   * "Perto" é o próprio diâmetro da borracha — dentro dele, o segmento reto até
+   * o ponto novo cobre só o terreno que a borracha de fato atravessou, porque o
+   * `#eraseAlong` varre o intervalo em passos de meio raio.
+   *
+   * O rastro também só continua dentro do MESMO gesto: `#markInProgress` é
+   * limpo no `pointerdown`. Sem isso, soltar a borracha e recomeçar do outro
+   * lado do quadro traçaria uma reta apagando tudo no caminho.
+   */
   #eraseSpot(touched: readonly InkObject[], world: Vec2, radius: number): void {
     const updated: BoardObject[] = [];
 
@@ -192,16 +220,26 @@ export class EraserTool implements Tool {
       const scale = Math.min(Math.abs(t.scaleX) || 1, Math.abs(t.scaleY) || 1);
       const width = (radius * 2) / scale;
 
-      const marks = obj.erased ? obj.erased.map((m) => ({ ...m, points: [...m.points] })) : [];
-      const contiguous = this.#lastTouch.get(obj.id) === this.#step - 1;
-      const last = marks[marks.length - 1];
+      /*
+        O rastro EM CURSO é mutado no lugar, e os antigos são reaproveitados.
 
-      if (contiguous && last) {
-        last.points.push(local.x, local.y);
+        A versão anterior copiava todas as marcas e todos os pontos a cada
+        posição varrida. Como o rastro cresce a cada passo, o custo do gesto era
+        quadrático — e um gesto longo sobre um rabisco denso chega a centenas de
+        passos. O estado original já está guardado em `#before`, que é o que o
+        undo usa, então mutar o rastro deste gesto não perde nada.
+      */
+      const emCurso = this.#markInProgress.get(obj.id);
+      let marks: EraseMark[];
+
+      if (emCurso && perto(emCurso.points, local, width)) {
+        emCurso.points.push(local.x, local.y);
+        marks = obj.erased as EraseMark[];
       } else {
-        marks.push({ points: [local.x, local.y], width });
+        const novo: EraseMark = { points: [local.x, local.y], width };
+        marks = [...(obj.erased ?? []), novo];
+        this.#markInProgress.set(obj.id, novo);
       }
-      this.#lastTouch.set(obj.id, this.#step);
 
       updated.push({ ...obj, erased: marks, rev: obj.rev + 1, updatedAt: Date.now() });
     }
@@ -249,9 +287,8 @@ export class EraserTool implements Tool {
 
   #reset(): void {
     this.#before.clear();
-    this.#lastTouch.clear();
+    this.#markInProgress.clear();
     this.#removed = [];
-    this.#step = 0;
   }
 
   #radiusWorld(): number {
@@ -285,4 +322,24 @@ export class EraserTool implements Tool {
     ctx.stroke();
     ctx.restore();
   }
+}
+
+/**
+ * O ponto novo continua o rastro em curso, ou começa outro?
+ *
+ * A comparação é com o ÚLTIMO ponto do rastro, e o limite é o diâmetro da
+ * borracha. Dentro dele, o segmento reto até o ponto novo cobre só terreno que
+ * a borracha de fato atravessou: `#eraseAlong` varre o intervalo entre dois
+ * eventos de ponteiro em passos de meio raio, então dois toques no mesmo objeto
+ * a menos de um diâmetro um do outro têm o caminho inteiro varrido entre eles.
+ *
+ * Acima disso a borracha saiu do traço e voltou longe, e ligar os dois pontos
+ * abriria um buraco reto por onde ela nunca passou.
+ */
+function perto(points: readonly number[], p: { x: number; y: number }, width: number): boolean {
+  const n = points.length;
+  if (n < 2) return false;
+  const dx = p.x - points[n - 2]!;
+  const dy = p.y - points[n - 1]!;
+  return dx * dx + dy * dy <= width * width;
 }

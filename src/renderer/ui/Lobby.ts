@@ -226,7 +226,7 @@ export class Lobby {
     const del = document.createElement('button');
     del.type = 'button';
     del.className = 'qb-card__delete';
-    del.textContent = '✕';
+    del.append(icon('fechar', 13));
     del.title = 'Excluir este quadro';
     del.addEventListener('click', async (e) => {
       // Sem isso o clique borbulha para o card e abriria o quadro que acabou de

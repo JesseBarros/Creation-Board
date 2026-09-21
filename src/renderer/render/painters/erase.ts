@@ -25,8 +25,28 @@ import type { PaintContext, Painter } from './types';
 /** Teto de pixels do canvas intermediario. Acima disto, cai a resolucao. */
 const MAX_PIXELS = 4_000_000;
 
+/*
+  DOIS canvas intermediarios, e a separacao vale explicar porque parece
+  duplicacao inutil.
+
+  Ate 21/09/2026 havia um so, criado com `willReadFrequently: true` porque o
+  `isFullyErased` precisa de `getImageData`. Essa bandeira diz ao Chromium para
+  manter o canvas na CPU, e ai esta o problema: quem a exige roda UMA VEZ por
+  objeto, no fim do gesto; quem usava o canvas era o `withErase`, A CADA FRAME,
+  para CADA objeto apagado.
+
+  O resultado foi medido no painel `F3` dele: 31,3 ms de render com TRES objetos
+  desenhados. Desenhar a tinta num canvas de CPU, recortar, e devolver o bitmap
+  para um canvas de GPU custa transferencia nos dois sentidos, por objeto, por
+  frame -- e o canvas chega a 4 megapixels com zoom aproximado.
+
+  Agora o desenho usa um canvas normal (acelerado) e a sonda usa o de leitura,
+  que e pequeno por definicao (64px) e so roda ao soltar a borracha.
+*/
 let scratch: HTMLCanvasElement | null = null;
 let scratchCtx: CanvasRenderingContext2D | null = null;
+let sonda: HTMLCanvasElement | null = null;
+let sondaCtx: CanvasRenderingContext2D | null = null;
 
 export function withErase<T extends InkObject>(obj: T, p: PaintContext, paint: Painter<T>): void {
   const marks = obj.erased;
@@ -84,7 +104,7 @@ export function isFullyErased(obj: InkObject, p: PaintContext): boolean {
   const f = Math.min(1, PROBE_PX / Math.max(bounds.w, bounds.h));
   const w = Math.max(1, Math.ceil(bounds.w * f));
   const h = Math.max(1, Math.ceil(bounds.h * f));
-  const ctx = scratchContext(w, h);
+  const ctx = sondaContext(w, h);
   if (!ctx) return false;
 
   ctx.setTransform(f, 0, 0, f, -bounds.x * f, -bounds.y * f);
@@ -172,19 +192,57 @@ export function isErasedAt(obj: InkObject, x: number, y: number): boolean {
 function scratchContext(w: number, h: number): CanvasRenderingContext2D | null {
   if (!scratch) {
     scratch = document.createElement('canvas');
-    scratchCtx = scratch.getContext('2d', { willReadFrequently: true });
+    // SEM `willReadFrequently`: este canvas e desenhado a cada frame e nunca
+    // lido. A bandeira o jogaria para a CPU e custaria o render inteiro.
+    scratchCtx = scratch.getContext('2d');
   }
   if (!scratchCtx) return null;
+  return prepara(scratch, scratchCtx, w, h);
+}
 
-  if (scratch.width < w || scratch.height < h) {
-    scratch.width = Math.max(scratch.width, w);
-    scratch.height = Math.max(scratch.height, h);
+/**
+ * O canvas da sonda de "sobrou tinta?".
+ *
+ * Este sim pede `willReadFrequently`, porque a unica coisa que ele faz e ser
+ * lido. E pequeno (ver PROBE_PX) e roda uma vez por objeto ao soltar a borracha.
+ */
+function sondaContext(w: number, h: number): CanvasRenderingContext2D | null {
+  if (!sonda) {
+    sonda = document.createElement('canvas');
+    sondaCtx = sonda.getContext('2d', { willReadFrequently: true });
   }
-  scratchCtx.setTransform(1, 0, 0, 1, 0, 0);
-  scratchCtx.globalAlpha = 1;
-  scratchCtx.globalCompositeOperation = 'source-over';
-  scratchCtx.clearRect(0, 0, w, h);
-  return scratchCtx;
+  if (!sondaCtx) return null;
+  return prepara(sonda, sondaCtx, w, h);
+}
+
+/**
+ * Diagnostico do selftest: o canvas de DESENHO ficou acelerado?
+ *
+ * Nao ha como medir isto de fora -- o canvas e privado deste modulo, e o custo
+ * da bandeira so aparece como ms de render, que varia com a maquina. A pergunta
+ * aqui e binaria e vale em qualquer PC. Ver o bloco de comentario la em cima
+ * para o que a bandeira custou.
+ */
+export function scratchAcelerado(): boolean {
+  const ctx = scratchContext(1, 1);
+  return ctx !== null && ctx.getContextAttributes().willReadFrequently !== true;
+}
+
+function prepara(
+  canvas: HTMLCanvasElement,
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+): CanvasRenderingContext2D {
+  if (canvas.width < w || canvas.height < h) {
+    canvas.width = Math.max(canvas.width, w);
+    canvas.height = Math.max(canvas.height, h);
+  }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.clearRect(0, 0, w, h);
+  return ctx;
 }
 
 /** Distancia de um ponto a um segmento. Mesma conta do hit-test dos tracos. */

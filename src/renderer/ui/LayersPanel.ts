@@ -62,7 +62,7 @@ export class LayersPanel {
     fechar.type = 'button';
     fechar.className = 'qb-layers__close';
     fechar.setAttribute('aria-label', 'Fechar o painel de camadas');
-    fechar.textContent = '×';
+    fechar.append(icon('fechar', 15));
     fechar.addEventListener('click', () => this.actions.close());
 
     head.append(titulo, this.#contagem, fechar);

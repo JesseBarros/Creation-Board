@@ -1,15 +1,45 @@
+import { ICONES_PNG } from './iconesPersonalizados';
+
 /**
- * Icones da interface, desenhados em SVG.
+ * Icones da interface.
  *
- * Em SVG e nao em glifo de fonte por um motivo concreto: um `▦` ou um `⌗`
- * depende da fonte instalada e do fallback do sistema para desenhar -- muda de
- * maquina para maquina, e as vezes vira um retangulo vazio. Aqui a forma e a
- * mesma em qualquer lugar, acompanha a cor do texto (`currentColor`) e escala
- * com o zoom da interface sem serrilhar.
+ * A MAIORIA VEM DO LUCIDE (lucide.dev), sob licenca ISC/MIT -- o texto esta em
+ * `assets/icones/LICENSE-lucide.txt`, e e a unica obrigacao que essas licencas
+ * impoem: nenhuma tela de creditos, nenhum link, nenhum pagamento.
  *
- * Todos partem do mesmo desenho: caixa de 24, traco de 1,75, pontas
- * arredondadas. E o que faz uma fila de icones parecer um conjunto em vez de
- * uma colecao.
+ * A troca aconteceu em 21/09/2026. O conjunto anterior era desenhado a mao aqui
+ * dentro e o veredito dele foi direto: [...]. Desenhar quarenta icones consistentes e trabalho de quem faz isso
+ * em tempo integral -- o Lucide tem 2.112 deles, na mesma grade de 24, e
+ * resolvidos por gente que conhece o oficio.
+ *
+ * O QUE **NAO** VEIO DO LUCIDE, e por que:
+ *
+ *   - as PREVIAS DE FORMA (retangulo, elipse, triangulo, losango, linha, seta,
+ *     preencher). Elas nao sao icones de comando: sao o desenho do objeto que
+ *     vai nascer no quadro. Um triangulo de cantos arredondados prometeria um
+ *     triangulo arredondado;
+ *   - os MODOS DA BORRACHA (apagar peca, apagar traco). Nao existe equivalente:
+ *     sao uma distincao deste app.
+ *
+ * ---
+ *
+ * DUAS CAMADAS. O Lucide e monolinha puro; aqui cada icone pode ganhar um CORPO
+ * preenchido, desenhado atras do contorno em opacidade baixa.
+ *
+ * Isso nao e enfeite -- foi o que resolveu a barra de vidro. Com a superficie da
+ * barra 100% transparente, contorno sozinho perde a forma sobre um resumo denso;
+ * o corpo segura a silhueta quando o traco perde contraste. E continua UMA cor
+ * so: o preenchimento e `currentColor`, entao tema, destaque e pilula branca
+ * seguem funcionando sem uma variante por estado.
+ *
+ * Quem tem corpo e escolha: icone que e um GESTO (desfazer, mais, alinhar) nao
+ * tem, porque gesto nao tem dentro; icone que e um OBJETO (post-it, cadeado,
+ * teclado) tem. Preencher tudo deixaria a fila pesada e apagaria a distincao.
+ *
+ * ---
+ *
+ * E QUALQUER `.png` largado em `assets/icones/` com o nome de um icone substitui
+ * o desenho, sem mexer em codigo -- ver iconesPersonalizados.ts.
  */
 
 export type IconName =
@@ -20,7 +50,6 @@ export type IconName =
   | 'desfazer'
   | 'refazer'
   | 'grade'
-  | 'ima'
   | 'regua'
   | 'ajustar'
   | 'sol'
@@ -31,7 +60,10 @@ export type IconName =
   | 'comandos'
   | 'menos'
   | 'mais'
-  // barra lateral: ferramentas
+  // busca
+  | 'busca'
+  | 'fechar'
+  // ferramentas
   | 'selecionar'
   | 'caneta'
   | 'marcaTexto'
@@ -40,7 +72,7 @@ export type IconName =
   | 'postit'
   | 'formas'
   | 'borracha'
-  // barra lateral: formas
+  // seletor de formas -- desenhados aqui
   | 'retangulo'
   | 'elipse'
   | 'triangulo'
@@ -48,7 +80,7 @@ export type IconName =
   | 'linha'
   | 'seta'
   | 'preencher'
-  // barra lateral: modos da borracha
+  // modos da borracha -- desenhados aqui
   | 'apagarPeca'
   | 'apagarTraco'
   // painel de camadas (M8)
@@ -61,166 +93,270 @@ export type IconName =
   | 'descer';
 
 /**
- * Traços de cada ícone, em coordenadas de uma caixa 24x24.
+ * Um icone: o miolo do SVG, e quais dos elementos dele levam corpo.
  *
- * **Todos vivem dentro de uma área de 16x16, entre 4 e 20.** Essa regra é o que
- * mais mudou em 12/08/2026 ([...]): antes cada
- * ícone tinha a sua própria extensão — a grade ia de 4 a 20, a régua de 3 a 21,
- * o ímã de 4 a 17 — e o peso óptico variava tanto que a fila parecia desalinhada
- * mesmo estando alinhada. Com a mesma área viva, eles viram um conjunto.
- *
- * As exceções são deliberadas e são poucas: os traços que *representam* a
- * largura de algo (o rastro do marca-texto, a base do salvar) passam do limite
- * de propósito.
+ * `corpo` guarda INDICES, e nao um caminho a parte. A razao e que as duas
+ * camadas precisam coincidir exatamente: repetir o desenho como fill separado
+ * abriria espaco para uma das copias sair meio pixel fora da outra na primeira
+ * vez que alguem editasse so uma delas.
  */
-const PATHS: Record<IconName, string[]> = {
-  voltar: ['M14.5 5.5L8 12l6.5 6.5'],
-  // Bandeja com seta para BAIXO: guardar no disco. A bandeja (dois lados que
-  // sobem) diz "entra aqui"; a linha reta que havia antes so dizia "chao".
-  salvar: ['M12 4.5v8.6', 'M8.4 9.7l3.6 3.6 3.6-3.6', 'M4.8 15v2.5a2 2 0 002 2h10.4a2 2 0 002-2V15'],
-  // A MESMA bandeja, seta para CIMA: tirar do app para fora. Os dois so se
-  // distinguem pela direcao da seta, e e assim que se le "o par".
-  exportar: ['M12 13.1V4.5', 'M8.4 8.1L12 4.5l3.6 3.6', 'M4.8 15v2.5a2 2 0 002 2h10.4a2 2 0 002-2V15'],
-  desfazer: ['M9 7.5L5 12l4 4.5', 'M5 12h8.5a4.5 4.5 0 014.5 4.5v1.5'],
-  refazer: ['M15 7.5l4 4.5-4 4.5', 'M19 12h-8.5A4.5 4.5 0 006 16.5v1.5'],
-  // Janela dividida em quatro, e nao quatro linhas soltas: com moldura o icone
-  // tem silhueta -- fechado, ele se reconhece de longe e aguenta ficar
-  // translucido sem virar quatro riscos perdidos.
-  grade: ['M6.2 5h11.6a1.8 1.8 0 011.8 1.8v10.4a1.8 1.8 0 01-1.8 1.8H6.2a1.8 1.8 0 01-1.8-1.8V6.8A1.8 1.8 0 016.2 5z', 'M12 5v14', 'M4.4 12h15.2'],
-  // Imã em U, com as duas pontas. Ocupa a area viva inteira (4.5 a 19.5): antes
-  // ele parava em 17 e ficava visivelmente menor que os vizinhos na mesma fila.
-  ima: ['M6.4 4.5v8a5.6 5.6 0 0011.2 0v-8h-3.7v8a1.9 1.9 0 01-3.8 0v-8z', 'M6.4 8.6h3.8', 'M13.9 8.6h3.7'],
-  // Marcas de tamanhos diferentes, como numa regua de verdade -- quatro iguais
-  // liam como uma cerca.
-  //
-  // A caixa e mais alta do que parece necessario (7,5 contra 6) por um motivo
-  // de tamanho pequeno: descontado o traco, sobram menos de 3px de vao aos 17px
-  // de tela, e as marcas encostam no lado de baixo. Com o vao maior, a regua
-  // continua sendo uma regua mesmo quando o botao esta ligado e preenchido.
-  regua: [
-    'M6 8.2h12a2 2 0 012 2v3.6a2 2 0 01-2 2H6a2 2 0 01-2-2v-3.6a2 2 0 012-2z',
-    'M8.4 8.2v2.6',
-    'M12 8.2v3.6',
-    'M15.6 8.2v2.6',
-  ],
-  ajustar: ['M4.5 9V4.5H9', 'M19.5 9V4.5H15', 'M4.5 15v4.5H9', 'M19.5 15v4.5H15'],
-  // Sol e lua, e nao um circulo meio preenchido: o interruptor de tema mostra
-  // PARA ONDE vai, e um crescente diz "escuro" sem precisar de legenda.
-  sol: [
-    'M15.2 12a3.2 3.2 0 11-6.4 0 3.2 3.2 0 016.4 0z',
-    'M12 4.2v1.8',
-    'M12 18v1.8',
-    'M4.2 12H6',
-    'M18 12h1.8',
-    'M6.5 6.5l1.3 1.3',
-    'M16.2 16.2l1.3 1.3',
-    'M17.5 6.5l-1.3 1.3',
-    'M7.8 16.2l-1.3 1.3',
-  ],
-  lua: ['M19.5 14.6A8 8 0 019.4 4.5a8 8 0 1010.1 10.1z'],
-  // Alinhamento: quatro linhas, e a que sobra curta e a que diz o lado. E o
-  // desenho que todo editor usa, e por isso nao precisa de legenda.
-  alinharEsquerda: ['M4.5 6.5h15', 'M4.5 10.8h9.5', 'M4.5 15h15', 'M4.5 19.3h9.5'],
-  alinharCentro: ['M4.5 6.5h15', 'M7.2 10.8h9.6', 'M4.5 15h15', 'M7.2 19.3h9.6'],
-  alinharDireita: ['M4.5 6.5h15', 'M10 10.8h9.5', 'M4.5 15h15', 'M10 19.3h9.5'],
-  // Teclado: a tela que ele abre e a lista de teclas. Tres teclas e nao quatro
-  // -- a quarta nao acrescentava informacao e fechava os vaos.
-  comandos: [
-    'M6 7.5h12a2 2 0 012 2v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5a2 2 0 012-2z',
-    'M8 11h.01',
-    'M12 11h.01',
-    'M16 11h.01',
-    'M9.4 14h5.2',
-  ],
-  menos: ['M5.5 12h13'],
-  mais: ['M12 5.5v13', 'M5.5 12h13'],
+interface IconSpec {
+  svg: string;
+  corpo?: number[];
+}
 
-  // A seta do cursor, em CONTORNO como todos os outros. Ela era o unico icone
-  // preenchido da fila, e por isso pesava mais que os vizinhos.
-  selecionar: ['M7 4.6l9.6 6.2-4.3 1 1.9 4.4-2 .9-1.9-4.4-3.3 2.6z'],
-  // Caneta e lapis dividem o corpo inclinado; o que os separa e a ponta --
-  // a caneta termina em bico, o lapis tem a madeira marcada.
-  caneta: ['M5 19l1.2-4L16 5.2l2.8 2.8L9 17.8z', 'M14.2 7l2.8 2.8'],
-  lapis: ['M5 19l1.2-4L16 5.2l2.8 2.8L9 17.8z', 'M13 8.2l2.8 2.8', 'M6.4 14.8l2.8 2.8'],
-  // Marca-texto: corpo CURTO e GORDO com ponta chanfrada, mais o rastro largo
-  // embaixo. Antes ele dividia o corpo comprido com a caneta e os dois se
-  // confundiam na barra; agora a silhueta e outra desde longe.
-  marcaTexto: ['M9 13.8l4.6-4.6 3.6 3.6-4.6 4.6H9z', 'M12.6 8.2l3.6 3.6', 'M4.5 19.8h15'],
-  texto: ['M6.5 5.5h11', 'M12 5.5v13', 'M9 18.5h6'],
-  // Post-it: o canto dobrado fica EMBAIXO, e nao em cima. Em cima ele e o
-  // desenho universal de "documento", e era isso que o icone dizia.
-  postit: [
-    'M6.4 4.5h11.2a1.9 1.9 0 011.9 1.9v6.7L13.6 19.5H6.4a1.9 1.9 0 01-1.9-1.9V6.4a1.9 1.9 0 011.9-1.9z',
-    'M19.5 13.1h-4a1.9 1.9 0 00-1.9 1.9v4.5',
-  ],
-  // Um quadrado e um circulo se cruzando: e a ferramenta das varias formas.
-  formas: [
-    'M6.2 5.5h5.6a1.7 1.7 0 011.7 1.7v5.6a1.7 1.7 0 01-1.7 1.7H6.2a1.7 1.7 0 01-1.7-1.7V7.2A1.7 1.7 0 016.2 5.5z',
-    'M19.5 14.6a5 5 0 11-10 0 5 5 0 0110 0z',
-  ],
-  borracha: ['M5 15l6.6-6.6a1.5 1.5 0 012.1 0l3.9 3.9a1.5 1.5 0 010 2.1L14 18H8.2z', 'M4.5 19.8h15', 'M9.3 10.3l5.7 5.7'],
+const ICONS: Record<IconName, IconSpec> = {
+  voltar: { svg: '<path d="m15 18-6-6 6-6" />' },
+  salvar: {
+    svg: '<path d="M12 15V3" /><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m7 10 5 5 5-5" />',
+    corpo: [1],
+  },
+  exportar: {
+    svg: '<path d="M12 3v12" /><path d="m17 8-5-5-5 5" /><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />',
+    corpo: [2],
+  },
+  desfazer: { svg: '<path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" />' },
+  refazer: { svg: '<path d="m15 14 5-5-5-5" /><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13" />' },
+  grade: {
+    svg: '<path d="M12 3v18" /><path d="M3 12h18" /><rect x="3" y="3" width="18" height="18" rx="2" />',
+    corpo: [2],
+  },
+  // A regua do Lucide ja e diagonal -- e por isso nao se confunde com o teclado,
+  // que foi o defeito do conjunto anterior. SEM corpo: as marcas sao o que faz
+  // uma regua ser uma regua, e com tinta atras elas somem aos 17px.
+  regua: {
+    svg: '<path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z" /><path d="m14.5 12.5 2-2" /><path d="m11.5 9.5 2-2" /><path d="m8.5 6.5 2-2" /><path d="m17.5 15.5 2-2" />',
+  },
+  ajustar: {
+    svg: '<path d="M8 3H5a2 2 0 0 0-2 2v3" /><path d="M21 8V5a2 2 0 0 0-2-2h-3" /><path d="M3 16v3a2 2 0 0 0 2 2h3" /><path d="M16 21h3a2 2 0 0 0 2-2v-3" />',
+  },
+  sol: {
+    svg: '<circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" />',
+    corpo: [0],
+  },
+  lua: {
+    svg: '<path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" />',
+    corpo: [0],
+  },
+  alinharEsquerda: { svg: '<path d="M21 5H3" /><path d="M15 12H3" /><path d="M17 19H3" />' },
+  alinharCentro: { svg: '<path d="M21 5H3" /><path d="M17 12H7" /><path d="M19 19H5" />' },
+  alinharDireita: { svg: '<path d="M21 5H3" /><path d="M21 12H9" /><path d="M21 19H7" />' },
+  comandos: {
+    svg: '<path d="M10 8h.01" /><path d="M12 12h.01" /><path d="M14 8h.01" /><path d="M16 12h.01" /><path d="M18 8h.01" /><path d="M6 8h.01" /><path d="M7 16h10" /><path d="M8 12h.01" /><rect width="20" height="16" x="2" y="4" rx="2" />',
+    corpo: [8],
+  },
+  menos: { svg: '<path d="M5 12h14" />' },
+  mais: { svg: '<path d="M5 12h14" /><path d="M12 5v14" />' },
 
-  // As PREVIAS das formas: aqui o desenho e o proprio objeto que sera criado,
-  // entao os cantos seguem a forma de verdade e nao a linguagem da interface.
-  // Arredondar o triangulo aqui prometeria um triangulo arredondado no quadro.
-  retangulo: ['M4.5 6.5h15v11h-15z'],
-  elipse: ['M19.5 12a7.5 5.5 0 11-15 0 7.5 5.5 0 0115 0z'],
-  triangulo: ['M12 5.5l7.5 13h-15z'],
-  losango: ['M12 4.5l7.5 7.5-7.5 7.5-7.5-7.5z'],
-  linha: ['M5 19L19 5'],
-  seta: ['M5 19L19 5', 'M19 11.5V5h-6.5'],
-  preencher: ['M4.5 6.5h15v11h-15z', 'M4.5 6.5h7.5v11H4.5z'],
+  // A LUPA -- ela nao existia no conjunto anterior, e o campo "buscar em todos
+  // os quadros" usava o icone de TECLADO no lugar dela.
+  busca: { svg: '<path d="m21 21-4.34-4.34" /><circle cx="11" cy="11" r="8" />', corpo: [1] },
+  fechar: { svg: '<path d="M18 6 6 18" /><path d="m6 6 12 12" />' },
 
-  // Apagar por peca: o rastro come um pedaco do traco e o resto fica.
-  apagarPeca: ['M3 12h4', 'M17 12h4', 'M15.5 12a3.5 3.5 0 11-7 0 3.5 3.5 0 017 0z'],
-  // Apagar o traco inteiro: a linha toda riscada.
-  apagarTraco: ['M4 12h16', 'M8.5 7.5l7 9', 'M15.5 7.5l-7 9'],
+  selecionar: {
+    svg: '<path d="M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z" />',
+    corpo: [0],
+  },
+  caneta: {
+    svg: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />',
+    corpo: [0],
+  },
+  marcaTexto: {
+    svg: '<path d="m9 11-6 6v3h9l3-3" /><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4" />',
+    corpo: [0],
+  },
+  // Caneta e lapis dividem o corpo inclinado; o que os separa e a marca da
+  // madeira perto da ponta.
+  lapis: {
+    svg: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" /><path d="m15 5 4 4" />',
+    corpo: [0],
+  },
+  texto: {
+    svg: '<path d="M12 4v16" /><path d="M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2" /><path d="M9 20h6" />',
+  },
+  /*
+    O POST-IT continua sendo o nosso, e nao o `sticky-note` do Lucide.
 
-  // Painel de camadas. Folhas empilhadas, e nao um "L" de lista: o que o painel
-  // mostra e uma PILHA, e a ordem dela e o assunto.
-  camadas: ['M12 4l8 4.5-8 4.5-8-4.5z', 'M4 13l8 4.5 8-4.5'],
-  olho: ['M2.5 12S6 6.5 12 6.5 21.5 12 21.5 12 18 17.5 12 17.5 2.5 12 2.5 12z', 'M14.5 12a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z'],
-  // O olho fechado e o MESMO olho com um corte por cima, e nao outro desenho:
-  // ligado e desligado tem de se reconhecer como o mesmo controle.
-  olhoFechado: ['M2.5 12S6 6.5 12 6.5c1.6 0 3 .4 4.2 1M21.5 12s-1.4 2.2-3.8 3.8', 'M4 4l16 16'],
-  cadeado: [
-    'M7.6 10.6h8.8a2 2 0 012 2v5.4a2 2 0 01-2 2H7.6a2 2 0 01-2-2v-5.4a2 2 0 012-2z',
-    'M9.2 10.6V8.2a2.8 2.8 0 015.6 0v2.4',
-  ],
-  cadeadoAberto: [
-    'M7.6 10.6h8.8a2 2 0 012 2v5.4a2 2 0 01-2 2H7.6a2 2 0 01-2-2v-5.4a2 2 0 012-2z',
-    'M9.2 10.6V8.2a2.8 2.8 0 015.3-1.2',
-  ],
-  subir: ['M12 19V6', 'M7 11l5-5 5 5'],
-  descer: ['M12 5v13', 'M7 13l5 5 5-5'],
+    O deles poe a dobra no canto de CIMA -- e ali ela e o desenho universal de
+    "documento", nao de post-it. O conjunto anterior ja tinha resolvido isso: a
+    dobra vai EMBAIXO, que e onde ela fica num papel colado na parede. Visto na
+    folha de contato lado a lado, o do Lucide lia como arquivo.
+
+    Vale registrar que trocar de biblioteca nao e motivo para jogar fora uma
+    decisao que ja tinha sido tomada por um motivo.
+  */
+  postit: {
+    svg: '<path d="M6.4 4.5h11.2a1.9 1.9 0 0 1 1.9 1.9v6.7L13.6 19.5H6.4a1.9 1.9 0 0 1-1.9-1.9V6.4a1.9 1.9 0 0 1 1.9-1.9z" /><path d="M19.5 13.1h-4a1.9 1.9 0 0 0-1.9 1.9v4.5" />',
+    corpo: [0],
+  },
+  // So o CIRCULO leva corpo -- preencher as tres formas apagaria o cruzamento
+  // entre elas, que e justamente o que diz [...].
+  formas: {
+    svg: '<path d="M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z" /><rect x="3" y="14" width="7" height="7" rx="1" /><circle cx="17.5" cy="17.5" r="3.5" />',
+    corpo: [2],
+  },
+  borracha: {
+    svg: '<path d="M21 21H8a2 2 0 0 1-1.42-.587l-3.994-3.999a2 2 0 0 1 0-2.828l10-10a2 2 0 0 1 2.829 0l5.999 6a2 2 0 0 1 0 2.828L12.834 21" /><path d="m5.082 11.09 8.828 8.828" />',
+    corpo: [0],
+  },
+
+  /*
+    As PREVIAS das formas, desenhadas aqui e nao trazidas do Lucide.
+
+    Aqui o desenho e o proprio objeto que sera criado, entao os cantos seguem a
+    forma de verdade e nao a linguagem da interface -- arredondar o triangulo
+    prometeria um triangulo arredondado no quadro.
+
+    E por isso tambem que elas nao levam corpo: preenchidas, prometeriam uma
+    forma preenchida, e quem decide isso e o botao `preencher`, ao lado.
+  */
+  retangulo: { svg: '<path d="M4.5 6.5h15v11h-15z" />' },
+  elipse: { svg: '<path d="M19.5 12a7.5 5.5 0 1 1-15 0 7.5 5.5 0 0 1 15 0z" />' },
+  triangulo: { svg: '<path d="M12 5.5l7.5 13h-15z" />' },
+  losango: { svg: '<path d="M12 4.5l7.5 7.5-7.5 7.5-7.5-7.5z" />' },
+  linha: { svg: '<path d="M5 19L19 5" />' },
+  seta: { svg: '<path d="M5 19L19 5" /><path d="M19 11.5V5h-6.5" />' },
+  /*
+    Meio cheio, meio vazio: o botao mostra os dois estados que ele alterna.
+
+    O preenchimento e SOLIDO, e nao os 16% do corpo duotone -- ele nao esta ali
+    para dar silhueta, esta ali para DIZER "cheio". Em 16% ele apareceu na folha
+    de contato como um cinza lavado, e o icone virava um retangulo com um risco
+    no meio. Por isso o `fill` vem escrito no proprio elemento, fora do
+    mecanismo de corpo.
+  */
+  preencher: {
+    svg: '<path d="M4.5 6.5h15v11h-15z" /><path d="M4.5 6.5h7.5v11H4.5z" fill="currentColor" stroke="none" />',
+  },
+
+  /*
+    Os MODOS DA BORRACHA. Nao existem no Lucide porque sao uma distincao deste
+    app: apagar um PEDACO do traco contra apagar o traco INTEIRO.
+
+    O par foi desenhado para se ler um contra o outro -- em cima, a borracha
+    come o meio da linha e as pontas ficam; embaixo, a curva de tinta de um lado
+    e o X do outro, com sujeito e predicado separados.
+  */
+  apagarPeca: {
+    svg: '<path d="M3 12h4" /><path d="M17 12h4" /><path d="M15.5 12a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0z" />',
+    corpo: [2],
+  },
+  apagarTraco: {
+    svg: '<path d="M3.8 15.2c2.2-4.6 4.4-4.6 6.6 0" /><path d="M14 8.6l5.6 5.6" /><path d="M19.6 8.6L14 14.2" />',
+  },
+
+  // So a folha de CIMA leva corpo: e ela que esta na frente, e o degrade de peso
+  // e o que desenha a pilha.
+  camadas: {
+    svg: '<path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z" /><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12" /><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17" />',
+    corpo: [0],
+  },
+  olho: {
+    svg: '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" /><circle cx="12" cy="12" r="3" />',
+    corpo: [1],
+  },
+  // Sem corpo: o que ele diz e ausencia.
+  olhoFechado: {
+    svg: '<path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" /><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242" /><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" /><path d="m2 2 20 20" />',
+  },
+  cadeado: {
+    svg: '<rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />',
+    corpo: [0],
+  },
+  cadeadoAberto: {
+    svg: '<rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 9.9-1" />',
+    corpo: [0],
+  },
+  subir: { svg: '<path d="m5 12 7-7 7 7" /><path d="M12 19V5" />' },
+  descer: { svg: '<path d="M12 5v14" /><path d="m19 12-7 7-7-7" />' },
 };
 
-/** Ícones cujo segundo traço é preenchido, e não contornado. */
-const FILLED_SECOND: ReadonlySet<IconName> = new Set(['preencher']);
+/**
+ * Opacidade do corpo.
+ *
+ * 0,16 nao e chute: e o mesmo valor da pilula de "ligado" da barra, e a razao e
+ * a mesma medida no B16 -- acima disso o preenchimento passa a competir com o
+ * contorno e o icone vira uma mancha com um risco em volta; abaixo, ele some no
+ * tema escuro, onde a diferenca entre 8% e nada e invisivel.
+ */
+const CORPO_OPACIDADE = '0.16';
 
-export function icon(name: IconName, size = 17): SVGSVGElement {
+/**
+ * Espessura do traco.
+ *
+ * 2 e a do Lucide, e as curvas deles foram desenhadas PARA ela: os raios de
+ * canto e as folgas entre elementos assumem esse peso. O conjunto anterior
+ * usava 1,75, e manter esse valor aqui deixaria os icones visivelmente mais
+ * magros do que o desenho original previa.
+ */
+const TRACO = '2';
+
+/**
+ * O icone, como elemento pronto para entrar num botao.
+ *
+ * Devolve `Element` e nao `SVGSVGElement` porque ele pode ser duas coisas: o
+ * desenho vetorial, ou um `<span>` mascarado por um PNG desenhado a mao (ver
+ * iconesPersonalizados.ts). Quem chama nao precisa saber qual -- os dois herdam
+ * a cor do texto e ocupam o mesmo quadrado.
+ */
+export function icon(name: IconName, size = 17): Element {
+  const png = ICONES_PNG.get(name);
+  if (png) return iconePng(png, size);
+  return iconeSvg(name, size);
+}
+
+/**
+ * O PNG vira uma mascara sobre uma caixa da cor atual.
+ *
+ * `background-color: currentColor` e o que pinta, e a mascara e o que recorta.
+ */
+function iconePng(url: string, size: number): HTMLElement {
+  const el = document.createElement('span');
+  el.className = 'qb-icone-png';
+  el.style.width = `${size}px`;
+  el.style.height = `${size}px`;
+  el.style.setProperty('--icone', `url("${url}")`);
+  el.setAttribute('aria-hidden', 'true');
+  return el;
+}
+
+function iconeSvg(name: IconName, size: number): SVGSVGElement {
+  const spec = ICONS[name];
   const svg = document.createElementNS(SVG_NS, 'svg');
   svg.setAttribute('viewBox', '0 0 24 24');
   svg.setAttribute('width', String(size));
   svg.setAttribute('height', String(size));
   svg.setAttribute('fill', 'none');
   svg.setAttribute('stroke', 'currentColor');
-  svg.setAttribute('stroke-width', '1.75');
+  svg.setAttribute('stroke-width', TRACO);
   svg.setAttribute('stroke-linecap', 'round');
   svg.setAttribute('stroke-linejoin', 'round');
   // Decorativo: quem nomeia o botao e o `aria-label` dele, e nao o desenho.
   svg.setAttribute('aria-hidden', 'true');
   svg.setAttribute('focusable', 'false');
 
-  PATHS[name].forEach((d, i) => {
-    const path = document.createElementNS(SVG_NS, 'path');
-    path.setAttribute('d', d);
-    if (i === 1 && FILLED_SECOND.has(name)) {
-      path.setAttribute('fill', 'currentColor');
-      path.setAttribute('stroke', 'none');
-    }
-    svg.append(path);
-  });
+  // O miolo e uma string CONSTANTE deste arquivo -- nunca vem de fora --, entao
+  // nao ha caminho por onde um conteudo de terceiro chegue aqui.
+  svg.innerHTML = spec.svg;
+
+  /*
+    O corpo e uma CLONAGEM do elemento, inserida antes dele.
+
+    Clonar em vez de preencher o proprio elemento e o que permite ter as duas
+    camadas: o original continua sendo so contorno, e a copia atras so
+    preenchimento. Preencher o proprio elemento daria uma forma so, com o
+    contorno grudado no preenchimento -- que e um desenho diferente, e mais
+    pesado.
+  */
+  for (const i of spec.corpo ?? []) {
+    const alvo = svg.children[i];
+    if (!alvo) continue;
+    const copia = alvo.cloneNode(false) as SVGElement;
+    copia.setAttribute('fill', 'currentColor');
+    copia.setAttribute('fill-opacity', CORPO_OPACIDADE);
+    copia.setAttribute('stroke', 'none');
+    svg.insertBefore(copia, svg.firstChild);
+  }
 
   return svg;
 }
@@ -230,7 +366,7 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 /**
  * A marca do aplicativo, em miniatura.
  *
- * Nao entra no `PATHS` acima porque ela e a unica coisa aqui que NAO acompanha
+ * Nao entra no conjunto acima porque ela e a unica coisa aqui que NAO acompanha
  * a cor do texto: os outros sao icones de comando e mudam com o tema, esta e a
  * identidade e tem cor propria. Misturar as duas coisas no mesmo mecanismo faria
  * a marca desbotar junto com a interface.

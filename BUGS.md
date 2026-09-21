@@ -17,10 +17,11 @@
 | `Ctrl+V` não cola, atalho não responde | **[B6](#b6--ctrlv-não-cola-imagem-da-área-de-transferência)** — o caminho até o atalho, não o atalho |
 | **Texto** distorce, quebra sozinho ou some ao sair da caixa | **[B19](#b19--redimensionar-texto-distorcia-o-desenho-da-letra)** e **[B21](#b21--a-quebra-de-linha-mudava-ao-sair-da-caixa)** |
 | Rastro ao **rolar devagar** | **[B18](#b18--rastro-de-tinta-ao-rolar-a-tela-devagar)** — em aberto, parente do B8 |
+| **Borracha** apaga em bolas ou trava o app | **[B24](#b24--a-borracha-apagava-em-bolas-e-travava-o-aplicativo)** |
 
-**Estado: 3 itens abertos** (B10, B15 e **B18**), **26 fechados**. Última atualização: 21/09/2026.
+**Estado: 3 itens abertos** (B10, B15 e **B18**), **27 fechados**. Última atualização: 21/09/2026.
 
-**A rodada de 20–21/09/2026 fechou cinco itens e abriu um.** Ela veio de usar o app para
+**A rodada de 20–21/09/2026 fechou seis itens e abriu um.** Ela veio de usar o app para
 montar resumos de verdade, e quase tudo que apareceu estava em texto e em interface: o
 redimensionamento que distorcia títulos (**B19**), o negrito que só funcionava depois de
 digitar (**B20**), a quebra que mudava ao sair da caixa (**B21**), o tema claro que cansava a
@@ -1707,6 +1708,62 @@ ainda não tem causa estabelecida.
 
 **Ferramenta nova para a caçada:** `QB_BLUR=0` desliga todo `backdrop-filter`, no mesmo idioma
 do `QB_GPU`.
+
+---
+
+### B24 — A borracha apagava em bolas e travava o aplicativo
+`corrigido` · `alto` · 21/09/2026
+
+
+Eram **dois defeitos independentes** que se encontraram no mesmo gesto. Que fossem dois estava
+na própria queixa — "bolas" é um problema de *forma*, "laga" é um problema de *custo*, e
+nenhuma causa única explica os dois.
+
+#### As bolas: continuidade por passo adjacente
+
+O rastro da borracha só continuava se o objeto tivesse sido tocado no passo **imediatamente
+anterior** (`lastTouch.get(id) === step - 1`). Mas `#step` conta *toda* posição varrida,
+inclusive as que não encostam em nada.
+
+Varrendo um rabisco, a borracha encosta num traço, **perde o contato num vão**, e encosta de
+novo. O passo vazio quebrava a corrente, e cada reencontro abria um rastro **novo de um ponto
+só** — e um rastro de um ponto o painter desenha como **disco** (`erase.ts`, `cutMarks`: com
+dois números não há segmento, então vira `arc`). Daí a fileira de bolas com beirada serrilhada.
+
+
+**Medido**, e não suposto: a checagem nova foi rodada com a regra antiga de volta.
+
+| | rastros | de um ponto só | maior rastro |
+|---|---|---|---|
+| regra antiga | 10 | **10** | 1 ponto |
+| agora | 1 | 0 | 10 pontos |
+
+#### O lag: uma bandeira de canvas no lugar errado
+
+`erase.ts` tinha **um** canvas intermediário, criado com `willReadFrequently: true`. Essa
+bandeira diz ao Chromium para manter o canvas na **CPU**.
+
+Quem a exigia é o `isFullyErased`, que precisa de `getImageData` e roda **uma vez por objeto,
+ao soltar a borracha**. Quem *usava* o canvas é o `withErase`, **a cada frame, para cada objeto
+apagado**, num canvas que chega a 4 megapixels com zoom aproximado. Desenhar a tinta na CPU,
+recortar, e devolver o bitmap para um canvas de GPU custa transferência nos dois sentidos, por
+objeto, por frame.
+
+**Correção:** dois canvas. O de desenho acelerado (`getContext('2d')` puro), o da sonda com a
+bandeira — pequeno por definição (64 px) e só no fim do gesto.
+
+
+#### Um terceiro custo, menor, corrigido junto
+
+O `#eraseSpot` copiava **todas** as marcas e **todos** os pontos a cada posição varrida. Como o
+rastro cresce a cada passo, o custo do gesto era quadrático, e um gesto longo sobre um rabisco
+denso chega a centenas de passos. O rastro em curso agora é mutado no lugar — o estado original
+já está em `#before`, que é o que o desfazer usa.
+
+**Guardas novas** (duas checagens, `selftest` em 152): uma varre um rabisco em forma de pente e
+exige um rastro contínuo sem nenhum disco solto; a outra pergunta direto se o canvas de recorte
+continua acelerado. A segunda é binária de propósito — o custo da bandeira só apareceria como
+ms de render, que varia de máquina para máquina.
 
 ---
 

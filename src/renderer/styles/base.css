@@ -242,6 +242,34 @@
   Vale a raiz inteira: barras, paineis, cards, busca. O que sobra e a cor
   translucida, entao a interface continua legivel -- so deixa de desfocar.
 */
+/*
+  ICONE DESENHADO A MAO, em PNG.
+
+  O arquivo nao e exibido: ele RECORTA uma caixa pintada com a cor atual. Por
+  isso `background-color: currentColor` -- e ela quem pinta -- e a mascara so
+  decide onde. O desenho e do arquivo, a cor continua sendo do CSS, e com isso o
+  icone acompanha tema, destaque e pilula branca sem precisar de uma variante
+  por estado.
+
+  `contain` e nao `cover`: o desenho inteiro tem de caber. `cover` recortaria as
+  bordas de um PNG que nao fosse exatamente quadrado.
+
+  Ver ui/iconesPersonalizados.ts para como largar um arquivo novo.
+*/
+.qb-icone-png {
+  display: inline-block;
+  flex: none;
+  background-color: currentColor;
+  -webkit-mask-image: var(--icone);
+  mask-image: var(--icone);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
 :root[data-noblur] {
   --chrome-blur: none;
 }

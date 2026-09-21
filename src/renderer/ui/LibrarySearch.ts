@@ -57,7 +57,11 @@ export class LibrarySearch {
 
     const campo = document.createElement('div');
     campo.className = 'qb-libsearch__field';
-    campo.append(icon('comandos', 15));
+    // LUPA, e nao teclado. Ate 21/09/2026 este campo usava `comandos` -- o mesmo
+    // icone do botao de atalhos da barra --, porque a lupa nao existia no
+    // conjunto e alguem pegou o que havia. Dois controles sem relacao nenhuma
+    // apareciam identicos em telas diferentes.
+    campo.append(icon('busca', 15));
 
     this.#input = document.createElement('input');
     this.#input.type = 'search';

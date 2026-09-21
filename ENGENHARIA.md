@@ -66,7 +66,7 @@ Sempre por terminal — nunca por captura de tela cheia (ver o *porquê* no READ
 
 ```
 npm run typecheck     # tsc nos dois projetos, strict
-npm run selftest      # 150 verificações, deve terminar com "tudo passou"
+npm run selftest      # 152 verificações, deve terminar com "tudo passou"
 npm run check:colors  # contraste das cores nos dois temas
 npm run check:dist    # o MESMO auto-teste, dentro do .exe empacotado
 ```
@@ -361,6 +361,84 @@ ponto foi para o botão de salvar — onde leu como defeito, não como aviso, e 
 informação migrou para o diálogo de saída, que agora tem **três saídas** em vez de duas:
 sair sem salvar, cancelar e **salvar e sair**. Antes, quem quisesse salvar — o desfecho mais
 provável — tinha de cancelar, procurar o botão e clicar.
+
+### Os ícones passaram a vir do Lucide
+
+
+O [Lucide](https://lucide.dev) tem 2.112 ícones na mesma grade de 24, resolvidos
+por gente do ofício. Trinta e três dos nossos quarenta e um vieram de lá.
+
+**A licença foi verificada lendo o arquivo, e não um resumo.** ISC (Lucide) mais
+MIT (os herdados do Feather), e a única obrigação das duas é esta:
+
+> *"provided that the above copyright notice and this permission notice appear
+> in all copies"*
+
+Isso é **manter um arquivo de texto no repositório** — nada de tela de créditos,
+nada de link, nada de pagamento. O texto está em
+`src/renderer/assets/icones/LICENSE-lucide.txt`, copiado do pacote oficial.
+
+> **O Flaticon foi avaliado e recusado, e o motivo não foi o preço.** No plano
+> grátis ele exige crédito **visível** — uma tela de créditos dentro do app — e,
+> o que pesa mais: este projeto é MIT e público. O nosso `LICENSE` promete a
+> quem clonar o direito de redistribuir e sublicenciar; com arquivos de
+> terceiros sob termos mais restritos lá dentro, ele estaria prometendo um
+> direito que não temos para ceder. Daria para resolver com uma ressalva
+> explícita no repositório, mas ISC e MIT custam **zero** disso.
+>
+> Não foi possível ler os termos do Flaticon na fonte: a página devolveu 403 e
+> os termos redirecionaram para outro domínio. Recusar algo cuja licença não se
+> consegue ler é a decisão conservadora certa.
+
+**O que NÃO veio do Lucide**, e por quê:
+
+- as **prévias de forma** (retângulo, elipse, triângulo, losango, linha, seta,
+  preencher). Elas não são ícones de comando: são o desenho do objeto que vai
+  nascer no quadro. Um triângulo de cantos arredondados prometeria um triângulo
+  arredondado;
+- os **modos da borracha** (apagar peça, apagar traço). Não há equivalente —
+  essa distinção é deste app.
+
+**A camada de corpo ficou.** O Lucide é monolinha puro; aqui cada ícone pode
+ganhar um preenchimento em 16% atrás do contorno. Isso não é enfeite: com a
+barra de vidro em 100% de transparência, contorno sozinho perde a forma sobre um
+resumo denso, e o corpo segura a silhueta quando o traço perde contraste. Quem
+tem corpo é escolha — **gesto** (desfazer, mais, alinhar) não tem, porque gesto
+não tem dentro; **objeto** (post-it, cadeado, teclado) tem.
+
+**E qualquer `.png` largado em `assets/icones/` com o nome de um ícone substitui
+o desenho**, sem tocar em código. O arquivo é usado como **máscara**, e não como
+imagem: o app pinta com a cor atual e o canal alfa do PNG recorta. Por isso o
+ícone desenhado à mão continua herdando tema, destaque e a pílula branca, em vez
+de exigir um arquivo por estado. A especificação está no `LEIA-ME.md` da pasta.
+
+> **A folha de contato virou parte do método.** Ela renderiza todos os ícones
+> lado a lado — grandes, no tamanho real de uso, sobre a pastilha e sobre a
+> pílula de ligado. Quatro defeitos do conjunto antigo **só apareceram nela**,
+> incluindo um `olhoFechado` que estava quebrado: as duas metades da pálpebra
+> viviam num caminho único, coladas por um `M` no meio, e o
+> `stroke-linejoin: round` ligava as pontas desenhando uma terceira curva. De
+> longe virava um rabisco. Julgar ícone sem ver os quarenta juntos é chutar.
+
+### A borracha: uma bandeira de canvas no lugar errado
+
+Vale registrar porque a decisão é reaproveitável e o erro é fácil de repetir.
+
+`willReadFrequently` num `getContext('2d')` parece uma otimização barata, e é — para quem
+**lê** o canvas. Ela pede ao Chromium para manter o bitmap na CPU, porque um `getImageData`
+num canvas de GPU obriga a trazer os pixels de volta a cada chamada.
+
+
+**A regra que fica:** a bandeira pertence ao canvas que é lido, não ao canvas que é desenhado.
+Quando os dois usos moram no mesmo módulo, são dois canvas, e não um com a bandeira do pior
+caso. Depois da separação, o mesmo render custa **1,3–1,5 ms**.
+
+A checagem que guarda isso é **binária de propósito** — ela pergunta se o canvas de desenho
+está acelerado, e não quantos ms ele leva. Um teto em ms passaria numa máquina e falharia na
+seguinte; a pergunta [...] tem a mesma resposta em qualquer PC.
+
+O resto do caso — a fileira de bolas, que era um defeito **separado**, de continuidade de
+rastro — está no [B24](BUGS.md#b24--a-borracha-apagava-em-bolas-e-travava-o-aplicativo).
 
 ### O custo em performance foi medido
 
