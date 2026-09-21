@@ -181,6 +181,13 @@ export class App {
   /** Levantar dos botões e transições de cor. Ver `#applyAnimacoes`. */
   #animacoes: boolean;
   /**
+   * URL `blob:` da foto personalizada de cada tema, ou null para usar a que vem
+   * com o app. Os bytes chegam por IPC — a CSP não permite `file:`.
+   */
+  #fundos: { light: string | null; dark: string | null } = { light: null, dark: null };
+  /** `QB_FUNDO=off`: sem foto nenhuma nesta execução. Ver `#aplicarFundo`. */
+  #semFundo = false;
+  /**
    * Geracao da leitura de imagens em curso (Fase 7.5).
    *
    * Trocar de quadro incrementa, e o lote antigo se descarta ao ver que a
@@ -357,6 +364,8 @@ export class App {
     if (new URLSearchParams(location.search).get('blur') === '0') {
       document.documentElement.dataset['noblur'] = '1';
     }
+    // QB_FUNDO=off: sem foto no lobby, para captura repetível. Ver main/index.ts.
+    this.#semFundo = new URLSearchParams(location.search).get('fundo') === 'off';
 
     this.#applyTheme();
     this.#bar.setRulers(this.#rulers);
@@ -1089,8 +1098,36 @@ export class App {
     else document.documentElement.dataset['anim'] = 'off';
   }
 
+  /**
+   * A foto de fundo do menu principal, do tema em vigor.
+   *
+   * Mora pendurada no `#applyTheme` porque ele já é o ponto único que sabe qual
+   * tema vale agora — e a foto é por tema. Duplicar essa decisão em outro lugar
+   * abriria espaço para os dois discordarem.
+   *
+   * O CSS resolve sozinho o caso do PADRÃO: `--lobby-foto` já tem um `url()`
+   * por tema em `base.css`. Aqui só se escreve a variável quando há imagem
+   * **personalizada**, e o que sempre se escreve é o `data-fundo` — que é como o
+   * CSS descobre que há foto, já que seletor não consegue perguntar pelo valor
+   * de uma variável.
+   */
+  #aplicarFundo(): void {
+    const raiz = document.documentElement;
+    if (this.#semFundo) {
+      delete raiz.dataset['fundo'];
+      return;
+    }
+
+    const propria = this.#fundos[this.#theme];
+    if (propria) raiz.style.setProperty('--lobby-foto', `url("${propria}")`);
+    else raiz.style.removeProperty('--lobby-foto'); // volta ao padrão do CSS
+
+    raiz.dataset['fundo'] = 'foto';
+  }
+
   #applyTheme(): void {
     document.documentElement.dataset['theme'] = this.#theme;
+    this.#aplicarFundo();
     this.#renderer.theme = this.#themeComPapel();
     this.#bar.setGridEnabled(this.doc.prefs.grid.enabled);
     // Os dois interruptores de tema mostram o PROXIMO tema, e por isso trocam de

@@ -375,6 +375,64 @@
 }
 
 /*
+  A FOTO DE FUNDO -- e por que ela SUBSTITUI as manchas em vez de somar.
+
+  As manchas acima existem para uma coisa so: dar ao `backdrop-filter` um
+  gradiente para refratar. Uma foto faz isso com sobra. Mantidas por cima dela,
+  elas deixariam de ser [...] e passariam a ser um veu de
+  azul, roxo e verde sujando a imagem que o usuario escolheu.
+
+  Quem diz que ha foto e o `data-fundo` na raiz, posto pelo `App.#aplicarFundo`
+  -- mesmo desenho do `data-theme` e do `data-anim`. Nao da para um seletor
+  perguntar pelo VALOR de uma variavel, entao o estado precisa existir como
+  atributo. Sem o atributo, tudo acima continua valendo intacto.
+
+  A camada de cima e o `--lobby-scrim`: uma faixa curta no topo, que existe
+  porque o titulo e o caminho da pasta sao o unico texto que pousa DIRETO na
+  foto. A licao de que halo por glifo nao resolve legibilidade sobre conteudo ja
+  esta escrita no app.css; a resposta la foi dar superficie ao controle, e aqui
+  e a mesma resposta em forma de faixa. Ela some antes do painel, entao nao
+  escurece a imagem inteira.
+*/
+:root {
+  --lobby-foto: url('../assets/fundos/praia.webp');
+  /* Enquadramento: no claro o interesse (mar, horizonte) esta em cima. */
+  --lobby-foco: center 38%;
+  --lobby-scrim: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--bg) 72%, transparent),
+    transparent 190px
+  );
+}
+
+:root[data-theme='dark'] {
+  --lobby-foto: url('../assets/fundos/galaxia.webp');
+  /*
+    38% -> 22%: sobe o enquadramento para a FOGUEIRA sair de baixo do painel.
+
+    Ela e um ponto quase branco no centro-inferior da imagem, que e exatamente
+    onde o painel e os cards pousam -- e no tema escuro o texto e claro. Desfocar
+    nao escurece um ponto claro, so o espalha. Reforcar o veu resolveria, mas a
+    custa de apagar a foto inteira por causa de um ponto; deslocar o
+    enquadramento preserva a Via Lactea, que e o que da o clima.
+  */
+  --lobby-foco: center 22%;
+  --lobby-scrim: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--bg) 78%, transparent),
+    transparent 190px
+  );
+}
+
+:root[data-fundo='foto'] .qb-lobby,
+:root[data-theme='dark'][data-fundo='foto'] .qb-lobby {
+  background:
+    var(--lobby-scrim),
+    var(--lobby-foto) var(--lobby-foco) / cover no-repeat,
+    var(--bg);
+}
+
+/*
   O LOBBY MANTEM TINTA, e a barra do quadro nao. A diferenca nao e descuido.
 
   A barra flutua sobre o QUADRO: o que se quer ver atraves dela e o desenho, e
@@ -384,11 +442,34 @@
 
   22% e o suficiente para o fundo ambiente atravessar e o card continuar sendo
   um card.
+
+  O NUMERO VIROU TOKEN em 21/09/2026, quando entrou a foto de fundo. Sobre as
+  manchas, 22% basta; sobre uma fotografia, nao -- foto tem detalhe e contraste
+  local, e o nome do quadro comeca a disputar com o que passa atras dele. A
+  lista de quem recebe a tinta ja morava num lugar so, e agora o valor tambem:
+  mudar quanto o lobby "encorpa" sobre foto e mexer num numero, nao caçar
+  regras.
 */
+:root {
+  --veu-lobby: color-mix(in srgb, var(--panel) 22%, transparent);
+}
+
+:root[data-fundo='foto'] {
+  --veu-lobby: color-mix(in srgb, var(--panel) 46%, transparent);
+}
+
+/* O escuro precisa de mais tinta que o claro sobre foto, e a razao e a imagem:
+   uma galaxia e luz PONTUAL contra preto, entao o contraste local varia muito
+   mais do que numa praia difusa. O mesmo 46% deixaria estrela brigando com
+   texto. */
+:root[data-theme='dark'][data-fundo='foto'] {
+  --veu-lobby: color-mix(in srgb, var(--panel) 54%, transparent);
+}
+
 :root .qb-card,
 :root .qb-libsearch__field,
 :root .qb-lobby .qb-btn:not(.qb-btn--primary):not(.qb-btn--active):not(.qb-btn--danger) {
-  background: var(--chrome-sheen), color-mix(in srgb, var(--panel) 22%, transparent);
+  background: var(--chrome-sheen), var(--veu-lobby);
 }
 
 /* A miniatura continua opaca: lavada pelo desfoque, ela deixaria de servir para

@@ -270,6 +270,14 @@ function createWindow(): void {
   const desfoque = process.env['QB_BLUR'];
   if (desfoque === '0') query = `${query}${query ? '&' : '?'}blur=0`;
 
+  // QB_FUNDO=off tira a foto do menu principal, deixando o fundo ambiente.
+  //
+  // Existe pela mesma razao do QB_THEME: repetibilidade. O fundo pode ter sido
+  // trocado pelo usuario, entao uma foto de conferencia do lobby passaria a
+  // depender de qual imagem esta instalada NAQUELA maquina -- e comparar duas
+  // capturas deixaria de significar alguma coisa. Nao grava nada.
+  if (process.env['QB_FUNDO'] === 'off') query = `${query}${query ? '&' : '?'}fundo=off`;
+
   // Os modos de verificacao terminam imprimindo um marcador. Fechar a janela
   // nesse ponto e o que torna `QB_IMPORT`/`--selftest`/`QB_BENCH` utilizaveis
   // dentro de um script: sem isso o processo fica aberto esperando alguem
