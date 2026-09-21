@@ -1112,6 +1112,21 @@ export class App {
     );
   }
 
+  /**
+   * A frase que o main escreveu, sem o embrulho do Electron.
+   *
+   * Uma exceção lançada dentro de um `ipcMain.handle` chega aqui como
+   * `Error invoking remote method 'fundo:escolher': Error: <a frase>`. Mostrar
+   * isso num toast entrega ao usuário o nome do canal de IPC e a palavra
+   * "Error" duas vezes, para depois dizer que a imagem é grande demais. A
+   * mensagem foi escrita para ser lida; o embrulho não.
+   */
+  static #mensagemDeIpc(err: unknown): string {
+    const cru = String(err instanceof Error ? err.message : err);
+    const semCanal = cru.replace(/^Error invoking remote method '[^']*':\s*/, '');
+    return semCanal.replace(/^(?:Uncaught )?Error:\s*/, '');
+  }
+
   async #escolherFundo(tema: TemaFundo): Promise<string | null> {
     try {
       const img = await window.quadro.fundo.escolher(tema);
@@ -1122,10 +1137,10 @@ export class App {
       this.#aplicarFundo();
       return img.nome;
     } catch (err) {
-      // O main recusa arquivo grande demais ou que não é imagem, com uma
-      // mensagem escrita para ser lida. Engolir isso deixaria o clique sem
-      // resposta nenhuma, que é o pior desfecho.
-      toast(String(err instanceof Error ? err.message : err), 'error');
+      // O main recusa arquivo grande demais, que não é imagem, ou com pixels
+      // demais — e escreve a mensagem para ser lida. Engolir isso deixaria o
+      // clique sem resposta nenhuma, que é o pior desfecho.
+      toast(App.#mensagemDeIpc(err), 'error');
       return null;
     }
   }
