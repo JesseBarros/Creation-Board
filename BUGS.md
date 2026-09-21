@@ -1757,6 +1757,63 @@ Palavras do teste:
 
 
 
+#### O placar completo dos modos, no gesto do zoom — 21/09/2026
+
+Tudo testado, na máquina de teste, no mesmo dia:
+
+| modo | o que desliga | rastro no zoom | fluidez |
+|---|---|---|---|
+| `normal` | nada | **presente** | lisa |
+| `swap` (padrão) | repintura parcial da **página** | **presente** | lisa |
+| `canvas` | canvas 2D acelerado | **presente** | lisa |
+| `raster` | rasterização fora do processo da GPU | **presente** ([...]) | lisa |
+| `comp` | composição por GPU **inteira** | **sumiu** | [...] |
+
+> **Tudo abaixo vale para o RASTRO NO ZOOM, e só para ele.** Nenhum destes testes tocou o
+> piscar no hover do [B8](#b8--a-tela-pisca-preto-ao-passar-o-mouse-sobre-ícones-e-cartões) —
+> ele não foi reproduzido nesta rodada. São bugs diferentes, e o que este arquivo já registra
+> sobre o B8 continua valendo inteiro. Misturar os dois é o erro que atrasou o B1/B7/B8.
+
+**O que isso elimina — para este rastro:**
+
+- **Não é a textura do canvas.** Se fosse, `canvas` teria curado — ele tira o canvas 2D da
+  GPU mantendo a página composta lá. Não curou.
+- **Não é a repintura parcial da página.** `swap` age exatamente aí e se comporta igual ao
+  `normal` neste gesto. E isto explica, enfim, por que o `swap` conserta o piscar do B8 e não
+  encosta neste rastro: são camadas diferentes. **Note que a conclusão corre neste sentido, e
+  não no contrário** — o `swap` não ajudar aqui nada diz sobre o B8, onde ele cura.
+- **Não é VRR — para este gesto.** Ele desligou o G-SYNC para **modo janela** (deixando só
+  tela cheia) e o rastro no zoom continuou. É um teste muito mais preciso que a linha
+  [...] registrada na tabela acima.
+
+  **A hipótese de VRR do B8 NÃO cai com isto**, e é importante não a arrastar junto: lá o
+  sintoma é o piscar no hover, e a explicação registrada é o painel seguindo um app que sai
+  da imobilidade e volta. Aqui o app está produzindo quadros continuamente — é outro regime.
+  Reabrir aquela hipótese exige reproduzir o piscar, e ninguém reproduziu.
+
+  Vale registrar de onde veio a suspeita, porque era boa e continua valendo como pista para o
+  B8: **o VS Code, outro Chromium, também falha com G-SYNC ligado na mesma máquina.**
+
+**Sobra a conta de dano do compositor da página, e nada mais estreito que ela cura.**
+
+**O que continua NÃO testado para este rastro**, e não deve ser dado por resolvido:
+
+- **Subir de Electron.** A escada do `ENGENHARIA.md` (33, 41 e 43) mediu **o piscar do B8**,
+  e os três piscaram igual. **O rastro no zoom nunca foi testado em Electron novo.** Herdar
+  aquela conclusão aqui seria trocar um bug pelo outro.
+- **`QB_GPU=dc`** (sem DirectComposition). Está na escada desde 06/08, foi testado contra o
+  piscar do B8 — e **nunca contra este rastro**. É o candidato mais direto que resta:
+  promoção a overlay é exatamente um mecanismo capaz de deixar conteúdo velho quando a
+  superfície inteira muda de escala.
+- **O monitor de 60 Hz.** Ver abaixo.
+
+**Dado novo, colhido com uma sonda de intervalo entre frames** (`scratchpad/medir/vrr.*`):
+a janela está num monitor de **144 Hz** e o segundo é de **60 Hz**; com a janela no de 144, o
+intervalo é cravado em 6,90 ms com 0,2% dos frames fora de ±20%. A sonda **não** serve para
+provar que o VRR está desligado (com o app produzindo frames, o `requestAnimationFrame` lê
+144 Hz de qualquer jeito), e isso fica dito aqui em vez de virar conclusão. O que ela confirma
+é o segundo monitor a 60 Hz — que é justamente o teste que a tabela do B8 pediu na linha [...] **e que nunca foi feito**, nem para o B8 nem para este.
+
 #### O que fazer com isso: partir o `comp` ao meio
 
 O `comp` nunca foi isolado. Ele faz **duas** coisas de uma vez:
