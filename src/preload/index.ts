@@ -17,6 +17,7 @@ import type {
 import type { ImportSource } from '@shared/importer';
 import type { OcrItem, OcrReport } from '@shared/ocr';
 import type { LibraryIndex } from '@shared/librarySearch';
+import type { IndicePastas } from '@shared/pastas';
 
 /**
  * Unica ponte entre renderer e main. Nada de `ipcRenderer` cru exposto: cada
@@ -56,6 +57,12 @@ const api: CreationBoardApi = {
       ipcRenderer.invoke(IPC.fundoLer, tema) as Promise<FundoImagem | null>,
     limpar: (tema: TemaFundo): Promise<void> =>
       ipcRenderer.invoke(IPC.fundoLimpar, tema) as Promise<void>,
+  },
+
+  pastas: {
+    ler: (): Promise<IndicePastas> => ipcRenderer.invoke(IPC.pastasLer) as Promise<IndicePastas>,
+    gravar: (indice: IndicePastas): Promise<void> =>
+      ipcRenderer.invoke(IPC.pastasGravar, indice) as Promise<void>,
   },
 
   exporter: {

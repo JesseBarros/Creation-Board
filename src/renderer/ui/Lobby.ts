@@ -4,6 +4,7 @@ import { confirmDialog, toast } from './dialogs';
 import { icon, type IconName } from './icons';
 import { LibrarySearch } from './LibrarySearch';
 import { invalidateLibraryIndex } from '../features/search/libraryQuery';
+import { indiceVazio, reconciliar } from '@shared/pastas';
 
 export interface LobbyActions {
   newBoard(): void;
@@ -229,11 +230,36 @@ export class Lobby {
       toast(`Nao foi possivel ler a pasta de quadros: ${String(err)}`, 'error');
     }
 
+    /*
+      O indice de pastas entra aqui, e por enquanto NAO muda nada na tela.
+
+      Ainda nao ha como criar pasta -- isso e o passo seguinte --, entao o
+      indice esta sempre vazio e `soltos` sai igual a `boards`, na mesma ordem.
+      O que este trecho faz hoje e ligar o caminho inteiro: ler, reconciliar e
+      desenhar a partir do resultado, em vez de desenhar a lista crua.
+
+      Ler falhando NAO pode impedir o lobby de abrir. O `ler` do main ja devolve
+      indice vazio em qualquer erro; o `catch` aqui e a segunda linha de defesa,
+      para o caso de o proprio IPC nao responder.
+    */
+    let indice = indiceVazio();
+    try {
+      indice = await window.quadro.pastas.ler();
+    } catch {
+      // Sem agrupamento e melhor que sem lobby.
+    }
+    const { pastas, soltos } = reconciliar(indice, boards);
+
     this.#grid.replaceChildren();
     this.#empty.hidden = boards.length > 0;
 
-    for (const b of boards) {
-      this.#grid.append(this.#card(b));
+    // Os soltos primeiro. Os que estao em pasta vem depois, ACHATADOS: o card
+    // de pasta chega no passo 3, e ate la esconde-los quebraria a promessa que
+    // o `shared/pastas.ts` inteiro existe para cumprir -- nenhum estado do
+    // indice pode fazer um quadro sumir da tela.
+    for (const b of soltos) this.#grid.append(this.#card(b));
+    for (const p of pastas) {
+      for (const b of p.quadros) this.#grid.append(this.#card(b));
     }
   }
 

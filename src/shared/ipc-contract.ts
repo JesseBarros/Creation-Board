@@ -7,6 +7,7 @@ import type {
 import type { ImportSource } from './importer';
 import type { OcrItem, OcrReport } from './ocr';
 import type { LibraryIndex } from './librarySearch';
+import type { IndicePastas } from './pastas';
 
 /**
  * Contrato IPC compartilhado por main, preload e renderer.
@@ -32,6 +33,8 @@ export const IPC = {
   fundoEscolher: 'fundo:escolher',
   fundoLer: 'fundo:ler',
   fundoLimpar: 'fundo:limpar',
+  pastasLer: 'pastas:ler',
+  pastasGravar: 'pastas:gravar',
 } as const;
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC];
@@ -165,6 +168,23 @@ export interface CreationBoardApi {
     ler(tema: TemaFundo): Promise<FundoImagem | null>;
     /** Volta para a imagem que vem com o app. */
     limpar(tema: TemaFundo): Promise<void>;
+  };
+
+  /**
+   * O indice de pastas do menu principal.
+   *
+   * Duas operacoes so, e de propósito: o renderer le o indice inteiro e grava o
+   * indice inteiro. Nao ha "criar pasta" nem "mover quadro" no IPC, porque essas
+   * sao decisoes de INTERFACE -- o main nao precisa conhece-las, e cada uma que
+   * ele conhecesse seria uma regra a mais para manter em dois lugares.
+   *
+   * O arquivo e pequeno (nomes, nao conteudo) e reescrito inteiro, o que torna a
+   * gravacao atomica de raciocinar: ou o arquivo novo esta la, ou o antigo esta.
+   */
+  pastas: {
+    /** O que esta gravado. Indice vazio quando nao ha arquivo ou ele e ilegivel. */
+    ler(): Promise<IndicePastas>;
+    gravar(indice: IndicePastas): Promise<void>;
   };
 
   ocr: {
