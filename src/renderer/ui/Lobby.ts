@@ -6,7 +6,9 @@ import { LibrarySearch } from './LibrarySearch';
 import { invalidateLibraryIndex } from '../features/search/libraryQuery';
 import {
   criarPasta,
+  criarPastaCom,
   excluirPasta,
+  moverParaPasta,
   indiceVazio,
   nomeDeArquivoDe,
   nomeLivre,
@@ -16,6 +18,17 @@ import {
 } from '@shared/pastas';
 import type { IndicePastas, PastaResolvida, Reconciliado } from '@shared/pastas';
 import { createId } from '@shared/model/id';
+import { tornarArrastavel, type AlvoDeArrasto } from './arrastarCard';
+
+/**
+ * Onde um quadro arrastado pode cair. A tela decide quais existem: na
+ * principal, as pastas e os outros quadros; dentro de uma pasta, so a trilha
+ * de volta -- pasta dentro de pasta nao existe no indice.
+ */
+type Alvo =
+  | { tipo: 'pasta'; id: string; nome: string }
+  | { tipo: 'quadro'; arquivo: string }
+  | { tipo: 'fora' };
 
 export interface LobbyActions {
   newBoard(): void;
@@ -518,6 +531,9 @@ export class Lobby {
         img.src = b.preview;
         img.alt = '';
         img.loading = 'lazy';
+        // A pasta nao e arrastavel, e a miniatura dela tambem nao: sem isto,
+        // puxar pelo mosaico levantaria o arrastar NATIVO de imagem.
+        img.draggable = false;
         celula.append(img);
       }
       thumb.append(celula);
@@ -581,6 +597,9 @@ export class Lobby {
     const card = document.createElement('article');
     card.className = 'qb-card';
     card.tabIndex = 0;
+    // O nome de ARQUIVO, que e o que o indice guarda. E por ele que um card
+    // vira alvo de outro no arrastar.
+    card.dataset['arquivo'] = nomeDeArquivoDe(summary);
 
     const thumb = document.createElement('div');
     thumb.className = 'qb-card__thumb';
@@ -646,8 +665,86 @@ export class Lobby {
         this.actions.openBoard(summary);
       }
     });
+    tornarArrastavel<Alvo>(card, {
+      rolagem: this.#rolagem,
+      alvoEm: (el) => this.#alvoEm(el, card),
+      soltar: (alvo) => void this.#soltar(summary, alvo),
+    });
 
     return card;
+  }
+
+  // ------------------------------------------------------------- arrastar
+
+  /**
+   * O que esta sob o ponteiro, lido como alvo para o card `origem`.
+   *
+   * A regra de QUAL tela aceita O QUE mora aqui, num lugar so:
+   *   - na principal: pasta (entrar nela) e outro quadro (criar pasta com os dois);
+   *   - dentro de uma pasta: so "Todos os quadros", na trilha (tirar da pasta).
+   *     Outro quadro ali NAO e alvo, porque a pasta que ele criaria estaria
+   *     dentro desta.
+   */
+  #alvoEm(el: Element | null, origem: HTMLElement): AlvoDeArrasto<Alvo> | null {
+    if (!el) return null;
+    if (this.#pastaAberta !== null) {
+      const voltar = el.closest<HTMLElement>('.qb-lobby__trilha-voltar');
+      return voltar && this.#trilha.contains(voltar) ? { el: voltar, alvo: { tipo: 'fora' } } : null;
+    }
+    const card = el.closest<HTMLElement>('.qb-card');
+    if (!card || card === origem || !this.#grid.contains(card)) return null;
+    const pastaId = card.dataset['pastaId'];
+    if (pastaId !== undefined) {
+      const pasta = this.#ultimo.pastas.find((p) => p.id === pastaId);
+      return pasta ? { el: card, alvo: { tipo: 'pasta', id: pasta.id, nome: nomeDeExibicao(pasta) } } : null;
+    }
+    const arquivo = card.dataset['arquivo'];
+    return arquivo ? { el: card, alvo: { tipo: 'quadro', arquivo } } : null;
+  }
+
+  /**
+   * O que soltar significa. Tudo passa por `#mudarIndice`: le o indice do
+   * disco, aplica, grava, redesenha -- o mesmo caminho do botao "Nova pasta".
+   *
+   * O aviso em texto e provisorio e de proposito: sem animacao (Parte 5), o
+   * card simplesmente some da grade ao entrar numa pasta, e sem uma linha
+   * dizendo para onde ele foi isso parece um quadro sumindo.
+   */
+  async #soltar(origem: BoardSummary, alvo: Alvo): Promise<void> {
+    const arquivo = nomeDeArquivoDe(origem);
+
+    if (alvo.tipo === 'pasta') {
+      if (await this.#mudarIndice((i) => moverParaPasta(i, arquivo, alvo.id))) {
+        toast(`"${origem.name}" foi para a pasta "${alvo.nome}".`);
+      }
+      return;
+    }
+
+    if (alvo.tipo === 'fora') {
+      if (await this.#mudarIndice((i) => tirarDeTodas(i, arquivo))) {
+        toast(`"${origem.name}" voltou para a tela principal.`);
+      }
+      return;
+    }
+
+    // Quadro sobre quadro: uma pasta nova com os dois, e o nome e perguntado
+    // -- decisao de produto. Cancelar nao muda nada, e e por isso que a pergunta vem
+    // ANTES de qualquer gravacao.
+    const nome = await promptText({
+      title: 'Nova pasta',
+      label: 'Nome da pasta com os dois quadros',
+      value: nomeLivre(
+        this.#ultimo.pastas.map((p) => p.nome),
+        'Nova pasta',
+      ),
+      confirmLabel: 'Criar',
+    });
+    if (nome === null) return;
+    const id = createId();
+    // O que estava parado vem primeiro: ele ja estava ali, o outro chegou.
+    if (await this.#mudarIndice((i) => criarPastaCom(i, id, nome, [alvo.arquivo, arquivo]))) {
+      this.#focarPasta(id);
+    }
   }
 
   /**

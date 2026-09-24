@@ -668,6 +668,66 @@
   color: var(--fg-muted);
 }
 
+/* ------------------------------------------------ arrastar (Parte 4) */
+
+/*
+  Nada aqui ANIMA, e isso e de proposito: movimento e a Parte 5, e ela vai
+  nascer inteira sob `[data-anim='off']`. O fantasma segue o ponteiro por
+  `transform` escrito a cada `pointermove` -- isso e posicao, nao transicao.
+*/
+
+/* Texto de card nao e para selecionar, e o arrastar seleciona sem isto. */
+.qb-lobby__grid .qb-card {
+  user-select: none;
+}
+
+/* O card que esta sendo arrastado fica no lugar, apagado: e o lugar para onde
+   ele volta se o soltar nao cair num alvo. */
+.qb-card--origem {
+  opacity: 0.35;
+}
+
+/*
+  A copia que segue o ponteiro. Vive no `body`, fora do lobby, para nenhum
+  `overflow` do caminho a recortar -- e por isso repete a materia do card aqui
+  em vez de herdar do escopo do lobby.
+
+  `pointer-events: none` e o que faz o resto funcionar: sem ele, o
+  `elementFromPoint` que procura o alvo acharia sempre o proprio fantasma.
+
+  O seletor e comprido para ganhar do `:root .qb-card` do `base.css`: com a
+  tinta translucida de la, o fantasma passaria por cima dos outros cards
+  deixando os dois legiveis ao mesmo tempo, e nenhum dos dois de verdade.
+*/
+:root .qb-card.qb-card--fantasma {
+  position: fixed;
+  z-index: 1000;
+  margin: 0;
+  pointer-events: none;
+  background: var(--panel);
+  border-color: var(--accent);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
+  opacity: 0.94;
+}
+
+/* O alvo sob o ponteiro. Com o ponteiro capturado pelo card de origem, o
+   `:hover` dos outros nao dispara -- quem acende e esta classe. */
+.qb-lobby__grid .qb-card.qb-alvo {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.qb-lobby__trilha-voltar.qb-alvo {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+:root.qb-arrastando,
+:root.qb-arrastando * {
+  cursor: grabbing !important;
+}
+
 /* ============================================================== modais */
 
 .qb-overlay {

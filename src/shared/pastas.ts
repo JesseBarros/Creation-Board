@@ -306,3 +306,45 @@ export function nomeLivre(nomesEmUso: string[], base: string): string {
     if (!usados.has(candidato.toLowerCase())) return candidato;
   }
 }
+
+// ------------------------------------------------------ arrastar (Parte 4)
+
+/**
+ * Poe um quadro numa pasta, tirando-o de onde estiver antes.
+ *
+ * E tirar-e-por, nesta ordem, pelo motivo escrito em `tirarDeTodas`: um mover
+ * que so poe cria o quadro em duas pastas. Pasta que nao existe (excluida entre
+ * o arrastar e o soltar) devolve o indice como veio -- inclusive NAO tirando o
+ * quadro da pasta antiga, porque soltar num alvo que sumiu nao pode virar
+ * [...] sem ninguem ter pedido isso.
+ */
+export function moverParaPasta(indice: IndicePastas, nomeArquivo: string, pastaId: string): IndicePastas {
+  if (!nomeDeArquivoValido(nomeArquivo)) return indice;
+  if (!indice.pastas.some((p) => p.id === pastaId)) return indice;
+  const sem = tirarDeTodas(indice, nomeArquivo);
+  return {
+    versao: sem.versao,
+    pastas: sem.pastas.map((p) => (p.id === pastaId ? { ...p, quadros: [...p.quadros, nomeArquivo] } : p)),
+  };
+}
+
+/**
+ * Cria uma pasta ja com quadros dentro -- o soltar de um quadro sobre outro.
+ *
+ * Os quadros saem de onde estavam antes, na ordem dada. Se a pasta nao puder
+ * ser criada (nome vazio, id repetido), NINGUEM se mexe: um meio-termo em que
+ * os quadros saem das pastas antigas sem entrar na nova seria desagrupar sem
+ * pedido.
+ */
+export function criarPastaCom(
+  indice: IndicePastas,
+  id: string,
+  nome: string,
+  nomesArquivo: string[],
+): IndicePastas {
+  const comPasta = criarPasta(indice, id, nome);
+  if (comPasta === indice) return indice;
+  let r = comPasta;
+  for (const arquivo of nomesArquivo) r = moverParaPasta(r, arquivo, id);
+  return r;
+}
