@@ -231,3 +231,78 @@ export function tirarDeTodas(indice: IndicePastas, nomeArquivo: string): IndiceP
     })),
   };
 }
+
+// ------------------------------------------------------- operacoes da interface
+//
+// Criar, renomear e excluir. Moram aqui, e nao no `Lobby`, pelo mesmo motivo de
+// `tirarDeTodas`: sao funcoes puras sobre o indice, e o `check:pastas` so
+// alcanca o que nao depende de DOM.
+//
+// Nenhuma delas toca em `quadros` de outra pasta, e nenhuma lanca. Um id que
+// nao existe devolve o indice como veio -- a pasta pode ter sido excluida
+// entre o clique e a gravacao, e isso nao e erro de ninguem.
+
+/** Teto do nome, o mesmo que `lerIndice` aplica na leitura. */
+export const NOME_PASTA_MAX = 120;
+
+/**
+ * O nome como sera gravado: sem espaco nas pontas, e no teto.
+ *
+ * Vazio continua vazio -- quem decide o que fazer com isso e quem chama. Aqui
+ * dentro nao ha nome padrao, porque "Nova pasta" e texto de interface.
+ */
+export function normalizarNomePasta(nome: string): string {
+  return nome.trim().slice(0, NOME_PASTA_MAX);
+}
+
+/**
+ * A pasta nova entra no FIM: a ordem do indice e a ordem da tela, e a pasta
+ * que acabou de ser criada aparecer depois das que ja existiam e o que se
+ * espera de uma lista que nao e ordenada por nome.
+ *
+ * Nome vazio nao cria nada. Id repetido tambem nao -- `lerIndice` descartaria
+ * a segunda na proxima leitura, e a pasta sumiria sozinha.
+ */
+export function criarPasta(indice: IndicePastas, id: string, nome: string): IndicePastas {
+  const limpo = normalizarNomePasta(nome);
+  if (limpo === '' || id === '' || indice.pastas.some((p) => p.id === id)) return indice;
+  return { versao: indice.versao, pastas: [...indice.pastas, { id, nome: limpo, quadros: [] }] };
+}
+
+export function renomearPasta(indice: IndicePastas, id: string, nome: string): IndicePastas {
+  const limpo = normalizarNomePasta(nome);
+  if (limpo === '') return indice;
+  return {
+    versao: indice.versao,
+    pastas: indice.pastas.map((p) => (p.id === id ? { ...p, nome: limpo } : p)),
+  };
+}
+
+/**
+ * Excluir uma pasta NAO exclui quadro nenhum.
+ *
+ * O indice so diz quem esta agrupado com quem; tirar a pasta dele faz os
+ * quadros dela deixarem de ser citados, e a regra 2 de `reconciliar` os devolve
+ * para a tela principal, soltos. E a mesma promessa do resto do modulo, vista
+ * do lado de quem apaga: o pior que se faz aqui e desagrupar.
+ */
+export function excluirPasta(indice: IndicePastas, id: string): IndicePastas {
+  return { versao: indice.versao, pastas: indice.pastas.filter((p) => p.id !== id) };
+}
+
+/**
+ * Um nome que nenhuma pasta usa ainda, a partir de `base`: "Nova pasta",
+ * "Nova pasta (2)", "Nova pasta (3)" -- o mesmo desenho do Explorador.
+ *
+ * E so a SUGESTAO que o dialogo abre preenchida. Nome repetido continua
+ * permitido, porque a identidade da pasta e o id; o que isto evita e o
+ * usuario apertar Enter duas vezes e ficar com duas pastas indistinguiveis.
+ */
+export function nomeLivre(nomesEmUso: string[], base: string): string {
+  const usados = new Set(nomesEmUso.map((n) => n.toLowerCase()));
+  if (!usados.has(base.toLowerCase())) return base;
+  for (let n = 2; ; n++) {
+    const candidato = `${base} (${n})`;
+    if (!usados.has(candidato.toLowerCase())) return candidato;
+  }
+}

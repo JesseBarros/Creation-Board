@@ -91,7 +91,10 @@ export type IconName =
   | 'cadeado'
   | 'cadeadoAberto'
   | 'subir'
-  | 'descer';
+  | 'descer'
+  // pastas do menu principal
+  | 'pasta'
+  | 'novaPasta';
 
 /**
  * Um icone: o miolo do SVG, e quais dos elementos dele levam corpo.
@@ -280,6 +283,18 @@ const ICONS: Record<IconName, IconSpec> = {
   },
   subir: { svg: '<path d="m5 12 7-7 7 7" /><path d="M12 19V5" />' },
   descer: { svg: '<path d="M12 5v14" /><path d="m19 12-7 7-7-7" />' },
+
+  // A pasta e objeto, entao tem corpo. Na `novaPasta` o corpo continua sendo a
+  // pasta (indice 2, depois das duas hastes do "+"): o "+" e gesto e fica so no
+  // contorno, pela mesma regra do cabecalho deste arquivo.
+  pasta: {
+    svg: '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />',
+    corpo: [0],
+  },
+  novaPasta: {
+    svg: '<path d="M12 10v6" /><path d="M9 13h6" /><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />',
+    corpo: [2],
+  },
 };
 
 /**
