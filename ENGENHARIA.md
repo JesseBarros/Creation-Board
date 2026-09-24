@@ -719,6 +719,11 @@ inteiro a 143 q/s, mas o fantasma do B18 no zoom volta).
 | ao vivo (antes) | 14,4 | 13,9 | — |
 | **pronto** (duas rodadas) | **92,8–101,9** | **87,7–99,7** | **86,8–93,0** |
 
+Com as animações da Parte 5 ligadas (duas rodadas, mesmo dia): levantar
+112–113, arrastar 98–99, **a janela abrindo e fechando a cada 400 ms 105–106**,
+arrastar de dentro da janela 92–94 q/s. As animações não trouxeram a lentidão de
+volta.
+
 O pior quadro caiu de 167 ms para 14–28 ms. **O preço assumido:** o painel perde
 a leve ondulação de refração (`url(#qb-refracao)`), que é um deslocamento
 calculado AO VIVO sobre o que está atrás. Botões e busca mantêm o vidro inteiro —

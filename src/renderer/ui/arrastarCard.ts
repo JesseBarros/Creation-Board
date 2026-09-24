@@ -1,3 +1,5 @@
+import { animar, DURACAO } from './movimento';
+
 /**
  * Arrastar um card do menu principal, por PONTEIRO.
  *
@@ -20,6 +22,13 @@ export interface AlvoDeArrasto<A> {
   /** O elemento que acende enquanto o ponteiro esta sobre ele. */
   el: HTMLElement;
   alvo: A;
+  /**
+   * Soltando aqui, o fantasma voa ate o centro de `el` e encolhe DENTRO dele --
+   * o [...] do plano. Sem isto, ele some no lugar: e o
+   * certo quando o alvo e uma area grande (a janela, a tela principal), em que
+   * voar ate o centro pareceria mira errada.
+   */
+  encolher?: boolean;
 }
 
 export interface OpcoesDeArrasto<A> {
@@ -150,14 +159,17 @@ function comecar<A>(card: HTMLElement, inicio: PointerEvent, op: OpcoesDeArrasto
     if (e.pointerId !== id) return;
     const soltarEm = ativo ? alvo : null;
     const eraArrasto = ativo;
-    terminar();
+    terminar(soltarEm);
     if (eraArrasto) engolirOProximoClique(card);
+    // A gravacao comeca JUNTO com a animacao, e nao depois dela: o fantasma e
+    // uma copia solta no `body`, e a grade pode ser redesenhada por baixo dele
+    // sem que um atrapalhe o outro.
     if (soltarEm) op.soltar(soltarEm.alvo);
   };
 
   const aoCancelar = (e: PointerEvent): void => {
     if (e.pointerId !== id) return;
-    terminar();
+    terminar(null);
   };
 
   // Escape no meio do arrasto desiste: o card volta e nada muda.
@@ -167,17 +179,33 @@ function comecar<A>(card: HTMLElement, inicio: PointerEvent, op: OpcoesDeArrasto
     // Imediata: o Escape que desiste do arrasto nao pode tambem fechar ou
     // desfazer outra coisa num atalho da janela registrado antes deste.
     e.stopImmediatePropagation();
-    terminar();
+    terminar(null);
     engolirOProximoClique(card);
   };
 
-  const terminar = (): void => {
+  /**
+   * Fim do arrasto. `pousarEm` e o alvo em que caiu, ou null para "volta".
+   *
+   * O estado do arrasto acaba NA HORA -- ouvintes, captura, cursor, alvo aceso
+   * --, e so o fantasma ainda anda: ou pousa no alvo, ou volta ao lugar do
+   * card. Ate ele chegar de volta, o card de origem continua apagado: e ali que
+   * ele vai pousar.
+   */
+  const terminar = (pousarEm: AlvoDeArrasto<A> | null): void => {
     ativo = false;
     cancelAnimationFrame(quadro);
     acender(null);
-    fantasma?.remove();
+    const f = fantasma;
     fantasma = null;
-    card.classList.remove('qb-card--origem');
+    const soltarOrigem = (): void => card.classList.remove('qb-card--origem');
+    if (f) {
+      void despedir(f, pousarEm).then(() => {
+        f.remove();
+        soltarOrigem();
+      });
+    } else {
+      soltarOrigem();
+    }
     document.documentElement.classList.remove('qb-arrastando');
     card.removeEventListener('pointermove', aoMover);
     card.removeEventListener('pointerup', aoSoltar);
@@ -195,6 +223,49 @@ function comecar<A>(card: HTMLElement, inicio: PointerEvent, op: OpcoesDeArrasto
   card.addEventListener('pointercancel', aoCancelar);
   // Captura: precisa chegar antes dos atalhos globais da janela.
   window.addEventListener('keydown', aoTeclar, true);
+}
+
+/**
+ * A ultima viagem do fantasma. Resolve quando ele pode sair do DOM.
+ *
+ * Com o movimento desligado, `animar` resolve na hora e nada e criado -- e o
+ * fantasma sai no microtempo seguinte, como antes da Parte 5.
+ */
+function despedir<A>(f: HTMLElement, pousarEm: AlvoDeArrasto<A> | null): Promise<void> {
+  const agora = f.style.transform || 'translate(0px, 0px)';
+
+  if (!pousarEm) {
+    // Volta para o lugar do card: o `translate` zero E o lugar dele, porque o
+    // fantasma nasceu posicionado em cima do card.
+    return animar(f, [{ transform: agora }, { transform: 'translate(0px, 0px)' }], {
+      preencher: 'forwards',
+    });
+  }
+
+  if (pousarEm.encolher) {
+    const alvo = pousarEm.el.getBoundingClientRect();
+    const x = parseFloat(f.style.left) + parseFloat(f.style.width) / 2;
+    const y = parseFloat(f.style.top) + parseFloat(f.style.height) / 2;
+    const dx = alvo.left + alvo.width / 2 - x;
+    const dy = alvo.top + alvo.height / 2 - y;
+    return animar(
+      f,
+      [
+        { transform: agora, opacity: 0.94 },
+        { transform: `translate(${dx}px, ${dy}px) scale(0.2)`, opacity: 0 },
+      ],
+      { preencher: 'forwards' },
+    );
+  }
+
+  return animar(
+    f,
+    [
+      { transform: agora, opacity: 0.94 },
+      { transform: `${agora} scale(0.92)`, opacity: 0 },
+    ],
+    { duracao: DURACAO.curta, preencher: 'forwards' },
+  );
 }
 
 /**

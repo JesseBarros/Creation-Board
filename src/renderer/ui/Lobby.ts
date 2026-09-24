@@ -20,6 +20,7 @@ import type { IndicePastas, PastaResolvida, Reconciliado } from '@shared/pastas'
 import { createId } from '@shared/model/id';
 import { tornarArrastavel, type AlvoDeArrasto } from './arrastarCard';
 import { PainelDoMenu } from './PainelDoMenu';
+import { animar, DURACAO, movimentoLigado } from './movimento';
 
 /**
  * Onde um quadro arrastado pode cair: numa pasta (inclusive a janela da pasta
@@ -101,6 +102,11 @@ export class Lobby {
   #pastaAberta: string | null = null;
   /** O ultimo resultado do disco. Entrar e sair de pasta desenha daqui, sem reler. */
   #ultimo: Reconciliado = { pastas: [], soltos: [] };
+  /**
+   * Os cards desenhados da ultima vez, por chave. E o que decide o que ENTRA
+   * animado: so o que nao estava na tela antes. Ver `#entrarNovos`.
+   */
+  #naTela = new Set<string>();
 
   constructor(
     private readonly actions: LobbyActions,
@@ -446,6 +452,81 @@ export class Lobby {
       this.#vazioPasta.hidden = aberta.quadros.length > 0;
     }
     this.#syncSearchState();
+    this.#entrarNovos();
+  }
+
+  /**
+   * A ENTRADA DA LISTA: so o que e novo na tela entra animado.
+   *
+   * Todo gesto com pasta termina num `refresh()`, que refaz as duas grades do
+   * zero. Animar tudo a cada refazer faria a tela inteira piscar a cada quadro
+   * arrastado. Comparando com a ultima vez, entra so o que nao estava la: a
+   * lista inteira na primeira abertura, a pasta recem-criada, o quadro que saiu
+   * de uma pasta. Voltar de um quadro para o menu nao anima nada, e e o certo:
+   * a tela e a mesma de antes.
+   *
+   * A chave separa as duas grades: o mesmo quadro saindo da janela para a
+   * principal E novo onde chegou.
+   */
+  #entrarNovos(): void {
+    const agora = new Set<string>();
+    const novos: HTMLElement[] = [];
+    const juntar = (grade: HTMLElement, onde: string): void => {
+      for (const el of Array.from(grade.children) as HTMLElement[]) {
+        const quem = el.dataset['pastaId'] !== undefined ? `pasta:${el.dataset['pastaId']}` : `quadro:${el.dataset['arquivo'] ?? ''}`;
+        const chave = `${onde}|${quem}`;
+        agora.add(chave);
+        if (!this.#naTela.has(chave)) novos.push(el);
+      }
+    };
+    juntar(this.#grid, 'principal');
+    juntar(this.#janelaGrade, 'janela');
+    this.#naTela = agora;
+
+    // Escalonado, mas com teto: numa biblioteca de 40 quadros, o ultimo nao pode
+    // entrar um segundo depois do primeiro. Depois do 12o, todos juntos.
+    novos.forEach((el, i) => {
+      void animar(
+        el,
+        [
+          { opacity: 0, transform: 'translateY(10px)' },
+          { opacity: 1, transform: 'none' },
+        ],
+        { atraso: Math.min(i, 12) * 24, preencher: 'backwards' },
+      );
+    });
+  }
+
+  /**
+   * A janela desce ao fechar -- numa COPIA.
+   *
+   * O estado fecha na hora: quem aperta Esc e em seguida arrasta um quadro nao
+   * pode encontrar uma janela meio aberta aceitando alvo, e a janela de verdade
+   * escondida e o que o resto do codigo (e o selftest) le. Quem desce e uma
+   * copia inerte, sem os `data-*` que fazem de um card um alvo, e ela sai do DOM
+   * no fim.
+   */
+  #despedirJanela(): void {
+    if (!movimentoLigado() || this.#janela.hidden) return;
+    const copia = this.#janela.cloneNode(true) as HTMLElement;
+    copia.inert = true;
+    copia.setAttribute('aria-hidden', 'true');
+    copia.removeAttribute('role');
+    copia.removeAttribute('aria-label');
+    copia.style.pointerEvents = 'none';
+    for (const el of copia.querySelectorAll('[data-arquivo], [data-pasta-id]')) {
+      el.removeAttribute('data-arquivo');
+      el.removeAttribute('data-pasta-id');
+    }
+    this.el.append(copia);
+    void animar(
+      copia,
+      [
+        { opacity: 1, transform: 'none' },
+        { opacity: 0, transform: 'translateY(24px)' },
+      ],
+      { duracao: DURACAO.curta, preencher: 'forwards' },
+    ).then(() => copia.remove());
   }
 
   /** A pasta aberta, ja cruzada com o disco -- ou null. */
@@ -456,9 +537,18 @@ export class Lobby {
 
   #abrirPasta(id: string): void {
     const trocou = this.#pastaAberta !== id;
+    const estavaFechada = this.#janela.hidden;
     this.#pastaAberta = id;
     this.#desenhar();
     if (trocou) this.#janelaCorpo.scrollTop = 0;
+    // Sobe de baixo, que e onde ela mora. Trocar de uma pasta para outra com a
+    // janela ja aberta nao anima a janela -- so os cards de dentro entram.
+    if (estavaFechada && !this.#janela.hidden) {
+      void animar(this.#janela, [
+        { opacity: 0, transform: 'translateY(24px)' },
+        { opacity: 1, transform: 'none' },
+      ]);
+    }
     // O foco vai para o fechar: quem abriu pelo teclado tem de saber sair sem
     // procurar.
     this.#janelaFechar.focus();
@@ -466,6 +556,7 @@ export class Lobby {
 
   #fecharPasta(): void {
     const de = this.#pastaAberta;
+    this.#despedirJanela();
     this.#pastaAberta = null;
     this.#desenhar();
     // E volta para o card da pasta, e nao para o topo da lista.
@@ -777,11 +868,11 @@ export class Lobby {
         if (daJanela && pastaId === this.#pastaAberta) return null;
         const pasta = this.#ultimo.pastas.find((p) => p.id === pastaId);
         return pasta
-          ? { el: card, alvo: { tipo: 'pasta', id: pasta.id, nome: nomeDeExibicao(pasta) } }
+          ? { el: card, alvo: { tipo: 'pasta', id: pasta.id, nome: nomeDeExibicao(pasta) }, encolher: true }
           : null;
       }
       const arquivo = card.dataset['arquivo'];
-      if (arquivo) return { el: card, alvo: { tipo: 'quadro', arquivo } };
+      if (arquivo) return { el: card, alvo: { tipo: 'quadro', arquivo }, encolher: true };
     }
 
     // Da janela para o resto do menu: acende o painel inteiro, porque o alvo

@@ -782,6 +782,10 @@
 .qb-lobby__grid .qb-card.qb-alvo {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent);
+  /* O alvo REAGE: cresce um pouco, como quem abre espaco. Passa pela
+     `transition` de transform que o card ja tem, entao o interruptor de
+     movimento o cobre sozinho pela regra global do `base.css`. */
+  transform: scale(1.04);
 }
 
 /* A janela, quando um quadro da tela principal esta sobre ela. */
