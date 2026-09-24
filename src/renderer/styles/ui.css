@@ -616,49 +616,116 @@
 }
 
 /*
-  A TRILHA: "Todos os quadros / Nome", no alto do painel quando se esta dentro
-  de uma pasta. E um caminho, e nao um cabecalho -- por isso o botao de voltar
-  nao tem pastilha: parece link, que e o que ele e.
+  A JANELA DA PASTA ABERTA -- encaixada embaixo, sobre o palco.
+
+  Encaixada, e nao centralizada: no meio ela cobriria a primeira fileira de
+  cards, que e onde as pastas moram, e o que ela existe para permitir e
+  justamente arrastar entre ela e a tela principal. Ver o comentario da montagem
+  em `ui/Lobby.ts`.
+
+  OPACA, sem `backdrop-filter`. Ela nasceu no mesmo relato que disse [...], e o desfoque do painel ja e o suspeito principal.
 */
-.qb-lobby__trilha {
+.qb-pasta-janela {
+  --altura-janela: min(44vh, 440px);
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  bottom: 20px;
+  margin: 0 auto;
+  width: min(1040px, calc(100% - 64px));
+  height: var(--altura-janela);
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.34);
+  overflow: hidden;
+}
+
+/*
+  Com a janela aberta, a rolagem ganha folga embaixo do tamanho dela: o painel
+  termina ACIMA da janela e a lista principal rola nesse espaco. Sem isto, os
+  cards da ultima fileira ficariam presos atras da janela, sem como chegar
+  neles para arrastar.
+
+  A conta repete a altura da janela, e esse e o custo assumido: o `min()` mora
+  nas duas regras. O token `--altura-janela` e da janela e nao alcanca a
+  rolagem, que e irma dela.
+*/
+.qb-lobby--pasta-aberta .qb-lobby__rolagem {
+  padding-bottom: calc(min(44vh, 440px) + 40px);
+}
+
+.qb-pasta-janela__barra {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 8px;
-  min-width: 0;
-  margin: 0 0 16px;
-}
-
-.qb-lobby__trilha-voltar {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 9px 5px 5px;
-  background: none;
-  border: none;
-  border-radius: 7px;
-  font-size: 13px;
+  padding: 10px 10px 10px 16px;
+  border-bottom: 1px solid var(--border);
   color: var(--fg-muted);
 }
 
-.qb-lobby__trilha-voltar:hover {
-  color: var(--accent);
-  background: color-mix(in srgb, var(--fg) 7%, transparent);
-}
-
-.qb-lobby__trilha-sep {
-  flex: none;
-  color: var(--fg-muted);
-}
-
-.qb-lobby__trilha-nome {
+.qb-pasta-janela__nome {
   min-width: 0;
   margin: 0;
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 650;
+  color: var(--fg);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.qb-pasta-janela__contagem {
+  flex: none;
+  margin-right: auto;
+  font-size: 12px;
+}
+
+.qb-pasta-janela__botao {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--fg-muted);
+}
+
+.qb-pasta-janela__botao:hover {
+  color: var(--fg);
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+}
+
+.qb-pasta-janela__corpo {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 18px 20px;
+}
+
+/* Cards um pouco menores que os da tela principal: a janela e a metade de
+   baixo da tela, e com 240px cabiam poucos por fileira. */
+.qb-pasta-janela__grade {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+/* O card da pasta que esta aberta, na tela principal: diz de quem e a janela. */
+.qb-lobby__grid .qb-card.qb-card--aberta {
+  border-color: var(--accent);
+}
+
+/* Dentro da pasta o X so tira da pasta. Vermelho e a cor de "isto apaga", e
+   aqui nao apaga nada. */
+.qb-card__delete--tirar:hover {
+  background: var(--accent);
 }
 
 .qb-lobby__pasta-vazia {
@@ -717,10 +784,20 @@
   box-shadow: 0 0 0 2px var(--accent);
 }
 
-.qb-lobby__trilha-voltar.qb-alvo {
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
-  box-shadow: 0 0 0 2px var(--accent);
+/* A janela, quando um quadro da tela principal esta sobre ela. */
+.qb-pasta-janela.qb-alvo {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 22px 60px rgba(0, 0, 0, 0.34);
+}
+
+/* O painel inteiro, quando um quadro DA JANELA esta fora dela: o alvo e "a tela
+   principal", e nao um lugar dela. Por dentro da borda, para nao mexer no
+   tamanho de uma lamina de tela cheia. O `:root` e para ganhar da sombra que o
+   painel recebe na lista de vidro do `base.css`. */
+:root .qb-lobby__painel.qb-alvo {
+  box-shadow: inset 0 0 0 2px var(--accent);
 }
 
 :root.qb-arrastando,

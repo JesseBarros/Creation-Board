@@ -1115,6 +1115,13 @@
   font-size: 12px;
 }
 
+/* No menu, o painel mora no palco e tem de ficar acima da janela de pasta. */
+.qb-debug--menu {
+  z-index: 30;
+  top: 16px;
+  right: 16px;
+}
+
 .qb-debug__title {
   font-weight: 650;
   font-size: 11px;

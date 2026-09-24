@@ -322,6 +322,9 @@ function createWindow(): void {
   // QB_BENCH=<n> roda a medicao automatizada de performance com n objetos e
   // imprime o resultado no terminal. Ferramenta de desenvolvimento apenas.
   const bench = process.env['QB_BENCH'];
+  // QB_BENCH_LOBBY=1 mede a cadencia de quadros do MENU PRINCIPAL -- parado,
+  // cards levantando e o arrasto da Parte 4. Ver `dev/lobbyBench.ts`.
+  const benchLobby = process.env['QB_BENCH_LOBBY'] === '1';
   const selftest = process.env['QB_SELFTEST'];
   // QB_IMPORT=<caminho> importa o arquivo e imprime o relatorio no terminal, sem
   // gravar nada. QB_IMPORT_SAVE=1 grava o .wbd de verdade.
@@ -340,7 +343,9 @@ function createWindow(): void {
   const boot = process.env['QB_BOOT'] === 'hold' ? '?boot=hold' : '';
   const modo = bench
     ? `?bench=${encodeURIComponent(bench)}`
-    : selftest
+    : benchLobby
+      ? '?benchlobby=1'
+      : selftest
       ? '?selftest=1'
       : importPath
         ? `?import=${encodeURIComponent(importPath)}${importSave}`
@@ -400,13 +405,21 @@ function createWindow(): void {
   // comentario em render/Renderer.ts, inclusive por que PIORAR tambem informa.
   if (process.env['QB_DESYNC'] === '1') query = `${query}${query ? '&' : '?'}desync=1`;
 
+  // O modo de composicao EFETIVO vai para a pagina, para o F3 do menu poder
+  // dizer "CPU" ou "GPU" ao lado da cadencia -- sem isso, um numero ruim nao
+  // diria se e o padrao do B18 ou uma execucao com `QB_GPU` trocado. Nome
+  // errado cai no padrao la em cima, e aqui tambem.
+  query = `${query}${query ? '&' : '?'}gpu=${GPU_MODOS[gpuModo] ? gpuModo : 'padrao'}`;
+
   // Os modos de verificacao terminam imprimindo um marcador. Fechar a janela
   // nesse ponto e o que torna `QB_IMPORT`/`--selftest`/`QB_BENCH` utilizaveis
   // dentro de um script: sem isso o processo fica aberto esperando alguem
   // clicar no X, e quem chamou nunca recebe a saida.
   const done = bench
     ? 'BENCH_RESULT'
-    : selftest
+    : benchLobby
+      ? 'LOBBYBENCH_FIM'
+      : selftest
       ? 'SELFTEST_FIM'
       : importPath
         ? 'IMPORTCHECK_FIM'

@@ -45,7 +45,8 @@ export type ShortcutId =
   | 'rulers'
   | 'rulerUnit'
   | 'layers'
-  | 'findLibrary';
+  | 'findLibrary'
+  | 'debugLobby';
 
 export interface ShortcutDef {
   /** Ausente = entrada apenas informativa (gesto de mouse, sem tecla). */
@@ -193,6 +194,15 @@ export const SHORTCUTS: ShortcutDef[] = [
   { id: 'layers', group: 'Visualizacao', keys: 'C', label: 'Painel de camadas: olho e cadeado', scope: 'board' },
   { id: 'help', group: 'Visualizacao', keys: 'F1|?', label: 'Mostrar esta lista de atalhos' },
   { id: 'debug', group: 'Visualizacao', keys: 'F3', label: 'Painel de debug e carga de teste', scope: 'board' },
+  // O MESMO F3 no menu principal abre o painel DELE, que mede outra coisa: o
+  // custo de compor a tela, e nao o de desenhar o canvas. Ver `PainelDoMenu.ts`.
+  {
+    id: 'debugLobby',
+    group: 'Visualizacao',
+    keys: 'F3',
+    label: 'No menu principal: painel de desempenho',
+    scope: 'lobby',
+  },
   { id: 'benchmark', group: 'Visualizacao', keys: 'B', label: 'Medir fps sustentado', scope: 'board' },
 ];
 

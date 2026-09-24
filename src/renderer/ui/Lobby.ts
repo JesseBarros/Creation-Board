@@ -19,11 +19,12 @@ import {
 import type { IndicePastas, PastaResolvida, Reconciliado } from '@shared/pastas';
 import { createId } from '@shared/model/id';
 import { tornarArrastavel, type AlvoDeArrasto } from './arrastarCard';
+import { PainelDoMenu } from './PainelDoMenu';
 
 /**
- * Onde um quadro arrastado pode cair. A tela decide quais existem: na
- * principal, as pastas e os outros quadros; dentro de uma pasta, so a trilha
- * de volta -- pasta dentro de pasta nao existe no indice.
+ * Onde um quadro arrastado pode cair: numa pasta (inclusive a janela da pasta
+ * aberta), sobre outro quadro, ou "fora" -- da janela para a tela principal.
+ * Quem decide qual vale em cada lugar e `Lobby.#alvoEm`.
  */
 type Alvo =
   | { tipo: 'pasta'; id: string; nome: string }
@@ -81,19 +82,23 @@ export class Lobby {
   #themeBtn!: HTMLButtonElement;
   #novaPastaBtn: HTMLButtonElement;
   #search: LibrarySearch;
+  /** O F3 do menu. Mora no palco, acima da janela de pasta. */
+  #desempenho: PainelDoMenu;
 
   // ---- pastas
-  /** "Todos os quadros / Nome": so existe na tela de dentro de uma pasta. */
-  #trilha: HTMLElement;
-  #trilhaNome: HTMLElement;
+  /** A janela da pasta aberta. Mora no PALCO, fora da rolagem -- ver o construtor. */
+  #janela: HTMLElement;
+  #janelaNome: HTMLElement;
+  #janelaContagem: HTMLElement;
+  #janelaCorpo: HTMLElement;
+  #janelaGrade: HTMLElement;
+  #janelaFechar: HTMLButtonElement;
   #vazioPasta: HTMLElement;
   /**
    * A pasta aberta, por ID. Sobrevive ao `refresh()` e a ida ao quadro: quem
-   * abre um quadro de dentro de uma pasta volta para dentro dela.
+   * abre um quadro de dentro de uma pasta volta com ela aberta.
    */
   #pastaAberta: string | null = null;
-  /** Onde a rolagem estava na tela principal, para voltar ao mesmo ponto. */
-  #rolagemAntes = 0;
   /** O ultimo resultado do disco. Entrar e sair de pasta desenha daqui, sem reler. */
   #ultimo: Reconciliado = { pastas: [], soltos: [] };
 
@@ -242,42 +247,91 @@ export class Lobby {
       e, logo abaixo dela, uma lamina de vidro vazia. E a pior primeira imagem
       possivel da tela.
     */
-    // ---- dentro de uma pasta
-    //
-    // A trilha mora DENTRO do painel, e nao no cabecalho: ela diz onde esta a
-    // grade, e nao o aplicativo. O cabecalho continua o mesmo nas duas telas.
-    this.#trilha = document.createElement('nav');
-    this.#trilha.className = 'qb-lobby__trilha';
-    this.#trilha.setAttribute('aria-label', 'Local');
-    this.#trilha.hidden = true;
-    const voltar = document.createElement('button');
-    voltar.type = 'button';
-    voltar.className = 'qb-lobby__trilha-voltar';
-    voltar.append(icon('voltar', 15), 'Todos os quadros');
-    voltar.addEventListener('click', () => this.#sairDaPasta());
-    const separador = document.createElement('span');
-    separador.className = 'qb-lobby__trilha-sep';
-    separador.setAttribute('aria-hidden', 'true');
-    separador.textContent = '/';
-    this.#trilhaNome = document.createElement('h2');
-    this.#trilhaNome.className = 'qb-lobby__trilha-nome';
-    this.#trilha.append(voltar, separador, this.#trilhaNome);
+    /*
+      A PASTA ABRE NUMA JANELA MENOR, e a tela principal continua a vista.
 
-    // Pasta vazia e estado normal, e nao falha: a pasta acabou de ser criada.
-    // A mensagem nao promete o arrastar, que ainda nao existe.
+      Ate 24/09/2026 abrir uma pasta TROCAVA a grade pelo conteudo dela, com
+      uma trilha "Todos os quadros / Nome" para voltar. no teste e pediu o
+      contrario: [...]. Trocando a tela, nao havia de onde
+      trazer um quadro para a pasta nem para onde leva-lo ao tirar.
+
+      A janela mora no PALCO (a raiz), e nao na rolagem: ela fica parada
+      enquanto a lista principal corre por tras. E fica ENCAIXADA EMBAIXO, e nao
+      no meio: no meio ela cobriria justamente a primeira fileira de cards,
+      que e onde as pastas moram. Enquanto ela esta aberta, a rolagem ganha
+      folga embaixo do tamanho dela (ver `.qb-lobby--pasta-aberta` no ui.css),
+      entao nenhum card fica preso atras da janela.
+
+      Ela e OPACA, sem desfoque, de proposito: o relato que a criou veio junto
+      com [...], e empilhar um segundo `backdrop-filter`
+      sobre o do painel seria apostar contra a medicao que ainda nao tinha
+      saido.
+    */
+    this.#janela = document.createElement('section');
+    this.#janela.className = 'qb-pasta-janela';
+    this.#janela.hidden = true;
+    this.#janela.setAttribute('role', 'region');
+
+    const barra = document.createElement('div');
+    barra.className = 'qb-pasta-janela__barra';
+    this.#janelaNome = document.createElement('h2');
+    this.#janelaNome.className = 'qb-pasta-janela__nome';
+    this.#janelaContagem = document.createElement('span');
+    this.#janelaContagem.className = 'qb-pasta-janela__contagem';
+    const renomear = botaoDaJanela('lapis', 'Renomear esta pasta', () => {
+      const aberta = this.#abertaResolvida();
+      if (aberta) void this.#renomearPasta(aberta);
+    });
+    this.#janelaFechar = botaoDaJanela('fechar', 'Fechar a pasta (Esc)', () => this.#fecharPasta());
+    barra.append(icon('pasta', 17), this.#janelaNome, this.#janelaContagem, renomear, this.#janelaFechar);
+
+    // Pasta vazia e estado normal, e nao falha: ela acabou de ser criada, ou
+    // alguem tirou tudo dela. A mensagem diz o que fazer, agora que da.
     this.#vazioPasta = document.createElement('p');
     this.#vazioPasta.className = 'qb-lobby__pasta-vazia';
-    this.#vazioPasta.textContent = 'Esta pasta ainda está vazia.';
+    this.#vazioPasta.textContent = 'Esta pasta está vazia. Arraste quadros da tela principal para cá.';
     this.#vazioPasta.hidden = true;
+
+    this.#janelaGrade = document.createElement('div');
+    this.#janelaGrade.className = 'qb-lobby__grid qb-pasta-janela__grade';
+    this.#janelaCorpo = document.createElement('div');
+    this.#janelaCorpo.className = 'qb-pasta-janela__corpo';
+    this.#janelaCorpo.append(this.#vazioPasta, this.#janelaGrade);
+    this.#janela.append(barra, this.#janelaCorpo);
+
+    // Esc fecha a pasta de onde quer que o foco esteja no menu. Os modais e o
+    // arrasto escutam na CAPTURA da janela e param o Escape antes dele chegar
+    // aqui -- entao Esc num dialogo fecha o dialogo, e nao a pasta junto.
+    this.el.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape' || this.#pastaAberta === null || this.#search.active) return;
+      e.preventDefault();
+      // Consumido: o mesmo Esc nao segue para os atalhos da janela.
+      e.stopPropagation();
+      this.#fecharPasta();
+    });
 
     this.#painel = document.createElement('div');
     this.#painel.className = 'qb-lobby__painel';
-    this.#painel.append(this.#trilha, this.#empty, this.#vazioPasta, this.#grid);
+    this.#painel.append(this.#empty, this.#grid);
 
     this.#rolagem = document.createElement('div');
     this.#rolagem.className = 'qb-lobby__rolagem';
     this.#rolagem.append(header, this.#search.el, this.#painel);
-    this.el.append(this.#rolagem);
+    this.#desempenho = new PainelDoMenu(() => this.el.querySelectorAll('.qb-card').length);
+    this.el.append(this.#rolagem, this.#janela, this.#desempenho.el);
+  }
+
+  /** F3 no menu principal. */
+  alternarDesempenho(): void {
+    this.#desempenho.alternar();
+  }
+
+  pausarDesempenho(): void {
+    this.#desempenho.pausar();
+  }
+
+  retomarDesempenho(): void {
+    this.#desempenho.retomar();
   }
 
   /**
@@ -294,18 +348,22 @@ export class Lobby {
   #syncSearchState(): void {
     const buscando = this.#search.active;
     this.#painel.hidden = buscando;
+    // A janela sai junto: ela e parte da grade, e nao da busca.
+    this.#janela.hidden = buscando || this.#pastaAberta === null;
+    this.el.classList.toggle('qb-lobby--pasta-aberta', !this.#janela.hidden);
     this.#empty.hidden = buscando || !this.#semNada();
   }
 
   /**
    * O lobby nao tem nada para mostrar: nem quadro, nem pasta.
    *
-   * Contar os filhos da grade deixou de servir quando a pasta entrou: dentro de
-   * uma pasta vazia a grade fica vazia tambem, e a mensagem [...] apareceria para quem tem quarenta.
+   * Contar os filhos da grade deixaria de servir no dia em que a grade
+   * ganhasse qualquer filho que nao e card; perguntar ao ultimo resultado do
+   * disco nao depende de como a tela foi montada.
    */
   #semNada(): boolean {
     const { pastas, soltos } = this.#ultimo;
-    return this.#pastaAberta === null && pastas.length === 0 && soltos.length === 0;
+    return pastas.length === 0 && soltos.length === 0;
   }
 
   /** Foco na busca da biblioteca. O `Ctrl+F` do lobby chama aqui. */
@@ -354,8 +412,8 @@ export class Lobby {
   }
 
   /**
-   * Desenha a tela de onde se esta -- a principal ou a de dentro de uma pasta
-   * -- a partir do ultimo resultado do disco.
+   * Desenha a tela principal e, se houver pasta aberta, a janela dela -- a
+   * partir do ultimo resultado do disco.
    *
    * A PROMESSA do `shared/pastas.ts` continua valendo aqui, e e ela que decide
    * o que vai onde: todo quadro que o disco tem aparece em exatamente UM
@@ -367,45 +425,50 @@ export class Lobby {
     const { pastas, soltos } = this.#ultimo;
 
     // A pasta aberta pode ter deixado de existir -- excluida, ou o indice se
-    // perdeu. Volta para a tela principal em vez de mostrar uma pasta fantasma.
-    const aberta =
-      this.#pastaAberta === null ? null : (pastas.find((p) => p.id === this.#pastaAberta) ?? null);
+    // perdeu. A janela fecha em vez de mostrar uma pasta fantasma.
+    const aberta = this.#abertaResolvida();
     if (aberta === null) this.#pastaAberta = null;
 
-    this.#trilha.hidden = aberta === null;
-    this.#trilhaNome.textContent = aberta ? nomeDeExibicao(aberta) : '';
-    // Pasta dentro de pasta nao existe no indice; o botao sairia prometendo.
-    this.#novaPastaBtn.hidden = aberta !== null;
-    this.#vazioPasta.hidden = aberta === null || aberta.quadros.length > 0;
-
+    // Pastas primeiro, como no Explorador: sao poucas, e sao o caminho para o
+    // que nao esta a vista.
     this.#grid.replaceChildren();
+    for (const p of pastas) this.#grid.append(this.#cardPasta(p, p.id === aberta?.id));
+    for (const b of soltos) this.#grid.append(this.#card(b, null));
+
+    this.#janelaGrade.replaceChildren();
     if (aberta) {
-      for (const b of aberta.quadros) this.#grid.append(this.#card(b));
-    } else {
-      // Pastas primeiro, como no Explorador: sao poucas, e sao o caminho para
-      // o que nao esta a vista.
-      for (const p of pastas) this.#grid.append(this.#cardPasta(p));
-      for (const b of soltos) this.#grid.append(this.#card(b));
+      const nome = nomeDeExibicao(aberta);
+      this.#janelaNome.textContent = nome;
+      this.#janelaNome.title = nome;
+      this.#janelaContagem.textContent = contagemDeQuadros(aberta.quadros.length);
+      this.#janela.setAttribute('aria-label', `Pasta ${nome}`);
+      for (const b of aberta.quadros) this.#janelaGrade.append(this.#card(b, aberta));
+      this.#vazioPasta.hidden = aberta.quadros.length > 0;
     }
     this.#syncSearchState();
   }
 
-  #entrarNaPasta(id: string): void {
-    this.#rolagemAntes = this.#rolagem.scrollTop;
-    this.#pastaAberta = id;
-    this.#desenhar();
-    this.#rolagem.scrollTop = 0;
-    // O foco vai para o caminho de volta: quem entrou pelo teclado tem de
-    // saber como sair sem procurar.
-    this.#trilha.querySelector<HTMLElement>('.qb-lobby__trilha-voltar')?.focus();
+  /** A pasta aberta, ja cruzada com o disco -- ou null. */
+  #abertaResolvida(): PastaResolvida | null {
+    if (this.#pastaAberta === null) return null;
+    return this.#ultimo.pastas.find((p) => p.id === this.#pastaAberta) ?? null;
   }
 
-  #sairDaPasta(): void {
+  #abrirPasta(id: string): void {
+    const trocou = this.#pastaAberta !== id;
+    this.#pastaAberta = id;
+    this.#desenhar();
+    if (trocou) this.#janelaCorpo.scrollTop = 0;
+    // O foco vai para o fechar: quem abriu pelo teclado tem de saber sair sem
+    // procurar.
+    this.#janelaFechar.focus();
+  }
+
+  #fecharPasta(): void {
     const de = this.#pastaAberta;
     this.#pastaAberta = null;
     this.#desenhar();
-    this.#rolagem.scrollTop = this.#rolagemAntes;
-    // E volta para o card de onde saiu, e nao para o topo da lista.
+    // E volta para o card da pasta, e nao para o topo da lista.
     if (de !== null) this.#focarPasta(de);
   }
 
@@ -499,18 +562,16 @@ export class Lobby {
     }
   }
 
-  #cardPasta(pasta: PastaResolvida): HTMLElement {
+  #cardPasta(pasta: PastaResolvida, aberta: boolean): HTMLElement {
     const nome = nomeDeExibicao(pasta);
-    const n = pasta.quadros.length;
-    const contagem =
-      n === 0 ? 'Vazia' : n === 1 ? '1 quadro' : `${n.toLocaleString('pt-BR')} quadros`;
+    const contagem = contagemDeQuadros(pasta.quadros.length);
 
     // E um `.qb-card` com modificador, e NAO uma classe nova. A classe e o que
     // poe o card nas listas centralizadas do `base.css` -- e desde a Parte 2 a
     // lista dele e a da TINTA, nao a do vidro: a lamina e o painel. Uma classe
     // nova nasceria fora das duas, e teria de ser lembrada em cada uma.
     const card = document.createElement('article');
-    card.className = 'qb-card qb-card--pasta';
+    card.className = aberta ? 'qb-card qb-card--pasta qb-card--aberta' : 'qb-card qb-card--pasta';
     card.tabIndex = 0;
     card.dataset['pastaId'] = pasta.id;
     card.setAttribute('aria-label', `Pasta ${nome}, ${contagem.toLowerCase()}`);
@@ -578,13 +639,13 @@ export class Lobby {
     });
 
     card.append(thumb, body, renomear, del);
-    card.addEventListener('click', () => this.#entrarNaPasta(pasta.id));
+    card.addEventListener('click', () => this.#abrirPasta(pasta.id));
     card.addEventListener('keydown', (e) => {
       // So o card em si: Enter num dos botoes de dentro e daquele botao.
       if (e.target !== card) return;
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        this.#entrarNaPasta(pasta.id);
+        this.#abrirPasta(pasta.id);
       } else if (e.key === 'F2') {
         e.preventDefault();
         void this.#renomearPasta(pasta);
@@ -593,7 +654,12 @@ export class Lobby {
     return card;
   }
 
-  #card(summary: BoardSummary): HTMLElement {
+  /**
+   * O card de um quadro. `pasta` diz ONDE ele esta desenhado: na tela
+   * principal (null) ou dentro da janela de uma pasta -- e isso muda o que o X
+   * faz.
+   */
+  #card(summary: BoardSummary, pasta: PastaResolvida | null): HTMLElement {
     const card = document.createElement('article');
     card.className = 'qb-card';
     card.tabIndex = 0;
@@ -632,30 +698,31 @@ export class Lobby {
     del.type = 'button';
     del.className = 'qb-card__delete';
     del.append(icon('fechar', 13));
-    del.title = 'Excluir este quadro';
-    del.addEventListener('click', async (e) => {
-      // Sem isso o clique borbulha para o card e abriria o quadro que acabou de
-      // ser excluido.
-      e.stopPropagation();
-      const ok = await confirmDialog({
-        title: 'Excluir quadro',
-        message: `"${summary.name}" sera apagado do disco. Esta acao nao pode ser desfeita.`,
-        confirmLabel: 'Excluir',
-        danger: true,
+    if (pasta) {
+      /*
+        DENTRO DA PASTA, O X SO TIRA DA PASTA. Pedido em 24/09/2026.
+
+        O mesmo X que na tela principal apaga o arquivo, aqui desagrupa -- e
+        por isso nao pergunta nada: nao ha o que perder. O quadro volta para a
+        tela principal, e excluir de verdade continua sendo la.
+
+        O hover tambem muda: vermelho e a cor de "isto apaga", e aqui nao apaga.
+      */
+      del.classList.add('qb-card__delete--tirar');
+      del.title = 'Tirar desta pasta (o quadro continua salvo)';
+      del.setAttribute('aria-label', 'Tirar desta pasta');
+      del.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const arquivo = nomeDeArquivoDe(summary);
+        void this.#mudarIndice((i) => tirarDeTodas(i, arquivo)).then((ok) => {
+          if (ok) toast(`"${summary.name}" saiu da pasta "${nomeDeExibicao(pasta)}".`);
+        });
       });
-      if (!ok) return;
-      try {
-        await window.quadro.board.remove(summary.path);
-        // O quadro sumiu do disco; a busca da biblioteca nao pode continuar
-        // oferecendo resultados que abririam um arquivo inexistente.
-        invalidateLibraryIndex();
-        await this.#esquecerNoIndice(summary);
-        toast(`"${summary.name}" excluido.`);
-        await this.refresh();
-      } catch (err) {
-        toast(`Falha ao excluir: ${String(err)}`, 'error');
-      }
-    });
+    } else {
+      del.title = 'Excluir este quadro';
+      del.setAttribute('aria-label', 'Excluir este quadro');
+      del.addEventListener('click', (e) => void this.#excluirQuadro(e, summary));
+    }
 
     card.append(thumb, body, del);
     card.addEventListener('click', () => this.actions.openBoard(summary));
@@ -679,27 +746,48 @@ export class Lobby {
   /**
    * O que esta sob o ponteiro, lido como alvo para o card `origem`.
    *
-   * A regra de QUAL tela aceita O QUE mora aqui, num lugar so:
-   *   - na principal: pasta (entrar nela) e outro quadro (criar pasta com os dois);
-   *   - dentro de uma pasta: so "Todos os quadros", na trilha (tirar da pasta).
-   *     Outro quadro ali NAO e alvo, porque a pasta que ele criaria estaria
-   *     dentro desta.
+   * A regra de QUAL lugar aceita O QUE mora aqui, num lugar so:
+   *   - uma PASTA da tela principal: o quadro entra nela;
+   *   - outro QUADRO da tela principal: pasta nova com os dois;
+   *   - a JANELA da pasta aberta, vindo da tela principal: entra nessa pasta;
+   *   - qualquer outro lugar do menu, vindo da JANELA: sai da pasta -- o
+   *     [...] do Windows, que foi o pedido.
+   * Dentro da propria janela nada e alvo: a pasta que um quadro criaria ali
+   * estaria dentro desta, e pasta dentro de pasta nao existe no indice.
    */
   #alvoEm(el: Element | null, origem: HTMLElement): AlvoDeArrasto<Alvo> | null {
-    if (!el) return null;
-    if (this.#pastaAberta !== null) {
-      const voltar = el.closest<HTMLElement>('.qb-lobby__trilha-voltar');
-      return voltar && this.#trilha.contains(voltar) ? { el: voltar, alvo: { tipo: 'fora' } } : null;
+    if (!el || !this.el.contains(el)) return null;
+    const daJanela = this.#janela.contains(origem);
+    const sobreJanela = !this.#janela.hidden && this.#janela.contains(el);
+
+    if (sobreJanela) {
+      if (daJanela) return null;
+      const aberta = this.#abertaResolvida();
+      return aberta
+        ? { el: this.#janela, alvo: { tipo: 'pasta', id: aberta.id, nome: nomeDeExibicao(aberta) } }
+        : null;
     }
+
     const card = el.closest<HTMLElement>('.qb-card');
-    if (!card || card === origem || !this.#grid.contains(card)) return null;
-    const pastaId = card.dataset['pastaId'];
-    if (pastaId !== undefined) {
-      const pasta = this.#ultimo.pastas.find((p) => p.id === pastaId);
-      return pasta ? { el: card, alvo: { tipo: 'pasta', id: pasta.id, nome: nomeDeExibicao(pasta) } } : null;
+    if (card && card !== origem && this.#grid.contains(card)) {
+      const pastaId = card.dataset['pastaId'];
+      if (pastaId !== undefined) {
+        // A pasta de onde o quadro veio nao e alvo: soltar nela nao mudaria
+        // nada, e acender prometeria alguma coisa.
+        if (daJanela && pastaId === this.#pastaAberta) return null;
+        const pasta = this.#ultimo.pastas.find((p) => p.id === pastaId);
+        return pasta
+          ? { el: card, alvo: { tipo: 'pasta', id: pasta.id, nome: nomeDeExibicao(pasta) } }
+          : null;
+      }
+      const arquivo = card.dataset['arquivo'];
+      if (arquivo) return { el: card, alvo: { tipo: 'quadro', arquivo } };
     }
-    const arquivo = card.dataset['arquivo'];
-    return arquivo ? { el: card, alvo: { tipo: 'quadro', arquivo } } : null;
+
+    // Da janela para o resto do menu: acende o painel inteiro, porque o alvo
+    // e "a tela principal", e nao um lugar dela.
+    if (daJanela) return { el: this.#painel, alvo: { tipo: 'fora' } };
+    return null;
   }
 
   /**
@@ -722,7 +810,7 @@ export class Lobby {
 
     if (alvo.tipo === 'fora') {
       if (await this.#mudarIndice((i) => tirarDeTodas(i, arquivo))) {
-        toast(`"${origem.name}" voltou para a tela principal.`);
+        toast(`"${origem.name}" saiu da pasta.`);
       }
       return;
     }
@@ -744,6 +832,30 @@ export class Lobby {
     // O que estava parado vem primeiro: ele ja estava ali, o outro chegou.
     if (await this.#mudarIndice((i) => criarPastaCom(i, id, nome, [alvo.arquivo, arquivo]))) {
       this.#focarPasta(id);
+    }
+  }
+
+  async #excluirQuadro(e: MouseEvent, summary: BoardSummary): Promise<void> {
+    // Sem isso o clique borbulha para o card e abriria o quadro que acabou de
+    // ser excluido.
+    e.stopPropagation();
+    const ok = await confirmDialog({
+      title: 'Excluir quadro',
+      message: `"${summary.name}" sera apagado do disco. Esta acao nao pode ser desfeita.`,
+      confirmLabel: 'Excluir',
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await window.quadro.board.remove(summary.path);
+      // O quadro sumiu do disco; a busca da biblioteca nao pode continuar
+      // oferecendo resultados que abririam um arquivo inexistente.
+      invalidateLibraryIndex();
+      await this.#esquecerNoIndice(summary);
+      toast(`"${summary.name}" excluido.`);
+      await this.refresh();
+    } catch (err) {
+      toast(`Falha ao excluir: ${String(err)}`, 'error');
     }
   }
 
@@ -776,6 +888,26 @@ export class Lobby {
  */
 function nomeDeExibicao(pasta: PastaResolvida): string {
   return pasta.nome === '' ? 'Pasta sem nome' : pasta.nome;
+}
+
+function contagemDeQuadros(n: number): string {
+  return n === 0 ? 'Vazia' : n === 1 ? '1 quadro' : `${n.toLocaleString('pt-BR')} quadros`;
+}
+
+/**
+ * Botao da barra da janela de pasta. NAO e `.qb-btn`: dentro do lobby essa
+ * classe ganha o vidro do cabecalho (`backdrop-filter`), e um desfoque sobre a
+ * janela opaca custaria sem mostrar nada.
+ */
+function botaoDaJanela(nome: IconName, rotulo: string, onClick: () => void): HTMLButtonElement {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'qb-pasta-janela__botao';
+  b.title = rotulo;
+  b.setAttribute('aria-label', rotulo);
+  b.append(icon(nome, 16));
+  b.addEventListener('click', onClick);
+  return b;
 }
 
 function textButton(text: string, onClick: () => void): HTMLButtonElement {

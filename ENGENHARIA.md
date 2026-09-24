@@ -622,6 +622,12 @@ correção foi fazer o instrumento se conferir sozinho: fotografa até o quadro 
 
 ## O painel de vidro do lobby não custou nada — medido em 21/09/2026
 
+> **Esta medição deixou de valer no dia seguinte.** Ela foi feita com a tela
+> composta pela GPU; em 22/09 o B18 passou a composição para a CPU, e com isso o
+> mesmo painel derrubou o menu para **14 quadros por segundo**. Ver a seção
+> seguinte. O registro abaixo fica como estava, porque o que ele mediu era
+> verdade *naquela* configuração — e o erro foi não refazê-lo quando ela mudou.
+
 O plano da Parte 2 marcou isto como **o maior risco de toda a repaginação**: um
 `backdrop-filter` com `feTurbulence` numa área quase de tela cheia é a família de
 causa do B8. Havia um plano B escrito — dar ao painel um `--chrome-blur-liso`,
@@ -675,6 +681,57 @@ primeira execução, que pendurou nos 40 cards. Com um orçamento de tempo de
 **parede** a lentidão vira número em vez de silêncio; com ele, as três execuções
 seguintes passaram sem encostar no orçamento. (A causa provável do travamento
 original é oclusão da janela parando o `requestAnimationFrame`, e não custo.)
+
+---
+
+## O painel de vidro CUSTOU, sim — pela CPU. Medido em 24/09/2026
+
+
+A medição de 21/09 (seção anterior) tinha sido feita com a composição pela GPU.
+Em 22/09 o B18 fez a composição pela CPU virar o padrão, e ninguém refez a
+medição do painel. Instrumento novo, **dentro do repositório** desta vez:
+`QB_BENCH_LOBBY=1` (`src/renderer/dev/lobbyBench.ts`), que abre o menu de
+verdade com `QB_BOARDS` apontando para seis cópias e mede o intervalo entre
+`requestAnimationFrame` em três cenas: parado, um card por vez levantando como no
+hover, e o arrasto real da Parte 4 — cancelado com Esc, nada é gravado.
+
+| composição | desfoque | parado | levantar | arrastar |
+|---|---|---|---|---|
+| **CPU (padrão)** | **ao vivo** | 144 q/s | **14,4** | **13,9** (pior quadro 167 ms) |
+| CPU | desligado (`QB_BLUR=0`) | 144 | 135,7 | 103,4 |
+| GPU (`QB_GPU=normal`) | ao vivo | 144 | 141,9 | 143,3 |
+| GPU | desligado | 144 | 143,6 | 143,0 |
+
+**A causa:** o modo padrão soma a composição pela CPU (B18) com a repintura da
+tela inteira a cada quadro (B8). Com as duas, o `backdrop-filter` de tela cheia
+do painel é refeito na CPU a cada quadro em que qualquer coisa se mexe — cerca de
+70 ms por quadro. Parado não custa nada, e foi por isso que só apareceu mexendo.
+
+**A saída, decisão de produto entre três com os números na mesa:** o que está atrás do
+painel é uma foto PARADA, então ela é desfocada **uma vez**, pequena (480 px), num
+canvas (`src/renderer/ui/vidroPronto.ts`), e o painel a pinta alinhada com o
+fundo por `background-attachment: fixed`. As outras duas eram tirar todo
+desfoque do menu (103–136 q/s, sem vidro) e voltar à composição pela GPU (vidro
+inteiro a 143 q/s, mas o fantasma do B18 no zoom volta).
+
+| vidro | levantar | arrastar | arrastar de dentro da janela de pasta |
+|---|---|---|---|
+| ao vivo (antes) | 14,4 | 13,9 | — |
+| **pronto** (duas rodadas) | **92,8–101,9** | **87,7–99,7** | **86,8–93,0** |
+
+O pior quadro caiu de 167 ms para 14–28 ms. **O preço assumido:** o painel perde
+a leve ondulação de refração (`url(#qb-refracao)`), que é um deslocamento
+calculado AO VIVO sobre o que está atrás. Botões e busca mantêm o vidro inteiro —
+são pequenos, e o que sobra de custo até os 144 vem em parte deles.
+
+**Um defeito que só a captura pegou:** a primeira versão pôs a tinta
+(`--veu-lobby`, uma **cor**) numa camada do meio do `background`. Cor só é aceita
+na última camada; a declaração inteira ficou inválida, o painel ficou sem fundo,
+e o que se via era a foto nítida do palco por trás. O número de desempenho
+parecia ótimo justamente porque não havia nada sendo desenhado. Hoje há uma
+guarda no selftest que lê o `background-image` calculado com o vidro pronto e
+exige a tinta **e** a foto.
+
 
 ---
 

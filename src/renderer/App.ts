@@ -75,6 +75,7 @@ import type { ImportReport, ImportSource } from '@shared/importer';
 import type { SaveBoardResult } from '@shared/wbd';
 import { generateStressBatches } from './dev/stress';
 import { resolve as resolveShortcut, type ShortcutId } from './shortcuts';
+import { esquecerVidro, fotoDoPalco, vidroDe } from './ui/vidroPronto';
 
 const THEMES: Record<'light' | 'dark', RenderTheme> = {
   /*
@@ -196,6 +197,8 @@ export class App {
    * com o app. Os bytes chegam por IPC — a CSP não permite `file:`.
    */
   #fundos: { light: string | null; dark: string | null } = { light: null, dark: null };
+  /** Conta os pedidos de vidro pronto: so o ULTIMO pode escrever. Ver `#aplicarVidro`. */
+  #vidroPedido = 0;
   /** `QB_FUNDO=off`: sem foto nenhuma nesta execução. Ver `#aplicarFundo`. */
   #semFundo = false;
   /**
@@ -500,6 +503,14 @@ export class App {
       void import('./dev/selftest').then((m) => m.runSelfTest(this.#host, this));
     } else if (bench) {
       void this.#runAutoBenchmark(Number(bench));
+    } else if (params.get('benchlobby')) {
+      // O menu de verdade, com a foto de fundo, e a abertura fora da frente --
+      // ela cobre a janela inteira e seria ELA a composta.
+      void Promise.all([this.goToLobby(), this.#carregarFundos()]).then(async () => {
+        dismissBootScreen(true);
+        const m = await import('./dev/lobbyBench');
+        await m.runLobbyBench();
+      });
     } else {
       // A tela de abertura sai quando a BIBLIOTECA esta listada, e nao quando o
       // JavaScript termina de carregar: ler a pasta e gerar as miniaturas e o
@@ -527,6 +538,7 @@ export class App {
     this.#view = 'lobby';
     this.#boardView.hidden = true;
     this.#lobby.el.hidden = false;
+    this.#lobby.retomarDesempenho();
     void window.quadro.board.folder().then((p) => this.#lobby.setFolder(p));
     await this.#lobby.refresh();
   }
@@ -534,6 +546,10 @@ export class App {
   #enterBoard(): void {
     this.#view = 'board';
     this.#lobby.el.hidden = true;
+    // O laco de medicao do F3 do menu nao pode continuar rodando por baixo do
+    // quadro: ele pediria um quadro de animacao por vsync a toa, e o F3 do
+    // quadro mediria a sobra dele.
+    this.#lobby.pausarDesempenho();
     this.#boardView.hidden = false;
     this.#updateTitle();
     // O host estava com display:none e portanto media 0x0; o ResizeObserver so
@@ -1209,7 +1225,11 @@ export class App {
   /** Troca o blob de um tema, revogando o anterior. Ver `#carregarFundos`. */
   #trocarFundo(tema: 'light' | 'dark', img: FundoImagem | null): void {
     const antigo = this.#fundos[tema];
-    if (antigo) URL.revokeObjectURL(antigo);
+    if (antigo) {
+      // A versao desfocada dela vai junto -- ver `ui/vidroPronto.ts`.
+      esquecerVidro(antigo);
+      URL.revokeObjectURL(antigo);
+    }
     this.#fundos[tema] = img ? URL.createObjectURL(new Blob([img.bytes], { type: img.mime })) : null;
   }
 
@@ -1217,6 +1237,7 @@ export class App {
     const raiz = document.documentElement;
     if (this.#semFundo) {
       delete raiz.dataset['fundo'];
+      delete raiz.dataset['vidro'];
       return;
     }
 
@@ -1225,6 +1246,36 @@ export class App {
     else raiz.style.removeProperty('--lobby-foto'); // volta ao padrão do CSS
 
     raiz.dataset['fundo'] = 'foto';
+    void this.#aplicarVidro();
+  }
+
+  /**
+   * O painel do menu com a foto desfocada UMA VEZ, em vez do desfoque ao vivo.
+   * A razao e os numeros estao em `ui/vidroPronto.ts`.
+   *
+   * Enquanto a versao pronta nao existe, o `data-vidro` sai e o desfoque ao
+   * vivo volta a valer: e mais lento, mas e a MESMA foto. Deixar a versao
+   * anterior no lugar mostraria, por um instante, a galaxia desfocada sobre a
+   * praia.
+   *
+   * Falha em silencio: sem a versao pronta, o vidro ao vivo continua funcionando,
+   * so mais caro. Um erro aqui nao pode deixar o painel sem fundo.
+   */
+  async #aplicarVidro(): Promise<void> {
+    const raiz = document.documentElement;
+    const pedido = ++this.#vidroPedido;
+    delete raiz.dataset['vidro'];
+    const fonte = fotoDoPalco(this.#lobby.el);
+    if (!fonte) return;
+    try {
+      const pronto = await vidroDe(fonte);
+      // Um tema trocado no meio do caminho ja pediu outro; este chegou tarde.
+      if (pedido !== this.#vidroPedido || raiz.dataset['fundo'] !== 'foto') return;
+      raiz.style.setProperty('--lobby-foto-desfocada', `url("${pronto}")`);
+      raiz.dataset['vidro'] = 'pronto';
+    } catch {
+      // Fica o vidro ao vivo. Ver acima.
+    }
   }
 
   #applyTheme(): void {
@@ -2324,6 +2375,7 @@ export class App {
       selectAll: () => selectAll(this.#toolCtx),
       find: () => this.openSearch(),
       findLibrary: () => this.#lobby.focusSearch(),
+      debugLobby: () => this.#lobby.alternarDesempenho(),
       duplicate: () => void duplicateSelection(this.#toolCtx),
       copy: () => this.copySelection(),
       cut: () => this.cutSelection(),

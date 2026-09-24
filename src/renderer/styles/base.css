@@ -506,6 +506,40 @@
   background: var(--chrome-sheen), var(--veu-lobby);
 }
 
+/*
+  O PAINEL COM O VIDRO PRONTO: a foto desfocada uma vez, em vez de a cada quadro.
+
+  Com a composicao pela CPU (a correcao do B18) e a repintura completa (a do
+  B8), o `backdrop-filter` de tela cheia do painel era refeito na CPU a cada
+  quadro em que algo se mexia: 14 q/s arrastando um quadro, medido em
+  24/09/2026. Atras do painel ha uma foto PARADA, entao ela e desfocada uma vez
+  em `ui/vidroPronto.ts` e pintada aqui alinhada com o fundo do palco -- mesmo
+  `--lobby-foco`, mesmo `cover`, e `fixed` para acompanhar a tela e nao a
+  rolagem. Medido no prototipo: 76 a 85 q/s.
+
+  `fixed` num elemento que rola e o que a nota do `ui.css` sobre o palco manda
+  evitar -- e la a razao era custo de repintar a cada quadro de rolagem. No modo
+  padrao a tela INTEIRA ja e repintada a cada quadro, entao aqui ele nao
+  acrescenta passe nenhum; desenhar uma imagem pronta e o que sobra, e e barato.
+
+  So vale com `data-vidro='pronto'`: ate a versao desfocada existir, o vidro ao
+  vivo da lista acima continua valendo.
+
+  A TINTA ENTRA COMO GRADIENTE DE UMA COR SO, e nao como cor. Num `background`
+  de varias camadas, cor so e aceita na ULTIMA -- e a tinta tem de ficar ACIMA
+  da foto. A primeira versao escreveu `var(--veu-lobby)` no meio: a declaracao
+  inteira virou invalida na hora de calcular, o painel ficou sem fundo nenhum,
+  e o que se via era a foto nitida do palco por tras. Pego pela captura, e
+  confirmado lendo o `background-image` calculado: "none".
+*/
+:root[data-fundo='foto'][data-vidro='pronto'] .qb-lobby__painel {
+  backdrop-filter: none;
+  background:
+    var(--chrome-sheen),
+    linear-gradient(var(--veu-lobby), var(--veu-lobby)),
+    var(--lobby-foto-desfocada) var(--lobby-foco) / cover no-repeat fixed;
+}
+
 /* A miniatura continua opaca: lavada pelo desfoque, ela deixaria de servir para
    reconhecer o quadro, que e a unica funcao dela. */
 :root .qb-card__thumb {
