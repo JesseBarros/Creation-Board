@@ -49,6 +49,9 @@
     0 8px 24px rgba(20, 28, 46, 0.13);
   --font-ui: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif;
   --font-mono: 'Cascadia Mono', 'Consolas', ui-monospace, monospace;
+  /* A fonte da MARCA -- so o titulo do menu principal. Ver o @font-face no fim
+     deste arquivo e `assets/fontes/LEIA-ME.md`. */
+  --font-marca: 'Outfit', var(--font-ui);
 
   /*
     MOVIMENTO -- um gesto só, no aplicativo inteiro.
@@ -502,11 +505,50 @@
   --veu-lobby: color-mix(in srgb, var(--panel) 54%, transparent);
 }
 
+/*
+  A TINTA DO PAINEL, separada da dos cards (30/09/2026).
+
+  Ate aqui o painel -- a caixa grande que envolve os quadros -- usava o mesmo
+  `--veu-lobby` dos cards, da busca e dos botoes. foi pedido para testar o painel
+  mais transparente, e isso so da para fazer com ele tendo numero proprio: os
+  cards CARREGAM texto (nome, data, contagem) e precisam da tinta que tem; o
+  painel e uma lamina atras deles, e pode deixar a foto aparecer mais.
+
+  Os valores sao PORCENTAGEM de `--panel`, como os do `--veu-lobby`.
+*/
+:root {
+  --veu-painel: var(--veu-lobby);
+}
+
+/* Sobre foto, a tinta do painel e bem mais leve que a dos cards: 26% no claro
+   e 30% no escuro, contra 46% e 54% deles. Escolha em 30/09/2026, junto do
+   borrao discreto (ver `ui/vidroPronto.ts`) -- o painel passa a mostrar a foto,
+   e os cards, que carregam texto, continuam encorpados. */
+:root[data-fundo='foto'] {
+  --veu-painel: color-mix(in srgb, var(--panel) 26%, transparent);
+}
+
+:root[data-theme='dark'][data-fundo='foto'] {
+  --veu-painel: color-mix(in srgb, var(--panel) 30%, transparent);
+}
+
 :root .qb-lobby__painel,
 :root .qb-card,
 :root .qb-libsearch__field,
 :root .qb-lobby .qb-btn:not(.qb-btn--primary):not(.qb-btn--active):not(.qb-btn--danger) {
-  background: var(--chrome-sheen), var(--veu-lobby);
+  background: var(--chrome-sheen), var(--veu-superficie, var(--veu-lobby));
+}
+
+/* O painel troca a tinta pela dele; o resto da lista fica com o `--veu-lobby`.
+   E so ELE: propriedade personalizada e herdada, e os cards moram DENTRO do
+   painel -- sem o `initial` abaixo, eles herdariam a tinta nova e ficariam
+   transparentes junto. `initial` faz o `var()` cair no valor reserva. */
+:root .qb-lobby__painel {
+  --veu-superficie: var(--veu-painel);
+}
+
+:root .qb-lobby__painel * {
+  --veu-superficie: initial;
 }
 
 /*
@@ -552,7 +594,7 @@
   backdrop-filter: none;
   background:
     var(--chrome-sheen),
-    linear-gradient(var(--veu-lobby), var(--veu-lobby)),
+    linear-gradient(var(--veu-superficie, var(--veu-lobby)), var(--veu-superficie, var(--veu-lobby))),
     var(--lobby-foto-desfocada) var(--lobby-foco) / cover no-repeat fixed;
 }
 
@@ -666,4 +708,24 @@ kbd {
   border-bottom-width: 2px;
   border-radius: 4px;
   padding: 1px 5px;
+}
+
+/*
+  A FONTE DA MARCA: Outfit, embutida (30/09/2026).
+
+  E a fonte mais proxima da palavra "Creation Board" da logo, e existe para o
+  titulo do menu principal -- ver `assets/fontes/LEIA-ME.md` para a escolha, a
+  procedencia e a licenca (OFL, e nao MIT).
+
+  `block`, e nao `swap`: o arquivo e local e chega em milissegundos. Com `swap`
+  o titulo nasceria em Segoe UI e trocaria de fonte na frente dele no primeiro
+  quadro -- exatamente o tipo de piscar que a tela de abertura existe para
+  esconder.
+*/
+@font-face {
+  font-family: 'Outfit';
+  src: url('../assets/fontes/outfit.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: block;
 }

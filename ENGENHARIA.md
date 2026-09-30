@@ -761,6 +761,25 @@ mouse virava uma animação de 120 ms, e o fantasma andava sempre **atrás** do
 cursor. `transition: none` nele, guardado no selftest nos níveis ligado e
 máximo (a mola do máximo vazaria para ele pelo mesmo caminho).
 
+**O borrão discreto do painel (mesmo dia, decisão de produto: [...]).** O vidro pronto passou de 480 px com raio 4 (~12 px de borrão na tela)
+para 1440 px com raio 3 (~3 px), e a tinta do painel caiu para 26% no claro e 30%
+no escuro. A primeira medição parecia uma queda (claro: parado 114, abre/fecha
+99) — e o borrão ANTIGO, medido em seguida, também caiu para 85 parado: era a
+máquina ocupada (Chrome e Discord), e não o painel. Refeita com três rodadas
+alternadas de cada e olhando a **mediana**:
+
+| cena (claro) | 480 px (antigo) | 1440 px (novo) |
+|---|---|---|
+| parado | 144,0 | 144,0 |
+| arrastar | 143,3 | 143,3 |
+| abre/fecha | 135,7 | 131,5 |
+| da janela | 136,3 | 137,0 |
+
+Empate. O custo de desenhar é o mesmo (são os mesmos pixels na tela); a imagem
+pronta maior custa memória uma vez (~5,5 MB), e não por quadro. **Lição de
+método:** com o app de teste ou outros programas pesados abertos, uma rodada só não
+distingue custo de ruído — alternar as versões e comparar medianas.
+
 **O nível máximo de animações**, medido junto (`QB_ANIM=max`): parado,
 levantar e arrastar a **144 cravados** nos dois temas — o fantasma vivo tem
 camada própria (`will-change`) e não repinta card e sombra a cada quadro.

@@ -30,14 +30,27 @@
  * `base.css`), com o mesmo preco.
  */
 
+/*
+  QUANTO O VIDRO BORRA -- decisao de produto em 30/09/2026, numa prancha de tres
+  niveis sobre as fotos reais: [...], em vez do borrao forte.
+
+  O borrao na tela e o RAIO vezes quanto a imagem e esticada. Por isso a
+  largura sobe junto com a vontade de borrar menos: uma versao pequena,
+  esticada ate a janela, ja borra por conta propria.
+
+    nivel     | LARGURA | RAIO | na tela (janela ~1400)
+    forte     |   480   |  4   | ~12 px   <- ate 30/09/2026
+    medio     |   720   |  3   |  ~6 px   <- a alternativa que se quer poder ver
+    DISCRETO  |  1440   |  3   |  ~3 px   <- o escolhido
+
+  Trocar de nivel e trocar os dois numeros abaixo. O custo de desenhar e o
+  mesmo nos tres (sao os mesmos pixels na tela); o que muda e a memoria da
+  imagem pronta, de ~0,6 MB para ~5,5 MB -- uma vez, e nao por quadro.
+*/
 /** Largura da versao desfocada. Ela e esticada para a tela, e isso tambem desfoca. */
-const LARGURA = 480;
-/**
- * Raio em pixels DA IMAGEM PEQUENA. A 480 px esticados para uma janela de
- * ~1400, 4 px viram ~12 px na tela -- perto dos 10 px do `--chrome-blur`, com a
- * suavidade do esticamento por cima.
- */
-const RAIO = 4;
+export const LARGURA = 1440;
+/** Raio em pixels DA IMAGEM DESFOCADA -- ver a tabela acima. */
+const RAIO = 3;
 
 const prontos = new Map<string, Promise<string>>();
 
