@@ -355,7 +355,7 @@ function createWindow(): void {
         : exportPrefix
           ? `?export=${encodeURIComponent(exportPrefix)}`
           : pasteCheck
-            ? '?paste=1'
+            ? `?paste=${pasteCheck === 'grande' ? 'grande' : '1'}`
             : boot;
 
   // QB_THEME=light|dark manda no tema desta execucao, sem gravar a preferencia.
@@ -496,7 +496,31 @@ function createWindow(): void {
           mainWindow?.webContents.sendInputEvent({ type, keyCode: 'V', modifiers: ['control'] });
         }
         console.log('[main] Ctrl+V nativo enviado');
-      }, 1200);
+        // O processo principal travado congela a JANELA (mouse, teclado) sem
+        // parar o desenho da pagina -- o cronometro do renderer nao ve isso.
+        // Este mede o atraso do laco de eventos daqui por 12 s.
+        let ultimo = Date.now();
+        let piorAtraso = 0;
+        let piorEm = 0;
+        const inicio = ultimo;
+        const relogio = setInterval(() => {
+          const agora = Date.now();
+          const atraso = agora - ultimo - 16;
+          if (atraso > piorAtraso) {
+            piorAtraso = atraso;
+            piorEm = ultimo - inicio;
+          }
+          // Na hora, e nao so no fim: o teste pode fechar o app antes dos 12 s.
+          if (atraso > 50) console.log(`[main] processo principal travou ${atraso} ms (em +${ultimo - inicio} ms do Ctrl+V)`);
+          ultimo = agora;
+        }, 16);
+        setTimeout(() => {
+          clearInterval(relogio);
+          console.log(`[main] pior atraso do processo principal: ${piorAtraso} ms (em +${piorEm} ms do Ctrl+V)`);
+        }, 12000);
+        // `QB_PASTE=grande` abre antes o maior quadro da pasta: da tempo de ele
+        // carregar e assentar antes do Ctrl+V.
+      }, pasteCheck === 'grande' ? 7000 : 1200);
     });
   }
 
