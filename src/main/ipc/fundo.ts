@@ -24,7 +24,7 @@ import { t } from '@shared/i18n';
  *    ENGENHARIA.md: o que o aplicativo precisa para funcionar mora junto.
  *
  * 2. **O renderer nunca manda caminho -- so o tema.** Nao ha como a interface
- *    pedir [...] ou [...]. A superficie de
+ *    pedir "copie este caminho" ou "apague este caminho". A superficie de
  *    ataque de um IPC que aceita caminho arbitrario nao se justifica para
  *    escolher papel de parede.
  *
@@ -88,7 +88,7 @@ export function registerFundoIpc(): void {
 
   ipcMain.handle(IPC.fundoLer, async (_e, tema: TemaFundo): Promise<FundoImagem | null> => {
     if (!temaValido(tema)) throw new Error('Tema invalido.');
-    const dir = await fundosDir();
+    const dir = await caminhoDosFundos();
     const arquivo = await acharArquivo(dir, tema);
     if (!arquivo) return null;
 
@@ -103,7 +103,7 @@ export function registerFundoIpc(): void {
 
   ipcMain.handle(IPC.fundoLimpar, async (_e, tema: TemaFundo): Promise<void> => {
     if (!temaValido(tema)) throw new Error('Tema invalido.');
-    await limparArquivos(await fundosDir(), tema);
+    await limparArquivos(await caminhoDosFundos(), tema);
   });
 }
 
@@ -115,8 +115,22 @@ export function registerFundoIpc(): void {
  * `isFile()` e sufixo `.wbd`, entao uma subpasta aqui nao aparece em lugar
  * nenhum nem entra na busca.
  */
+/**
+ * Onde moram as imagens de fundo, SEM criar nada. Ler e limpar usam este.
+ *
+ * Achado no `check:dist` da 1.1.0: todos usavam a versao que cria a pasta, e o
+ * app le o fundo a cada abertura -- entao so abrir criava
+ * `.creation-boardundos` na pasta de quadros de todo mundo. O mesmo defeito
+ * que o indice de pastas teve em 24/09 (ver `pastasDisco.ts`): ler nao grava.
+ * Se a pasta nao existe, ler acha nada e limpar nao tem o que apagar.
+ */
+async function caminhoDosFundos(): Promise<string> {
+  return join(await ensureBoardsDir(), '.creation-board', 'fundos');
+}
+
+/** A mesma pasta, criada se preciso -- so para GRAVAR uma imagem escolhida. */
 async function fundosDir(): Promise<string> {
-  const dir = join(await ensureBoardsDir(), '.creation-board', 'fundos');
+  const dir = await caminhoDosFundos();
   await fs.mkdir(dir, { recursive: true });
   return dir;
 }

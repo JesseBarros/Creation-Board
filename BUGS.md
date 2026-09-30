@@ -21,7 +21,7 @@
 | **Borracha** trava só com **zoom alto** | **[B25](#b25--a-borracha-travava-o-app-com-zoom-alto)** — outro defeito, não o B24 |
 | **Animações** de hover não acontecem | **[B26](#b26--as-animações-pararam-de-funcionar--e-não-tinham-parado)** |
 
-**Estado: 2 itens abertos** (B10 e B15), **30 fechados**. Última atualização: 21/09/2026.
+**Estado: um item aberto, o B15.** Última atualização: 30/09/2026 (B27, achado e corrigido no preparo da 1.1.0). O B10, que esta linha ainda listava como aberto, está fechado desde 14/08.
 
 **A rodada de 20–21/09/2026 fechou oito itens e abriu um.** Ela veio de usar o app para
 montar resumos de verdade, e quase tudo que apareceu estava em texto e em interface: o
@@ -78,6 +78,18 @@ duas vezes.
 ---
 
 ## Bugs
+
+### B27 — Só abrir o app criava uma pasta dentro da pasta de quadros
+`corrigido` · `baixo` · 30/09/2026
+
+Achado no `check:dist` da versão 1.1.0: com `C:\Creation Board` vazia, o auto-teste terminou
+e deixou nela `.creation-boardundos`, vazia. A causa: **ler** o fundo personalizado — o que o
+app faz a cada abertura — usava a mesma função que **grava** uma imagem escolhida, e ela cria a
+pasta. Não apagava nada, mas o app gravava no disco da pessoa só para ler.
+
+É o mesmo defeito que o índice de pastas teve em 24/09 (ver `pastasDisco.ts`). **A correção:**
+ler e limpar usam o caminho sem criar nada; só escolher uma imagem cria a pasta. Se ela não
+existe, ler acha nada e limpar não tem o que apagar.
 
 ### B1 — Lapsos visuais ao alternar rápido entre o lobby e o quadro
 `corrigido pelo B8` · `médio` · 04/08/2026, fechado em 06/08/2026
