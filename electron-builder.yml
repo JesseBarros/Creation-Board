@@ -33,6 +33,12 @@ nsis:
   createStartMenuShortcut: true
   shortcutName: Creation Board
   deleteAppDataOnUninstall: false
+  # Portugues e ingles, como o app (30/09/2026). Sem perguntar: o instalador
+  # segue o idioma do Windows, o mesmo criterio que o app usa na primeira
+  # abertura -- e uma pergunta a menos antes de instalar.
+  multiLanguageInstaller: true
+  installerLanguages: [pt_BR, en_US]
+  displayLanguageSelector: false
   artifactName: ${productName}-Setup-${version}.${ext}
 
 # Sem publish: build totalmente local, nada de auto-update.

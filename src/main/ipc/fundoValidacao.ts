@@ -1,3 +1,7 @@
+// Relativo, e nao `@shared`: o `check:fundo` compila este arquivo sozinho,
+// sem o tsconfig que define o apelido.
+import { t } from '../../shared/i18n';
+
 /**
  * Validacao da imagem de fundo escolhida pelo usuario.
  *
@@ -28,7 +32,7 @@
  *
  * Entao o teto virou de PIXELS, lido do cabecalho do arquivo -- sem decodificar,
  * que e o que torna seguro perguntar o tamanho de uma bomba. O teto de bytes
- * continua existindo, mas so como sanidade grosseira ([...]).
+ * continua existindo, mas so como sanidade grosseira ("isto nao e um filme").
  *
  * Numeros medidos no renderer, com a foto na tela:
  *
@@ -44,7 +48,7 @@ export type TemaValidado = (typeof TEMAS)[number];
 /**
  * Sanidade grosseira, NAO o guarda principal.
  *
- * Existe para [...] morrer antes de ser
+ * Existe para "voce escolheu um arquivo de video de 2 GB" morrer antes de ser
  * lido inteiro para a memoria. Quem realmente protege e o teto de pixels.
  */
 export const MAX_BYTES = 64 * 1024 * 1024;
@@ -78,7 +82,7 @@ export const MAX_PIXELS = 40_000_000;
  * **SVG esta fora de proposito, e a ausencia dele e a decisao.** SVG e
  * "imagem" no nome, mas e um documento XML que aceita `<script>`. Como ele nao
  * tem assinatura binaria, ficar de fora e automatico -- mas alguem que resolva
- * [...] um dia precisa saber que este nao entra.
+ * "aceitar mais formatos" um dia precisa saber que este nao entra.
  */
 export function mimeDosBytes(b: Uint8Array): string | null {
   if (b.length < 16) return null;
@@ -125,11 +129,12 @@ export interface Dimensoes {
 /**
  * Largura e altura lidas do CABECALHO, sem decodificar a imagem.
  *
- * Nao decodificar e o ponto inteiro: perguntar [...] a uma
+ * Nao decodificar e o ponto inteiro: perguntar "que tamanho voce tem?" a uma
  * bomba de descompressao tem de ser barato, senao a pergunta e o ataque.
  * Nenhum dos quatro formatos guarda isso longe do inicio do arquivo.
  *
- * `null` = nao deu para ler. Quem chama trata como recusa, e nao como [...]: um cabecalho que nao da para ler e exatamente o formato de
+ * `null` = nao deu para ler. Quem chama trata como recusa, e nao como "deve
+ * estar bom": um cabecalho que nao da para ler e exatamente o formato de
  * arquivo malformado que nao se quer adiante.
  */
 export function dimensoesDosBytes(b: Uint8Array, mime: string): Dimensoes | null {
@@ -257,9 +262,7 @@ export function validarImagem(bytes: Uint8Array, nomeParaMensagem: string): Vere
   if (bytes.byteLength > MAX_BYTES) {
     return {
       ok: false,
-      erro:
-        `"${nomeParaMensagem}" tem ${(bytes.byteLength / 1024 / 1024).toFixed(1)} MB. ` +
-        `O limite e ${MAX_BYTES / 1024 / 1024} MB.`,
+      erro: t('erro.arquivoGrande', nomeParaMensagem, bytes.byteLength / 1024 / 1024, MAX_BYTES / 1024 / 1024),
     };
   }
 
@@ -267,7 +270,7 @@ export function validarImagem(bytes: Uint8Array, nomeParaMensagem: string): Vere
   if (!mime) {
     return {
       ok: false,
-      erro: `"${nomeParaMensagem}" nao parece uma imagem. Formatos aceitos: JPEG, PNG, WebP e AVIF.`,
+      erro: t('erro.naoEImagem', nomeParaMensagem),
     };
   }
 
@@ -275,27 +278,27 @@ export function validarImagem(bytes: Uint8Array, nomeParaMensagem: string): Vere
   if (!dim) {
     return {
       ok: false,
-      erro: `Nao foi possivel ler as dimensoes de "${nomeParaMensagem}" — o arquivo parece corrompido.`,
+      erro: t('erro.dimensoesIlegiveis', nomeParaMensagem),
     };
   }
 
   if (dim.largura > MAX_LADO || dim.altura > MAX_LADO) {
     return {
       ok: false,
-      erro:
-        `"${nomeParaMensagem}" tem ${dim.largura}x${dim.altura} pixels, e o maior lado aceito e ` +
-        `${MAX_LADO}. Reduza a imagem antes de usa-la como fundo.`,
+      erro: t('erro.ladoGrande', nomeParaMensagem, dim.largura, dim.altura, MAX_LADO),
     };
   }
 
   if (dim.largura * dim.altura > MAX_PIXELS) {
     return {
       ok: false,
-      erro:
-        `"${nomeParaMensagem}" tem ${(  (dim.largura * dim.altura) / 1e6).toFixed(0)} megapixels, ` +
-        `acima do limite de ${MAX_PIXELS / 1e6}. Uma imagem desse tamanho ocuparia ` +
-        `${(((dim.largura * dim.altura) * 4) / 1024 / 1024).toFixed(0)} MB de memoria para aparecer ` +
-        `reduzida na tela.`,
+      erro: t(
+        'erro.megapixels',
+        nomeParaMensagem,
+        Math.round((dim.largura * dim.altura) / 1e6),
+        MAX_PIXELS / 1e6,
+        Math.round((dim.largura * dim.altura * 4) / 1024 / 1024),
+      ),
     };
   }
 

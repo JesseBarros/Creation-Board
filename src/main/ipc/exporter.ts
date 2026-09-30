@@ -5,6 +5,7 @@ import { basename, dirname, extname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { IPC, type ExportRequest, type ExportResult } from '@shared/ipc-contract';
 import { sanitizeBoardName } from '@shared/wbd';
+import { t } from '@shared/i18n';
 
 /**
  * Exportacao para arquivo: PNG, SVG e PDF.
@@ -18,10 +19,12 @@ import { sanitizeBoardName } from '@shared/wbd';
  * e um arquivo novo que vai para onde o usuario quer usa-lo.
  */
 
-const FILTERS: Record<ExportRequest['format'], FileFilter> = {
-  png: { name: 'Imagem PNG', extensions: ['png'] },
-  svg: { name: 'Vetor SVG', extensions: ['svg'] },
-  pdf: { name: 'Documento PDF', extensions: ['pdf'] },
+// Funcoes, e nao texto: a lista existe desde o carregamento do modulo, e o nome
+// do filtro tem de sair no idioma escolhido na hora de abrir o dialogo.
+const FILTERS: Record<ExportRequest['format'], () => FileFilter> = {
+  png: () => ({ name: t('arquivo.png'), extensions: ['png'] }),
+  svg: () => ({ name: t('arquivo.svg'), extensions: ['svg'] }),
+  pdf: () => ({ name: t('arquivo.pdf'), extensions: ['pdf'] }),
 };
 
 export function registerExportIpc(): void {
@@ -40,9 +43,9 @@ export function registerExportIpc(): void {
     if (!filePath) {
       const win = BrowserWindow.fromWebContents(e.sender);
       const chosen = await dialog.showSaveDialog(win ?? undefined!, {
-        title: 'Exportar quadro',
-        defaultPath: `${sanitizeBoardName(req.name) || 'quadro'}.${req.format}`,
-        filters: [FILTERS[req.format]],
+        title: t('dialogoNativo.exportarTitulo'),
+        defaultPath: `${sanitizeBoardName(req.name) || t('quadro.nomeDeArquivo')}.${req.format}`,
+        filters: [FILTERS[req.format]()],
       });
       if (chosen.canceled || !chosen.filePath) return { path: null };
       filePath = chosen.filePath;

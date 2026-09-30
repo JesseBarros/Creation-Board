@@ -6,6 +6,7 @@ import type { FundoImagem, TemaFundo } from '@shared/ipc-contract';
 import { ensureBoardsDir } from '../storage/wbdFile';
 import { MAX_BYTES, mimeDosBytes, temaValido, validarImagem } from './fundoValidacao';
 import { limparMetadados } from '@shared/metadadosImagem';
+import { t } from '@shared/i18n';
 
 /**
  * A imagem de fundo do menu principal, quando o usuario poe a dele.
@@ -60,10 +61,7 @@ export function registerFundoIpc(): void {
     // 2 GB na memoria so para depois dizer que ele e grande demais.
     const info = await fs.stat(escolhido);
     if (info.size > MAX_BYTES) {
-      throw new Error(
-        `"${basename(escolhido)}" tem ${(info.size / 1024 / 1024).toFixed(1)} MB. ` +
-          `O limite e ${MAX_BYTES / 1024 / 1024} MB.`,
-      );
+      throw new Error(t('erro.arquivoGrande', basename(escolhido), info.size / 1024 / 1024, MAX_BYTES / 1024 / 1024));
     }
 
     const lido = await fs.readFile(escolhido);
@@ -152,15 +150,15 @@ function paraArrayBuffer(b: Uint8Array): ArrayBuffer {
 
 function opcoes(): Electron.OpenDialogOptions {
   return {
-    title: 'Escolher imagem de fundo',
-    buttonLabel: 'Usar esta imagem',
+    title: t('dialogoNativo.fundoTitulo'),
+    buttonLabel: t('dialogoNativo.fundoBotao'),
     properties: ['openFile'],
     filters: [
       // O filtro e conveniencia do diálogo, e NAO a validacao: ele so decide o
       // que aparece na lista, e "Todos os arquivos" contorna ele de propósito.
       // Quem valida e `validarImagem`, pelos bytes.
-      { name: 'Imagens', extensions: ['jpg', 'jpeg', 'png', 'webp', 'avif'] },
-      { name: 'Todos os arquivos', extensions: ['*'] },
+      { name: t('arquivo.imagens'), extensions: ['jpg', 'jpeg', 'png', 'webp', 'avif'] },
+      { name: t('arquivo.todos'), extensions: ['*'] },
     ],
   };
 }

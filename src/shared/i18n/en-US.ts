@@ -245,6 +245,7 @@ export const enUS: Traducao = {
   'forma.preencher': 'Fill the shape',
   'forma.preencherDica': 'Fill the shape (translucent, in the outline color)',
   'cor.rotulo': (cor) => `Color ${cor}`,
+  'cor.escolhida': (cor) => `${cor} (chosen)`,
   'cor.escolherOutra': 'Choose another color',
   'espessura.fonte': 'Font size',
   'espessura.diametro': 'Diameter',
@@ -455,4 +456,46 @@ export const enUS: Traducao = {
   'painelMenu.ligado': 'on',
   'painelMenu.desligado': 'off',
   'painelMenu.quadrosPorSegundo': (n) => `${n} fps`,
+
+  // ------------------------------------------------------------ processo principal
+  'arquivo.todos': 'All files',
+  'arquivo.imagens': 'Images',
+  'arquivo.png': 'PNG image',
+  'arquivo.svg': 'SVG vector',
+  'arquivo.pdf': 'PDF document',
+  'arquivo.quadroExportado': 'Exported board',
+  'dialogoNativo.exportarTitulo': 'Export board',
+  'dialogoNativo.importarTitulo': 'Import a board from another app',
+  'dialogoNativo.importarBotao': 'Import',
+  'dialogoNativo.fundoTitulo': 'Choose a background image',
+  'dialogoNativo.fundoBotao': 'Use this image',
+
+  'erro.arquivoGrande': (nome, mb, limite) =>
+    `“${nome}” is ${formatarNumero(mb, { maximumFractionDigits: 1 })} MB. The limit is ${formatarNumero(limite)} MB.`,
+  'erro.naoEImagem': (nome) => `“${nome}” doesn't look like an image. Supported formats: JPEG, PNG, WebP and AVIF.`,
+  'erro.dimensoesIlegiveis': (nome) => `Couldn't read the dimensions of “${nome}” — the file looks corrupted.`,
+  'erro.ladoGrande': (nome, largura, altura, maximo) =>
+    `“${nome}” is ${formatarNumero(largura)} × ${formatarNumero(altura)} pixels, and the longest side allowed is ` +
+    `${formatarNumero(maximo)}. Shrink the image before using it as a background.`,
+  'erro.megapixels': (nome, mp, limite, mb) =>
+    `“${nome}” has ${formatarNumero(mp)} megapixels, over the ${formatarNumero(limite)} limit. ` +
+    `An image that size would take ${formatarNumero(mb)} MB of memory just to show scaled down on screen.`,
+  'erro.semHtml': (nome) => `No .html file found inside “${nome}”.`,
+  'erro.formatoNaoSuportado': (formato) => `Unsupported format: ${formato}`,
+  'erro.zipRecusado': (motivo) =>
+    `Compressed file rejected: ${motivo}. It may be corrupted or crafted to crash the app.`,
+  'erro.zipEntradas': (n) => `more than ${formatarNumero(n)} entries`,
+  'erro.zipBytes': (mb) => `more than ${formatarNumero(mb)} MB uncompressed`,
+  'erro.arquivoPassaDe': (mb) => `the file is larger than ${formatarNumero(mb)} MB`,
+  'erro.versaoNova': (formato, suportado) =>
+    `This board was saved by a newer version of Creation Board ` +
+    `(format ${formato}; this version reads up to ${suportado}).`,
+  'erro.wbdInvalido': 'Invalid .wbd file: required parts are missing.',
+  'erro.pastaSemPermissao': (pasta, motivo) =>
+    `The boards folder “${pasta}” exists and has saved boards, but it can't be written to (${motivo}). ` +
+    `The boards were NOT moved: fix the folder's permissions instead of letting the app save somewhere else.`,
+  'erro.pastaImpossivel': (pasta, motivo, alternativa, motivoAlt) =>
+    `Couldn't create the boards folder at “${pasta}” (${motivo}) or at “${alternativa}” (${motivoAlt}).`,
+  'erro.caminhoInvalido': 'Invalid board path.',
+  'erro.caminhoFora': 'Path is outside the boards folder.',
 };

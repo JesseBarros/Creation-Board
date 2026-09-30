@@ -556,7 +556,7 @@ export class ToolBar {
       b.dataset['value'] = custom;
       b.classList.add('qb-tools__color--active');
       b.style.background = custom;
-      b.title = `${custom} (escolhida)`;
+      b.title = t('cor.escolhida', custom);
       b.setAttribute('aria-label', t('cor.rotulo', custom));
       b.addEventListener('click', () => this.style.setColor(id, custom));
       this.#colorRow.append(b);

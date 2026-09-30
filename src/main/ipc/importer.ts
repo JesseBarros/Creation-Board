@@ -4,6 +4,7 @@ import { basename, extname } from 'node:path';
 import type { Unzipped } from 'fflate';
 import { descompactar, LIMITE_IMPORTACAO, ZipGrandeDemais } from '../storage/zipSeguro';
 import { IPC } from '@shared/ipc-contract';
+import { t } from '@shared/i18n';
 import type { ImportSource } from '@shared/importer';
 
 /**
@@ -33,7 +34,7 @@ async function readSource(path: string): Promise<ImportSource[]> {
     // O mesmo teto do `.zip`, conferido antes de ler: sem ele, um `.html` de
     // gigabytes seria carregado inteiro na memoria do processo principal.
     if ((await fs.stat(path)).size > LIMITE_IMPORTACAO.bytes) {
-      throw new ZipGrandeDemais(`o arquivo passa de ${LIMITE_IMPORTACAO.bytes / 1024 / 1024} MB`);
+      throw new ZipGrandeDemais(t('erro.arquivoPassaDe', LIMITE_IMPORTACAO.bytes / 1024 / 1024));
     }
     const html = await fs.readFile(path, 'utf-8');
     return [{ name: basename(path, ext), html }];
@@ -48,12 +49,12 @@ async function readSource(path: string): Promise<ImportSource[]> {
       out.push({ name: basename(name, extname(name)), html: decoder.decode(bytes) });
     }
     if (out.length === 0) {
-      throw new Error(`Nenhum .html encontrado dentro de "${basename(path)}".`);
+      throw new Error(t('erro.semHtml', basename(path)));
     }
     return out;
   }
 
-  throw new Error(`Formato nao suportado: ${ext || path}`);
+  throw new Error(t('erro.formatoNaoSuportado', ext || path));
 }
 
 export function registerImportIpc(): void {
@@ -94,12 +95,12 @@ export function registerImportIpc(): void {
 
 function options(): Electron.OpenDialogOptions {
   return {
-    title: 'Importar quadro de outro aplicativo',
-    buttonLabel: 'Importar',
+    title: t('dialogoNativo.importarTitulo'),
+    buttonLabel: t('dialogoNativo.importarBotao'),
     properties: ['openFile', 'multiSelections'],
     filters: [
-      { name: 'Quadro exportado', extensions: ['zip', 'html', 'htm'] },
-      { name: 'Todos os arquivos', extensions: ['*'] },
+      { name: t('arquivo.quadroExportado'), extensions: ['zip', 'html', 'htm'] },
+      { name: t('arquivo.todos'), extensions: ['*'] },
     ],
   };
 }

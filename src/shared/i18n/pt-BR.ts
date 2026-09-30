@@ -249,6 +249,7 @@ export const ptBR = {
   'forma.preencher': 'Preencher a forma',
   'forma.preencherDica': 'Preencher a forma (translúcido, na cor do contorno)',
   'cor.rotulo': (cor: string) => `Cor ${cor}`,
+  'cor.escolhida': (cor: string) => `${cor} (escolhida)`,
   'cor.escolherOutra': 'Escolher outra cor',
   'espessura.fonte': 'Tamanho da fonte',
   'espessura.diametro': 'Diâmetro',
@@ -459,4 +460,48 @@ export const ptBR = {
   'painelMenu.ligado': 'ligado',
   'painelMenu.desligado': 'desligado',
   'painelMenu.quadrosPorSegundo': (n: string) => `${n} q/s`,
+
+  // ------------------------------------------------------------ processo principal
+  'arquivo.todos': 'Todos os arquivos',
+  'arquivo.imagens': 'Imagens',
+  'arquivo.png': 'Imagem PNG',
+  'arquivo.svg': 'Vetor SVG',
+  'arquivo.pdf': 'Documento PDF',
+  'arquivo.quadroExportado': 'Quadro exportado',
+  'dialogoNativo.exportarTitulo': 'Exportar quadro',
+  'dialogoNativo.importarTitulo': 'Importar quadro de outro aplicativo',
+  'dialogoNativo.importarBotao': 'Importar',
+  'dialogoNativo.fundoTitulo': 'Escolher imagem de fundo',
+  'dialogoNativo.fundoBotao': 'Usar esta imagem',
+
+  'erro.arquivoGrande': (nome: string, mb: number, limite: number) =>
+    `“${nome}” tem ${formatarNumero(mb, { maximumFractionDigits: 1 })} MB. O limite é ${formatarNumero(limite)} MB.`,
+  'erro.naoEImagem': (nome: string) =>
+    `“${nome}” não parece uma imagem. Formatos aceitos: JPEG, PNG, WebP e AVIF.`,
+  'erro.dimensoesIlegiveis': (nome: string) =>
+    `Não foi possível ler as dimensões de “${nome}” — o arquivo parece corrompido.`,
+  'erro.ladoGrande': (nome: string, largura: number, altura: number, maximo: number) =>
+    `“${nome}” tem ${formatarNumero(largura)} × ${formatarNumero(altura)} pixels, e o maior lado aceito é ` +
+    `${formatarNumero(maximo)}. Reduza a imagem antes de usá-la como fundo.`,
+  'erro.megapixels': (nome: string, mp: number, limite: number, mb: number) =>
+    `“${nome}” tem ${formatarNumero(mp)} megapixels, acima do limite de ${formatarNumero(limite)}. ` +
+    `Uma imagem desse tamanho ocuparia ${formatarNumero(mb)} MB de memória para aparecer reduzida na tela.`,
+  'erro.semHtml': (nome: string) => `Nenhum .html encontrado dentro de “${nome}”.`,
+  'erro.formatoNaoSuportado': (formato: string) => `Formato não suportado: ${formato}`,
+  'erro.zipRecusado': (motivo: string) =>
+    `Arquivo compactado recusado: ${motivo}. Ele pode estar corrompido ou ter sido montado para travar o aplicativo.`,
+  'erro.zipEntradas': (n: number) => `mais de ${formatarNumero(n)} entradas`,
+  'erro.zipBytes': (mb: number) => `mais de ${formatarNumero(mb)} MB descompactados`,
+  'erro.arquivoPassaDe': (mb: number) => `o arquivo passa de ${formatarNumero(mb)} MB`,
+  'erro.versaoNova': (formato: number, suportado: number) =>
+    `Este quadro foi salvo por uma versão mais nova do Creation Board ` +
+    `(formato ${formato}; esta versão lê até o ${suportado}).`,
+  'erro.wbdInvalido': 'Arquivo .wbd inválido: faltam partes obrigatórias.',
+  'erro.pastaSemPermissao': (pasta: string, motivo: string) =>
+    `A pasta de quadros “${pasta}” existe e tem quadros salvos, mas não aceitou gravação (${motivo}). ` +
+    `Os quadros NÃO foram movidos: corrija a permissão da pasta em vez de deixar o app gravar em outro lugar.`,
+  'erro.pastaImpossivel': (pasta: string, motivo: string, alternativa: string, motivoAlt: string) =>
+    `Não foi possível criar a pasta de quadros em “${pasta}” (${motivo}) nem em “${alternativa}” (${motivoAlt}).`,
+  'erro.caminhoInvalido': 'Caminho de quadro inválido.',
+  'erro.caminhoFora': 'Caminho fora da pasta de quadros.',
 };

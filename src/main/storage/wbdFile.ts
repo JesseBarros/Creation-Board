@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs';
 import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import { zip, type Unzipped, type Zippable } from 'fflate';
 import { descompactar, LIMITE_WBD } from './zipSeguro';
+import { t } from '@shared/i18n';
 import {
   WBD_ENTRY,
   WBD_EXT,
@@ -163,20 +164,13 @@ async function resolverDir(): Promise<string> {
     // quadros, mudar de pasta e a pior saida possivel -- some com o trabalho que
     // esta la. Melhor falhar alto.
     if (await temQuadros(primary)) {
-      throw new Error(
-        `A pasta de quadros "${primary}" existe e tem quadros salvos, mas nao aceitou ` +
-          `escrita (${veredito}). Os quadros NAO foram movidos: corrija a permissao da ` +
-          `pasta em vez de deixar o app gravar em outro lugar.`,
-      );
+      throw new Error(t('erro.pastaSemPermissao', primary, String(veredito)));
     }
 
     console.warn(`[boards] "${primary}" recusou escrita (${veredito}); tentando "${fallback}"`);
     const alternativo = await podeEscrever(fallback);
     if (alternativo !== true) {
-      throw new Error(
-        `Nao foi possivel gravar a pasta de quadros em "${primary}" (${veredito}) ` +
-          `nem em "${fallback}" (${alternativo}).`,
-      );
+      throw new Error(t('erro.pastaImpossivel', primary, String(veredito), fallback, String(alternativo)));
     }
     escolhida = fallback;
   }
@@ -297,13 +291,13 @@ async function uniquePath(dir: string, name: string): Promise<string> {
  */
 export function caminhoDeQuadro(dir: string, caminho: unknown): string {
   if (typeof caminho !== 'string' || caminho.length === 0 || !isAbsolute(caminho)) {
-    throw new Error('Caminho de quadro invalido');
+    throw new Error(t('erro.caminhoInvalido'));
   }
   const alvo = resolve(caminho);
   const win = process.platform === 'win32';
   const rel = relative(win ? resolve(dir).toLowerCase() : resolve(dir), win ? alvo.toLowerCase() : alvo);
   if (!rel || rel.startsWith('..') || isAbsolute(rel) || /[\\/]/.test(rel) || !rel.toLowerCase().endsWith(WBD_EXT)) {
-    throw new Error('Caminho fora da pasta de quadros');
+    throw new Error(t('erro.caminhoFora'));
   }
   return alvo;
 }
@@ -384,17 +378,14 @@ export async function loadBoard(pedido: string): Promise<LoadBoardResult> {
   const manifestEntry = out[WBD_ENTRY.manifest];
   const documentEntry = out[WBD_ENTRY.document];
   if (!manifestEntry || !documentEntry) {
-    throw new Error('Arquivo .wbd invalido: entradas obrigatorias ausentes');
+    throw new Error(t('erro.wbdInvalido'));
   }
 
   const manifest = JSON.parse(decoder.decode(manifestEntry)) as WbdManifest;
   const document = JSON.parse(decoder.decode(documentEntry)) as WbdDocument;
 
   if (manifest.schemaVersion > WBD_SCHEMA_VERSION) {
-    throw new Error(
-      `Este quadro foi salvo por uma versao mais nova do Creation Board ` +
-        `(formato ${manifest.schemaVersion}, esta versao le ate ${WBD_SCHEMA_VERSION}).`,
-    );
+    throw new Error(t('erro.versaoNova', manifest.schemaVersion, WBD_SCHEMA_VERSION));
   }
 
   const assets: WbdAsset[] = [];

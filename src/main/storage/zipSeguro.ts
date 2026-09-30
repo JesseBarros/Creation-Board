@@ -1,4 +1,5 @@
 import { unzip, type Unzipped } from 'fflate';
+import { t } from '@shared/i18n';
 
 /**
  * Descompactar com TETO -- a defesa contra a bomba de zip.
@@ -28,7 +29,7 @@ export const LIMITE_IMPORTACAO: LimitesZip = { bytes: 512 * 1024 * 1024, entrada
 
 export class ZipGrandeDemais extends Error {
   constructor(motivo: string) {
-    super(`Arquivo compactado recusado: ${motivo}. Ele pode estar corrompido ou ter sido montado para travar o aplicativo.`);
+    super(t('erro.zipRecusado', motivo));
   }
 }
 
@@ -48,8 +49,8 @@ export function descompactar(
           if (estouro || !aceitar(f.name)) return false;
           entradas++;
           total += f.originalSize;
-          if (entradas > limites.entradas) estouro = `mais de ${limites.entradas} entradas`;
-          else if (total > limites.bytes) estouro = `mais de ${Math.round(limites.bytes / 1024 / 1024)} MB descompactados`;
+          if (entradas > limites.entradas) estouro = t('erro.zipEntradas', limites.entradas);
+          else if (total > limites.bytes) estouro = t('erro.zipBytes', Math.round(limites.bytes / 1024 / 1024));
           return estouro === null;
         },
       },
