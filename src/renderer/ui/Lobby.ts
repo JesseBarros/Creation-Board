@@ -79,7 +79,9 @@ export class Lobby {
   #painel!: HTMLElement;
   #grid: HTMLElement;
   #empty: HTMLElement;
-  #folderLabel: HTMLElement;
+  #folderLabel: HTMLButtonElement;
+  /** O texto do caminho, dentro da pilula -- o icone e irmao dele. */
+  #folderTexto: HTMLElement;
   #themeBtn!: HTMLButtonElement;
   #novaPastaBtn: HTMLButtonElement;
   #search: LibrarySearch;
@@ -129,14 +131,44 @@ export class Lobby {
     // de tarefas, Alt+Tab -- e na tela de abertura. Dentro da interface ele nao
     // se repete: aplicativo de desktop nao carrega a propria logo na tela, e
     // "Creation Board" escrito em corpo 26 ja e a marca desta tela.
+    //
+    // O TITULO E A ASSINATURA DA LOGO (30/09/2026), e nao texto de interface:
+    // a mesma fonte da palavra na logo (Outfit, embutida) e "Board" no degrade
+    // azul->ciano do traco dela. Escolha numa prancha de quatro variacoes
+    // -- o relato era que a Segoe UI de antes [...].
+    //
+    // As DUAS palavras sao spans com o mesmo tratamento (ver `ui.css`), e isso e
+    // o conserto de um defeito que se viu no tema claro: com "Creation" em
+    // texto comum, o Windows a desenhava com suavizacao colorida (ClearType) e
+    // "Board", em degrade, com suavizacao cinza -- duas palavras com cara de
+    // fontes diferentes, lado a lado.
+    //
+    // Os quatro pontos coloridos da logo que ficavam ao lado SAIRAM no mesmo
+    // dia. E continua sem o ICONE aqui (decisao acima).
     const titleBox = document.createElement('div');
+    titleBox.className = 'qb-lobby__marca';
     const title = document.createElement('h1');
     title.className = 'qb-lobby__title';
-    title.textContent = 'Creation Board';
+    const base = document.createElement('span');
+    base.className = 'qb-lobby__title-base';
+    base.textContent = 'Creation';
+    const destaque = document.createElement('span');
+    destaque.className = 'qb-lobby__title-destaque';
+    destaque.textContent = 'Board';
+    title.append(base, ' ', destaque);
+
+    // O caminho da pasta virou uma PILULA com icone. Antes era a linha
+    // sublinhada em fonte de codigo, que se achou com "um destaque que nao e
+    // interessante": parecia link, e competia com o titulo. Continua abrindo a
+    // pasta no Explorador.
     this.#folderLabel = document.createElement('button');
+    this.#folderLabel.type = 'button';
     this.#folderLabel.className = 'qb-lobby__folder';
     this.#folderLabel.title = 'Abrir a pasta dos quadros no Explorador';
-    this.#folderLabel.textContent = 'Meus quadros';
+    this.#folderTexto = document.createElement('span');
+    this.#folderTexto.className = 'qb-lobby__folder-texto';
+    this.#folderTexto.textContent = 'Meus quadros';
+    this.#folderLabel.append(icon('pasta', 13), this.#folderTexto);
     this.#folderLabel.addEventListener('click', () => {
       void window.quadro.board.revealFolder();
     });
@@ -378,7 +410,9 @@ export class Lobby {
   }
 
   setFolder(path: string): void {
-    this.#folderLabel.textContent = path;
+    this.#folderTexto.textContent = path;
+    // A pilula corta caminho longo com reticencias; o inteiro fica aqui.
+    this.#folderLabel.title = `Abrir a pasta dos quadros no Explorador\n${path}`;
   }
 
   /**

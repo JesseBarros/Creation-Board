@@ -204,29 +204,135 @@
   margin-right: auto;
 }
 
+/*
+  O TITULO E A ASSINATURA DA LOGO (30/09/2026) -- ver o comentario da montagem
+  em `ui/Lobby.ts`. A fonte e a da palavra na logo (`--font-marca`, Outfit
+  embutida), e o corpo subiu de 26 para 34: com a fonte de interface, 26 ja
+  pesava; com uma fonte de marca, o tamanho e o que a deixa ser marca.
+*/
+.qb-lobby__marca {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
 .qb-lobby__title {
   margin: 0;
-  font-size: 26px;
+  font-family: var(--font-marca);
+  font-size: 34px;
   font-weight: 650;
-  letter-spacing: -0.02em;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  color: var(--fg);
 }
 
+/*
+  AS DUAS PALAVRAS PINTADAS DO MESMO JEITO: tinta por `background-clip: text`.
+
+  Nao e enfeite, e conserto (30/09/2026). "Board" precisa de degrade, e texto
+  em degrade o Chromium desenha com suavizacao CINZA. "Creation", em texto
+  comum, saia com a suavizacao COLORIDA do Windows (ClearType) -- franjas
+  vermelhas e azuis na borda de cada letra. No tema escuro o branco sobre o
+  ceu escondia a diferenca; no claro, o preto grosso franjado ao lado do azul
+  liso parecia outra fonte, e se viu na hora: [...].
+  Com as duas no mesmo caminho, a suavizacao e uma so.
+
+  Os tons por tema:
+    - claro: "Creation" num azul-marinho quase preto (o preto puro pesava
+      demais sobre o ceu palido), e o degrade de "Board" terminando num azul
+      FUNDO -- o ciano claro da logo sumia no ceu da praia, e o "rd" parecia
+      desbotado;
+    - escuro: branco, e o degrade inteiro da logo, que ali tem contraste.
+*/
+.qb-lobby__title-base,
+.qb-lobby__title-destaque {
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.qb-lobby__title-base {
+  --marca-texto: #16203a;
+  background-image: linear-gradient(var(--marca-texto), var(--marca-texto));
+}
+
+.qb-lobby__title-destaque {
+  --marca-de: #2350e0;
+  --marca-meio: #1a6fe0;
+  --marca-ate: #0f86c9;
+  background-image: linear-gradient(100deg, var(--marca-de) 0%, var(--marca-meio) 55%, var(--marca-ate) 100%);
+}
+
+:root[data-theme='dark'] .qb-lobby__title-base {
+  --marca-texto: var(--fg);
+}
+
+:root[data-theme='dark'] .qb-lobby__title-destaque {
+  --marca-de: #4a86ff;
+  --marca-meio: #3fb2ff;
+  --marca-ate: #6ad8ff;
+}
+
+/*
+  O CAMINHO DA PASTA, como PILULA (30/09/2026).
+
+  Antes: a linha sublinhada em fonte de codigo, que parecia link e competia com
+  o titulo. Agora um selo pequeno com icone, na fonte da interface -- continua
+  clicavel (abre a pasta no Explorador), mas se apresenta como informacao, e nao
+  como chamada.
+
+  O fundo e uma tinta do proprio `--bg`: a pilula pousa sobre a FOTO, e sem
+  corpo nenhum o texto pequeno se perderia nas estrelas do tema escuro -- foi o
+  que a prancha de comparacao mostrou na primeira versao.
+*/
 .qb-lobby__folder {
-  margin-top: 4px;
-  padding: 0;
-  background: none;
-  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 3px 10px 3px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--fg) 10%, transparent);
+  background: color-mix(in srgb, var(--bg) 45%, transparent);
+  font-family: var(--font-ui);
   font-size: 12px;
-  font-family: var(--font-mono);
+  line-height: 1.4;
   color: var(--fg-muted);
-  text-align: left;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-color: var(--border);
+  cursor: pointer;
+  transition:
+    background-color 0.14s ease,
+    border-color 0.14s ease,
+    color 0.14s ease;
 }
 
-.qb-lobby__folder:hover {
-  color: var(--accent);
+:root[data-theme='dark'] .qb-lobby__folder {
+  border-color: color-mix(in srgb, var(--fg) 16%, transparent);
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  color: color-mix(in srgb, var(--fg) 70%, var(--fg-muted));
+}
+
+.qb-lobby__folder:hover,
+.qb-lobby__folder:focus-visible {
+  color: var(--fg);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  outline: none;
+}
+
+.qb-lobby__folder svg {
+  flex: none;
+}
+
+/* Caminho longo (pasta dentro de pastas) nao estica a pilula ate os botoes: corta
+   com reticencias, e o caminho inteiro fica no balao do `title`. */
+.qb-lobby__folder {
+  max-width: min(460px, 45vw);
+}
+
+.qb-lobby__folder-texto {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .qb-lobby__tools {

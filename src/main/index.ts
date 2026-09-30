@@ -516,6 +516,22 @@ function createWindow(): void {
   }
 }
 
+// QB_PERFIL=<nome> roda esta execucao num PERFIL separado do Electron (pasta de
+// dados propria), e com isso fora da trava de instancia unica do app aberto.
+//
+// Existe pela armadilha 4 do CONTINUAR.md: com o app de teste aberto, selftest,
+// captura e bancada simplesmente nao subiam -- a trava fechava o segundo
+// processo calado. O perfil separa `localStorage` e trava; o disco se separa
+// com o `QB_BOARDS` apontando para copias. Usar os DOIS juntos: so o perfil,
+// sem `QB_BOARDS`, poria dois processos gravando na mesma pasta de quadros.
+//
+// Ignorado no app instalado, como todo QB_*. Nome saneado: vira nome de pasta.
+const perfil = process.env['QB_PERFIL'];
+if (perfil && isDev && /^[a-z0-9-]{1,32}$/i.test(perfil)) {
+  app.setPath('userData', join(app.getPath('userData'), '..', `creation-board-${perfil}`));
+  console.log(`[perfil] execucao no perfil separado "${perfil}"`);
+}
+
 // Instancia unica: abrir o atalho de novo foca a janela existente em vez de
 // subir um segundo processo brigando pelo mesmo arquivo de autosave.
 const gotLock = app.requestSingleInstanceLock();
