@@ -259,7 +259,7 @@ O projeto não confia em revisão manual para dizer que continua de pé:
 
 ```
 npm run typecheck     # tsc estrito nos dois projetos
-npm run selftest      # 179 verificações no app REAL, com eventos de mouse e teclado
+npm run selftest      # 180 verificações no app REAL, com eventos de mouse e teclado
 npm run check:imagens # metadados: o corte, e toda imagem versionada no repositório
 npm run check:pastas  # inclui caminho fora da pasta de quadros e bomba de zip
 npm run check:fundo   # a validação da imagem de fundo escolhida pelo usuário

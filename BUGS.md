@@ -21,7 +21,7 @@
 | **Borracha** trava só com **zoom alto** | **[B25](#b25--a-borracha-travava-o-app-com-zoom-alto)** — outro defeito, não o B24 |
 | **Animações** de hover não acontecem | **[B26](#b26--as-animações-pararam-de-funcionar--e-não-tinham-parado)** |
 
-**Estado: um item aberto, o B15.** Última atualização: 30/09/2026 (B27, achado e corrigido no preparo da 1.1.0). O B10, que esta linha ainda listava como aberto, está fechado desde 14/08.
+**Estado: um item aberto, o B15.** Última atualização: 30/09/2026 (B27 e B28, achados e corrigidos no preparo da 1.1.0). O B10, que esta linha ainda listava como aberto, está fechado desde 14/08.
 
 **A rodada de 20–21/09/2026 fechou oito itens e abriu um.** Ela veio de usar o app para
 montar resumos de verdade, e quase tudo que apareceu estava em texto e em interface: o
@@ -78,6 +78,21 @@ duas vezes.
 ---
 
 ## Bugs
+
+### B28 — Print colada com o quadro aberto não aparecia na busca
+`corrigido` · `médio` · 30/09/2026
+
+
+**A causa:** a leitura do texto das imagens (Fase 7.5) só rodava ao **abrir** um quadro. Ela lê
+as imagens que ainda não têm texto e grava o resultado no `.wbd`; uma imagem que entrasse
+depois, com o quadro aberto, ficava sem leitura até a próxima abertura. O selftest da fase
+testava a leitura chamando-a direto, e nunca pelo caminho do colar — por isso não viu.
+
+**A correção:** colar ou arrastar imagem, e colar de outro quadro, disparam a mesma leitura
+em segundo plano. Ela só processa o que ainda não foi lido, então chamar a mais não custa
+nada. **Guarda nova** no selftest: uma print com "Firewall de borda" entra pelo caminho real
+(`insertImageFiles`) e o `Ctrl+F` tem de achá-la sem reabrir o quadro. Conferida ao
+contrário: sem a chamada nova, 0 resultados.
 
 ### B27 — Só abrir o app criava uma pasta dentro da pasta de quadros
 `corrigido` · `baixo` · 30/09/2026

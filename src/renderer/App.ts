@@ -1608,6 +1608,11 @@ export class App {
 
     const { objects, rejected } = await insertImages(this.#toolCtx, this.assets, files, world);
     if (objects.length > 0 && this.#tools.activeId !== 'select') this.setTool('select');
+    // A imagem que ACABOU de entrar tambem e lida (B28). Ate 30/09/2026 a
+    // leitura so acontecia ao abrir o quadro, e uma print colada com o quadro
+    // aberto ficava fora do Ctrl+F ate ele ser reaberto. Le so o que ainda nao
+    // foi lido, entao chamar a mais nao custa nada.
+    if (objects.length > 0) this.readImagesInBackground();
     if (rejected.length > 0) {
       toast(
         rejected.length === files.length
@@ -2078,6 +2083,8 @@ export class App {
         y: this.#renderer.viewportH / 2,
       });
     await this.clipboard.paste(this.#toolCtx, this.assets, at);
+    // Colar de outro quadro pode trazer imagem que la nunca foi lida (B28).
+    this.readImagesInBackground();
   }
 
   /** Esc: primeiro aborta o gesto em curso, so depois limpa a selecao. */
@@ -2200,7 +2207,8 @@ export class App {
         label: t('menu.colarAqui'),
         hint: 'Ctrl+V',
         disabled: this.clipboard.isEmpty,
-        onSelect: () => void this.clipboard.paste(this.#toolCtx, this.assets, world),
+        onSelect: () =>
+          void this.clipboard.paste(this.#toolCtx, this.assets, world).then(() => this.readImagesInBackground()),
       },
       {
         label: t('menu.duplicar'),
