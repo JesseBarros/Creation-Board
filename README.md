@@ -1,142 +1,87 @@
+<p align="center"><img src="build/logo-creation-board.png" alt="Creation Board" width="220"></p>
+
 # Creation Board
 
+**Português** · [English](README.en.md)
 
-Ele nasceu de um problema concreto: resumos presos dentro de outros aplicativos, difíceis
-de reorganizar e impossíveis de pesquisar direito. Por isso a **importação vem primeiro** —
-você traz o que já tem e continua o trabalho ali dentro.
 
-![O quadro no tema escuro, com seleção, formas, post-it, texto e a busca aberta](docs/imagens/quadro-escuro.png)
+Ele nasceu de um problema concreto: resumos presos dentro de outros aplicativos, difíceis de
+reorganizar e impossíveis de pesquisar direito. Por isso a **importação vem primeiro**: você
+traz o que já tem e continua o trabalho aqui.
 
-<sub>Tema escuro. Ao lado, o mesmo quadro no tema claro — as cores das marcas são adaptadas
-na exibição, e o arquivo guarda sempre a cor original.</sub>
+![O menu principal no tema escuro, com os quadros, uma pasta e a busca](docs/imagens/menu.png)
 
-![O mesmo quadro no tema claro](docs/imagens/quadro-claro.png)
+![Um quadro no tema claro, com texto, post-it, formas, a busca e o painel de camadas](docs/imagens/quadro.png)
+
+> **Versão 1.1.0** — menu principal repaginado, pastas, animações, português e inglês, e
+> mais privacidade nas imagens. Veja as [notas da versão](PATCH-NOTES.md).
 
 ## O que ele faz
 
-- **Importa quadros de outros aplicativos** (`.zip` ou `.html`), com a geometria conferida contra
-  o motor de layout do próprio navegador — texto, tinta, imagens e post-its caem no lugar
-- **Canvas infinito** que aguenta milhares de objetos, com índice espacial e culling
-- **Escreve à mão** — caneta, marca-texto e borracha que apaga por pedaço, não o traço inteiro
-- **Formas com encaixe**, guias de alinhamento, grade magnética e réguas
-- **Texto rico, post-its e alertas**
-- **Imagens** — colar, arrastar do explorador e recortar
-- **Acha o que você procura**, e é aqui que ele se diferencia:
+- **Importa quadros do Microsoft Whiteboard** (`.zip` ou `.html`): texto, tinta, imagens e post-its voltam editáveis e no lugar
+- **Canvas infinito** que aguenta milhares de objetos
+- **Escreve à mão**: caneta, marca-texto e borracha que apaga por pedaço
+- **Formas com encaixe**, guias de alinhamento e réguas
+- **Texto formatado, post-its e alertas** (importante, dúvida, revisar)
+- **Imagens**: colar, arrastar e cortar — guardadas sem os dados escondidos do arquivo, como a localização de GPS
+- **Pastas** no menu principal, criadas arrastando um quadro sobre outro
+- **Acha o que você procura**:
   - `Ctrl+F` dentro do quadro
-  - **inclusive dentro das imagens**, por OCR — o texto de uma captura de tela vira
-    pesquisável
-  - e uma busca no menu principal que atravessa **todos os seus quadros de uma vez**
-- **Exporta** PNG, SVG e PDF, em ladrilhos quando o quadro não cabe num arquivo só
+  - **inclusive dentro das imagens**, pelo reconhecimento de texto do próprio Windows
+  - e uma busca no menu principal que atravessa **todos os quadros de uma vez**
+- **Exporta** PNG, SVG e PDF
 - **Salva sozinho**, e desfaz tudo com `Ctrl+Z`
-- **Tema claro e escuro**, com as cores das marcas adaptadas para continuarem legíveis nos dois
+- **Tema claro e escuro**, **português e inglês**
 
-O OCR usa o motor do próprio Windows: **nada é baixado e nada é enviado para lugar nenhum.**
-
----
-
-## Documentação
-
-| | |
-|---|---|
-| **[Guia de uso](docs/USO.md)** | Controles, ferramentas, importar, exportar, temas |
-| **[Compilar e empacotar](docs/BUILD.md)** | Build de produção, instalador `.exe`, armadilhas do Windows |
-| **[Segurança](SECURITY.md)** | Modelo de ameaça, isolamento, integridade dos dados e cadeia de suprimentos |
-| **[Engenharia](ENGENHARIA.md)** | As decisões que o código não explica sozinho, e como verificá-lo |
-| **[Registro de bugs](BUGS.md)** | O que deu errado, a causa de cada caso e a correção |
-
-Os dois últimos são o registro real do desenvolvimento — incluindo as **hipóteses que se
-provaram erradas**, e a medição que derrubou cada uma.
+**Nada sai do seu computador:** o app bloqueia qualquer acesso à internet, e o reconhecimento
+de texto usa o motor do Windows, sem baixar nem enviar nada.
 
 ---
 
 ## Instalar
 
-Baixe o instalador na página de **[Releases](https://github.com/JesseBarros/Creation-Board/releases)**
-(`Creation Board-Setup-1.0.0.exe`, 78 MB) e execute.
+1. Baixe `Creation Board-Setup-1.1.0.exe` na página de **[Releases](https://github.com/JesseBarros/Creation-Board/releases)**.
+2. Execute. O instalador não pede administrador, deixa escolher a pasta e cria atalhos no menu Iniciar e na Área de Trabalho.
 
 > **O Windows vai mostrar um aviso azul** — *"O Windows protegeu o computador"*. Clique em
-> **Mais informações** e depois em **Executar assim mesmo**.
+> **Mais informações** e depois em **Executar assim mesmo**. O aviso aparece porque o
+> instalador **não tem assinatura digital** (um certificado custa centenas de dólares por ano,
+> o que não se justifica num projeto aberto), e não porque haja algo errado com ele.
 >
-> Ele aparece porque o instalador **não tem assinatura digital**, e não porque haja algo
-> errado com o programa. Um certificado de assinatura custa algumas centenas de dólares por
-> ano, o que não se justifica num projeto aberto. Para conferir que o arquivo é o mesmo que
-> foi publicado, compare o SHA-256 com o que está na página do release:
+> Para conferir que o arquivo é o publicado, compare o SHA-256:
 >
 > ```
-> Get-FileHash "Creation Board-Setup-1.0.0.exe" -Algorithm SHA256
+> Get-FileHash "Creation Board-Setup-1.1.0.exe" -Algorithm SHA256
 > ```
 >
-> O resultado tem de ser
-> `FF33E30A5951177A561104AA1AB9153FDCD3DCC703B9B746C2D1E2235FE06EB4`.
+> O resultado tem de ser `SHA256_DO_INSTALADOR`.
 
-A instalação **não pede privilégio de administrador**, deixa escolher a pasta e cria atalhos
-no menu Iniciar e na área de trabalho. Desinstalar não apaga seus quadros.
+**Vindo da 1.0.0?** Instale por cima. Seus quadros continuam em `C:\Creation Board` e abrem
+normalmente. Desinstalar nunca apaga quadros.
 
-## Rodar sem instalar
+## Documentação
 
-```
-npm install
-npm run dev
-```
-
-A janela abre direto, sem instalador e sem deixar nada no sistema. É assim que se usa o app
-durante o desenvolvimento. Fechar a janela encerra tudo; nada fica registrado no Windows.
-
-## Requisitos
-
-- **Node.js ≥ 20.18** — testado em 20.18.3
-- **Windows x64**
-- Nada mais. Sem Python, sem Visual Studio Build Tools (não há dependências nativas).
-
-## Instalação das dependências
-
-```
-npm install
-```
-
-## Desenvolvimento
-
-```
-npm run dev
-```
-
-Sobe o Vite com HMR e abre a janela do Electron com o DevTools destacado.
-Editar arquivos em `src/renderer/` recarrega na hora; editar `src/main/` ou
-`src/preload/` reinicia o processo principal.
-
-## Como ele foi construído
-
-Em fases, cada uma entregando algo usável de ponta a ponta. **A ordem diverge do que seria
-natural, e isso foi a primeira decisão do projeto:** importar e manipular vieram *antes* de
-desenhar, porque o objetivo era migrar resumos que já existiam. Uma caneta ótima não serve
-para migrar nada.
-
-| Fase | O que entregou |
+| | |
 |---|---|
-| 0 | Setup, janela, instalador `.exe` validado |
-| 1 | Canvas infinito, modelo de dados, índice espacial, culling, painel `F3` |
-| 1.5 | Lobby com miniaturas, salvar `.wbd`, tela de atalhos |
-| 2 | Importação de quadros exportados, conferida contra o motor de layout do navegador |
-| 3 | Seleção: mover, redimensionar, girar, duplicar, camadas, undo/redo |
-| 4 | Caneta, marca-texto, borracha, cores e espessura |
-| 4.5 | Formas, encaixe com guias, grade magnética, réguas |
-| 5 | Texto rico, post-its e alertas |
-| 5.5 | Borracha que apaga por pedaço |
-| 6 | Busca `Ctrl+F` |
-| 7 | Imagens: colar, arrastar e recortar |
-| 8 | Exportar PNG/SVG/PDF e autosave |
-| 9 | Polimento de interface, temas e build final |
-| 7.5 | OCR: o `Ctrl+F` acha texto dentro das imagens |
-| — | Busca cruzando toda a biblioteca de quadros |
+| **[Notas da versão](PATCH-NOTES.md)** | O que mudou na 1.1.0 |
+| **[Guia de uso](docs/USO.md)** | Menu principal, pastas, ferramentas, atalhos, importar e exportar |
+| **[Compilar e empacotar](docs/BUILD.md)** | Rodar em desenvolvimento, verificar e gerar o instalador |
+| **[Segurança](SECURITY.md)** | Como o app protege os seus dados, e a auditoria da 1.1.0 |
+| **[Engenharia](ENGENHARIA.md)** | Decisões e medições que o código não explica sozinho |
+| **[Registro de bugs](BUGS.md)** | O que deu errado, a causa de cada caso e a correção |
 
-**As duas últimas não estavam no plano.** A 5.5 também não. Todas apareceram de usar o que
-estava pronto e perceber o que faltava — e são, hoje, as partes mais úteis do app. O
-[ENGENHARIA.md](ENGENHARIA.md) registra as decisões e as medições que sustentam cada uma.
+## Rodar a partir do código
+
+Requer **Windows x64** e **Node.js ≥ 20.18**; não há dependência nativa.
+
+```
+npm install
+npm run dev
+```
+
+Verificação, instalador e variáveis de desenvolvimento: [docs/BUILD.md](docs/BUILD.md).
 
 ---
 
-## Autor
-
-**Jessé Barros** — [github.com/JesseBarros](https://github.com/JesseBarros)
-
-Licenciado sob [MIT](LICENSE).
+**Jessé Barros** — [github.com/JesseBarros](https://github.com/JesseBarros) · Licença [MIT](LICENSE)
+(as fotos de fundo e a fonte do título têm licenças próprias, indicadas junto de cada arquivo).

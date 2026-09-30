@@ -47,14 +47,14 @@ webPreferences: {
 **não consegue ler nem escrever um arquivo.** Se algo ali fosse comprometido, não alcançaria o
 disco.
 
-### A ponte tem 79 linhas, e isso é o ponto
+### A ponte tem 82 linhas, e isso é o ponto
 
 A única passagem entre os dois mundos é `src/preload/index.ts`. Ela **não expõe `ipcRenderer`**:
 expõe um objeto com funções nomeadas e tipadas, uma por capacidade.
 
 ```ts
 const api: CreationBoardApi = {
-  getAppInfo,
+  getAppInfo, definirIdioma,
   board: { save, list, load, remove, folder, revealFolder, searchIndex },
   importer: { pick, read },
   fundo: { escolher, ler, limpar },
@@ -285,7 +285,7 @@ aparece, e — o mais importante — **publica o SHA-256 do instalador**, para q
 possa conferir que o arquivo que baixou é o que foi publicado:
 
 ```powershell
-Get-FileHash "Creation Board-Setup-1.0.0.exe" -Algorithm SHA256
+Get-FileHash "Creation Board-Setup-1.1.0.exe" -Algorithm SHA256
 ```
 
 Mandar alguém ignorar um aviso de segurança sem dar como verificar o arquivo seria pedir
@@ -446,7 +446,7 @@ passa pelo mesmo `esc()` do texto.
 | `build/logo.png` | `pHYs` (densidade de impressão) | Removido; pixels idênticos |
 | logo embutida no `index.html` | — | Já estava limpa |
 | `icon.ico`, fotos de fundo, capturas do README | — | Já estavam limpos |
-| `docs/nova-versao/CONTINUAR.md` | Caminho com o nome de usuário do Windows | Trocado por `%USERPROFILE%` |
+| um relatório interno de desenvolvimento | Caminho com o nome de usuário do Windows | Trocado; o relatório saiu do repositório na 1.1.0 |
 
 **Continua no histórico do git**: a versão do logo com o manifesto C2PA e linhas
 antigas do `BUGS.md` com o mesmo nome de usuário. Tirar exige reescrever o

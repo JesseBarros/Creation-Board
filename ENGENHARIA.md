@@ -612,7 +612,7 @@ ficou honesto.
 o 2560 passaria a subir de escala. Esta medição é `dpr` 1, que é a máquina de teste. Se ele
 trocar de monitor, a conta se refaz.
 
-**Duas armadilhas do instrumento**, as duas já registradas no `CONTINUAR.md`: o ambiente
+**Duas armadilhas do instrumento**, as duas registradas em "Armadilhas de desenvolvimento", no fim deste arquivo: o ambiente
 traz `ELECTRON_RUN_AS_NODE=1`, e com ela o binário do Electron roda como Node puro e
 `require('electron')` não resolve; e `capturePage` atrasou uma imagem mesmo com os dois
 `requestAnimationFrame` de espera — a galáxia saiu byte a byte igual à praia anterior. A
@@ -901,3 +901,136 @@ Adicionar atalho é adicionar linha lá, nunca escrever o texto da ajuda à mão
 **O `Scheduler` tem dois níveis de sujeira:** `invalidate()` redesenha conteúdo +
 overlay; `invalidateOverlay()` só o de cima. Gesto em andamento usa o segundo — é o que
 mantém desenhar barato num quadro cheio.
+
+---
+
+<!-- As tres secoes abaixo vieram do ponto de retomada de desenvolvimento
+     (docs/nova-versao/CONTINUAR.md), que saiu do repositorio na versao 1.1.0 junto
+     com os outros relatorios de trabalho. Estas ficaram porque o codigo as cita:
+     "armadilha N" nos comentarios aponta para a lista daqui. -->
+
+## Decisões de produto da versão 1.1 — não reabrir sem motivo novo
+
+| Questão | Decisão |
+|---|---|
+| Imagens de fundo | **Fotografias do Unsplash**, a 2560 de largura (Sean Oulashin e Felix Wegerer). Entram sob a **Licença Unsplash**, e não sob a MIT — a procedência está por arquivo no `assets/fundos/LEIA-ME.md`. Trocar é substituir o arquivo mantendo o nome; nenhuma linha de código muda. |
+| Pastas | **Índice no app**, não subpastas reais no disco. Arrastar nunca move arquivo. Clicar numa pasta abre uma **janela** sobre a tela principal (desde 24/09 — antes trocava a tela). Dentro dela, o X **só tira da pasta**. |
+| Fantasma ao dar zoom (B18) | Corrigido por **composição pela CPU** (`QB_GPU=padrao`), decisão de produto com o custo medido: −22% de fps no caso leve, +20% no pesado. É contorno, não causa encontrada. **Custo no menu, achado em 24/09:** o desfoque ao vivo do painel ia a 14 q/s — resolvido com o vidro pronto, sem mexer no B18. |
+| "Restaurar padrão" | Volta para a foto que vem com o app, não para o fundo sem imagem. |
+| Movimento | O app anima por padrão, independente do Windows. Toda animação nova tem de passar por `[data-anim='off']`. |
+
+---
+
+## Armadilhas de desenvolvimento — já custaram tempo, não repetir
+
+**Do instrumento de captura** (as três me custaram três tentativas):
+
+1. Página `data:` tem **origem opaca** e o Chromium recusa qualquer sub-recurso
+   `file://` a partir dela. Para sonda com imagem, gravar um `.html` e usar
+   `loadFile`.
+2. `capturePage` devolve o **último frame composto**. Trocar `data-theme` e
+   fotografar em seguida entrega o frame **anterior** — a captura "escura" saiu
+   com a tela clara. Esperar dois `requestAnimationFrame` antes.
+3. As imagens precisam de `decode()` **antes** da primeira captura.
+
+**Do ambiente:**
+
+10. O ambiente traz **`ELECTRON_RUN_AS_NODE=1`**. Com ela ligada,
+    `node_modules/.bin/electron script.js` roda como **Node puro** — não abre
+    janela e `require('electron')` falha com `MODULE_NOT_FOUND`, o que parece
+    instalação quebrada e não é. Rodar com `env -u ELECTRON_RUN_AS_NODE`.
+11. `capturePage` atrasa **mais** do que os dois `requestAnimationFrame` da
+    armadilha 2 dão conta: a captura da galáxia saiu byte a byte igual à da
+    praia anterior, e o único sinal foi os dois PNG terem o mesmo tamanho. Não
+    confiar em espera fixa — fazer o instrumento **se conferir sozinho**,
+    fotografando até o quadro mudar em relação ao anterior.
+
+
+**Da leitura de cor pelo CSSOM** (custou uma rodada inteira de selftest):
+
+9. **Não leia cor PINTADA numa verificação — leia o token.** Esta armadilha foi
+   registrada de manhã com a conclusão *oposta*, e a tarde a derrubou; fica o
+   caminho inteiro porque ele é a lição.
+
+   Primeiro apareceu que `color-mix(in srgb, …)` não volta como `rgba(r,g,b,a)`
+   e sim como `color(srgb r g b / a)`, com o alfa depois de uma barra. Escrevi um
+   `alfaDeCor()` que entendia os dois formatos e conclui que ler a cor pintada
+   era o jeito certo, porque [...].
+
+   Horas depois a mesma verificação passou a reprovar devolvendo o **mesmo valor
+   nos quatro estados**, serializado em **`oklab(...)`** — que não existe em
+   lugar nenhum do CSS deste projeto. `oklab` é o espaço que o CSS usa para
+   **interpolar** cor: a leitura estava pegando um valor no meio do caminho.
+
+   **Ler cor pintada expõe a verificação ao instante em que ela acontece**, e
+   nenhuma quantidade de formatos suportados conserta isso — foi por isso que
+   `alfaDeCor()` foi removida em vez de ganhar um terceiro formato.
+   `getComputedStyle(raiz).getPropertyValue('--token')` devolve a declaração com
+   os `var()` já substituídos, sem pintar nada e sem instante. Compare o
+   **número** de dentro dela.
+
+   Corolário de diagnóstico: quando uma verificação de CSS reprovar, inclua na
+   mensagem **o que os atributos da raiz realmente tinham** na hora da leitura.
+   Sem isso não dá para distinguir [...] de [...],
+   e as duas mandam quem investiga para arquivos diferentes.
+
+**Do fluxo de trabalho** (as duas de 22/09/2026):
+
+12. **Não desfaça uma quebra proposital com `git checkout` em arquivo que ainda
+    não foi commitado.** Ao conferir uma guarda ao contrário no `preload`, o
+    `checkout` devolveu o arquivo à versão commitada — levando junto a edição
+    nova que era o objeto do teste. Em arquivo não versionado ainda, desfazer é
+    pela substituição reversa.
+13. **Um script de verificação tem de sobreviver ao módulo que ele testa.** O
+    `check-pastas.mjs` morria quando `lerIndice` lançava: a exceção matou a
+    execução no meio, três casos não rodaram, e o relatório saiu com duas falhas
+    e **sem a linha final** — parecia que as outras guardas não pegavam nada.
+    Ganhou um `caso()` que transforma exceção em FALHA, mesmo desenho do
+    `block()` do `selftest`. Todo `check:*` novo nasce com isso.
+
+14. **O app mantém um `.qb-overlay` no DOM o tempo todo** — a tela de atalhos
+    (`ShortcutsModal`), montada e escondida. Teste que abre diálogo e procura
+    `document.querySelector('.qb-overlay')` acha **esse**, clica no lugar
+    errado e deixa o diálogo de verdade aberto. Anotar os overlays que já
+    existiam antes e só tocar nos novos (ver o bloco de pastas do selftest).
+    Pelo mesmo motivo, **nunca** fechar modal [...].
+
+15. **Para conferir que algo NÃO aconteceu, dê tempo para acontecer.** A
+    guarda do Escape no arrasto lia o índice logo depois do `pointerup` e,
+    conferida ao contrário com o Escape desligado, **passou**: o quadro tinha
+    caído na pasta, mas a gravação é assíncrona e ainda não tinha chegado.
+    Esperar a fila assentar antes de ler o "nada mudou".
+
+16. **Uma medição vale para a configuração em que foi feita.** A do painel de
+    vidro (21/09) dizia [...] — com a composição pela GPU. O B18
+    trocou a composição do app inteiro no dia seguinte, e só a medição do
+    quadro foi refeita. Ao mudar `QB_GPU`, flags do Chromium ou versão do
+    Electron, **toda medição de interface anterior vira suspeita**.
+17. **Número de desempenho bom demais: confira que há algo sendo desenhado.** A
+    primeira versão do vidro pronto pôs uma cor numa camada do meio do
+    `background` (cor só vale na última); a declaração inteira caiu, o painel
+    ficou sem fundo — e a medição parecia ótima justamente por isso. Só a
+    captura pegou.
+18. **Script Python escrito por heredoc come barra invertida.** `\1` numa regex
+    virou o byte `\x01` dentro do `.ts`, e o typecheck não reclamou. Para
+    trecho com barra, escrever o arquivo com a ferramenta de escrita e usar
+    string crua (`r"""..."""`). Varredura rápida:
+    `grep -rlP '[\x00-\x08\x0b\x0c\x0e-\x1f]' src scripts` — só as fotos podem aparecer.
+
+**Do projeto:**
+
+
+---
+
+## Como conferir que nada quebrou
+
+```
+npm run typecheck
+npm run selftest      # 175/175, tem de terminar com "tudo passou"
+npm run check:fundo   # 22 casos da validação do fundo personalizado
+npm run check:pastas  # 26 casos do índice de pastas
+```
+
+E a regra que vale desde o B24: **cada checagem nova é conferida ao contrário** —
+quebrando de propósito o que ela guarda e confirmando que ela acusa. Uma guarda
+que nunca falhou não é guarda.

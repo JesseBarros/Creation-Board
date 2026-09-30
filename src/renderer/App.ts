@@ -514,6 +514,15 @@ export class App {
       void import('./dev/selftest').then((m) => m.runSelfTest(this.#host, this));
     } else if (bench) {
       void this.#runAutoBenchmark(Number(bench));
+    } else if (params.get('exemplos')) {
+      // QB_EXEMPLOS=1: grava quadros de exemplo e mostra o menu com eles -- para
+      // as capturas do README. Ver `dev/exemplos.ts`.
+      this.#enterBoard();
+      void import('./dev/exemplos').then(async (m) => {
+        await m.gerarExemplos(this);
+        await Promise.all([this.goToLobby(), this.#carregarFundos()]);
+        dismissBootScreen(true);
+      });
     } else if (params.get('benchlobby')) {
       // O menu de verdade, com a foto de fundo, e a abertura fora da frente --
       // ela cobre a janela inteira e seria ELA a composta.
@@ -738,13 +747,13 @@ export class App {
    * Gera carga de teste em lotes, cedendo o controle ao navegador entre eles.
    * Sem isso, 50.000 objetos travam a janela por vários segundos.
    */
-  async seed(count: number, refit = true): Promise<void> {
+  async seed(count: number, refit = true, semente?: number): Promise<void> {
     this.doc.clear();
     this.#resetEditingState();
     this.#showProgress(t('progresso.gerando', count), 0);
 
     let done = 0;
-    for (const batch of generateStressBatches(count, SEED_BATCH)) {
+    for (const batch of generateStressBatches(count, SEED_BATCH, semente)) {
       this.doc.add(batch);
       done += batch.length;
       this.#showProgress(t('progresso.gerando', count), done / count);
@@ -887,6 +896,19 @@ export class App {
     } finally {
       this.#saving = false;
     }
+  }
+
+  /**
+   * Grava o quadro atual como um quadro NOVO e o da por salvo. Devolve o
+   * caminho, ou null se falhou. Usado pelos quadros de exemplo (`QB_EXEMPLOS`):
+   * sem marcar como salvo, voltar ao menu abriria o aviso de alteracoes
+   * pendentes, e a execucao automatica pararia nele.
+   */
+  async gravarNovo(nome: string): Promise<string | null> {
+    const r = await this.#writeBoard(null, nome);
+    if (!r) return null;
+    this.#session = { path: r.path, name: nome, dirty: false };
+    return r.path;
   }
 
   /** Grava o estado atual em disco. Devolve null em caso de falha. */

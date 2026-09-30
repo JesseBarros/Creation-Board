@@ -375,6 +375,10 @@ function createWindow(): void {
   const idiomaForcado = process.env['QB_IDIOMA'];
   if (idiomaValido(idiomaForcado)) query = `${query}${query ? '&' : '?'}idioma=${idiomaForcado}`;
 
+  // QB_EXEMPLOS=1 grava quadros de exemplo na pasta em vigor (ver
+  // `renderer/dev/exemplos.ts`). So em desenvolvimento, e sempre com QB_BOARDS.
+  if (isDev && process.env['QB_EXEMPLOS'] === '1') query = `${query}${query ? '&' : '?'}exemplos=1`;
+
   const anim = process.env['QB_ANIM'];
   if (anim === 'off' || anim === 'on' || anim === 'max') query = `${query}${query ? '&' : '?'}anim=${anim}`;
 
@@ -525,7 +529,7 @@ function createWindow(): void {
 // QB_PERFIL=<nome> roda esta execucao num PERFIL separado do Electron (pasta de
 // dados propria), e com isso fora da trava de instancia unica do app aberto.
 //
-// Existe pela armadilha 4 do CONTINUAR.md: com o app de teste aberto, selftest,
+// Existe pela armadilha 4 do ENGENHARIA.md: com o app de teste aberto, selftest,
 // captura e bancada simplesmente nao subiam -- a trava fechava o segundo
 // processo calado. O perfil separa `localStorage` e trava; o disco se separa
 // com o `QB_BOARDS` apontando para copias. Usar os DOIS juntos: so o perfil,
