@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog, ipcMain, type FileFilter } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, type FileFilter } from 'electron';
 import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, extname, join } from 'node:path';
@@ -26,12 +26,17 @@ const FILTERS: Record<ExportRequest['format'], FileFilter> = {
 
 export function registerExportIpc(): void {
   ipcMain.handle(IPC.exportSave, async (e, req: ExportRequest): Promise<ExportResult> => {
-    let filePath = req.path ?? '';
-
     // Sem caminho pronto (o caso normal), pergunta. Com caminho, veio da
     // verificacao por terminal -- o dialogo nativo e justamente a parte que nao
     // da para automatizar, e sem essa porta o caminho do PDF nunca seria
     // exercitado fora de um clique manual.
+    //
+    // SO FORA DO APP INSTALADO, desde a auditoria de 30/09/2026. Aceito do
+    // renderer no empacotado, o caminho pronto gravava um arquivo em QUALQUER
+    // lugar, sem dialogo -- a pasta Inicializar do Windows inclusive. Mesma
+    // trava do `QB_BOARDS`: instrumento de desenvolvimento nao e configuracao.
+    let filePath = !app.isPackaged && typeof req.path === 'string' ? req.path : '';
+
     if (!filePath) {
       const win = BrowserWindow.fromWebContents(e.sender);
       const chosen = await dialog.showSaveDialog(win ?? undefined!, {

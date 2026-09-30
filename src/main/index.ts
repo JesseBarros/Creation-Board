@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from 'electron';
+import { app, BrowserWindow } from 'electron';
 import { join } from 'node:path';
 import { writeFile } from 'node:fs/promises';
 import { registerAppIpc } from './ipc/app';
@@ -8,6 +8,7 @@ import { registerPastasIpc } from './ipc/pastas';
 import { registerImportIpc } from './ipc/importer';
 import { registerExportIpc } from './ipc/exporter';
 import { registerOcrIpc } from './ipc/ocr';
+import { abrirLinkExterno, blindarPaginas, blindarSessao } from './blindagem';
 
 const isDev = !app.isPackaged;
 
@@ -303,9 +304,10 @@ function createWindow(): void {
   mainWindow.on('leave-full-screen', repaintSoon);
 
   // Links externos vao para o navegador do sistema, nunca abrem uma janela
-  // Electron sem preload (que seria uma superficie de ataque).
+  // Electron sem preload (que seria uma superficie de ataque). So http(s) e
+  // mailto -- ver `abrirLinkExterno`.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url);
+    abrirLinkExterno(url);
     return { action: 'deny' };
   });
 
@@ -526,7 +528,13 @@ if (!gotLock) {
     mainWindow.focus();
   });
 
+  // Antes de qualquer janela: vale para toda pagina que o app criar.
+  blindarPaginas();
+
   void app.whenReady().then(() => {
+    // Permissoes negadas e rede bloqueada -- ver `blindagem.ts`. Em
+    // desenvolvimento, so o servidor do Vite passa.
+    blindarSessao(isDev ? process.env['ELECTRON_RENDERER_URL'] : undefined);
     // QB_DIAG=1 imprime no terminal quais recursos graficos estao acelerados.
     // "O que esta em software" e metade da resposta em qualquer problema de
     // composicao -- foi assim que se descartou [...] no B8.

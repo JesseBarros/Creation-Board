@@ -59,7 +59,7 @@ export async function insertImages(
   const decoded: Array<{ id: string; w: number; h: number; natW: number; natH: number }> = [];
   for (const file of usable) {
     try {
-      const asset = await assets.add(file, file.name);
+      const asset = await assets.add(file);
       const natW = asset.meta.width ?? asset.bitmap.width;
       const natH = asset.meta.height ?? asset.bitmap.height;
       // Nunca amplia: uma miniatura de 64px esticada para 720 seria uma mancha.

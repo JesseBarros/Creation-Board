@@ -1,7 +1,8 @@
 import { app } from 'electron';
 import { promises as fs } from 'node:fs';
-import { basename, join } from 'node:path';
-import { unzip, zip, type Unzipped, type Zippable } from 'fflate';
+import { basename, isAbsolute, join, relative, resolve } from 'node:path';
+import { zip, type Unzipped, type Zippable } from 'fflate';
+import { descompactar, LIMITE_WBD } from './zipSeguro';
 import {
   WBD_ENTRY,
   WBD_EXT,
@@ -254,14 +255,9 @@ function zipAsync(files: Zippable): Promise<Uint8Array> {
   });
 }
 
+/** Com o teto de `zipSeguro`: um `.wbd` na pasta pode ter vindo de outra pessoa. */
 function unzipAsync(data: Uint8Array, filter?: (name: string) => boolean): Promise<Unzipped> {
-  return new Promise((resolve, reject) => {
-    unzip(
-      data,
-      { filter: filter ? (f) => filter(f.name) : undefined },
-      (err, out) => (err ? reject(err) : resolve(out)),
-    );
-  });
+  return descompactar(data, LIMITE_WBD, filter);
 }
 
 const encoder = new TextEncoder();
@@ -282,12 +278,48 @@ async function uniquePath(dir: string, name: string): Promise<string> {
   }
 }
 
+/**
+ * O caminho que o RENDERER mandou, conferido: um `.wbd` DENTRO da pasta de
+ * quadros, ou erro.
+ *
+ * Auditoria de 30/09/2026. Os tres canais que recebem caminho da pagina --
+ * salvar, abrir e excluir -- confiavam nele: salvar gravava um `.wbd` por cima
+ * de QUALQUER arquivo que o usuario pudesse escrever, abrir lia de qualquer
+ * lugar, e excluir conferia com `startsWith`, que deixava passar a pasta
+ * vizinha `C:\Creation Board-outra\`. A pagina nao le disco; se um dia algo
+ * nela for comprometido, e esta conferencia que impede o estrago de sair da
+ * pasta.
+ *
+ * `relative` em vez de prefixo: ele resolve `..` e nao confunde pasta vizinha
+ * de nome parecido. Caixa ignorada no Windows, como o NTFS ignora. Subpasta NAO
+ * vale: a pasta de quadros e plana, e as pastas do app sao indice, nao
+ * diretorio.
+ */
+export function caminhoDeQuadro(dir: string, caminho: unknown): string {
+  if (typeof caminho !== 'string' || caminho.length === 0 || !isAbsolute(caminho)) {
+    throw new Error('Caminho de quadro invalido');
+  }
+  const alvo = resolve(caminho);
+  const win = process.platform === 'win32';
+  const rel = relative(win ? resolve(dir).toLowerCase() : resolve(dir), win ? alvo.toLowerCase() : alvo);
+  if (!rel || rel.startsWith('..') || isAbsolute(rel) || /[\\/]/.test(rel) || !rel.toLowerCase().endsWith(WBD_EXT)) {
+    throw new Error('Caminho fora da pasta de quadros');
+  }
+  return alvo;
+}
+
+/** O nome do quadro pelo arquivo, tirando a extensao em qualquer caixa (`A.WBD` -> `A`). */
+function nomeDoQuadro(path: string): string {
+  const nome = basename(path);
+  return nome.toLowerCase().endsWith(WBD_EXT) ? nome.slice(0, -WBD_EXT.length) : nome;
+}
+
 export async function saveBoard(req: SaveBoardRequest): Promise<SaveBoardResult> {
   const dir = await ensureBoardsDir();
   const name = sanitizeBoardName(req.name);
   const now = Date.now();
 
-  const path = req.path ?? (await uniquePath(dir, name));
+  const path = req.path !== undefined && req.path !== null ? caminhoDeQuadro(dir, req.path) : await uniquePath(dir, name);
 
   const manifest: WbdManifest = {
     schemaVersion: WBD_SCHEMA_VERSION,
@@ -338,7 +370,8 @@ async function readManifest(path: string): Promise<WbdManifest> {
   return JSON.parse(decoder.decode(entry)) as WbdManifest;
 }
 
-export async function loadBoard(path: string): Promise<LoadBoardResult> {
+export async function loadBoard(pedido: string): Promise<LoadBoardResult> {
+  const path = caminhoDeQuadro(await ensureBoardsDir(), pedido);
   const raw = await fs.readFile(path);
   const out = await unzipAsync(
     raw,
@@ -371,7 +404,7 @@ export async function loadBoard(path: string): Promise<LoadBoardResult> {
     assets.push({ id, mime: document.assets[id]?.mime ?? 'image/png', data });
   }
 
-  return { path, name: basename(path, WBD_EXT), manifest, document, assets };
+  return { path, name: nomeDoQuadro(path), manifest, document, assets };
 }
 
 /**
@@ -429,11 +462,7 @@ export async function listBoards(): Promise<BoardSummary[]> {
 
 export async function deleteBoard(path: string): Promise<void> {
   // Confere que o alvo esta mesmo na pasta de quadros: o caminho vem do
-  // renderer, e apagar arquivo arbitrario seria imprudente.
-  const dir = await ensureBoardsDir();
-  const normalized = join(path);
-  if (!normalized.startsWith(dir) || !normalized.toLowerCase().endsWith(WBD_EXT)) {
-    throw new Error('Caminho fora da pasta de quadros');
-  }
-  await fs.unlink(normalized);
+  // renderer, e apagar arquivo arbitrario seria imprudente. (Ate
+  // 30/09/2026 era `startsWith`, que aceitava a pasta vizinha de nome parecido.)
+  await fs.unlink(caminhoDeQuadro(await ensureBoardsDir(), path));
 }

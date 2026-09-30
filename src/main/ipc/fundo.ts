@@ -5,6 +5,7 @@ import { IPC } from '@shared/ipc-contract';
 import type { FundoImagem, TemaFundo } from '@shared/ipc-contract';
 import { ensureBoardsDir } from '../storage/wbdFile';
 import { MAX_BYTES, mimeDosBytes, temaValido, validarImagem } from './fundoValidacao';
+import { limparMetadados } from '@shared/metadadosImagem';
 
 /**
  * A imagem de fundo do menu principal, quando o usuario poe a dele.
@@ -65,9 +66,14 @@ export function registerFundoIpc(): void {
       );
     }
 
-    const bytes = await fs.readFile(escolhido);
-    const veredito = validarImagem(bytes, basename(escolhido));
+    const lido = await fs.readFile(escolhido);
+    const veredito = validarImagem(lido, basename(escolhido));
     if (!veredito.ok) throw new Error(veredito.erro);
+    // A copia guardada vai SEM os metadados (auditoria de 30/09/2026): a foto
+    // escolhida para fundo costuma ser uma foto pessoal, e o GPS dela nao tem
+    // por que morar na pasta de quadros -- que e a pasta que se copia inteira
+    // para outro computador, ou para um pendrive.
+    const bytes = limparMetadados(lido).bytes;
 
     const dir = await fundosDir();
     // Apaga qualquer versao anterior ANTES de gravar: a extensao pode ter

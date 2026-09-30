@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import { basename, join } from 'node:path';
-import { unzip, type Unzipped } from 'fflate';
+import type { Unzipped } from 'fflate';
+import { descompactar, LIMITE_WBD } from './zipSeguro';
 import { WBD_ENTRY, WBD_EXT } from '@shared/wbd';
 import type { WbdDocument } from '@shared/model/document';
 import type { LibraryBoard, LibraryEntry, LibraryIndex } from '@shared/librarySearch';
@@ -40,10 +41,9 @@ import { ensureBoardsDir } from './wbdFile';
 
 const decoder = new TextDecoder('utf-8');
 
+/** Com o teto de `zipSeguro`: a busca le todo `.wbd` da pasta, inclusive um recebido de fora. */
 function unzipAsync(data: Uint8Array, filter: (name: string) => boolean): Promise<Unzipped> {
-  return new Promise((resolve, reject) => {
-    unzip(data, { filter: (f) => filter(f.name) }, (err, out) => (err ? reject(err) : resolve(out)));
-  });
+  return descompactar(data, LIMITE_WBD, filter);
 }
 
 export async function readLibraryIndex(): Promise<LibraryIndex> {

@@ -303,7 +303,11 @@ function imageToSvg(o: ImageObject, assets: AssetStore, defs: string[]): string 
     return `<rect x="0" y="0" width="${n(o.w)}" height="${n(o.h)}" fill="rgba(130,145,175,0.18)" stroke="rgba(130,145,175,0.55)"/>`;
   }
 
-  const href = `data:${asset.meta.mime};base64,${base64(asset.bytes)}`;
+  // `esc` tambem aqui, e nao so no texto: o tipo ja sai dos bytes desde
+  // 30/09/2026 (ver `AssetStore.add`), mas ate ali vinha do `.wbd` como texto
+  // livre -- e um `"` nele injetava atributo (`onload=...`) num SVG que o
+  // navegador de quem o abrisse executaria. Duas barreiras, uma em cada ponta.
+  const href = esc(`data:${asset.meta.mime};base64,${base64(asset.bytes)}`);
   if (!o.crop) {
     return `<image x="0" y="0" width="${n(o.w)}" height="${n(o.h)}" xlink:href="${href}" href="${href}"${alpha(o.opacity)}/>`;
   }

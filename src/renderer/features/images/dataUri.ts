@@ -37,7 +37,7 @@ function base64ToBytes(b64: string): Uint8Array {
 }
 
 /** Detecta o formato pelos bytes iniciais do arquivo. */
-function sniffMime(b: Uint8Array): string | null {
+export function sniffMime(b: Uint8Array): string | null {
   if (b.length < 4) return null;
 
   if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'image/png';

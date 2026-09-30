@@ -1,7 +1,8 @@
 import { BrowserWindow, dialog, ipcMain } from 'electron';
 import { promises as fs } from 'node:fs';
 import { basename, extname } from 'node:path';
-import { unzip, type Unzipped } from 'fflate';
+import type { Unzipped } from 'fflate';
+import { descompactar, LIMITE_IMPORTACAO, ZipGrandeDemais } from '../storage/zipSeguro';
 import { IPC } from '@shared/ipc-contract';
 import type { ImportSource } from '@shared/importer';
 
@@ -14,10 +15,13 @@ import type { ImportSource } from '@shared/importer';
  * renderer, que tem DOMParser.
  */
 
+/**
+ * So os `.html` sao descompactados -- o quadro inteiro, imagens embutidas, esta
+ * neles --, e com o teto de `zipSeguro`: o `.zip` importado e, por definicao,
+ * arquivo de terceiro.
+ */
 function unzipAsync(data: Uint8Array): Promise<Unzipped> {
-  return new Promise((resolve, reject) => {
-    unzip(data, (err, out) => (err ? reject(err) : resolve(out)));
-  });
+  return descompactar(data, LIMITE_IMPORTACAO, (nome) => nome.toLowerCase().endsWith('.html'));
 }
 
 const decoder = new TextDecoder('utf-8');
@@ -26,6 +30,11 @@ async function readSource(path: string): Promise<ImportSource[]> {
   const ext = extname(path).toLowerCase();
 
   if (ext === '.html' || ext === '.htm') {
+    // O mesmo teto do `.zip`, conferido antes de ler: sem ele, um `.html` de
+    // gigabytes seria carregado inteiro na memoria do processo principal.
+    if ((await fs.stat(path)).size > LIMITE_IMPORTACAO.bytes) {
+      throw new ZipGrandeDemais(`o arquivo passa de ${LIMITE_IMPORTACAO.bytes / 1024 / 1024} MB`);
+    }
     const html = await fs.readFile(path, 'utf-8');
     return [{ name: basename(path, ext), html }];
   }

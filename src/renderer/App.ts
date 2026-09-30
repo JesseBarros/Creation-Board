@@ -618,7 +618,7 @@ export class App {
       const result = await window.quadro.board.load(summary.path);
       // Os assets precisam estar decodificados antes dos objetos entrarem, senao
       // o primeiro frame desenha marcadores no lugar das imagens.
-      await this.assets.load(result.assets, result.document.assets);
+      await this.assets.load(result.assets);
       applyBoard(this.doc, this.camera, result.document);
       this.#resetEditingState();
       this.#session = { path: result.path, name: result.name, dirty: false };
@@ -687,7 +687,7 @@ export class App {
     }
     try {
       const result = await window.quadro.board.load(path);
-      await this.assets.load(result.assets, result.document.assets);
+      await this.assets.load(result.assets);
       applyBoard(this.doc, this.camera, result.document);
       this.#resetEditingState();
       this.#session = { path: result.path, name: result.name, dirty: false };
