@@ -1,6 +1,7 @@
 import type { BoardObject } from '@shared/model/types';
 import { plainText } from '../features/text/spans';
 import { icon } from './icons';
+import { t, type ChaveTexto } from '@shared/i18n';
 
 /**
  * Painel de camadas: a pilha do quadro, com olho e cadeado.
@@ -46,14 +47,14 @@ export class LayersPanel {
     this.root.hidden = true;
     // Nomeado para leitor de tela: o painel e uma regiao, e sem nome ele seria
     // anunciado como "complementar" e nada mais.
-    this.root.setAttribute('aria-label', 'Camadas');
+    this.root.setAttribute('aria-label', t('camadas.titulo'));
 
     const head = document.createElement('div');
     head.className = 'qb-layers__head';
 
     const titulo = document.createElement('span');
     titulo.className = 'qb-layers__title';
-    titulo.textContent = 'Camadas';
+    titulo.textContent = t('camadas.titulo');
 
     this.#contagem = document.createElement('span');
     this.#contagem.className = 'qb-layers__count';
@@ -61,7 +62,7 @@ export class LayersPanel {
     const fechar = document.createElement('button');
     fechar.type = 'button';
     fechar.className = 'qb-layers__close';
-    fechar.setAttribute('aria-label', 'Fechar o painel de camadas');
+    fechar.setAttribute('aria-label', t('camadas.fechar'));
     fechar.append(icon('fechar', 15));
     fechar.addEventListener('click', () => this.actions.close());
 
@@ -73,7 +74,7 @@ export class LayersPanel {
 
     this.#vazio = document.createElement('p');
     this.#vazio.className = 'qb-layers__empty';
-    this.#vazio.textContent = 'Nada por aqui. O painel lista o que esta na tela.';
+    this.#vazio.textContent = t('camadas.vazio');
 
     this.root.append(head, this.#lista, this.#vazio);
   }
@@ -134,17 +135,17 @@ export class LayersPanel {
     const acoes = document.createElement('div');
     acoes.className = 'qb-layers__actions';
     acoes.append(
-      this.#botao('subir', 'Trazer para frente', () => this.actions.reorder(obj.id, 'up')),
-      this.#botao('descer', 'Mandar para tras', () => this.actions.reorder(obj.id, 'down')),
+      this.#botao('subir', t('camadas.subir'), () => this.actions.reorder(obj.id, 'up')),
+      this.#botao('descer', t('camadas.descer'), () => this.actions.reorder(obj.id, 'down')),
       this.#alternar(
         obj.hidden ? 'olhoFechado' : 'olho',
-        obj.hidden ? 'Mostrar' : 'Esconder',
+        obj.hidden ? t('camadas.mostrar') : t('camadas.esconder'),
         obj.hidden,
         () => this.actions.setHidden(obj.id, !obj.hidden),
       ),
       this.#alternar(
         obj.locked ? 'cadeado' : 'cadeadoAberto',
-        obj.locked ? 'Destravar' : 'Travar',
+        obj.locked ? t('camadas.destravar') : t('camadas.travar'),
         obj.locked,
         () => this.actions.setLocked(obj.id, !obj.locked),
       ),
@@ -187,33 +188,34 @@ function nomeDe(obj: BoardObject): string {
     case 'note': {
       // O proprio texto e o melhor nome que existe: "Texto 4" nao ajuda ninguem
       // a achar o paragrafo certo num resumo.
-      const t = plainText(obj.content).replace(/\s+/g, ' ').trim();
-      const prefixo = obj.type === 'note' ? 'Post-it: ' : '';
-      if (t.length === 0) return obj.type === 'note' ? 'Post-it vazio' : 'Texto vazio';
-      return prefixo + (t.length > 34 ? `${t.slice(0, 34)}…` : t);
+      const texto = plainText(obj.content).replace(/\s+/g, ' ').trim();
+      if (texto.length === 0) return obj.type === 'note' ? t('camadas.postitVazio') : t('camadas.textoVazio');
+      const curto = texto.length > 34 ? `${texto.slice(0, 34)}…` : texto;
+      return obj.type === 'note' ? t('camadas.prefixoPostit', curto) : curto;
     }
     case 'stroke':
-      return obj.variant === 'highlighter' ? 'Marca-texto' : 'Traco';
+      return obj.variant === 'highlighter' ? t('camadas.marcaTexto') : t('camadas.traco');
     case 'path':
-      return 'Tinta';
+      return t('camadas.tinta');
     case 'shape':
-      return SHAPE_LABELS[obj.kind] ?? 'Forma';
+      return t(SHAPE_LABELS[obj.kind] ?? 'camadas.forma');
     case 'image':
-      return 'Imagem';
+      return t('camadas.imagem');
     case 'group':
-      return 'Grupo';
+      return t('camadas.grupo');
   }
 }
 
-const SHAPE_LABELS: Record<string, string> = {
-  rect: 'Retangulo',
-  square: 'Quadrado',
-  ellipse: 'Elipse',
-  circle: 'Circulo',
-  triangle: 'Triangulo',
-  diamond: 'Losango',
-  line: 'Linha',
-  arrow: 'Seta',
+/* Chaves, e nao nomes: a lista e montada antes de o idioma ser escolhido. */
+const SHAPE_LABELS: Record<string, ChaveTexto> = {
+  rect: 'camadas.retangulo',
+  square: 'camadas.quadrado',
+  ellipse: 'camadas.elipse',
+  circle: 'camadas.circulo',
+  triangle: 'camadas.triangulo',
+  diamond: 'camadas.losango',
+  line: 'camadas.linha',
+  arrow: 'camadas.seta',
 };
 
 function iconeDe(obj: BoardObject): Parameters<typeof icon>[0] {

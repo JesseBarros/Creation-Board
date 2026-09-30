@@ -9,6 +9,7 @@ import {
 import { hasStyle, type StyleToolId, type ToolId } from '../tools/types';
 import { ALERT_COLORS } from '../render/painters/text';
 import { icon, type IconName } from './icons';
+import { t } from '@shared/i18n';
 
 /**
  * Barra vertical de ferramentas, na lateral esquerda do quadro.
@@ -46,7 +47,7 @@ export interface ToolBarActions {
 interface ToolDef {
   id: ToolId;
   icon: IconName;
-  label: string;
+  label: () => string;
   key: string;
 }
 
@@ -55,15 +56,15 @@ const TOOLS: ToolDef[] = [
   // cursor, a caneta, o lapis) dependiam da fonte do sistema para existir, e
   // vinham em pesos e tamanhos diferentes uns dos outros -- uma fila
   // desalinhada. Ver ui/icons.ts.
-  { id: 'select', icon: 'selecionar', label: 'Selecionar', key: 'V' },
-  { id: 'pen', icon: 'caneta', label: 'Caneta', key: 'P' },
-  { id: 'highlighter', icon: 'marcaTexto', label: 'Marca-texto', key: 'M' },
-  { id: 'text', icon: 'texto', label: 'Texto', key: 'T' },
+  { id: 'select', icon: 'selecionar', label: () => t('ferramenta.selecionar'), key: 'V' },
+  { id: 'pen', icon: 'caneta', label: () => t('ferramenta.caneta'), key: 'P' },
+  { id: 'highlighter', icon: 'marcaTexto', label: () => t('ferramenta.marcaTexto'), key: 'M' },
+  { id: 'text', icon: 'texto', label: () => t('ferramenta.texto'), key: 'T' },
   // Icone com pauta, e nao mais um quadrado: ao lado do de formas, dois
   // quadrados parecidos nao distinguem uma ferramenta da outra na barra.
-  { id: 'note', icon: 'postit', label: 'Post-it', key: 'N' },
-  { id: 'shape', icon: 'formas', label: 'Formas', key: 'F' },
-  { id: 'eraser', icon: 'borracha', label: 'Borracha', key: 'E' },
+  { id: 'note', icon: 'postit', label: () => t('ferramenta.postit'), key: 'N' },
+  { id: 'shape', icon: 'formas', label: () => t('ferramenta.formas'), key: 'F' },
+  { id: 'eraser', icon: 'borracha', label: () => t('ferramenta.borracha'), key: 'E' },
 ];
 
 /**
@@ -81,23 +82,29 @@ function normalizeHex(color: string): string {
   return '#1f2933';
 }
 
+/*
+  Rotulos e nomes das listas abaixo sao FUNCOES, e nao texto: as listas sao
+  montadas quando o modulo carrega, antes de o idioma ser escolhido
+  (`renderer/idioma.ts`). Com o texto direto aqui, a barra ficaria em portugues
+  para sempre.
+*/
 /** Rotulo de cada nivel de alerta, mais o "sem alerta". */
-const ALERT_LABELS: Record<AlertLevel, string> = {
-  importante: 'Importante',
-  duvida: 'Duvida',
-  revisar: 'Revisar',
+const ALERT_LABELS: Record<AlertLevel, () => string> = {
+  importante: () => t('alerta.importante'),
+  duvida: () => t('alerta.duvida'),
+  revisar: () => t('alerta.revisar'),
 };
 
 /** Icone e nome de cada forma no seletor. */
-const SHAPE_LABELS: Record<ShapeKind, { icon: IconName; label: string }> = {
-  rect: { icon: 'retangulo', label: 'Retangulo (Shift: quadrado)' },
-  square: { icon: 'retangulo', label: 'Quadrado' },
-  ellipse: { icon: 'elipse', label: 'Elipse (Shift: circulo)' },
-  circle: { icon: 'elipse', label: 'Circulo' },
-  triangle: { icon: 'triangulo', label: 'Triangulo' },
-  diamond: { icon: 'losango', label: 'Losango' },
-  line: { icon: 'linha', label: 'Linha (Shift: 15 em 15 graus)' },
-  arrow: { icon: 'seta', label: 'Seta (Shift: 15 em 15 graus)' },
+const SHAPE_LABELS: Record<ShapeKind, { icon: IconName; label: () => string }> = {
+  rect: { icon: 'retangulo', label: () => t('forma.retangulo') },
+  square: { icon: 'retangulo', label: () => t('forma.quadrado') },
+  ellipse: { icon: 'elipse', label: () => t('forma.elipse') },
+  circle: { icon: 'elipse', label: () => t('forma.circulo') },
+  triangle: { icon: 'triangulo', label: () => t('forma.triangulo') },
+  diamond: { icon: 'losango', label: () => t('forma.losango') },
+  line: { icon: 'linha', label: () => t('forma.linha') },
+  arrow: { icon: 'seta', label: () => t('forma.seta') },
 };
 
 export class ToolBar {
@@ -124,14 +131,14 @@ export class ToolBar {
 
     const rail = document.createElement('div');
     rail.className = 'qb-tools__rail';
-    for (const t of TOOLS) {
+    for (const ferramenta of TOOLS) {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'qb-tools__btn';
-      b.dataset['action'] = t.id;
-      b.append(icon(t.icon, 19));
-      b.title = `${t.label} (${t.key})`;
-      b.setAttribute('aria-label', t.label);
+      b.dataset['action'] = ferramenta.id;
+      b.append(icon(ferramenta.icon, 19));
+      b.title = t('ferramenta.comTecla', ferramenta.label(), ferramenta.key);
+      b.setAttribute('aria-label', ferramenta.label());
       /*
         Clicar na ferramenta que JA esta ativa fecha o painel de opcoes, sem
         troca-la.
@@ -148,14 +155,14 @@ export class ToolBar {
         mesma coisa.
       */
       b.addEventListener('click', () => {
-        if (this.#active === t.id) {
+        if (this.#active === ferramenta.id) {
           this.#collapsed = !this.#collapsed;
           this.#renderOptions();
           return;
         }
-        this.actions.setTool(t.id);
+        this.actions.setTool(ferramenta.id);
       });
-      this.#buttons.set(t.id, b);
+      this.#buttons.set(ferramenta.id, b);
       rail.append(b);
     }
 
@@ -370,9 +377,9 @@ export class ToolBar {
       this.#formatRow.append(b);
     };
 
-    add('bold', 'B', 'Negrito (Ctrl+B)');
-    add('italic', 'I', 'Italico (Ctrl+I)');
-    add('underline', 'U', 'Sublinhado (Ctrl+U)');
+    add('bold', 'B', t('formato.negrito'));
+    add('italic', 'I', t('formato.italico'));
+    add('underline', 'U', t('formato.sublinhado'));
   }
 
   /**
@@ -408,9 +415,9 @@ export class ToolBar {
       this.#alignRow.append(b);
     };
 
-    add('left', 'alinharEsquerda', 'Alinhar a esquerda');
-    add('center', 'alinharCentro', 'Centralizar');
-    add('right', 'alinharDireita', 'Alinhar a direita');
+    add('left', 'alinharEsquerda', t('formato.alinharEsquerda'));
+    add('center', 'alinharCentro', t('formato.centralizar'));
+    add('right', 'alinharDireita', t('formato.alinharDireita'));
   }
 
   /** Acende o alinhamento em vigor. Ver `App.#syncTextFormat`. */
@@ -440,8 +447,8 @@ export class ToolBar {
       this.#alertRow.append(b);
     };
 
-    add('peca', 'apagarPeca', 'Apagar por peça: some só o que a borracha cobrir');
-    add('objeto', 'apagarTraco', 'Apagar o traço inteiro que a borracha tocar');
+    add('peca', 'apagarPeca', t('borracha.porPeca'));
+    add('objeto', 'apagarTraco', t('borracha.tracoInteiro'));
   }
 
   #renderNoteColors(): void {
@@ -454,8 +461,8 @@ export class ToolBar {
       b.dataset['value'] = color;
       b.classList.toggle('qb-tools__color--active', color === current);
       b.style.background = color;
-      b.title = `Papel ${color}`;
-      b.setAttribute('aria-label', `Papel ${color}`);
+      b.title = t('postit.cor', color);
+      b.setAttribute('aria-label', t('postit.cor', color));
       b.addEventListener('click', () => {
         this.style.setNoteBg(color);
         this.actions.restyleNotes({ bg: color });
@@ -476,7 +483,7 @@ export class ToolBar {
       b.classList.toggle('qb-tools__alert--active', level === current);
       b.textContent = level ? ALERT_ICONS[level] : '–';
       if (level) b.style.color = ALERT_COLORS[level];
-      const label = level ? `Alerta: ${ALERT_LABELS[level]}` : 'Sem alerta';
+      const label = level ? t('alerta.rotulo', ALERT_LABELS[level]()) : t('alerta.nenhum');
       b.title = label;
       b.setAttribute('aria-label', label);
       b.addEventListener('click', () => {
@@ -504,8 +511,8 @@ export class ToolBar {
       b.dataset['value'] = kind;
       b.classList.toggle('qb-tools__shape--active', kind === current);
       b.append(icon(meta.icon, 17));
-      b.title = meta.label;
-      b.setAttribute('aria-label', meta.label);
+      b.title = meta.label();
+      b.setAttribute('aria-label', meta.label());
       b.addEventListener('click', () => this.style.setShapeKind(kind));
       this.#shapeRow.append(b);
     }
@@ -515,8 +522,8 @@ export class ToolBar {
     fill.className = 'qb-tools__shape qb-tools__shape--fill';
     fill.classList.toggle('qb-tools__shape--active', this.style.shapeFilled);
     fill.append(icon('preencher', 17));
-    fill.title = 'Preencher a forma (translucido, na cor do contorno)';
-    fill.setAttribute('aria-label', 'Preencher a forma');
+    fill.title = t('forma.preencherDica');
+    fill.setAttribute('aria-label', t('forma.preencher'));
     fill.addEventListener('click', () => this.style.setShapeFilled(!this.style.shapeFilled));
     this.#shapeRow.append(fill);
   }
@@ -534,7 +541,7 @@ export class ToolBar {
       // tema: e ela que fica gravada no .wbd e que o usuario esta escolhendo.
       b.style.background = color;
       b.title = color;
-      b.setAttribute('aria-label', `Cor ${color}`);
+      b.setAttribute('aria-label', t('cor.rotulo', color));
       b.addEventListener('click', () => this.style.setColor(id, color));
       this.#colorRow.append(b);
     }
@@ -550,7 +557,7 @@ export class ToolBar {
       b.classList.add('qb-tools__color--active');
       b.style.background = custom;
       b.title = `${custom} (escolhida)`;
-      b.setAttribute('aria-label', `Cor ${custom}`);
+      b.setAttribute('aria-label', t('cor.rotulo', custom));
       b.addEventListener('click', () => this.style.setColor(id, custom));
       this.#colorRow.append(b);
     }
@@ -575,8 +582,8 @@ export class ToolBar {
     if (!this.#customColor) {
       const wrap = document.createElement('label');
       wrap.className = 'qb-tools__color qb-tools__color--custom';
-      wrap.title = 'Escolher outra cor';
-      wrap.setAttribute('aria-label', 'Escolher outra cor');
+      wrap.title = t('cor.escolherOutra');
+      wrap.setAttribute('aria-label', t('cor.escolherOutra'));
 
       const input = document.createElement('input');
       input.type = 'color';
@@ -650,11 +657,12 @@ export class ToolBar {
   #refreshWidth(): void {
     const id = this.#widthTool;
     if (!id || !this.#slider || !this.#pctLabel) return;
-    const noun = id === 'text' ? 'Tamanho da fonte' : id === 'eraser' ? 'Diametro' : 'Espessura';
+    const noun =
+      id === 'text' ? t('espessura.fonte') : id === 'eraser' ? t('espessura.diametro') : t('espessura.espessura');
     const pct = this.style.percent(id);
     this.#slider.value = String(pct);
     this.#slider.setAttribute('aria-label', noun);
-    this.#slider.title = `${noun}: ${this.style.width(id)}px ([ e ] andam de 10 em 10%)`;
+    this.#slider.title = t('espessura.dica', noun, this.style.width(id));
     this.#pctLabel.textContent = `${pct}%`;
   }
 

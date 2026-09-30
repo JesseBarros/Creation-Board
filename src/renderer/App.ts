@@ -77,6 +77,8 @@ import { generateStressBatches } from './dev/stress';
 import { resolve as resolveShortcut, type ShortcutId } from './shortcuts';
 import { esquecerVidro, fotoDoPalco, vidroDe } from './ui/vidroPronto';
 import type { NivelDeMovimento } from './ui/movimento';
+import { idiomaAtual, t } from '@shared/i18n';
+import { IDIOMA_KEY } from './idioma';
 
 const THEMES: Record<'light' | 'dark', RenderTheme> = {
   /*
@@ -212,7 +214,7 @@ export class App {
    */
   #ocrGen = 0;
   #view: View = 'lobby';
-  #session: Session = { path: null, name: 'Quadro sem nome', dirty: false };
+  #session: Session = { path: null, name: t('quadro.semNome'), dirty: false };
   #saving = false;
   #benchPhase = 0;
   /** O evento `paste` do sistema ja resolveu esta tecla? Ver `#pasteFromKeyboard`. */
@@ -238,10 +240,8 @@ export class App {
 
     this.#hint = document.createElement('div');
     this.#hint.className = 'qb-hint';
-    this.#hint.innerHTML =
-      '<strong>Quadro vazio.</strong> Escolha a caneta (<kbd>P</kbd>) e desenhe.<br>' +
-      'Importe um quadro pelo lobby, ou use <kbd>F3</kbd> para gerar ' +
-      'carga de teste e <kbd>F1</kbd> para ver os atalhos.';
+    // HTML do dicionario, e nao da pessoa: texto fixo do app, sem nada de fora.
+    this.#hint.innerHTML = t('quadro.dicaVazioHtml');
     this.#boardView.append(this.#hint);
 
     this.#progress = document.createElement('div');
@@ -604,7 +604,7 @@ export class App {
     this.doc.clear();
     this.doc.setPrefs({ background: papel });
     this.#resetEditingState();
-    this.#session = { path: null, name: 'Quadro sem nome', dirty: false };
+    this.#session = { path: null, name: t('quadro.semNome'), dirty: false };
     this.#enterBoard();
     // O papel entra no tema do renderizador, e com ele no adaptador de cor: as
     // marcas passam a ser conferidas contra o fundo que existe de verdade.
@@ -630,7 +630,7 @@ export class App {
       this.#onCameraChanged();
       this.readImagesInBackground();
     } catch (err) {
-      toast(`Nao foi possivel abrir "${summary.name}": ${String(err)}`, 'error');
+      toast(t('quadro.erroAbrirNome', summary.name, String(err)), 'error');
     }
   }
 
@@ -696,7 +696,7 @@ export class App {
       this.focusObject(objectId);
       this.readImagesInBackground();
     } catch (err) {
-      toast(`Nao foi possivel abrir o quadro: ${String(err)}`, 'error');
+      toast(t('quadro.erroAbrir', String(err)), 'error');
     }
   }
 
@@ -727,7 +727,7 @@ export class App {
 
   /** Quadro de demonstracao, para ter conteudo sem precisar desenhar nada ainda. */
   async openDemo(): Promise<void> {
-    this.#session = { path: null, name: 'Demonstracao', dirty: true };
+    this.#session = { path: null, name: t('quadro.nomeDemonstracao'), dirty: true };
     this.#enterBoard();
     await this.seed(DEMO_SEED, false);
   }
@@ -741,13 +741,13 @@ export class App {
   async seed(count: number, refit = true): Promise<void> {
     this.doc.clear();
     this.#resetEditingState();
-    this.#showProgress(`Gerando ${count.toLocaleString('pt-BR')} objetos…`, 0);
+    this.#showProgress(t('progresso.gerando', count), 0);
 
     let done = 0;
     for (const batch of generateStressBatches(count, SEED_BATCH)) {
       this.doc.add(batch);
       done += batch.length;
-      this.#showProgress(`Gerando ${count.toLocaleString('pt-BR')} objetos…`, done / count);
+      this.#showProgress(t('progresso.gerando', count), done / count);
       // Devolve o controle ao navegador para ele repintar a barra de progresso.
       await nextFrame();
     }
@@ -838,7 +838,7 @@ export class App {
     // mas o usuario nao deve ver o quadro piscando entre um arquivo e outro.
     const wasLobby = this.#view === 'lobby';
     this.#enterBoard();
-    this.#showProgress(`Importando ${sources.length} arquivo(s)…`, 0);
+    this.#showProgress(t('progresso.importando', sources.length), 0);
 
     let reports;
     try {
@@ -851,7 +851,7 @@ export class App {
     this.doc.clear();
     this.assets.clear();
     this.#resetEditingState();
-    this.#session = { path: null, name: 'Quadro sem nome', dirty: false };
+    this.#session = { path: null, name: t('quadro.semNome'), dirty: false };
     if (wasLobby) await this.goToLobby();
 
     const total = reports.reduce(
@@ -859,12 +859,7 @@ export class App {
       0,
     );
     const falhas = reports.filter((r) => r.avisos.length > 0).length;
-    toast(
-      falhas > 0
-        ? `${reports.length} quadro(s) importados, ${total} objetos — ${falhas} com avisos.`
-        : `${reports.length} quadro(s) importados — ${total} objetos.`,
-      falhas > 0 ? 'error' : 'ok',
-    );
+    toast(t('importar.resultado', reports.length, total, falhas), falhas > 0 ? 'error' : 'ok');
   }
 
   async save(): Promise<boolean> {
@@ -873,9 +868,9 @@ export class App {
     let name = this.#session.name;
     if (!this.#session.path) {
       const input = await promptText({
-        title: 'Salvar quadro',
-        label: 'Nome do quadro',
-        value: name === 'Quadro sem nome' ? '' : name,
+        title: t('quadro.salvarTitulo'),
+        label: t('quadro.salvarNome'),
+        value: name === t('quadro.semNome') ? '' : name,
       });
       if (!input) return false;
       name = input;
@@ -913,7 +908,7 @@ export class App {
         assets: this.assets.serialize(used),
       });
     } catch (err) {
-      toast(`Falha ao salvar: ${String(err)}`, 'error');
+      toast(t('quadro.erroSalvar', String(err)), 'error');
       return null;
     }
   }
@@ -1121,6 +1116,7 @@ export class App {
   #openSettings(): void {
     settingsDialog(
       {
+        idioma: idiomaAtual(),
         animacoes: this.#animacoes,
         fundos: {
           claro: localStorage.getItem(FUNDO_KEY.claro),
@@ -1129,6 +1125,15 @@ export class App {
       },
       {
         onChange: (c) => {
+          // O IDIOMA recarrega a janela: os textos sao escritos
+          // quando cada tela e montada, e redesenhar tudo no lugar arriscaria
+          // sobrar texto no idioma antigo. As Configuracoes so abrem no menu
+          // principal, onde nao ha quadro com alteracao pendente para perder.
+          if (c.idioma !== idiomaAtual()) {
+            localStorage.setItem(IDIOMA_KEY, c.idioma);
+            location.reload();
+            return;
+          }
           this.#animacoes = c.animacoes;
           localStorage.setItem(ANIM_KEY, this.#animacoes);
           this.#applyAnimacoes();
@@ -1407,7 +1412,7 @@ export class App {
    */
   async exportBoard(): Promise<void> {
     if (this.doc.size === 0) {
-      toast('O quadro esta vazio: nao ha o que exportar.', 'error');
+      toast(t('exportar.quadroVazio'), 'error');
       return;
     }
 
@@ -1453,7 +1458,7 @@ export class App {
     const ids = choice.scope === 'selection' ? this.selection.ids() : [];
     const area = exportBounds(this.doc, ids);
     if (!area || area.w <= 0 || area.h <= 0) {
-      toast('Nao foi possivel medir a area a exportar.', 'error');
+      toast(t('exportar.erroMedir'), 'error');
       return;
     }
 
@@ -1461,9 +1466,9 @@ export class App {
     // `exportBg` e nao `boardBg`: o quadro claro da tela e um branco quebrado
     // para nao cansar a vista, e esse cinza no arquivo so pareceria sujo.
     const background = choice.background ? theme.exportBg : null;
-    const name = this.#session.name === 'Quadro sem nome' ? 'quadro' : this.#session.name;
+    const name = this.#session.name === t('quadro.semNome') ? t('quadro.nomeDeArquivo') : this.#session.name;
 
-    this.#showProgress(`Exportando ${choice.format.toUpperCase()}…`, 0.4);
+    this.#showProgress(t('progresso.exportando', choice.format.toUpperCase()), 0.4);
     try {
       let data: Uint8Array;
       let widthPx: number | undefined;
@@ -1481,7 +1486,7 @@ export class App {
         for (let row = 0; row < plan.rows; row++) {
           for (let col = 0; col < plan.cols; col++) {
             this.#showProgress(
-              total > 1 ? `Exportando PNG… ladrilho ${tiles.length + 1} de ${total}` : 'Exportando PNG…',
+              total > 1 ? t('progresso.exportandoParte', tiles.length + 1, total) : t('progresso.exportando', 'PNG'),
               (tiles.length + 1) / (total + 1),
             );
             // Devolve o controle ao navegador entre ladrilhos: sem isto, uma
@@ -1536,7 +1541,7 @@ export class App {
         widthPx = png.width;
         heightPx = png.height;
         if (png.scale < choice.scale - 0.001) {
-          aviso = ` (uma pagina so cabe ${png.scale.toFixed(2)}x; para ${choice.scale}x, exporte em PNG)`;
+          aviso = t('exportar.avisoPdf', png.scale, choice.scale);
         }
       }
 
@@ -1552,10 +1557,10 @@ export class App {
       });
 
       if (result.path) {
-        toast(`Exportado para ${result.path}${aviso}`);
+        toast(t('exportar.feito', result.path, aviso));
       }
     } catch (err) {
-      toast(`Falha ao exportar: ${String(err)}`, 'error');
+      toast(t('exportar.erro', String(err)), 'error');
     } finally {
       this.#hideProgress();
     }
@@ -1584,8 +1589,8 @@ export class App {
     if (rejected.length > 0) {
       toast(
         rejected.length === files.length
-          ? `Nao foi possivel inserir: ${rejected.map((r) => r.name).join(', ')}`
-          : `${rejected.length} arquivo(s) recusado(s): ${rejected.map((r) => r.name).join(', ')}`,
+          ? t('imagem.erroInserir', rejected.map((r) => r.name).join(', '))
+          : t('imagem.recusadas', rejected.length, rejected.map((r) => r.name).join(', ')),
         'error',
       );
     }
@@ -1886,15 +1891,12 @@ export class App {
 
     const onde =
       trocada.length === 2
-        ? 'nos dois temas'
+        ? t('cor.ondeAmbos')
         : trocada[0] === 'light'
-          ? 'no tema claro'
-          : 'no tema escuro';
+          ? t('cor.ondeClaro')
+          : t('cor.ondeEscuro');
     const exibida = displayedAs(color, THEMES[trocada[0]!].boardBg);
-    toast(
-      `${color} tem contraste baixo ${onde} e sera exibida como ${exibida}, para nao sumir.`,
-      'error',
-    );
+    toast(t('cor.contrasteBaixo', color, onde, exibida), 'error');
   }
 
   /**
@@ -2107,7 +2109,7 @@ export class App {
       ...(editavel
         ? ([
             {
-              label: 'Editar texto',
+              label: t('menu.editarTexto'),
               hint: 'F2',
               onSelect: () => this.editSelection(),
             },
@@ -2116,8 +2118,8 @@ export class App {
                   {
                     label:
                       selecionados[0].list === 'bullet'
-                        ? 'Tirar os marcadores'
-                        : 'Lista com marcadores',
+                        ? t('menu.tirarMarcadores')
+                        : t('menu.listaComMarcadores'),
                     onSelect: () => this.toggleBulletList(),
                   },
                 ]
@@ -2128,7 +2130,7 @@ export class App {
       ...(notas.length > 0
         ? ([
             {
-              label: todosFixados ? 'Desafixar da tela' : 'Fixar na tela',
+              label: todosFixados ? t('menu.desafixar') : t('menu.fixar'),
               onSelect: () => this.togglePinSelectedNotes(),
             },
             'separator',
@@ -2137,74 +2139,74 @@ export class App {
       ...(imagem
         ? ([
             {
-              label: 'Recortar imagem',
-              hint: 'Duplo clique',
+              label: t('menu.cortarImagem'),
+              hint: t('menu.duploClique'),
               onSelect: () => this.beginCrop(imagem),
             },
             ...(imagem.crop
-              ? [{ label: 'Remover recorte', onSelect: () => this.removeCrop() }]
+              ? [{ label: t('menu.removerCorte'), onSelect: () => this.removeCrop() }]
               : []),
             'separator',
           ] as MenuEntry[])
         : []),
       {
-        label: 'Desfazer',
+        label: t('menu.desfazer'),
         hint: 'Ctrl+Z',
         disabled: !this.history.canUndo,
         onSelect: () => this.undo(),
       },
       {
-        label: 'Refazer',
+        label: t('menu.refazer'),
         hint: 'Ctrl+Shift+Z',
         disabled: !this.history.canRedo,
         onSelect: () => this.redo(),
       },
       'separator',
       {
-        label: 'Copiar',
+        label: t('menu.copiar'),
         hint: 'Ctrl+C',
         disabled: nada,
         onSelect: () => this.copySelection(),
       },
       {
-        label: 'Recortar',
+        label: t('menu.recortar'),
         hint: 'Ctrl+X',
         disabled: nada,
         onSelect: () => this.cutSelection(),
       },
       {
-        label: 'Colar aqui',
+        label: t('menu.colarAqui'),
         hint: 'Ctrl+V',
         disabled: this.clipboard.isEmpty,
         onSelect: () => void this.clipboard.paste(this.#toolCtx, this.assets, world),
       },
       {
-        label: 'Duplicar',
+        label: t('menu.duplicar'),
         hint: 'Ctrl+D',
         disabled: nada,
         onSelect: () => void duplicateSelection(this.#toolCtx),
       },
       {
-        label: 'Trazer para frente',
+        label: t('menu.trazerParaFrente'),
         hint: 'Ctrl+Shift+]',
         disabled: nada,
         onSelect: () => void reorderSelection(this.#toolCtx, 'front'),
       },
       {
-        label: 'Enviar para tras',
+        label: t('menu.enviarParaTras'),
         hint: 'Ctrl+Shift+[',
         disabled: nada,
         onSelect: () => void reorderSelection(this.#toolCtx, 'back'),
       },
       'separator',
       {
-        label: 'Selecionar tudo',
+        label: t('menu.selecionarTudo'),
         hint: 'Ctrl+A',
         disabled: this.doc.size === 0,
         onSelect: () => selectAll(this.#toolCtx),
       },
       {
-        label: n > 1 ? `Excluir ${n} objetos` : 'Excluir',
+        label: t('menu.excluir', n),
         hint: 'Delete',
         danger: true,
         disabled: nada,

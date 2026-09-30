@@ -1,4 +1,5 @@
 import { icon, type IconName } from './icons';
+import { formatarData, t } from '@shared/i18n';
 
 export interface ViewportBarActions {
   zoomIn(): void;
@@ -55,7 +56,7 @@ export class ViewportBar {
   #undoBtn: HTMLButtonElement;
   #redoBtn: HTMLButtonElement;
   #savedTitle = '';
-  #boardName = 'Quadro sem nome';
+  #boardName = t('quadro.semNome');
 
   constructor(private readonly actions: ViewportBarActions) {
     this.el = document.createElement('div');
@@ -67,7 +68,7 @@ export class ViewportBar {
     // do aplicativo, e repeti-lo aqui era a segunda copia na mesma tela. Dentro
     // da interface o icone nao se repete -- ele mora onde o sistema o poe, e na
     // tela de abertura.
-    const backBtn = iconButton('voltar', 'voltar', 'Voltar aos quadros (Ctrl+O)', () =>
+    const backBtn = iconButton('voltar', 'voltar', t('barra.voltar'), () =>
       this.actions.backToLobby(),
     );
 
@@ -87,35 +88,35 @@ export class ViewportBar {
       salvar, que e, alias, onde ele sempre deveria ter estado: o aviso e um
       chamado para uma acao, e agora ele mora em cima do botao que a executa.
     */
-    this.#saveBtn = iconButton('salvar', 'salvar', 'Salvar (Ctrl+S)', () => this.actions.save());
+    this.#saveBtn = iconButton('salvar', 'salvar', t('barra.salvar'), () => this.actions.save());
     this.#saveBtn.classList.add('qb-bar__btn--primary');
     const saveBtn = this.#saveBtn;
-    const exportBtn = iconButton('exportar', 'exportar', 'Exportar PNG, SVG ou PDF (Ctrl+E)', () =>
+    const exportBtn = iconButton('exportar', 'exportar', t('barra.exportar'), () =>
       this.actions.exportBoard(),
     );
 
-    this.#undoBtn = iconButton('desfazer', 'desfazer', 'Desfazer (Ctrl+Z)', () =>
+    this.#undoBtn = iconButton('desfazer', 'desfazer', t('barra.desfazer'), () =>
       this.actions.undo(),
     );
-    this.#redoBtn = iconButton('refazer', 'refazer', 'Refazer (Ctrl+Shift+Z)', () =>
+    this.#redoBtn = iconButton('refazer', 'refazer', t('barra.refazer'), () =>
       this.actions.redo(),
     );
     this.setHistory(false, false);
 
-    this.#gridBtn = iconButton('grade', 'grade', 'Grade de fundo (G)', () =>
+    this.#gridBtn = iconButton('grade', 'grade', t('barra.grade'), () =>
       this.actions.toggleGrid(),
     );
-    this.#rulerBtn = iconButton('regua', 'regua', 'Reguas nas bordas (R)', () =>
+    this.#rulerBtn = iconButton('regua', 'regua', t('barra.reguas'), () =>
       this.actions.toggleRulers(),
     );
-    const fitBtn = iconButton('ajustar', 'ajustar', 'Ajustar a tela (Ctrl+1)', () =>
+    const fitBtn = iconButton('ajustar', 'ajustar', t('barra.ajustar'), () =>
       this.actions.fitToContent(),
     );
     // No grupo de "o que vejo", junto com grade, ima e regua: o painel de
     // camadas responde [...], que e a mesma familia. Botao, e
     // nao so o atalho -- recurso sem botao e recurso que ninguem descobre, que
     // foi a licao do M1.
-    this.#layersBtn = iconButton('camadas', 'camadas', 'Painel de camadas (C)', () =>
+    this.#layersBtn = iconButton('camadas', 'camadas', t('barra.camadas'), () =>
       this.actions.toggleLayers(),
     );
     // Sol ou lua conforme o tema, e nao um circulo meio preenchido.
@@ -123,17 +124,17 @@ export class ViewportBar {
     // O icone mostra PARA ONDE o clique leva -- de dia aparece a lua, de noite o
     // sol. E a leitura que um interruptor de uma tecla so pede: ele nao esta
     // relatando o estado atual, esta oferecendo o proximo.
-    this.#themeBtn = iconButton('lua', 'tema', 'Alternar tema claro/escuro', () =>
+    this.#themeBtn = iconButton('lua', 'tema', t('barra.alternarTema'), () =>
       this.actions.toggleTheme(),
     );
-    const helpBtn = iconButton('comandos', 'comandos', 'Atalhos e comandos (F1)', () =>
+    const helpBtn = iconButton('comandos', 'comandos', t('barra.atalhos'), () =>
       this.actions.showShortcuts(),
     );
 
-    const minus = iconButton('menos', 'zoom-menos', 'Diminuir zoom (Ctrl+-)', () =>
+    const minus = iconButton('menos', 'zoom-menos', t('barra.zoomMenos'), () =>
       this.actions.zoomOut(),
     );
-    const plus = iconButton('mais', 'zoom-mais', 'Aumentar zoom (Ctrl++)', () =>
+    const plus = iconButton('mais', 'zoom-mais', t('barra.zoomMais'), () =>
       this.actions.zoomIn(),
     );
 
@@ -142,7 +143,7 @@ export class ViewportBar {
     this.#zoomLabel.className = 'qb-bar__btn qb-bar__zoom';
     this.#zoomLabel.dataset['action'] = 'zoom';
     this.#zoomLabel.textContent = '100%';
-    this.#zoomLabel.title = 'Niveis de zoom';
+    this.#zoomLabel.title = t('barra.niveisDeZoom');
     this.#zoomLabel.addEventListener('click', () => this.#toggleMenu());
 
     this.#menu = document.createElement('div');
@@ -225,7 +226,7 @@ export class ViewportBar {
   /** Troca o glifo do interruptor de tema para o do PROXIMO tema. */
   setTheme(theme: 'light' | 'dark'): void {
     this.#themeBtn.replaceChildren(icon(theme === 'dark' ? 'sol' : 'lua'));
-    this.#themeBtn.title = theme === 'dark' ? 'Mudar para o tema claro' : 'Mudar para o tema escuro';
+    this.#themeBtn.title = theme === 'dark' ? t('lobby.paraTemaClaro') : t('lobby.paraTemaEscuro');
     this.#themeBtn.setAttribute('aria-label', this.#themeBtn.title);
   }
 
@@ -246,8 +247,8 @@ export class ViewportBar {
   setBoardName(name: string, dirty: boolean): void {
     this.#saveBtn.classList.toggle('qb-bar__btn--dirty', dirty);
     this.#saveBtn.title = dirty
-      ? `Salvar "${name}" — alteracoes nao salvas (Ctrl+S)`
-      : `Salvar "${name}" (Ctrl+S)${this.#savedTitle ? ` — ${this.#savedTitle}` : ''}`;
+      ? t('barra.salvarNomeSujo', name)
+      : `${t('barra.salvarNome', name)}${this.#savedTitle ? ` — ${this.#savedTitle}` : ''}`;
     this.#saveBtn.setAttribute('aria-label', this.#saveBtn.title);
     this.#boardName = name;
   }
@@ -260,8 +261,8 @@ export class ViewportBar {
    * quiser.
    */
   setAutosaved(at: Date): void {
-    const hora = at.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    this.#savedTitle = `salvo automaticamente as ${hora}`;
+    const hora = formatarData(at.getTime(), { hour: '2-digit', minute: '2-digit' });
+    this.#savedTitle = t('barra.salvoAutomatico', hora);
     if (!this.#saveBtn.classList.contains('qb-bar__btn--dirty')) {
       this.setBoardName(this.#boardName, false);
     }

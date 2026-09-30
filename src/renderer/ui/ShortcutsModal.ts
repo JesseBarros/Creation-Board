@@ -1,4 +1,5 @@
 import { displayKeys, groupedShortcuts } from '../shortcuts';
+import { t } from '@shared/i18n';
 import { icon } from './icons';
 
 /**
@@ -23,12 +24,12 @@ export class ShortcutsModal {
     header.className = 'qb-help__header';
     const h = document.createElement('h2');
     h.className = 'qb-dialog__title';
-    h.textContent = 'Atalhos e comandos';
+    h.textContent = t('atalhos.titulo');
     const close = document.createElement('button');
     close.type = 'button';
     close.className = 'qb-help__close';
     close.append(icon('fechar', 15));
-    close.title = 'Fechar (Esc)';
+    close.title = t('atalhos.fechar');
     close.addEventListener('click', () => this.hide());
     header.append(h, close);
 
@@ -55,7 +56,7 @@ export class ShortcutsModal {
           if (i > 0) {
             const ou = document.createElement('span');
             ou.className = 'qb-help__or';
-            ou.textContent = 'ou';
+            ou.textContent = t('atalhos.ou');
             keys.append(ou);
           }
           for (const part of combo.split('+')) {
@@ -67,7 +68,7 @@ export class ShortcutsModal {
 
         const label = document.createElement('span');
         label.className = 'qb-help__label';
-        label.textContent = item.label;
+        label.textContent = t(item.label);
 
         row.append(keys, label);
         section.append(row);

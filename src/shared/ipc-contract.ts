@@ -8,6 +8,7 @@ import type { ImportSource } from './importer';
 import type { OcrItem, OcrReport } from './ocr';
 import type { LibraryIndex } from './librarySearch';
 import type { IndicePastas } from './pastas';
+import type { Idioma } from './i18n';
 
 /**
  * Contrato IPC compartilhado por main, preload e renderer.
@@ -19,6 +20,7 @@ import type { IndicePastas } from './pastas';
 
 export const IPC = {
   appInfo: 'app:info',
+  appIdioma: 'app:idioma',
   boardSave: 'board:save',
   boardList: 'board:list',
   boardLoad: 'board:load',
@@ -125,6 +127,8 @@ export interface FundoImagem {
 /** Superficie exposta em `window.quadro` pelo preload. */
 export interface CreationBoardApi {
   getAppInfo(): Promise<AppInfo>;
+  /** O idioma escolhido pela pagina, para os dialogos nativos e as mensagens do main. */
+  definirIdioma(idioma: Idioma): Promise<void>;
 
   board: {
     save(req: SaveBoardRequest): Promise<SaveBoardResult>;

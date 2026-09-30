@@ -1,3 +1,4 @@
+import { t, type ChaveTexto } from '@shared/i18n';
 /**
  * Registro unico de atalhos.
  *
@@ -51,7 +52,8 @@ export type ShortcutId =
 export interface ShortcutDef {
   /** Ausente = entrada apenas informativa (gesto de mouse, sem tecla). */
   id?: ShortcutId;
-  group: string;
+  /** Chave de traducao do grupo -- ver `@shared/i18n`. */
+  group: ChaveTexto;
   /** Notacao "Ctrl+Shift+K". Alternativas de TECLA separadas por "|". */
   keys: string;
   /**
@@ -59,7 +61,14 @@ export interface ShortcutDef {
    * `keys` sozinho nao da conta de "Ctrl+Shift+Z ou Ctrl+Y".
    */
   keysAlt?: string;
-  label: string;
+  /** Chave de traducao do que o atalho faz. */
+  label: ChaveTexto;
+  /**
+   * Nos GESTOS de mouse (entradas sem `id`), o `keys` e texto para gente --
+   * "Botao direito + arrastar" -- e nao combinacao de teclas. Este e o mesmo
+   * texto, traduzido, e e ele que a ajuda mostra.
+   */
+  gesto?: ChaveTexto;
   /**
    * Contexto em que vale. 'board' nao dispara no lobby, e 'lobby' e o contrario
    * -- e e o que permite `Ctrl+F` significar "neste quadro" la dentro e "em
@@ -77,133 +86,133 @@ export interface ShortcutDef {
 }
 
 export const SHORTCUTS: ShortcutDef[] = [
-  { id: 'save', group: 'Arquivo', keys: 'Ctrl+S', label: 'Salvar quadro', scope: 'board' },
-  { id: 'lobby', group: 'Arquivo', keys: 'Ctrl+O', label: 'Voltar ao lobby (meus quadros)', scope: 'board' },
-  { id: 'export', group: 'Arquivo', keys: 'Ctrl+E', label: 'Exportar PNG, SVG ou PDF', scope: 'board' },
+  { id: 'save', group: 'atalhoGrupo.arquivo', keys: 'Ctrl+S', label: 'atalho.salvar', scope: 'board' },
+  { id: 'lobby', group: 'atalhoGrupo.arquivo', keys: 'Ctrl+O', label: 'atalho.voltarAoMenu', scope: 'board' },
+  { id: 'export', group: 'atalhoGrupo.arquivo', keys: 'Ctrl+E', label: 'atalho.exportar', scope: 'board' },
   {
-    group: 'Arquivo',
-    keys: 'Automatico',
-    label: 'Salva sozinho 3s depois da ultima alteracao (so depois do primeiro Ctrl+S)',
+    group: 'atalhoGrupo.arquivo',
+    keys: 'Automatico', gesto: 'gesto.automatico',
+    label: 'atalho.autosave',
   },
 
-  { group: 'Navegacao', keys: 'Botao direito + arrastar', label: 'Mover o quadro (pan)' },
-  { group: 'Navegacao', keys: 'Botao do meio', label: 'Mover o quadro (pan)' },
-  { group: 'Navegacao', keys: 'Dois dedos', label: 'Mover o quadro no trackpad' },
-  { group: 'Navegacao', keys: 'Roda', label: 'Rolar na vertical' },
-  { group: 'Navegacao', keys: 'Shift + roda', label: 'Rolar na horizontal' },
-  { group: 'Navegacao', keys: 'Ctrl + roda', label: 'Zoom centrado no cursor' },
-  { group: 'Navegacao', keys: 'Pinca', label: 'Zoom no trackpad' },
+  { group: 'atalhoGrupo.navegacao', keys: 'Botao direito + arrastar', gesto: 'gesto.botaoDireitoArrastar', label: 'atalho.mover' },
+  { group: 'atalhoGrupo.navegacao', keys: 'Botao do meio', gesto: 'gesto.botaoDoMeio', label: 'atalho.mover' },
+  { group: 'atalhoGrupo.navegacao', keys: 'Dois dedos', gesto: 'gesto.doisDedos', label: 'atalho.moverTrackpad' },
+  { group: 'atalhoGrupo.navegacao', keys: 'Roda', gesto: 'gesto.roda', label: 'atalho.rolarVertical' },
+  { group: 'atalhoGrupo.navegacao', keys: 'Shift + roda', gesto: 'gesto.shiftRoda', label: 'atalho.rolarHorizontal' },
+  { group: 'atalhoGrupo.navegacao', keys: 'Ctrl + roda', gesto: 'gesto.ctrlRoda', label: 'atalho.zoomCursor' },
+  { group: 'atalhoGrupo.navegacao', keys: 'Pinca', gesto: 'gesto.pinca', label: 'atalho.zoomTrackpad' },
 
-  { id: 'zoom100', group: 'Zoom', keys: 'Ctrl+0', label: 'Zoom em 100%', scope: 'board' },
-  { id: 'fit', group: 'Zoom', keys: 'Ctrl+1', label: 'Ajustar todo o conteudo a tela', scope: 'board' },
-  { id: 'zoomIn', group: 'Zoom', keys: 'Ctrl+=|+', label: 'Aumentar o zoom', scope: 'board' },
-  { id: 'zoomOut', group: 'Zoom', keys: 'Ctrl+-', label: 'Diminuir o zoom', scope: 'board' },
+  { id: 'zoom100', group: 'atalhoGrupo.zoom', keys: 'Ctrl+0', label: 'atalho.zoom100', scope: 'board' },
+  { id: 'fit', group: 'atalhoGrupo.zoom', keys: 'Ctrl+1', label: 'atalho.ajustar', scope: 'board' },
+  { id: 'zoomIn', group: 'atalhoGrupo.zoom', keys: 'Ctrl+=|+', label: 'atalho.zoomMais', scope: 'board' },
+  { id: 'zoomOut', group: 'atalhoGrupo.zoom', keys: 'Ctrl+-', label: 'atalho.zoomMenos', scope: 'board' },
 
-  { id: 'undo', group: 'Editar', keys: 'Ctrl+Z', label: 'Desfazer', scope: 'board' },
-  { id: 'redo', group: 'Editar', keys: 'Ctrl+Shift+Z', keysAlt: 'Ctrl+Y', label: 'Refazer', scope: 'board' },
-  { id: 'duplicate', group: 'Editar', keys: 'Ctrl+D', label: 'Duplicar a selecao', scope: 'board' },
-  { id: 'copy', group: 'Editar', keys: 'Ctrl+C', label: 'Copiar', scope: 'board' },
-  { id: 'cut', group: 'Editar', keys: 'Ctrl+X', label: 'Recortar', scope: 'board' },
-  { id: 'paste', group: 'Editar', keys: 'Ctrl+V', label: 'Colar na posicao do cursor', scope: 'board' },
+  { id: 'undo', group: 'atalhoGrupo.editar', keys: 'Ctrl+Z', label: 'atalho.desfazer', scope: 'board' },
+  { id: 'redo', group: 'atalhoGrupo.editar', keys: 'Ctrl+Shift+Z', keysAlt: 'Ctrl+Y', label: 'atalho.refazer', scope: 'board' },
+  { id: 'duplicate', group: 'atalhoGrupo.editar', keys: 'Ctrl+D', label: 'atalho.duplicar', scope: 'board' },
+  { id: 'copy', group: 'atalhoGrupo.editar', keys: 'Ctrl+C', label: 'atalho.copiar', scope: 'board' },
+  { id: 'cut', group: 'atalhoGrupo.editar', keys: 'Ctrl+X', label: 'atalho.recortar', scope: 'board' },
+  { id: 'paste', group: 'atalhoGrupo.editar', keys: 'Ctrl+V', label: 'atalho.colar', scope: 'board' },
   {
     id: 'deleteSelection',
-    group: 'Editar',
+    group: 'atalhoGrupo.editar',
     keys: 'Delete|Backspace',
-    label: 'Excluir a selecao',
+    label: 'atalho.excluir',
     scope: 'board',
   },
 
-  { id: 'toolSelect', group: 'Ferramentas', keys: 'V', label: 'Selecionar', scope: 'board' },
-  { id: 'toolPen', group: 'Ferramentas', keys: 'P', label: 'Caneta', scope: 'board' },
-  { id: 'toolHighlighter', group: 'Ferramentas', keys: 'M', label: 'Marca-texto (entra por baixo do conteudo)', scope: 'board' },
-  { id: 'find', group: 'Buscar', keys: 'Ctrl+F', label: 'Buscar texto no quadro', scope: 'board' },
+  { id: 'toolSelect', group: 'atalhoGrupo.ferramentas', keys: 'V', label: 'atalho.ferramentaSelecionar', scope: 'board' },
+  { id: 'toolPen', group: 'atalhoGrupo.ferramentas', keys: 'P', label: 'atalho.ferramentaCaneta', scope: 'board' },
+  { id: 'toolHighlighter', group: 'atalhoGrupo.ferramentas', keys: 'M', label: 'atalho.ferramentaMarcaTexto', scope: 'board' },
+  { id: 'find', group: 'atalhoGrupo.buscar', keys: 'Ctrl+F', label: 'atalho.buscar', scope: 'board' },
   // O MESMO Ctrl+F no menu principal busca em todos os quadros. Duas entradas
   // com a mesma tecla e escopos diferentes, e nao um atalho novo: a pergunta e a
   // mesma ([...]), o que muda e o alcance de onde voce esta.
   {
     id: 'findLibrary',
-    group: 'Buscar',
+    group: 'atalhoGrupo.buscar',
     keys: 'Ctrl+F',
-    label: 'No menu principal: buscar em TODOS os quadros',
+    label: 'atalho.buscarTodos',
     scope: 'lobby',
   },
-  { group: 'Buscar', keys: 'Enter', label: 'Ir para o resultado; de novo, para o proximo' },
-  { group: 'Buscar', keys: 'Shift+Enter', label: 'Resultado anterior' },
-  { group: 'Buscar', keys: 'Escape', label: 'Fechar a busca' },
+  { group: 'atalhoGrupo.buscar', keys: 'Enter', label: 'atalho.buscarProximo' },
+  { group: 'atalhoGrupo.buscar', keys: 'Shift+Enter', label: 'atalho.buscarAnterior' },
+  { group: 'atalhoGrupo.buscar', keys: 'Escape', label: 'atalho.buscarFechar' },
 
-  { id: 'toolText', group: 'Ferramentas', keys: 'T', label: 'Texto (clique cria; arrastar define a largura)', scope: 'board' },
-  { id: 'toolNote', group: 'Ferramentas', keys: 'N', label: 'Post-it (papel e alerta se escolhem na barra)', scope: 'board' },
-  { id: 'toolShape', group: 'Ferramentas', keys: 'F', label: 'Formas (o tipo se escolhe na barra)', scope: 'board' },
-  { id: 'toolEraser', group: 'Ferramentas', keys: 'E', label: 'Borracha (apaga so tinta)', scope: 'board' },
-  { group: 'Ferramentas', keys: 'Arrastar', label: 'Borracha: por peca (padrao) ou traco inteiro — escolha na barra' },
-  { id: 'thinner', group: 'Ferramentas', keys: '[', label: 'Traco mais fino (no texto, fonte menor)', scope: 'board' },
-  { id: 'thicker', group: 'Ferramentas', keys: ']', label: 'Traco mais grosso (no texto, fonte maior)', scope: 'board' },
-  { group: 'Ferramentas', keys: 'Arrastar', label: 'Formas: Shift trava quadrado/circulo/angulo, Alt cresce do centro' },
-  { group: 'Ferramentas', keys: 'Botao direito + arrastar', label: 'Mover o quadro sem cortar o traco' },
+  { id: 'toolText', group: 'atalhoGrupo.ferramentas', keys: 'T', label: 'atalho.ferramentaTexto', scope: 'board' },
+  { id: 'toolNote', group: 'atalhoGrupo.ferramentas', keys: 'N', label: 'atalho.ferramentaPostit', scope: 'board' },
+  { id: 'toolShape', group: 'atalhoGrupo.ferramentas', keys: 'F', label: 'atalho.ferramentaFormas', scope: 'board' },
+  { id: 'toolEraser', group: 'atalhoGrupo.ferramentas', keys: 'E', label: 'atalho.ferramentaBorracha', scope: 'board' },
+  { group: 'atalhoGrupo.ferramentas', keys: 'Arrastar', gesto: 'gesto.arrastar', label: 'atalho.borrachaModo' },
+  { id: 'thinner', group: 'atalhoGrupo.ferramentas', keys: '[', label: 'atalho.maisFino', scope: 'board' },
+  { id: 'thicker', group: 'atalhoGrupo.ferramentas', keys: ']', label: 'atalho.maisGrosso', scope: 'board' },
+  { group: 'atalhoGrupo.ferramentas', keys: 'Arrastar', gesto: 'gesto.arrastar', label: 'atalho.formasModificadores' },
+  { group: 'atalhoGrupo.ferramentas', keys: 'Botao direito + arrastar', gesto: 'gesto.botaoDireitoArrastar', label: 'atalho.moverSemCortar' },
 
   {
     id: 'editText',
-    group: 'Texto',
+    group: 'atalhoGrupo.texto',
     keys: 'F2|Enter',
-    label: 'Editar a caixa de texto ou o post-it selecionado',
+    label: 'atalho.editarTexto',
     scope: 'board',
   },
-  { group: 'Texto', keys: 'Duplo clique', label: 'Editar a caixa sob o cursor, sem trocar de ferramenta' },
-  { group: 'Texto', keys: 'Ctrl+B / Ctrl+I / Ctrl+U', label: 'Negrito, italico e sublinhado (dentro da caixa)' },
-  { group: 'Texto', keys: 'Escape', label: 'Sair da caixa mantendo o texto (Ctrl+Z desfaz a edicao inteira)' },
+  { group: 'atalhoGrupo.texto', keys: 'Duplo clique', gesto: 'gesto.duploClique', label: 'atalho.editarSobCursor' },
+  { group: 'atalhoGrupo.texto', keys: 'Ctrl+B / Ctrl+I / Ctrl+U', label: 'atalho.formatacao' },
+  { group: 'atalhoGrupo.texto', keys: 'Escape', label: 'atalho.sairDaCaixa' },
 
-  { group: 'Encaixe', keys: 'Arrastar', label: 'Guias aparecem ao alinhar com as bordas e o centro dos vizinhos' },
-  { group: 'Encaixe', keys: 'Ctrl + arrastar', label: 'Ignorar o encaixe neste gesto' },
+  { group: 'atalhoGrupo.encaixe', keys: 'Arrastar', gesto: 'gesto.arrastar', label: 'atalho.guias' },
+  { group: 'atalhoGrupo.encaixe', keys: 'Ctrl + arrastar', gesto: 'gesto.ctrlArrastar', label: 'atalho.semEncaixe' },
 
-  { group: 'Selecao', keys: 'Clique', label: 'Selecionar o objeto sob o cursor' },
-  { group: 'Selecao', keys: 'Shift + clique', label: 'Somar ou tirar da selecao' },
-  { group: 'Selecao', keys: 'Arrastar no vazio', label: 'Laco: selecionar por area' },
-  { id: 'selectAll', group: 'Selecao', keys: 'Ctrl+A', label: 'Selecionar tudo', scope: 'board' },
-  { id: 'deselect', group: 'Selecao', keys: 'Escape', label: 'Cancelar o gesto ou limpar a selecao', scope: 'board' },
+  { group: 'atalhoGrupo.selecao', keys: 'Clique', gesto: 'gesto.clique', label: 'atalho.selecionarObjeto' },
+  { group: 'atalhoGrupo.selecao', keys: 'Shift + clique', gesto: 'gesto.shiftClique', label: 'atalho.somarSelecao' },
+  { group: 'atalhoGrupo.selecao', keys: 'Arrastar no vazio', gesto: 'gesto.arrastarNoVazio', label: 'atalho.laco' },
+  { id: 'selectAll', group: 'atalhoGrupo.selecao', keys: 'Ctrl+A', label: 'atalho.selecionarTudo', scope: 'board' },
+  { id: 'deselect', group: 'atalhoGrupo.selecao', keys: 'Escape', label: 'atalho.cancelar', scope: 'board' },
 
-  { group: 'Manipular', keys: 'Arrastar a selecao', label: 'Mover (Shift trava num eixo)' },
-  { group: 'Manipular', keys: 'Arrastar uma alca', label: 'Redimensionar (Shift mantem a proporcao, Alt ancora no centro)' },
-  { group: 'Manipular', keys: 'Arrastar a alca de cima', label: 'Girar (Shift trava de 15 em 15 graus)' },
+  { group: 'atalhoGrupo.manipular', keys: 'Arrastar a selecao', gesto: 'gesto.arrastarSelecao', label: 'atalho.moverSelecao' },
+  { group: 'atalhoGrupo.manipular', keys: 'Arrastar uma alca', gesto: 'gesto.arrastarAlca', label: 'atalho.redimensionar' },
+  { group: 'atalhoGrupo.manipular', keys: 'Arrastar a alca de cima', gesto: 'gesto.arrastarAlcaDeCima', label: 'atalho.girar' },
   {
     id: 'nudge',
-    group: 'Manipular',
+    group: 'atalhoGrupo.manipular',
     keys: 'ArrowLeft|ArrowRight|ArrowUp|ArrowDown',
     display: '← ↑ ↓ →',
-    label: 'Mover a selecao 1 px (Shift: 10 px)',
+    label: 'atalho.empurrar',
     scope: 'board',
     shiftOptional: true,
   },
   {
     id: 'bringToFront',
-    group: 'Manipular',
+    group: 'atalhoGrupo.manipular',
     keys: 'Ctrl+Shift+]',
-    label: 'Trazer para frente',
+    label: 'atalho.trazerParaFrente',
     scope: 'board',
   },
   {
     id: 'sendToBack',
-    group: 'Manipular',
+    group: 'atalhoGrupo.manipular',
     keys: 'Ctrl+Shift+[',
-    label: 'Enviar para tras',
+    label: 'atalho.enviarParaTras',
     scope: 'board',
   },
 
-  { id: 'grid', group: 'Visualizacao', keys: 'G', label: 'Ligar/desligar a grade de fundo', scope: 'board' },
-  { id: 'rulers', group: 'Visualizacao', keys: 'R', label: 'Reguas nas bordas', scope: 'board' },
-  { id: 'rulerUnit', group: 'Visualizacao', keys: 'U', label: 'Unidade das reguas: px ou cm', scope: 'board' },
-  { id: 'layers', group: 'Visualizacao', keys: 'C', label: 'Painel de camadas: olho e cadeado', scope: 'board' },
-  { id: 'help', group: 'Visualizacao', keys: 'F1|?', label: 'Mostrar esta lista de atalhos' },
-  { id: 'debug', group: 'Visualizacao', keys: 'F3', label: 'Painel de debug e carga de teste', scope: 'board' },
+  { id: 'grid', group: 'atalhoGrupo.visualizacao', keys: 'G', label: 'atalho.grade', scope: 'board' },
+  { id: 'rulers', group: 'atalhoGrupo.visualizacao', keys: 'R', label: 'atalho.reguas', scope: 'board' },
+  { id: 'rulerUnit', group: 'atalhoGrupo.visualizacao', keys: 'U', label: 'atalho.unidadeReguas', scope: 'board' },
+  { id: 'layers', group: 'atalhoGrupo.visualizacao', keys: 'C', label: 'atalho.camadas', scope: 'board' },
+  { id: 'help', group: 'atalhoGrupo.visualizacao', keys: 'F1|?', label: 'atalho.ajuda' },
+  { id: 'debug', group: 'atalhoGrupo.visualizacao', keys: 'F3', label: 'atalho.debug', scope: 'board' },
   // O MESMO F3 no menu principal abre o painel DELE, que mede outra coisa: o
   // custo de compor a tela, e nao o de desenhar o canvas. Ver `PainelDoMenu.ts`.
   {
     id: 'debugLobby',
-    group: 'Visualizacao',
+    group: 'atalhoGrupo.visualizacao',
     keys: 'F3',
-    label: 'No menu principal: painel de desempenho',
+    label: 'atalho.debugMenu',
     scope: 'lobby',
   },
-  { id: 'benchmark', group: 'Visualizacao', keys: 'B', label: 'Medir fps sustentado', scope: 'board' },
+  { id: 'benchmark', group: 'atalhoGrupo.visualizacao', keys: 'B', label: 'atalho.benchmark', scope: 'board' },
 ];
 
 interface ParsedKeys {
@@ -283,6 +292,7 @@ export function resolve(e: KeyboardEvent, scope: 'board' | 'lobby'): ShortcutId 
 
 /** Como a combinacao aparece na tela de ajuda. */
 export function displayKeys(s: ShortcutDef): string[] {
+  if (s.gesto) return [t(s.gesto)];
   if (s.display) return [s.display];
   // "Ctrl+=|+" mostra so a primeira alternativa de tecla; as demais existem
   // para o matcher aceitar variacoes de layout de teclado.
@@ -291,12 +301,13 @@ export function displayKeys(s: ShortcutDef): string[] {
 }
 
 /** Agrupa para exibicao na tela de ajuda, preservando a ordem de declaracao. */
+/** Os grupos JA TRADUZIDOS, na ordem em que aparecem na lista. */
 export function groupedShortcuts(): Array<[string, ShortcutDef[]]> {
-  const groups = new Map<string, ShortcutDef[]>();
+  const groups = new Map<ChaveTexto, ShortcutDef[]>();
   for (const s of SHORTCUTS) {
     const list = groups.get(s.group);
     if (list) list.push(s);
     else groups.set(s.group, [s]);
   }
-  return [...groups.entries()];
+  return [...groups.entries()].map(([grupo, itens]) => [t(grupo), itens]);
 }

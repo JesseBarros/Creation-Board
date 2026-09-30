@@ -9,6 +9,7 @@ import { registerImportIpc } from './ipc/importer';
 import { registerExportIpc } from './ipc/exporter';
 import { registerOcrIpc } from './ipc/ocr';
 import { abrirLinkExterno, blindarPaginas, blindarSessao } from './blindagem';
+import { definirIdioma, idiomaDoSistema, idiomaValido } from '@shared/i18n';
 
 const isDev = !app.isPackaged;
 
@@ -369,6 +370,11 @@ function createWindow(): void {
   // QB_ANIM=off|on|max manda no nivel de movimento desta execucao, sem gravar a
   // preferencia -- mesmo desenho do QB_THEME. Existe para o QB_BENCH_LOBBY
   // medir as animacoes maximas sem depender do que esta gravado na maquina.
+  // QB_IDIOMA=pt-BR|en-US manda no idioma desta execucao sem gravar nada --
+  // para o selftest e as capturas conferirem a interface em ingles.
+  const idiomaForcado = process.env['QB_IDIOMA'];
+  if (idiomaValido(idiomaForcado)) query = `${query}${query ? '&' : '?'}idioma=${idiomaForcado}`;
+
   const anim = process.env['QB_ANIM'];
   if (anim === 'off' || anim === 'on' || anim === 'max') query = `${query}${query ? '&' : '?'}anim=${anim}`;
 
@@ -551,6 +557,9 @@ if (!gotLock) {
     // Permissoes negadas e rede bloqueada -- ver `blindagem.ts`. Em
     // desenvolvimento, so o servidor do Vite passa.
     blindarSessao(isDev ? process.env['ELECTRON_RENDERER_URL'] : undefined);
+    // O idioma do Windows ate a pagina dizer qual vale (ela avisa ao iniciar,
+    // com a escolha de Configuracoes se houver). Ver `renderer/idioma.ts`.
+    definirIdioma(idiomaDoSistema(app.getPreferredSystemLanguages()));
     // QB_DIAG=1 imprime no terminal quais recursos graficos estao acelerados.
     // "O que esta em software" e metade da resposta em qualquer problema de
     // composicao -- foi assim que se descartou [...] no B8.

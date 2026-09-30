@@ -1,4 +1,5 @@
 import type { WbdDocument, WbdManifest } from './model/document';
+import { t } from './i18n';
 
 /**
  * Layout do container .wbd (um ZIP):
@@ -89,6 +90,6 @@ export function sanitizeBoardName(name: string): string {
     // O Windows tambem rejeita nomes terminando em ponto ou espaco.
     .replace(/[. ]+$/, '');
 
-  if (cleaned.length === 0 || RESERVED.test(cleaned)) return 'Quadro sem nome';
+  if (cleaned.length === 0 || RESERVED.test(cleaned)) return t('quadro.semNome');
   return cleaned.slice(0, 120);
 }

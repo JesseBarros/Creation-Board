@@ -18,6 +18,7 @@ import type { ImportSource } from '@shared/importer';
 import type { OcrItem, OcrReport } from '@shared/ocr';
 import type { LibraryIndex } from '@shared/librarySearch';
 import type { IndicePastas } from '@shared/pastas';
+import type { Idioma } from '@shared/i18n';
 
 /**
  * Unica ponte entre renderer e main. Nada de `ipcRenderer` cru exposto: cada
@@ -26,6 +27,8 @@ import type { IndicePastas } from '@shared/pastas';
  */
 const api: CreationBoardApi = {
   getAppInfo: (): Promise<AppInfo> => ipcRenderer.invoke(IPC.appInfo) as Promise<AppInfo>,
+  definirIdioma: (idioma: Idioma): Promise<void> =>
+    ipcRenderer.invoke(IPC.appIdioma, idioma) as Promise<void>,
 
   board: {
     save: (req: SaveBoardRequest): Promise<SaveBoardResult> =>

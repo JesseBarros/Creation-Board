@@ -1,3 +1,19 @@
+import { formatarNumero, t } from '@shared/i18n';
+
+/*
+  O que se LE em cada linha. A chave (portugues, sem traduzir) e o identificador
+  interno da linha -- o selftest e o resto deste arquivo a usam --, e o rotulo sai
+  do dicionario na hora de montar o painel.
+*/
+const ROTULOS_DO_F3_MENU: Readonly<Record<string, () => string>> = {
+  'Cadência': () => t('painelMenu.cadencia'),
+  'Intervalo médio': () => t('painelMenu.intervaloMedio'),
+  'Pior (1 s)': () => t('painelMenu.pior'),
+  'Composição': () => t('painelMenu.composicao'),
+  'Desfoque': () => t('painelMenu.desfoque'),
+  'Cards': () => t('painelMenu.cards'),
+};
+
 /**
  * Painel de desempenho do MENU PRINCIPAL (F3). Pedido em 24/09/2026.
  *
@@ -41,7 +57,7 @@ export class PainelDoMenu {
 
     const titulo = document.createElement('div');
     titulo.className = 'qb-debug__title';
-    titulo.textContent = 'Menu · F3';
+    titulo.textContent = t('painelMenu.titulo');
     this.el.append(titulo);
 
     const linhas = document.createElement('div');
@@ -52,7 +68,8 @@ export class PainelDoMenu {
       linha.className = 'qb-debug__row';
       const k = document.createElement('span');
       k.className = 'qb-debug__key';
-      k.textContent = chave;
+      // A chave identifica a linha no codigo; o que se LE e o rotulo traduzido.
+      k.textContent = ROTULOS_DO_F3_MENU[chave]?.() ?? chave;
       const v = document.createElement('span');
       v.className = 'qb-debug__val';
       v.textContent = '—';
@@ -64,8 +81,7 @@ export class PainelDoMenu {
 
     const dica = document.createElement('p');
     dica.className = 'qb-debug__label';
-    dica.textContent =
-      'Parado, a cadência fica na taxa do monitor. Se ela cair enquanto algo se mexe, compor a tela está custando mais que um quadro.';
+    dica.textContent = t('painelMenu.dica');
     this.el.append(dica);
 
     // O que nao muda durante a execucao sai uma vez so.
@@ -75,7 +91,7 @@ export class PainelDoMenu {
       'Composição',
       gpu === 'padrao' || gpu === 'comp' ? 'CPU' : gpu === 'normal' ? 'GPU' : gpu,
     );
-    this.#escrever('Desfoque', params.get('blur') === '0' ? 'desligado' : 'ligado');
+    this.#escrever('Desfoque', params.get('blur') === '0' ? t('painelMenu.desligado') : t('painelMenu.ligado'));
   }
 
   get visivel(): boolean {
@@ -124,7 +140,7 @@ export class PainelDoMenu {
     const porSegundo = 1000 / medio;
 
     const cadencia = this.#valores.get('Cadência')!;
-    cadencia.textContent = `${porSegundo.toFixed(0)} q/s`;
+    cadencia.textContent = t('painelMenu.quadrosPorSegundo', porSegundo.toFixed(0));
     // Verde a partir de 55 q/s e nao 144: aqui o que se julga e "esta
     // travando", e nao a meta do quadro. Um monitor de 60 Hz nunca passaria
     // de 60, e pintaria de amarelo um menu perfeito.
@@ -133,9 +149,9 @@ export class PainelDoMenu {
     const piorEl = this.#valores.get('Pior (1 s)')!;
     piorEl.textContent = `${pior.toFixed(1)} ms`;
     piorEl.className = `qb-debug__val qb-debug__val--${pior <= 34 ? 'ok' : pior <= 67 ? 'warn' : 'bad'}`;
-    this.#escrever('Cards', this.contarCards().toLocaleString('pt-BR'));
+    this.#escrever('Cards', formatarNumero(this.contarCards()));
     const memoria = (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory;
-    this.#escrever('Heap JS', memoria ? `${(memoria.usedJSHeapSize / 1048576).toFixed(0)} MB` : 'n/d');
+    this.#escrever('Heap JS', memoria ? `${(memoria.usedJSHeapSize / 1048576).toFixed(0)} MB` : t('depuracao.naoDisponivel'));
   }
 
   #escrever(chave: string, valor: string): void {

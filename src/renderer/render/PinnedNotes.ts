@@ -5,6 +5,7 @@ import type { Document } from '../core/Document';
 import { readableTextOn } from './colorAdapt';
 import { ALERT_COLORS } from './painters/text';
 import { plainText } from '../features/text/spans';
+import { t } from '@shared/i18n';
 
 /**
  * Post-its fixados, na borda direita da tela.
@@ -31,7 +32,7 @@ const MAX_CARDS = 6;
  * Post-its fixados que estao FORA da tela -- os que ganham ficha no canto.
  *
  * Separado do desenho para poder ser conferido por numero no autoteste: a
- * regra que importa aqui ([...]) e uma decisao, e nao um
+ * regra que importa aqui ("so o que nao esta a vista") e uma decisao, e nao um
  * detalhe de pintura.
  */
 export function offscreenPinnedNotes(
@@ -96,7 +97,7 @@ export function paintPinnedNotes(
 
 function firstLine(note: NoteObject): string {
   const text = plainText(note.content).trim();
-  if (text.length === 0) return '(post-it sem texto)';
+  if (text.length === 0) return t('postit.semTexto');
   return text.split('\n')[0]!;
 }
 

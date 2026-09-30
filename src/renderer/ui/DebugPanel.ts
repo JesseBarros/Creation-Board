@@ -1,4 +1,17 @@
 import type { FrameStats } from '../core/Scheduler';
+import { formatarNumero, t } from '@shared/i18n';
+
+/*
+  O que se LE em cada linha. A chave e o identificador interno da linha (o
+  selftest e o resto deste arquivo a usam); as que nao estao aqui -- Render,
+  Frame, LOD, Zoom, Heap JS -- sao termos tecnicos iguais nos dois idiomas.
+*/
+const ROTULOS_DO_F3: Readonly<Record<string, () => string>> = {
+  Objetos: () => t('depuracao.objetos'),
+  'No viewport': () => t('depuracao.noViewport'),
+  Desenhados: () => t('depuracao.desenhados'),
+  'Atualizacoes/s': () => t('depuracao.atualizacoes'),
+};
 
 export interface DebugActions {
   seed(count: number): void;
@@ -54,7 +67,7 @@ export class DebugPanel {
 
     const title = document.createElement('div');
     title.className = 'qb-debug__title';
-    title.textContent = 'Debug · F3';
+    title.textContent = t('depuracao.titulo');
     this.el.append(title);
 
     const stats = document.createElement('div');
@@ -77,7 +90,8 @@ export class DebugPanel {
       row.className = 'qb-debug__row';
       const k = document.createElement('span');
       k.className = 'qb-debug__key';
-      k.textContent = key;
+      // A chave identifica a linha no codigo; o que se LE e o rotulo traduzido.
+      k.textContent = ROTULOS_DO_F3[key]?.() ?? key;
       const v = document.createElement('span');
       v.className = 'qb-debug__val';
       v.textContent = '—';
@@ -89,7 +103,7 @@ export class DebugPanel {
 
     const load = document.createElement('div');
     load.className = 'qb-debug__section';
-    load.append(label('Carga de teste'));
+    load.append(label(t('depuracao.cargaDeTeste')));
     const buttons = document.createElement('div');
     buttons.className = 'qb-debug__buttons';
     for (const n of [1000, 10000, 50000]) {
@@ -97,20 +111,19 @@ export class DebugPanel {
         button(n >= 1000 ? `${n / 1000}k` : String(n), () => this.actions.seed(n)),
       );
     }
-    buttons.append(button('limpar', () => this.actions.clear()));
+    buttons.append(button(t('depuracao.limpar'), () => this.actions.clear()));
     load.append(buttons);
     this.el.append(load);
 
     const bench = document.createElement('div');
     bench.className = 'qb-debug__section';
-    bench.append(label('Medicao'));
-    this.#benchBtn = button('▶ benchmark (B)', () => this.actions.toggleBenchmark());
+    bench.append(label(t('depuracao.medicao')));
+    this.#benchBtn = button(t('depuracao.benchmarkLigar'), () => this.actions.toggleBenchmark());
     this.#benchBtn.classList.add('qb-debug__btn--wide');
     bench.append(this.#benchBtn);
     const hint = document.createElement('p');
     hint.className = 'qb-debug__hint';
-    hint.textContent =
-      'O benchmark faz a camera varrer o quadro redesenhando todo frame, para medir fps sustentado em vez de fps ocioso.';
+    hint.textContent = t('depuracao.benchmarkDica');
     bench.append(hint);
     this.el.append(bench);
   }
@@ -142,9 +155,11 @@ export class DebugPanel {
           : 'qb-debug__val--bad');
     // A dica diz contra o que a cor esta comparando -- sem isso, verde e vermelho
     // sao opiniao sem criterio.
-    renderEl.title =
-      `Custo de desenhar a cena. Verde ate ${ORCAMENTO_144.toFixed(1)} ms (144 fps), ` +
-      `ambar ate ${ORCAMENTO_60.toFixed(1)} ms (60 fps).`;
+    renderEl.title = t(
+      'depuracao.renderDica',
+      formatarNumero(ORCAMENTO_144, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+      formatarNumero(ORCAMENTO_60, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+    );
 
     this.#set('Frame', stats.idle ? '—' : `${stats.frameMs.toFixed(1)} ms`);
 
@@ -152,7 +167,7 @@ export class DebugPanel {
     // vezes a tela foi redesenhada, e nao quao rapido o app consegue desenhar.
     const taxaEl = this.#rows.get('Atualizacoes/s')!;
     if (stats.idle) {
-      taxaEl.textContent = 'ocioso';
+      taxaEl.textContent = t('depuracao.ocioso');
       taxaEl.className = 'qb-debug__val qb-debug__val--idle';
     } else {
       taxaEl.textContent = stats.fps.toFixed(0);
@@ -161,19 +176,17 @@ export class DebugPanel {
       // seria o erro que este painel acabou de deixar de cometer.
       taxaEl.className = 'qb-debug__val';
     }
-    taxaEl.title =
-      'Quantas vezes a tela foi redesenhada no ultimo segundo. Nao e velocidade: ' +
-      'o quadro so redesenha quando algo muda, entao mover devagar reduz este numero.';
+    taxaEl.title = t('depuracao.atualizacoesDica');
 
-    this.#set('Objetos', stats.total.toLocaleString('pt-BR'));
-    this.#set('No viewport', stats.visible.toLocaleString('pt-BR'));
-    this.#set('Desenhados', stats.drawn.toLocaleString('pt-BR'));
+    this.#set('Objetos', formatarNumero(stats.total));
+    this.#set('No viewport', formatarNumero(stats.visible));
+    this.#set('Desenhados', formatarNumero(stats.drawn));
     this.#set('LOD', stats.lod);
     this.#set('Zoom', `${(zoom * 100).toFixed(0)}%`);
-    this.#set('Heap JS', stats.heapMB > 0 ? `${stats.heapMB.toFixed(0)} MB` : 'n/d');
+    this.#set('Heap JS', stats.heapMB > 0 ? `${stats.heapMB.toFixed(0)} MB` : t('depuracao.naoDisponivel'));
 
     const on = this.actions.isBenchmarking();
-    this.#benchBtn.textContent = on ? '■ parar benchmark (B)' : '▶ benchmark (B)';
+    this.#benchBtn.textContent = on ? t('depuracao.benchmarkParar') : t('depuracao.benchmarkLigar');
     this.#benchBtn.classList.toggle('qb-debug__btn--active', on);
   }
 

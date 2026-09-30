@@ -1,4 +1,5 @@
 import type { HitKind, SearchHit } from '../features/search/search';
+import { t } from '@shared/i18n';
 
 /**
  * Barra de busca (`Ctrl+F`).
@@ -24,7 +25,8 @@ export interface SearchBarActions {
 /**
  * Marca do tipo de cada resultado.
  *
- * O `▣` da imagem existe para uma pergunta que so ela levanta: [...]. Ele aparece porque foi LIDO de dentro de uma
+ * O `▣` da imagem existe para uma pergunta que so ela levanta: "por que esse
+ * texto nao aparece no quadro?". Ele aparece porque foi LIDO de dentro de uma
  * imagem (Fase 7.5), e sem a marca o resultado pareceria um erro da busca.
  */
 const ICONS: Record<HitKind, string> = {
@@ -55,16 +57,16 @@ export class SearchBar {
     this.#input = document.createElement('input');
     this.#input.type = 'text';
     this.#input.className = 'qb-search__input';
-    this.#input.placeholder = 'Buscar no quadro…';
+    this.#input.placeholder = t('busca.placeholder');
     this.#input.spellcheck = false;
-    this.#input.setAttribute('aria-label', 'Buscar no quadro');
+    this.#input.setAttribute('aria-label', t('busca.rotulo'));
 
     this.#counter = document.createElement('span');
     this.#counter.className = 'qb-search__counter';
 
-    const prev = iconButton('‹', 'Resultado anterior (Shift+Enter)', () => this.step(-1));
-    const next = iconButton('›', 'Proximo resultado (Enter)', () => this.step(1));
-    const close = iconButton('✕', 'Fechar (Esc)', () => this.actions.close());
+    const prev = iconButton('‹', t('busca.anterior'), () => this.step(-1));
+    const next = iconButton('›', t('busca.proximo'), () => this.step(1));
+    const close = iconButton('✕', t('busca.fechar'), () => this.actions.close());
 
     row.append(this.#input, this.#counter, prev, next, close);
 

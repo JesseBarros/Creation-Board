@@ -6,6 +6,7 @@ import {
   type LibraryHit,
 } from '../features/search/libraryQuery';
 import { icon } from './icons';
+import { t } from '@shared/i18n';
 
 /**
  * Busca em todos os quadros, no menu principal.
@@ -66,8 +67,8 @@ export class LibrarySearch {
     this.#input = document.createElement('input');
     this.#input.type = 'search';
     this.#input.className = 'qb-libsearch__input';
-    this.#input.placeholder = 'Buscar em todos os quadros…';
-    this.#input.setAttribute('aria-label', 'Buscar em todos os quadros');
+    this.#input.placeholder = t('biblioteca.placeholder');
+    this.#input.setAttribute('aria-label', t('biblioteca.rotulo'));
     this.#input.addEventListener('input', () => void this.#run(this.#input.value));
     this.#input.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
@@ -118,7 +119,7 @@ export class LibrarySearch {
     }
 
     this.#status.hidden = false;
-    this.#status.textContent = 'Procurando…';
+    this.#status.textContent = t('biblioteca.procurando');
     this.el.dispatchEvent(new CustomEvent('qb-libsearch-change', { bubbles: true }));
 
     let index;
@@ -126,7 +127,7 @@ export class LibrarySearch {
       index = await loadLibraryIndex();
     } catch {
       if (geracao !== this.#geracao) return;
-      this.#status.textContent = 'Nao foi possivel ler a biblioteca.';
+      this.#status.textContent = t('biblioteca.erroLer');
       this.#results.hidden = true;
       return;
     }
@@ -138,10 +139,8 @@ export class LibrarySearch {
 
     this.#status.textContent =
       total === 0
-        ? `Nada encontrado para “${termo}”.`
-        : `${total} ${total === 1 ? 'resultado' : 'resultados'} em ` +
-          `${grupos.length} ${grupos.length === 1 ? 'quadro' : 'quadros'}` +
-          (index.falhas > 0 ? ` · ${index.falhas} quadro(s) nao pode(m) ser lido(s)` : '');
+        ? t('biblioteca.nadaEncontrado', termo)
+        : t('biblioteca.resumo', total, grupos.length, index.falhas);
 
     this.#render(grupos);
   }
@@ -171,7 +170,7 @@ export class LibrarySearch {
       if (grupo.total > grupo.hits.length) {
         const resto = document.createElement('p');
         resto.className = 'qb-libsearch__more';
-        resto.textContent = `mais ${grupo.total - grupo.hits.length} neste quadro — abra e use Ctrl+F`;
+        resto.textContent = t('biblioteca.mais', grupo.total - grupo.hits.length);
         bloco.append(resto);
       }
 
@@ -190,7 +189,7 @@ export class LibrarySearch {
     marca.className = 'qb-libsearch__mark';
     marca.textContent = MARCAS[hit.kind];
     marca.title =
-      hit.kind === 'image' ? 'Texto lido de dentro de uma imagem' : 'Texto escrito no quadro';
+      hit.kind === 'image' ? t('biblioteca.deImagem') : t('biblioteca.doQuadro');
 
     const trecho = document.createElement('span');
     trecho.className = 'qb-libsearch__snippet';

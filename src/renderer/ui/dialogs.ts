@@ -1,5 +1,6 @@
 import type { TemaFundo } from '@shared/ipc-contract';
 import type { NivelDeMovimento } from './movimento';
+import { NOMES_DOS_IDIOMAS, t, type Idioma } from '@shared/i18n';
 
 /**
  * Dialogos modais e avisos temporarios.
@@ -72,12 +73,12 @@ export function promptText(opts: {
     const cancel = document.createElement('button');
     cancel.type = 'button';
     cancel.className = 'qb-btn';
-    cancel.textContent = 'Cancelar';
+    cancel.textContent = t('comum.cancelar');
 
     const ok = document.createElement('button');
     ok.type = 'button';
     ok.className = 'qb-btn qb-btn--primary';
-    ok.textContent = opts.confirmLabel ?? 'Salvar';
+    ok.textContent = opts.confirmLabel ?? t('dialogo.salvar');
 
     actions.append(cancel, ok);
     label.append(input);
@@ -125,12 +126,12 @@ export function confirmDialog(opts: {
     const cancel = document.createElement('button');
     cancel.type = 'button';
     cancel.className = 'qb-btn';
-    cancel.textContent = opts.cancelLabel ?? 'Cancelar';
+    cancel.textContent = opts.cancelLabel ?? t('comum.cancelar');
 
     const ok = document.createElement('button');
     ok.type = 'button';
     ok.className = `qb-btn ${opts.danger ? 'qb-btn--danger' : 'qb-btn--primary'}`;
-    ok.textContent = opts.confirmLabel ?? 'Confirmar';
+    ok.textContent = opts.confirmLabel ?? t('dialogo.confirmar');
 
     actions.append(cancel, ok);
     panel.append(h, p, actions);
@@ -173,14 +174,29 @@ export function confirmDialog(opts: {
  * qualquer amplificação de saturação o mostraria como azul -- que é o oposto do
  * que o nome promete.
  */
-export const BOARD_PAPERS: ReadonlyArray<{ nome: string; cor: string; marca: string }> = [
-  { nome: 'Neutro', cor: '#e3e7ee', marca: '#7b8698' },
-  { nome: 'Azul', cor: '#dceaf7', marca: '#3d7fb0' },
-  { nome: 'Verde', cor: '#dfeee3', marca: '#4a9160' },
-  { nome: 'Areia', cor: '#f1eadf', marca: '#a8824a' },
-  { nome: 'Rosa', cor: '#f7e4ea', marca: '#c25f80' },
-  { nome: 'Lilás', cor: '#e7e3f4', marca: '#7b63c0' },
-  { nome: 'Menta', cor: '#dff0ee', marca: '#3f9e93' },
+/*
+  A lista guarda a CHAVE do nome, e nao o nome: ela e montada quando o modulo
+  carrega, ANTES de o idioma ser escolhido (`renderer/idioma.ts`). Com o texto
+  aqui, os papeis ficariam em portugues para sempre. O nome sai de `t()` na hora
+  de desenhar o dialogo.
+*/
+type ChaveDePapel =
+  | 'papel.neutro'
+  | 'papel.azul'
+  | 'papel.verde'
+  | 'papel.areia'
+  | 'papel.rosa'
+  | 'papel.lilas'
+  | 'papel.menta';
+
+export const BOARD_PAPERS: ReadonlyArray<{ nome: ChaveDePapel; cor: string; marca: string }> = [
+  { nome: 'papel.neutro', cor: '#e3e7ee', marca: '#7b8698' },
+  { nome: 'papel.azul', cor: '#dceaf7', marca: '#3d7fb0' },
+  { nome: 'papel.verde', cor: '#dfeee3', marca: '#4a9160' },
+  { nome: 'papel.areia', cor: '#f1eadf', marca: '#a8824a' },
+  { nome: 'papel.rosa', cor: '#f7e4ea', marca: '#c25f80' },
+  { nome: 'papel.lilas', cor: '#e7e3f4', marca: '#7b63c0' },
+  { nome: 'papel.menta', cor: '#dff0ee', marca: '#3f9e93' },
 ];
 
 export const DEFAULT_PAPER = BOARD_PAPERS[0]!.cor;
@@ -199,11 +215,11 @@ export function newBoardDialog(): Promise<string | null> {
 
     const h = document.createElement('h2');
     h.className = 'qb-dialog__title';
-    h.textContent = 'Novo quadro';
+    h.textContent = t('novoQuadro.titulo');
 
     const p = document.createElement('p');
     p.className = 'qb-dialog__message';
-    p.textContent = 'Escolha o papel. Um fundo levemente colorido faz post-its e marcações se destacarem melhor do que o branco.';
+    p.textContent = t('novoQuadro.mensagem');
 
     const grade = document.createElement('div');
     grade.className = 'qb-papers';
@@ -220,8 +236,9 @@ export function newBoardDialog(): Promise<string | null> {
       // O ponto é desenhado pelo CSS (`::before`) e a cor chega por variável:
       // assim a marca acompanha o papel sem um segundo elemento por amostra.
       b.style.setProperty('--marca', papel.marca);
-      b.title = papel.nome;
-      b.setAttribute('aria-label', `Papel ${papel.nome}`);
+      const nomeDoPapel = t(papel.nome);
+      b.title = nomeDoPapel;
+      b.setAttribute('aria-label', t('papel.rotulo', nomeDoPapel));
       b.addEventListener('click', () => {
         escolhida = papel.cor;
         for (const a of amostras) {
@@ -241,12 +258,12 @@ export function newBoardDialog(): Promise<string | null> {
     const cancel = document.createElement('button');
     cancel.type = 'button';
     cancel.className = 'qb-btn';
-    cancel.textContent = 'Cancelar';
+    cancel.textContent = t('comum.cancelar');
 
     const ok = document.createElement('button');
     ok.type = 'button';
     ok.className = 'qb-btn qb-btn--primary';
-    ok.textContent = 'Criar quadro';
+    ok.textContent = t('novoQuadro.criar');
 
     actions.append(cancel, ok);
     panel.append(h, p, grade, actions);
@@ -284,11 +301,11 @@ export function unsavedDialog(nome: string): Promise<UnsavedChoice> {
 
     const h = document.createElement('h2');
     h.className = 'qb-dialog__title';
-    h.textContent = 'Alterações não salvas';
+    h.textContent = t('naoSalvo.titulo');
 
     const p = document.createElement('p');
     p.className = 'qb-dialog__message';
-    p.textContent = `“${nome}” tem alterações que ainda não foram gravadas.`;
+    p.textContent = t('naoSalvo.mensagem', nome);
 
     const actions = document.createElement('div');
     actions.className = 'qb-dialog__actions';
@@ -302,9 +319,9 @@ export function unsavedDialog(nome: string): Promise<UnsavedChoice> {
       return b;
     };
 
-    const descartar = botao('Sair sem salvar', 'qb-btn qb-btn--danger', 'descartar');
-    const cancelar = botao('Cancelar', 'qb-btn', 'cancelar');
-    const salvar = botao('Salvar e sair', 'qb-btn qb-btn--primary', 'salvar');
+    const descartar = botao(t('naoSalvo.sairSemSalvar'), 'qb-btn qb-btn--danger', 'descartar');
+    const cancelar = botao(t('comum.cancelar'), 'qb-btn', 'cancelar');
+    const salvar = botao(t('naoSalvo.salvarESair'), 'qb-btn qb-btn--primary', 'salvar');
 
     // O destrutivo primeiro e separado: `margin-right: auto` empurra os outros
     // dois para a direita, e a distancia fisica e o que evita o clique errado.
@@ -366,7 +383,7 @@ export function exportDialog(opts: {
 
     const h = document.createElement('h2');
     h.className = 'qb-dialog__title';
-    h.textContent = 'Exportar quadro';
+    h.textContent = t('exportar.titulo');
     panel.append(h);
 
     /**
@@ -385,31 +402,29 @@ export function exportDialog(opts: {
         resumo.textContent = '';
         return;
       }
-      const tamanho = `${p.width.toLocaleString('pt-BR')} × ${p.height.toLocaleString('pt-BR')} px`;
+      const tamanho = t('exportar.tamanho', p.width, p.height);
       if (choice.format === 'svg') {
-        resumo.textContent = 'Vetorial: legivel em qualquer ampliacao, sem resolucao fixa.';
+        resumo.textContent = t('exportar.vetorial');
       } else if (p.scale < choice.scale - 0.001) {
         // So o PDF cai aqui: uma pagina nao tem onde por o segundo ladrilho.
-        resumo.textContent =
-          `${tamanho} — uma pagina so cabe ${p.scale.toFixed(2)}x, e nao ${choice.scale}x. ` +
-          `Para ${choice.scale}x de verdade, exporte em PNG.`;
+        resumo.textContent = t('exportar.pdfLimitado', tamanho, p.scale, choice.scale);
       } else if (p.files > 1) {
-        resumo.textContent = `${tamanho} em ${p.files} arquivos, a ${choice.scale}x de verdade.`;
+        resumo.textContent = t('exportar.variosArquivos', tamanho, p.files, choice.scale);
         // Acima de duas dezenas de arquivos a escolha deixa de ser obvia: a
         // resolucao e real, mas o resultado e uma pasta cheia e uma espera
         // longa. Dizer isso antes vale mais do que descobrir depois.
         if (p.files > 24) {
-          resumo.textContent += ' Sao muitos — considere 1x, ou o SVG.';
+          resumo.textContent += t('exportar.muitos');
           resumo.classList.add('qb-dialog__hint--warn');
         } else {
           resumo.classList.remove('qb-dialog__hint--warn');
         }
       } else {
-        resumo.textContent = `${tamanho}, um arquivo.`;
+        resumo.textContent = t('exportar.umArquivo', tamanho);
       }
     };
 
-    const scaleRow = group('Resolucao', [
+    const scaleRow = group(t('exportar.resolucao'), [
       ['1x', '1'],
       ['2x', '2'],
       ['3x', '3'],
@@ -420,7 +435,7 @@ export function exportDialog(opts: {
 
     panel.append(
       group(
-        'Formato',
+        t('exportar.formato'),
         [
           ['PNG', 'png'],
           ['SVG', 'svg'],
@@ -440,10 +455,10 @@ export function exportDialog(opts: {
     if (opts.hasSelection) {
       panel.append(
         group(
-          'O que',
+          t('exportar.oQue'),
           [
-            ['Selecao', 'selection'],
-            ['Quadro todo', 'board'],
+            [t('exportar.selecao'), 'selection'],
+            [t('exportar.quadroTodo'), 'board'],
           ],
           choice.scope,
           (v) => {
@@ -457,10 +472,10 @@ export function exportDialog(opts: {
     panel.append(scaleRow);
     panel.append(
       group(
-        'Fundo',
+        t('exportar.fundo'),
         [
-          ['Com fundo', 'sim'],
-          ['Transparente', 'nao'],
+          [t('exportar.comFundo'), 'sim'],
+          [t('exportar.transparente'), 'nao'],
         ],
         'sim',
         (v) => {
@@ -477,11 +492,11 @@ export function exportDialog(opts: {
     const cancel = document.createElement('button');
     cancel.type = 'button';
     cancel.className = 'qb-btn';
-    cancel.textContent = 'Cancelar';
+    cancel.textContent = t('comum.cancelar');
     const ok = document.createElement('button');
     ok.type = 'button';
     ok.className = 'qb-btn qb-btn--primary';
-    ok.textContent = 'Exportar';
+    ok.textContent = t('exportar.exportar');
     actions.append(cancel, ok);
     panel.append(actions);
 
@@ -548,6 +563,7 @@ export function toast(message: string, kind: 'ok' | 'error' = 'ok'): void {
 
 /** O que a tela de Configuracoes devolve. */
 export interface Configuracoes {
+  idioma: Idioma;
   animacoes: NivelDeMovimento;
   /** Nome do arquivo escolhido por tema, ou null para a imagem que vem com o app. */
   fundos: { claro: string | null; escuro: string | null };
@@ -597,15 +613,15 @@ function linhaArquivo(opts: {
   const escolher = document.createElement('button');
   escolher.type = 'button';
   escolher.className = 'qb-btn';
-  escolher.textContent = 'Escolher imagem...';
+  escolher.textContent = t('config.escolherImagem');
 
   const restaurar = document.createElement('button');
   restaurar.type = 'button';
   restaurar.className = 'qb-btn';
-  restaurar.textContent = 'Restaurar padrao';
+  restaurar.textContent = t('config.restaurarPadrao');
 
   const pintar = (atual: string | null): void => {
-    nome.textContent = atual ?? 'Imagem que vem com o aplicativo';
+    nome.textContent = atual ?? t('config.imagemPadrao');
     nome.title = atual ?? '';
     // Sem imagem propria nao ha o que restaurar: o botao aceso prometeria uma
     // acao que nao faz nada.
@@ -670,18 +686,36 @@ export function settingsDialog(atual: Configuracoes, acoes: AcoesConfig): void {
 
   const h = document.createElement('h2');
   h.className = 'qb-dialog__title';
-  h.textContent = 'Configurações';
+  h.textContent = t('config.titulo');
 
   const estado: Configuracoes = { ...atual };
 
   // Em ordem de intensidade, e nao de uso: quem le da esquerda para a direita
   // entende a escala sem ler a dica.
+  // O idioma primeiro: e a linha que quem abriu o app na lingua errada procura.
+  // As opcoes aparecem SEMPRE na propria lingua -- "English (US)" para quem nao
+  // le portugues, e vice-versa.
+  const linhaIdioma = group(
+    t('config.idioma'),
+    (Object.entries(NOMES_DOS_IDIOMAS) as [Idioma, string][]).map(([valor, nome]) => [nome, valor] as const),
+    estado.idioma,
+    (v) => {
+      if (v === 'pt-BR' || v === 'en-US') {
+        estado.idioma = v;
+        acoes.onChange({ ...estado });
+      }
+    },
+  );
+  const dicaIdioma = document.createElement('p');
+  dicaIdioma.className = 'qb-dialog__hint';
+  dicaIdioma.textContent = t('config.idiomaDica');
+
   const linha = group(
-    'Animações',
+    t('config.animacoes'),
     [
-      ['Desligadas', 'off'],
-      ['Ligadas', 'on'],
-      ['Máximas', 'max'],
+      [t('config.animDesligadas'), 'off'],
+      [t('config.animLigadas'), 'on'],
+      [t('config.animMaximas'), 'max'],
     ],
     estado.animacoes,
     (v) => {
@@ -692,10 +726,7 @@ export function settingsDialog(atual: Configuracoes, acoes: AcoesConfig): void {
 
   const dica = document.createElement('p');
   dica.className = 'qb-dialog__hint';
-  dica.textContent =
-    'Máximas deixa o menu mais vivo: os quadros saltam ao entrar, inclinam ao ser arrastados ' +
-    'e as pastas reagem ao receber um quadro. Desligadas remove o levantar dos botões e as ' +
-    'transições — ajuda em computadores mais fracos e serve a quem prefere menos movimento na tela.';
+  dica.textContent = t('config.animDica');
 
   const actions = document.createElement('div');
   actions.className = 'qb-dialog__actions';
@@ -703,19 +734,19 @@ export function settingsDialog(atual: Configuracoes, acoes: AcoesConfig): void {
   const fechar = document.createElement('button');
   fechar.type = 'button';
   fechar.className = 'qb-btn qb-btn--primary';
-  fechar.textContent = 'Fechar';
+  fechar.textContent = t('comum.fechar');
   fechar.addEventListener('click', () => modal.close());
   actions.append(fechar);
 
   const fundoClaro = linhaArquivo({
-    label: 'Fundo do tema claro',
+    label: t('config.fundoClaro'),
     nome: estado.fundos.claro,
     escolher: () => acoes.escolherFundo('claro'),
     restaurar: () => acoes.restaurarFundo('claro'),
   });
 
   const fundoEscuro = linhaArquivo({
-    label: 'Fundo do tema escuro',
+    label: t('config.fundoEscuro'),
     nome: estado.fundos.escuro,
     escolher: () => acoes.escolherFundo('escuro'),
     restaurar: () => acoes.restaurarFundo('escuro'),
@@ -723,11 +754,9 @@ export function settingsDialog(atual: Configuracoes, acoes: AcoesConfig): void {
 
   const dicaFundo = document.createElement('p');
   dicaFundo.className = 'qb-dialog__hint';
-  dicaFundo.textContent =
-    'A imagem escolhida e copiada para a pasta dos quadros, entao ela continua ' +
-    'valendo mesmo que voce mova ou apague o arquivo original.';
+  dicaFundo.textContent = t('config.fundoDica');
 
-  panel.append(h, linha, dica, fundoClaro, fundoEscuro, dicaFundo, actions);
+  panel.append(h, linhaIdioma, dicaIdioma, linha, dica, fundoClaro, fundoEscuro, dicaFundo, actions);
   const modal = openModal(panel, () => modal.close());
   fechar.focus();
 }

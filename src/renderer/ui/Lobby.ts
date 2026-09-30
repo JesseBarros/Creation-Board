@@ -1,5 +1,6 @@
 import type { BoardSummary } from '@shared/wbd';
-import { formatBytes, formatDate } from '../features/storage/boardIO';
+import { formatDate } from '../features/storage/boardIO';
+import { formatarBytes, t } from '@shared/i18n';
 import { confirmDialog, promptText, toast } from './dialogs';
 import { icon, type IconName } from './icons';
 import { LibrarySearch } from './LibrarySearch';
@@ -164,10 +165,10 @@ export class Lobby {
     this.#folderLabel = document.createElement('button');
     this.#folderLabel.type = 'button';
     this.#folderLabel.className = 'qb-lobby__folder';
-    this.#folderLabel.title = 'Abrir a pasta dos quadros no Explorador';
+    this.#folderLabel.title = t('lobby.abrirPastaNoExplorador');
     this.#folderTexto = document.createElement('span');
     this.#folderTexto.className = 'qb-lobby__folder-texto';
-    this.#folderTexto.textContent = 'Meus quadros';
+    this.#folderTexto.textContent = t('lobby.pastaDosQuadros');
     this.#folderLabel.append(icon('pasta', 13), this.#folderTexto);
     this.#folderLabel.addEventListener('click', () => {
       void window.quadro.board.revealFolder();
@@ -201,22 +202,22 @@ export class Lobby {
       e o caminho de criar pasta que nao depende de arrastar -- o arrastar e a
       Parte 4 e vira um segundo caminho, sem tirar este.
     */
-    this.#themeBtn = iconOnlyButton('lua', 'Alternar tema', () => this.actions.toggleTheme());
+    this.#themeBtn = iconOnlyButton('lua', t('lobby.alternarTema'), () => this.actions.toggleTheme());
 
     // Configuracoes entrou em 21/09/2026, depois de o botao de atalhos ter
     // SAIDO daqui ([...]). A
     // diferenca entre os dois: aquele so contava coisas, este MUDA coisas --
     // e uma preferencia do aplicativo precisa de um lugar onde ser encontrada.
-    const configBtn = iconOnlyButton('ajustes', 'Configurações', () =>
+    const configBtn = iconOnlyButton('ajustes', t('lobby.configuracoes'), () =>
       this.actions.openSettings(),
     );
 
-    this.#novaPastaBtn = textButton('Nova pasta', () => void this.#novaPasta());
+    this.#novaPastaBtn = textButton(t('lobby.novaPasta'), () => void this.#novaPasta());
     this.#novaPastaBtn.prepend(icon('novaPasta', 15));
 
-    const importBtn = textButton('Importar arquivo', () => this.actions.importBoards());
-    importBtn.title = 'Abrir um quadro exportado de outro aplicativo (.zip ou .html)';
-    const newBtn = textButton('Novo quadro', () => this.actions.newBoard());
+    const importBtn = textButton(t('lobby.importarArquivo'), () => this.actions.importBoards());
+    importBtn.title = t('lobby.importarDica');
+    const newBtn = textButton(t('lobby.novoQuadro'), () => this.actions.newBoard());
     newBtn.classList.add('qb-btn--primary');
     // O "+" era texto dentro do rotulo e alinhava mal com a letra; como icone
     // ele tem o mesmo peso dos outros glifos e fica na linha de base certa.
@@ -244,20 +245,19 @@ export class Lobby {
     this.#empty.hidden = true;
     const emptyTitle = document.createElement('p');
     emptyTitle.className = 'qb-lobby__empty-title';
-    emptyTitle.textContent = 'Nenhum quadro salvo ainda.';
+    emptyTitle.textContent = t('lobby.vazioTitulo');
     const emptyHint = document.createElement('p');
     emptyHint.className = 'qb-lobby__empty-hint';
-    emptyHint.textContent =
-      'Crie um quadro novo e salve com Ctrl+S — ele aparece aqui com uma miniatura.';
+    emptyHint.textContent = t('lobby.vazioDica');
     const emptyActions = document.createElement('div');
     emptyActions.className = 'qb-lobby__empty-actions';
     // No lobby vazio o rotulo diz de onde vem, porque ali ele e a explicacao do
     // que fazer primeiro -- e nao mais um botao numa fila.
-    const importCta = textButton('Importar um quadro de outro aplicativo', () =>
+    const importCta = textButton(t('lobby.vazioImportar'), () =>
       this.actions.importBoards(),
     );
     importCta.classList.add('qb-btn--primary');
-    const demoBtn = textButton('Abrir quadro de demonstracao', () => this.actions.openDemo());
+    const demoBtn = textButton(t('lobby.vazioDemonstracao'), () => this.actions.openDemo());
     emptyActions.append(importCta, demoBtn);
     this.#empty.append(emptyTitle, emptyHint, emptyActions);
 
@@ -316,18 +316,18 @@ export class Lobby {
     this.#janelaNome.className = 'qb-pasta-janela__nome';
     this.#janelaContagem = document.createElement('span');
     this.#janelaContagem.className = 'qb-pasta-janela__contagem';
-    const renomear = botaoDaJanela('lapis', 'Renomear esta pasta', () => {
+    const renomear = botaoDaJanela('lapis', t('pasta.renomearEsta'), () => {
       const aberta = this.#abertaResolvida();
       if (aberta) void this.#renomearPasta(aberta);
     });
-    this.#janelaFechar = botaoDaJanela('fechar', 'Fechar a pasta (Esc)', () => this.#fecharPasta());
+    this.#janelaFechar = botaoDaJanela('fechar', t('pasta.fecharJanela'), () => this.#fecharPasta());
     barra.append(icon('pasta', 17), this.#janelaNome, this.#janelaContagem, renomear, this.#janelaFechar);
 
     // Pasta vazia e estado normal, e nao falha: ela acabou de ser criada, ou
     // alguem tirou tudo dela. A mensagem diz o que fazer, agora que da.
     this.#vazioPasta = document.createElement('p');
     this.#vazioPasta.className = 'qb-lobby__pasta-vazia';
-    this.#vazioPasta.textContent = 'Esta pasta está vazia. Arraste quadros da tela principal para cá.';
+    this.#vazioPasta.textContent = t('pasta.janelaVazia');
     this.#vazioPasta.hidden = true;
 
     this.#janelaGrade = document.createElement('div');
@@ -412,7 +412,7 @@ export class Lobby {
   setFolder(path: string): void {
     this.#folderTexto.textContent = path;
     // A pilula corta caminho longo com reticencias; o inteiro fica aqui.
-    this.#folderLabel.title = `Abrir a pasta dos quadros no Explorador\n${path}`;
+    this.#folderLabel.title = t('lobby.abrirPastaNoExploradorCom', path);
   }
 
   /**
@@ -424,7 +424,7 @@ export class Lobby {
    */
   setTheme(theme: 'light' | 'dark'): void {
     this.#themeBtn.replaceChildren(icon(theme === 'dark' ? 'sol' : 'lua', 17));
-    const label = theme === 'dark' ? 'Mudar para o tema claro' : 'Mudar para o tema escuro';
+    const label = theme === 'dark' ? t('lobby.paraTemaClaro') : t('lobby.paraTemaEscuro');
     this.#themeBtn.title = label;
     this.#themeBtn.setAttribute('aria-label', label);
   }
@@ -435,7 +435,7 @@ export class Lobby {
     try {
       boards = await this.fonte.listarQuadros();
     } catch (err) {
-      toast(`Nao foi possivel ler a pasta de quadros: ${String(err)}`, 'error');
+      toast(t('lobby.erroLerPasta', String(err)), 'error');
     }
 
     // Ler o indice falhando NAO pode impedir o lobby de abrir. O `ler` do main
@@ -481,7 +481,7 @@ export class Lobby {
       this.#janelaNome.textContent = nome;
       this.#janelaNome.title = nome;
       this.#janelaContagem.textContent = contagemDeQuadros(aberta.quadros.length);
-      this.#janela.setAttribute('aria-label', `Pasta ${nome}`);
+      this.#janela.setAttribute('aria-label', t('pasta.rotuloDaJanela', nome));
       for (const b of aberta.quadros) this.#janelaGrade.append(this.#card(b, aberta));
       this.#vazioPasta.hidden = aberta.quadros.length > 0;
     }
@@ -654,7 +654,7 @@ export class Lobby {
       const atual = await this.fonte.lerPastas();
       await this.fonte.gravarPastas(mudar(atual));
     } catch (err) {
-      toast(`Não foi possível salvar as pastas: ${String(err)}`, 'error');
+      toast(t('lobby.erroSalvarPastas', String(err)), 'error');
       return false;
     }
     await this.refresh();
@@ -663,13 +663,13 @@ export class Lobby {
 
   async #novaPasta(): Promise<void> {
     const nome = await promptText({
-      title: 'Nova pasta',
-      label: 'Nome da pasta',
+      title: t('pasta.dialogoNovaTitulo'),
+      label: t('pasta.dialogoNome'),
       value: nomeLivre(
         this.#ultimo.pastas.map((p) => p.nome),
-        'Nova pasta',
+        t('pasta.nomePadrao'),
       ),
-      confirmLabel: 'Criar',
+      confirmLabel: t('comum.criar'),
     });
     if (nome === null) return;
     const id = createId();
@@ -678,10 +678,10 @@ export class Lobby {
 
   async #renomearPasta(pasta: PastaResolvida): Promise<void> {
     const nome = await promptText({
-      title: 'Renomear pasta',
-      label: 'Nome da pasta',
+      title: t('pasta.dialogoRenomearTitulo'),
+      label: t('pasta.dialogoNome'),
       value: pasta.nome,
-      confirmLabel: 'Renomear',
+      confirmLabel: t('comum.renomear'),
     });
     if (nome === null || nome === pasta.nome) return;
     if (await this.#mudarIndice((i) => renomearPasta(i, pasta.id, nome))) {
@@ -701,17 +701,14 @@ export class Lobby {
     const n = pasta.quadros.length;
     if (n > 0) {
       const ok = await confirmDialog({
-        title: 'Excluir pasta',
-        message:
-          `A pasta "${nomeDeExibicao(pasta)}" será desfeita, e ` +
-          (n === 1 ? 'o quadro dentro dela volta' : `os ${n} quadros dentro dela voltam`) +
-          ' para a tela principal. Nenhum quadro é apagado.',
-        confirmLabel: 'Excluir pasta',
+        title: t('pasta.dialogoExcluirTitulo'),
+        message: t('pasta.dialogoExcluirMensagem', nomeDeExibicao(pasta), n),
+        confirmLabel: t('pasta.dialogoExcluirTitulo'),
       });
       if (!ok) return;
     }
     if (await this.#mudarIndice((i) => excluirPasta(i, pasta.id))) {
-      toast(`Pasta "${nomeDeExibicao(pasta)}" excluída.`);
+      toast(t('pasta.excluida', nomeDeExibicao(pasta)));
     }
   }
 
@@ -727,7 +724,7 @@ export class Lobby {
     card.className = aberta ? 'qb-card qb-card--pasta qb-card--aberta' : 'qb-card qb-card--pasta';
     card.tabIndex = 0;
     card.dataset['pastaId'] = pasta.id;
-    card.setAttribute('aria-label', `Pasta ${nome}, ${contagem.toLowerCase()}`);
+    card.setAttribute('aria-label', t('pasta.rotuloDoCard', nome, contagem));
 
     // A miniatura da pasta e um MOSAICO das miniaturas de dentro, ate quatro.
     // E o que deixa reconhecer a pasta pelo conteudo, que e como se reconhece
@@ -773,8 +770,8 @@ export class Lobby {
     renomear.type = 'button';
     renomear.className = 'qb-card__renomear';
     renomear.append(icon('lapis', 13));
-    renomear.title = 'Renomear esta pasta (F2)';
-    renomear.setAttribute('aria-label', 'Renomear esta pasta');
+    renomear.title = t('pasta.renomearEstaAtalho');
+    renomear.setAttribute('aria-label', t('pasta.renomearEsta'));
     renomear.addEventListener('click', (e) => {
       e.stopPropagation();
       void this.#renomearPasta(pasta);
@@ -784,8 +781,8 @@ export class Lobby {
     del.type = 'button';
     del.className = 'qb-card__delete';
     del.append(icon('fechar', 13));
-    del.title = 'Excluir esta pasta (os quadros continuam)';
-    del.setAttribute('aria-label', 'Excluir esta pasta');
+    del.title = t('pasta.excluirEstaDica');
+    del.setAttribute('aria-label', t('pasta.excluirEsta'));
     del.addEventListener('click', (e) => {
       e.stopPropagation();
       void this.#excluirPasta(pasta);
@@ -830,7 +827,7 @@ export class Lobby {
       thumb.append(img);
     } else {
       thumb.classList.add('qb-card__thumb--none');
-      thumb.textContent = 'sem miniatura';
+      thumb.textContent = t('lobby.semMiniatura');
     }
 
     const body = document.createElement('div');
@@ -843,7 +840,7 @@ export class Lobby {
 
     const meta = document.createElement('p');
     meta.className = 'qb-card__meta';
-    meta.textContent = `${formatDate(summary.updatedAt)} · ${summary.objectCount.toLocaleString('pt-BR')} objetos · ${formatBytes(summary.bytes)}`;
+    meta.textContent = t('lobby.metaDoCard', formatDate(summary.updatedAt), summary.objectCount, formatarBytes(summary.bytes));
 
     body.append(name, meta);
 
@@ -862,18 +859,18 @@ export class Lobby {
         O hover tambem muda: vermelho e a cor de "isto apaga", e aqui nao apaga.
       */
       del.classList.add('qb-card__delete--tirar');
-      del.title = 'Tirar desta pasta (o quadro continua salvo)';
-      del.setAttribute('aria-label', 'Tirar desta pasta');
+      del.title = t('pasta.tirarDestaDica');
+      del.setAttribute('aria-label', t('pasta.tirarDesta'));
       del.addEventListener('click', (e) => {
         e.stopPropagation();
         const arquivo = nomeDeArquivoDe(summary);
         void this.#mudarIndice((i) => tirarDeTodas(i, arquivo)).then((ok) => {
-          if (ok) toast(`"${summary.name}" saiu da pasta "${nomeDeExibicao(pasta)}".`);
+          if (ok) toast(t('pasta.quadroSaiuDe', summary.name, nomeDeExibicao(pasta)));
         });
       });
     } else {
-      del.title = 'Excluir este quadro';
-      del.setAttribute('aria-label', 'Excluir este quadro');
+      del.title = t('quadro.excluirEste');
+      del.setAttribute('aria-label', t('quadro.excluirEste'));
       del.addEventListener('click', (e) => void this.#excluirQuadro(e, summary));
     }
 
@@ -956,7 +953,7 @@ export class Lobby {
 
     if (alvo.tipo === 'pasta') {
       if (await this.#mudarIndice((i) => moverParaPasta(i, arquivo, alvo.id))) {
-        toast(`"${origem.name}" foi para a pasta "${alvo.nome}".`);
+        toast(t('pasta.quadroFoiPara', origem.name, alvo.nome));
         this.#pulsarRecebedor(alvo.id);
       }
       return;
@@ -964,7 +961,7 @@ export class Lobby {
 
     if (alvo.tipo === 'fora') {
       if (await this.#mudarIndice((i) => tirarDeTodas(i, arquivo))) {
-        toast(`"${origem.name}" saiu da pasta.`);
+        toast(t('pasta.quadroSaiu', origem.name));
       }
       return;
     }
@@ -973,13 +970,13 @@ export class Lobby {
     // -- decisao de produto. Cancelar nao muda nada, e e por isso que a pergunta vem
     // ANTES de qualquer gravacao.
     const nome = await promptText({
-      title: 'Nova pasta',
-      label: 'Nome da pasta com os dois quadros',
+      title: t('pasta.dialogoNovaTitulo'),
+      label: t('pasta.dialogoNomeComDois'),
       value: nomeLivre(
         this.#ultimo.pastas.map((p) => p.nome),
-        'Nova pasta',
+        t('pasta.nomePadrao'),
       ),
-      confirmLabel: 'Criar',
+      confirmLabel: t('comum.criar'),
     });
     if (nome === null) return;
     const id = createId();
@@ -1011,9 +1008,9 @@ export class Lobby {
     // ser excluido.
     e.stopPropagation();
     const ok = await confirmDialog({
-      title: 'Excluir quadro',
-      message: `"${summary.name}" sera apagado do disco. Esta acao nao pode ser desfeita.`,
-      confirmLabel: 'Excluir',
+      title: t('quadro.dialogoExcluirTitulo'),
+      message: t('quadro.dialogoExcluirMensagem', summary.name),
+      confirmLabel: t('comum.excluir'),
       danger: true,
     });
     if (!ok) return;
@@ -1023,10 +1020,10 @@ export class Lobby {
       // oferecendo resultados que abririam um arquivo inexistente.
       invalidateLibraryIndex();
       await this.#esquecerNoIndice(summary);
-      toast(`"${summary.name}" excluido.`);
+      toast(t('quadro.excluido', summary.name));
       await this.refresh();
     } catch (err) {
-      toast(`Falha ao excluir: ${String(err)}`, 'error');
+      toast(t('quadro.erroExcluir', String(err)), 'error');
     }
   }
 
@@ -1058,11 +1055,11 @@ export class Lobby {
  * errado vira '' na leitura), e um card sem titulo nenhum nao se distingue.
  */
 function nomeDeExibicao(pasta: PastaResolvida): string {
-  return pasta.nome === '' ? 'Pasta sem nome' : pasta.nome;
+  return pasta.nome === '' ? t('pasta.semNome') : pasta.nome;
 }
 
 function contagemDeQuadros(n: number): string {
-  return n === 0 ? 'Vazia' : n === 1 ? '1 quadro' : `${n.toLocaleString('pt-BR')} quadros`;
+  return t('pasta.contagem', n);
 }
 
 /**

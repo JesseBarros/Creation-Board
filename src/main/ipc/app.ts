@@ -1,5 +1,6 @@
 import { app, ipcMain } from 'electron';
 import { IPC, type AppInfo } from '@shared/ipc-contract';
+import { definirIdioma, idiomaValido } from '@shared/i18n';
 
 /**
  * Handlers IPC de escopo "aplicacao". Cada area (storage, fontes, export) ganha
@@ -15,5 +16,11 @@ export function registerAppIpc(): void {
       platform: process.platform,
       packaged: app.isPackaged,
     };
+  });
+
+  // O idioma escolhido pela pagina. Validado: o valor vem do renderer, e um
+  // idioma desconhecido deixaria `t()` sem dicionario.
+  ipcMain.handle(IPC.appIdioma, (_e, idioma: unknown): void => {
+    if (idiomaValido(idioma)) definirIdioma(idioma);
   });
 }
