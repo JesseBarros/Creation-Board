@@ -12,10 +12,19 @@
  * animacao nova que ignore o interruptor repete exatamente o B26 -- entao a
  * pergunta [...] mora num lugar so, e quem anima por
  * JavaScript nao tem como esquece-la.
+ *
+ * TRES NIVEIS desde 30/09/2026: desligadas, ligadas (o padrao)
+ * e MAXIMAS -- [...]. O nivel vira o mesmo
+ * atributo na raiz (`data-anim='off' | 'max'`; ligado e a ausencia dele), e
+ * quem anima pergunta o nivel aqui. O maximo nao e so "mais lento": e outra
+ * receita -- mola que passa do ponto e volta, entrada em cascata, o fantasma
+ * inclinando com a velocidade do arrasto.
  */
 
-/** Duracoes, em ms. Curta para reacao (hover, alvo); media para ida e volta. */
-export const DURACAO = { curta: 140, media: 220 } as const;
+export type NivelDeMovimento = 'off' | 'on' | 'max';
+
+/** Duracoes, em ms. Curta para reacao (hover, alvo); media para ida e volta; longa so no maximo. */
+export const DURACAO = { curta: 140, media: 220, longa: 420 } as const;
 
 /**
  * A curva de saida do app: comeca rapido e assenta devagar. Movimento de
@@ -23,8 +32,29 @@ export const DURACAO = { curta: 140, media: 220 } as const;
  */
 export const CURVA = 'cubic-bezier(0.2, 0.8, 0.2, 1)';
 
+/**
+ * A MOLA do nivel maximo: passa um pouco do ponto e volta. E o que faz o
+ * movimento parecer "vivo" em vez de "deslizado". Mesma curva do
+ * `--ease-mola` do `base.css` -- as duas tem de concordar, ou a transicao de
+ * CSS e a animacao de JavaScript do mesmo gesto teriam personalidades
+ * diferentes.
+ */
+export const CURVA_MOLA = 'cubic-bezier(0.34, 1.56, 0.64, 1)';
+
+/** A curva de quem e SUGADO para dentro de algo: comeca devagar e acelera. */
+export const CURVA_SUGAR = 'cubic-bezier(0.55, 0, 0.75, 0.2)';
+
+export function nivelDeMovimento(): NivelDeMovimento {
+  const v = document.documentElement.dataset['anim'];
+  return v === 'off' ? 'off' : v === 'max' ? 'max' : 'on';
+}
+
 export function movimentoLigado(): boolean {
-  return document.documentElement.dataset['anim'] !== 'off';
+  return nivelDeMovimento() !== 'off';
+}
+
+export function movimentoMaximo(): boolean {
+  return nivelDeMovimento() === 'max';
 }
 
 /**
@@ -50,5 +80,25 @@ export function animar(
   return a.finished.then(
     () => undefined,
     () => undefined,
+  );
+}
+
+/**
+ * O "recebi": o elemento incha e volta, com a mola. Usado quando algo CAI
+ * dentro dele (a pasta que recebeu um quadro, a janela). So existe no maximo --
+ * no nivel ligado o recebimento ja e dito pelo fantasma encolhendo.
+ */
+export function pulsar(el: Element, opcoes: { atraso?: number; intensidade?: number } = {}): Promise<void> {
+  if (!movimentoMaximo()) return Promise.resolve();
+  const s = 1 + (opcoes.intensidade ?? 0.08);
+  return animar(
+    el,
+    [
+      { transform: 'scale(1)' },
+      { transform: `scale(${s})`, offset: 0.35 },
+      { transform: `scale(${2 - s})`, offset: 0.65 },
+      { transform: 'scale(1)' },
+    ],
+    { duracao: DURACAO.longa, atraso: opcoes.atraso ?? 0, curva: 'ease-out' },
   );
 }

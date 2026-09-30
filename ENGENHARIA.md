@@ -738,6 +738,35 @@ guarda no selftest que lê o `background-image` calculado com o vidro pronto e
 exige a tinta **e** a foto.
 
 
+### A segunda rodada: ~100 → 144 q/s, e o atraso que a contagem não via (30/09/2026)
+
+
+| cena (CPU, vidro pronto) | antes | `QB_BLUR=0` | GPU | **depois** |
+|---|---|---|---|---|
+| levantar | 99,5 | 144 | 144 | **142,7–143,9** |
+| arrastar | 101,3 | 142,6 | 141,3 | **143,3** |
+| abre/fecha a janela | 71,6 | 139,8 | 141,9 | **143,2–143,6** |
+| arrastar da janela | 91,3 | 135,6 | 142,6 | **135,6–136,0** |
+
+**A causa:** `QB_BLUR=0` levava tudo a 144, e o painel já não desfocava — sobrava
+o `--chrome-blur` dos **botões do cabeçalho e da busca**, que tem o deslocamento
+de refração `url(#qb-refracao)`, o filtro mais caro que há na CPU. A nota da
+rodada anterior ("são pequenos") estava errada. **A saída:** o mesmo vidro
+pronto do painel, nos dois. Mesmo preço: perdem a ondulação, mantêm desfoque e
+cor. Conferido por captura nos dois temas.
+
+**E um atraso que nenhum q/s mostra:** o fantasma é clone do card, e herdava do
+`.qb-card` a `transition: transform 0.12s` do levantar. Cada posição nova do
+mouse virava uma animação de 120 ms, e o fantasma andava sempre **atrás** do
+cursor. `transition: none` nele, guardado no selftest nos níveis ligado e
+máximo (a mola do máximo vazaria para ele pelo mesmo caminho).
+
+**O nível máximo de animações**, medido junto (`QB_ANIM=max`): parado,
+levantar e arrastar a **144 cravados** nos dois temas — o fantasma vivo tem
+camada própria (`will-change`) e não repinta card e sombra a cada quadro.
+Abrir e fechar a janela a cada 400 ms fica em **130**, porque as animações de
+420 ms se sobrepõem; no uso normal elas não se cruzam.
+
 ---
 
 ## Decisões que não estão óbvias no código

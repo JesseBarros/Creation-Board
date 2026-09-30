@@ -76,6 +76,7 @@ import type { SaveBoardResult } from '@shared/wbd';
 import { generateStressBatches } from './dev/stress';
 import { resolve as resolveShortcut, type ShortcutId } from './shortcuts';
 import { esquecerVidro, fotoDoPalco, vidroDe } from './ui/vidroPronto';
+import type { NivelDeMovimento } from './ui/movimento';
 
 const THEMES: Record<'light' | 'dark', RenderTheme> = {
   /*
@@ -190,8 +191,8 @@ export class App {
   #redesenhoDeParada = 0;
 
   #rulers: boolean;
-  /** Levantar dos botões e transições de cor. Ver `#applyAnimacoes`. */
-  #animacoes: boolean;
+  /** Levantar dos botões, transições e o movimento do menu. Ver `#applyAnimacoes`. */
+  #animacoes: NivelDeMovimento;
   /**
    * URL `blob:` da foto personalizada de cada tema, ou null para usar a que vem
    * com o app. Os bytes chegam por IPC — a CSP não permite `file:`.
@@ -370,7 +371,17 @@ export class App {
     // LIGADO por padrao, e de propósito independente do Windows -- decisão de produto
     // em 21/09/2026. Só desliga quem gravou 'off' aqui, pelo diálogo de
     // Configurações. O porquê está no comentário do `[data-anim]` no base.css.
-    this.#animacoes = localStorage.getItem(ANIM_KEY) !== 'off';
+    //
+    // Três níveis desde 30/09/2026 ('off' | 'on' | 'max'). O que já estava
+    // gravado ('on'/'off') continua valendo como está; qualquer outra coisa é
+    // o padrão.
+    //
+    // `QB_ANIM=off|on|max` manda no nível desta execução sem gravar nada,
+    // pelo mesmo motivo do `QB_THEME`: medir o menu com as animações máximas
+    // não pode depender do que está no `localStorage` da máquina.
+    const animForcada = new URLSearchParams(location.search).get('anim');
+    const animGravada = localStorage.getItem(ANIM_KEY);
+    this.#animacoes = App.#nivelDe(animForcada) ?? App.#nivelDe(animGravada) ?? 'on';
     this.#applyAnimacoes();
     // Mesmo criterio do tema: o modo forcado vale para esta execucao e nao
     // grava nada, para a foto de conferencia nao depender da maquina.
@@ -1119,7 +1130,7 @@ export class App {
       {
         onChange: (c) => {
           this.#animacoes = c.animacoes;
-          localStorage.setItem(ANIM_KEY, this.#animacoes ? 'on' : 'off');
+          localStorage.setItem(ANIM_KEY, this.#animacoes);
           this.#applyAnimacoes();
         },
         escolherFundo: (tema) => this.#escolherFundo(tema),
@@ -1177,8 +1188,14 @@ export class App {
    * cria botões o tempo todo (painel de opções, camadas, busca).
    */
   #applyAnimacoes(): void {
-    if (this.#animacoes) delete document.documentElement.dataset['anim'];
-    else document.documentElement.dataset['anim'] = 'off';
+    // Ligado é a AUSÊNCIA do atributo: é o padrão, e o CSS de sempre vale sem
+    // seletor nenhum. Desligado e máximo são as exceções.
+    if (this.#animacoes === 'on') delete document.documentElement.dataset['anim'];
+    else document.documentElement.dataset['anim'] = this.#animacoes;
+  }
+
+  static #nivelDe(v: string | null): NivelDeMovimento | null {
+    return v === 'off' || v === 'on' || v === 'max' ? v : null;
   }
 
   /**

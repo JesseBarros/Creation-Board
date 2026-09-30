@@ -1,4 +1,5 @@
 import type { TemaFundo } from '@shared/ipc-contract';
+import type { NivelDeMovimento } from './movimento';
 
 /**
  * Dialogos modais e avisos temporarios.
@@ -547,7 +548,7 @@ export function toast(message: string, kind: 'ok' | 'error' = 'ok'): void {
 
 /** O que a tela de Configuracoes devolve. */
 export interface Configuracoes {
-  animacoes: boolean;
+  animacoes: NivelDeMovimento;
   /** Nome do arquivo escolhido por tema, ou null para a imagem que vem com o app. */
   fundos: { claro: string | null; escuro: string | null };
 }
@@ -673,15 +674,18 @@ export function settingsDialog(atual: Configuracoes, acoes: AcoesConfig): void {
 
   const estado: Configuracoes = { ...atual };
 
+  // Em ordem de intensidade, e nao de uso: quem le da esquerda para a direita
+  // entende a escala sem ler a dica.
   const linha = group(
     'Animações',
     [
-      ['Ligadas', 'on'],
       ['Desligadas', 'off'],
+      ['Ligadas', 'on'],
+      ['Máximas', 'max'],
     ],
-    estado.animacoes ? 'on' : 'off',
+    estado.animacoes,
     (v) => {
-      estado.animacoes = v === 'on';
+      estado.animacoes = v === 'off' || v === 'max' ? v : 'on';
       acoes.onChange({ ...estado });
     },
   );
@@ -689,8 +693,9 @@ export function settingsDialog(atual: Configuracoes, acoes: AcoesConfig): void {
   const dica = document.createElement('p');
   dica.className = 'qb-dialog__hint';
   dica.textContent =
-    'Desligar remove o levantar dos botões e as transições de cor. ' +
-    'Ajuda em computadores mais fracos e serve a quem prefere menos movimento na tela.';
+    'Máximas deixa o menu mais vivo: os quadros saltam ao entrar, inclinam ao ser arrastados ' +
+    'e as pastas reagem ao receber um quadro. Desligadas remove o levantar dos botões e as ' +
+    'transições — ajuda em computadores mais fracos e serve a quem prefere menos movimento na tela.';
 
   const actions = document.createElement('div');
   actions.className = 'qb-dialog__actions';

@@ -1,4 +1,4 @@
-import { animar, DURACAO } from './movimento';
+import { animar, CURVA_MOLA, CURVA_SUGAR, DURACAO, movimentoMaximo } from './movimento';
 
 /**
  * Arrastar um card do menu principal, por PONTEIRO.
@@ -14,7 +14,7 @@ import { animar, DURACAO } from './movimento';
  * entrega o alvo de volta. O que soltar significa mora no `Lobby`.
  *
  * O card original NUNCA sai do lugar: quem anda e uma copia. Soltar fora de
- * um alvo valido e so apagar a copia -- o [...] do plano
+ * um alvo valido e so apagar a copia -- o "devolve o card ao lugar" do plano
  * sai de graca, e nao ha estado para desfazer se algo der errado no meio.
  */
 
@@ -24,7 +24,7 @@ export interface AlvoDeArrasto<A> {
   alvo: A;
   /**
    * Soltando aqui, o fantasma voa ate o centro de `el` e encolhe DENTRO dele --
-   * o [...] do plano. Sem isto, ele some no lugar: e o
+   * o "os dois cards se juntando" do plano. Sem isto, ele some no lugar: e o
    * certo quando o alvo e uma area grande (a janela, a tela principal), em que
    * voar ate o centro pareceria mira errada.
    */
@@ -52,6 +52,25 @@ const BORDA_QUE_ROLA = 56;
 /** Pixels por quadro, com o ponteiro ENCOSTADO na borda. Cai ate zero no fim da faixa. */
 const ROLAGEM_MAX = 18;
 
+/*
+  O FANTASMA VIVO do nivel maximo de movimento (30/09/2026).
+
+  Pego, ele cresce um pouco -- "levantei da mesa". Andando, inclina para o lado
+  em que a mao vai, na proporcao da velocidade, como papel arrastado pelo canto;
+  parando, endireita. Sobre um alvo, encolhe um pouco, anunciando que vai
+  entrar. Tudo por perseguicao exponencial a cada quadro de animacao, e nao por
+  `el.animate`: o alvo muda a cada quadro, e uma animacao declarada teria de ser
+  cancelada e refeita 144 vezes por segundo.
+*/
+/** Graus de inclinacao por pixel/quadro de velocidade horizontal. */
+const INCLINA_POR_VELOCIDADE = 0.55;
+const INCLINA_MAX = 9;
+/** Escala do fantasma levantado, e sobre um alvo. */
+const ESCALA_PEGO = 1.06;
+const ESCALA_SOBRE_ALVO = 0.9;
+/** Quanto da distancia ao alvo se anda por quadro de 60 Hz. Maior = mais rapido. */
+const PERSEGUE = 0.2;
+
 export function tornarArrastavel<A>(card: HTMLElement, op: OpcoesDeArrasto<A>): void {
   // A miniatura e um `<img>`, e imagem tem arrastar nativo proprio: sem isto,
   // puxar pela miniatura comeca um DnD do navegador, que cancela o ponteiro
@@ -76,6 +95,13 @@ function comecar<A>(card: HTMLElement, inicio: PointerEvent, op: OpcoesDeArrasto
   let fantasma: HTMLElement | null = null;
   let alvo: AlvoDeArrasto<A> | null = null;
   let quadro = 0;
+  // O fantasma vivo (nivel maximo). Decidido NO COMECO do arrasto: trocar o
+  // nivel com um arrasto no meio nao e um caso que valha codigo.
+  let vivo = false;
+  let inclinacao = 0;
+  let escala = 1;
+  let xAnterior = x0;
+  let tAnterior = 0;
 
   try {
     card.setPointerCapture(id);
@@ -113,12 +139,39 @@ function comecar<A>(card: HTMLElement, inicio: PointerEvent, op: OpcoesDeArrasto
     document.body.appendChild(fantasma);
     card.classList.add('qb-card--origem');
     document.documentElement.classList.add('qb-arrastando');
-    quadro = requestAnimationFrame(rolarSozinho);
+    vivo = movimentoMaximo();
+    if (vivo) fantasma.classList.add('qb-card--fantasma-vivo');
+    xAnterior = x;
+    tAnterior = 0;
+    quadro = requestAnimationFrame(porQuadro);
+  };
+
+  const pintarFantasma = (): void => {
+    if (!fantasma) return;
+    const andar = `translate(${x - x0}px, ${y - y0}px)`;
+    fantasma.style.transform = vivo
+      ? `${andar} rotate(${inclinacao.toFixed(2)}deg) scale(${escala.toFixed(4)})`
+      : andar;
   };
 
   const mover = (): void => {
-    if (fantasma) fantasma.style.transform = `translate(${x - x0}px, ${y - y0}px)`;
+    pintarFantasma();
     procurarAlvo();
+  };
+
+  /** Um passo do fantasma vivo. `dt` em ms, para o jeito nao depender do monitor. */
+  const viver = (t: number): void => {
+    const dt = tAnterior === 0 ? 1000 / 60 : Math.min(64, t - tAnterior);
+    tAnterior = t;
+    const quadros60 = dt / (1000 / 60);
+    const velocidade = (x - xAnterior) / quadros60;
+    xAnterior = x;
+    const inclinacaoAlvo = Math.max(-INCLINA_MAX, Math.min(INCLINA_MAX, velocidade * INCLINA_POR_VELOCIDADE));
+    const escalaAlvo = alvo ? ESCALA_SOBRE_ALVO : ESCALA_PEGO;
+    const k = 1 - Math.pow(1 - PERSEGUE, quadros60);
+    inclinacao += (inclinacaoAlvo - inclinacao) * k;
+    escala += (escalaAlvo - escala) * k;
+    pintarFantasma();
   };
 
   /*
@@ -126,10 +179,12 @@ function comecar<A>(card: HTMLElement, inicio: PointerEvent, op: OpcoesDeArrasto
 
     Por quadro de animacao, e nao por `pointermove`: quem segura o card na
     borda esperando a lista andar nao mexe o mouse, e um rolar que dependesse de
-    movimento pararia exatamente ali.
+    movimento pararia exatamente ali. O fantasma vivo mora no mesmo quadro,
+    pelo mesmo motivo: parado, ele ainda tem de endireitar.
   */
-  const rolarSozinho = (): void => {
+  const porQuadro = (t: number): void => {
     if (!ativo) return;
+    if (vivo) viver(t);
     const r = op.rolagem.getBoundingClientRect();
     let passo = 0;
     if (y < r.top + BORDA_QUE_ROLA) passo = -ROLAGEM_MAX * (1 - Math.max(0, y - r.top) / BORDA_QUE_ROLA);
@@ -141,7 +196,7 @@ function comecar<A>(card: HTMLElement, inicio: PointerEvent, op: OpcoesDeArrasto
       // A lista andou por baixo de um ponteiro parado: o que esta sob ele mudou.
       if (op.rolagem.scrollTop !== antes) procurarAlvo();
     }
-    quadro = requestAnimationFrame(rolarSozinho);
+    quadro = requestAnimationFrame(porQuadro);
   };
 
   const aoMover = (e: PointerEvent): void => {
@@ -199,7 +254,7 @@ function comecar<A>(card: HTMLElement, inicio: PointerEvent, op: OpcoesDeArrasto
     fantasma = null;
     const soltarOrigem = (): void => card.classList.remove('qb-card--origem');
     if (f) {
-      void despedir(f, pousarEm).then(() => {
+      void despedir(f, pousarEm, vivo ? inclinacao : null).then(() => {
         f.remove();
         soltarOrigem();
       });
@@ -230,9 +285,14 @@ function comecar<A>(card: HTMLElement, inicio: PointerEvent, op: OpcoesDeArrasto
  *
  * Com o movimento desligado, `animar` resolve na hora e nada e criado -- e o
  * fantasma sai no microtempo seguinte, como antes da Parte 5.
+ *
+ * `inclinacao` so vem no nivel maximo (e null fora dele): o fantasma vivo tem
+ * receitas proprias -- volta com mola, e e sugado girando para dentro do alvo.
  */
-function despedir<A>(f: HTMLElement, pousarEm: AlvoDeArrasto<A> | null): Promise<void> {
+function despedir<A>(f: HTMLElement, pousarEm: AlvoDeArrasto<A> | null, inclinacao: number | null): Promise<void> {
   const agora = f.style.transform || 'translate(0px, 0px)';
+
+  if (inclinacao !== null) return despedirVivo(f, pousarEm, agora, inclinacao);
 
   if (!pousarEm) {
     // Volta para o lugar do card: o `translate` zero E o lugar dele, porque o
@@ -265,6 +325,55 @@ function despedir<A>(f: HTMLElement, pousarEm: AlvoDeArrasto<A> | null): Promise
       { transform: `${agora} scale(0.92)`, opacity: 0 },
     ],
     { duracao: DURACAO.curta, preencher: 'forwards' },
+  );
+}
+
+/**
+ * As despedidas do nivel maximo.
+ *
+ * VOLTAR passa do lugar e assenta (a mola), endireitando no caminho. SUGAR vai
+ * ate o centro do alvo acelerando -- quem e engolido nao desacelera --, girando
+ * para o lado em que ja estava inclinado, e some pequeno. Sumir no lugar (a
+ * janela, a tela principal) e um encolher com um giro curto.
+ */
+function despedirVivo<A>(
+  f: HTMLElement,
+  pousarEm: AlvoDeArrasto<A> | null,
+  agora: string,
+  inclinacao: number,
+): Promise<void> {
+  if (!pousarEm) {
+    return animar(f, [{ transform: agora }, { transform: 'translate(0px, 0px) rotate(0deg) scale(1)' }], {
+      duracao: DURACAO.longa,
+      curva: CURVA_MOLA,
+      preencher: 'forwards',
+    });
+  }
+
+  const lado = inclinacao < 0 ? -1 : 1;
+  if (pousarEm.encolher) {
+    const alvo = pousarEm.el.getBoundingClientRect();
+    const x = parseFloat(f.style.left) + parseFloat(f.style.width) / 2;
+    const y = parseFloat(f.style.top) + parseFloat(f.style.height) / 2;
+    const dx = alvo.left + alvo.width / 2 - x;
+    const dy = alvo.top + alvo.height / 2 - y;
+    return animar(
+      f,
+      [
+        { transform: agora, opacity: 0.94 },
+        { transform: `translate(${dx}px, ${dy}px) rotate(${lado * 24}deg) scale(0.12)`, opacity: 0.2 },
+      ],
+      { duracao: 300, curva: CURVA_SUGAR, preencher: 'forwards' },
+    );
+  }
+
+  return animar(
+    f,
+    [
+      { transform: agora, opacity: 0.94 },
+      { transform: `${agora} rotate(${lado * 10}deg) scale(0.7)`, opacity: 0 },
+    ],
+    { duracao: DURACAO.media, curva: CURVA_SUGAR, preencher: 'forwards' },
   );
 }
 

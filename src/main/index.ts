@@ -364,6 +364,12 @@ function createWindow(): void {
   let query =
     tema === 'light' || tema === 'dark' ? `${modo}${modo ? '&' : '?'}theme=${tema}` : modo;
 
+  // QB_ANIM=off|on|max manda no nivel de movimento desta execucao, sem gravar a
+  // preferencia -- mesmo desenho do QB_THEME. Existe para o QB_BENCH_LOBBY
+  // medir as animacoes maximas sem depender do que esta gravado na maquina.
+  const anim = process.env['QB_ANIM'];
+  if (anim === 'off' || anim === 'on' || anim === 'max') query = `${query}${query ? '&' : '?'}anim=${anim}`;
+
   // QB_GLASS saiu em 21/09/2026: o vitrificado virou o acabamento unico do
   // aplicativo, e uma variavel para escolher entre dois modos perdeu o objeto
   // quando um dos dois deixou de existir.

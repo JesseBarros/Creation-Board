@@ -20,7 +20,7 @@ import type { IndicePastas, PastaResolvida, Reconciliado } from '@shared/pastas'
 import { createId } from '@shared/model/id';
 import { tornarArrastavel, type AlvoDeArrasto } from './arrastarCard';
 import { PainelDoMenu } from './PainelDoMenu';
-import { animar, DURACAO, movimentoLigado } from './movimento';
+import { animar, CURVA_MOLA, CURVA_SUGAR, DURACAO, movimentoLigado, movimentoMaximo, pulsar } from './movimento';
 
 /**
  * Onde um quadro arrastado pode cair: numa pasta (inclusive a janela da pasta
@@ -485,14 +485,26 @@ export class Lobby {
 
     // Escalonado, mas com teto: numa biblioteca de 40 quadros, o ultimo nao pode
     // entrar um segundo depois do primeiro. Depois do 12o, todos juntos.
+    //
+    // No nivel maximo a cascata e mais aberta e cada card SALTA para o lugar:
+    // sobe de mais baixo, menor, e passa um pouco do tamanho antes de assentar.
+    const maximo = movimentoMaximo();
     novos.forEach((el, i) => {
       void animar(
         el,
-        [
-          { opacity: 0, transform: 'translateY(10px)' },
-          { opacity: 1, transform: 'none' },
-        ],
-        { atraso: Math.min(i, 12) * 24, preencher: 'backwards' },
+        maximo
+          ? [
+              { opacity: 0, transform: 'translateY(28px) scale(0.86)' },
+              { opacity: 1, offset: 0.45 },
+              { opacity: 1, transform: 'none' },
+            ]
+          : [
+              { opacity: 0, transform: 'translateY(10px)' },
+              { opacity: 1, transform: 'none' },
+            ],
+        maximo
+          ? { duracao: DURACAO.longa, atraso: Math.min(i, 12) * 45, curva: CURVA_MOLA, preencher: 'backwards' }
+          : { atraso: Math.min(i, 12) * 24, preencher: 'backwards' },
       );
     });
   }
@@ -519,13 +531,16 @@ export class Lobby {
       el.removeAttribute('data-pasta-id');
     }
     this.el.append(copia);
+    const maximo = movimentoMaximo();
     void animar(
       copia,
       [
         { opacity: 1, transform: 'none' },
-        { opacity: 0, transform: 'translateY(24px)' },
+        { opacity: 0, transform: maximo ? 'translateY(70px) scale(0.94)' : 'translateY(24px)' },
       ],
-      { duracao: DURACAO.curta, preencher: 'forwards' },
+      maximo
+        ? { duracao: DURACAO.media, curva: CURVA_SUGAR, preencher: 'forwards' }
+        : { duracao: DURACAO.curta, preencher: 'forwards' },
     ).then(() => copia.remove());
   }
 
@@ -544,10 +559,23 @@ export class Lobby {
     // Sobe de baixo, que e onde ela mora. Trocar de uma pasta para outra com a
     // janela ja aberta nao anima a janela -- so os cards de dentro entram.
     if (estavaFechada && !this.#janela.hidden) {
-      void animar(this.#janela, [
-        { opacity: 0, transform: 'translateY(24px)' },
-        { opacity: 1, transform: 'none' },
-      ]);
+      if (movimentoMaximo()) {
+        // Salta de baixo: sobe de mais longe, menor, passa do lugar e assenta.
+        void animar(
+          this.#janela,
+          [
+            { opacity: 0, transform: 'translateY(90px) scale(0.92)' },
+            { opacity: 1, offset: 0.4 },
+            { opacity: 1, transform: 'none' },
+          ],
+          { duracao: DURACAO.longa, curva: CURVA_MOLA },
+        );
+      } else {
+        void animar(this.#janela, [
+          { opacity: 0, transform: 'translateY(24px)' },
+          { opacity: 1, transform: 'none' },
+        ]);
+      }
     }
     // O foco vai para o fechar: quem abriu pelo teclado tem de saber sair sem
     // procurar.
@@ -895,6 +923,7 @@ export class Lobby {
     if (alvo.tipo === 'pasta') {
       if (await this.#mudarIndice((i) => moverParaPasta(i, arquivo, alvo.id))) {
         toast(`"${origem.name}" foi para a pasta "${alvo.nome}".`);
+        this.#pulsarRecebedor(alvo.id);
       }
       return;
     }
@@ -923,6 +952,23 @@ export class Lobby {
     // O que estava parado vem primeiro: ele ja estava ali, o outro chegou.
     if (await this.#mudarIndice((i) => criarPastaCom(i, id, nome, [alvo.arquivo, arquivo]))) {
       this.#focarPasta(id);
+    }
+  }
+
+  /**
+   * O "recebi" do nivel maximo: quem recebeu o quadro incha e volta.
+   *
+   * Procurado DEPOIS da gravacao, e nao guardado do arrasto: o `refresh()`
+   * refaz a grade, e o card de pasta que acendeu durante o arrasto ja nao e o
+   * que esta na tela. O atraso casa com o fim do fantasma sendo sugado.
+   */
+  #pulsarRecebedor(pastaId: string): void {
+    if (!movimentoMaximo()) return;
+    if (!this.#janela.hidden && this.#pastaAberta === pastaId) {
+      void pulsar(this.#janela, { atraso: 120, intensidade: 0.02 });
+    }
+    for (const el of this.#grid.querySelectorAll<HTMLElement>('.qb-card--pasta')) {
+      if (el.dataset['pastaId'] === pastaId) void pulsar(el, { atraso: 180, intensidade: 0.1 });
     }
   }
 

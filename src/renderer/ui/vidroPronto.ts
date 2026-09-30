@@ -22,7 +22,12 @@
  *
  * O PRECO ASSUMIDO: o painel perde a leve ondulacao de refracao
  * (`url(#qb-refracao)`), que e um deslocamento calculado sobre o que esta
- * atras AO VIVO. Os elementos pequenos (botoes e busca) mantem o vidro inteiro.
+ * atras AO VIVO.
+ *
+ * Os botoes do cabecalho e a busca ficaram com o vidro inteiro nesta primeira
+ * rodada ("sao pequenos") -- e eram o resto do custo: o arrasto parava em ~100
+ * q/s num monitor de 144 Hz. Desde 30/09/2026 usam esta mesma imagem (ver
+ * `base.css`), com o mesmo preco.
  */
 
 /** Largura da versao desfocada. Ela e esticada para a tela, e isso tambem desfoca. */

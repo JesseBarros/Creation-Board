@@ -765,12 +765,20 @@
   O seletor e comprido para ganhar do `:root .qb-card` do `base.css`: com a
   tinta translucida de la, o fantasma passaria por cima dos outros cards
   deixando os dois legiveis ao mesmo tempo, e nenhum dos dois de verdade.
+
+  `transition: none` e o que faz o fantasma ESTAR sob o ponteiro. Ele e um
+  clone do card, e o `.qb-card` tem transicao de `transform` (o levantar):
+  herdada, cada posicao nova virava uma animacao de 120 ms, e o fantasma
+  andava sempre atrasado, correndo atras do cursor -- o arrasto "pesado" que
+  se sentia mesmo a 144 q/s, e que a contagem de quadros nao via. Achado em
+  30/09/2026; guardado no selftest.
 */
 :root .qb-card.qb-card--fantasma {
   position: fixed;
   z-index: 1000;
   margin: 0;
   pointer-events: none;
+  transition: none;
   background: var(--panel);
   border-color: var(--accent);
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
@@ -807,6 +815,39 @@
 :root.qb-arrastando,
 :root.qb-arrastando * {
   cursor: grabbing !important;
+}
+
+/* ------------------------------------- movimento MAXIMO no menu (30/09/2026)
+
+  Os cards levantam mais e com mola, e o alvo do arrasto cresce mais. O resto
+  do nivel maximo (o fantasma vivo, a cascata, a janela saltando, a pasta que
+  pulsa ao receber) e JavaScript e mora em `ui/movimento.ts` e em quem o usa.
+*/
+/* Sem o fantasma: ele e um `.qb-card` e ganharia a mola -- ver o `transition:
+   none` dele acima, que esta regra (mesmo peso, mais abaixo) desfaria. */
+:root[data-anim='max'] .qb-card:not(.qb-card--fantasma) {
+  transition:
+    border-color 0.12s,
+    transform 0.34s var(--ease-mola);
+}
+
+/* Multiplo do token, e nao `-5px`: o levantar do app e UM numero, e a guarda
+   [...] do selftest existe por um card que ja fugiu dele. */
+:root[data-anim='max'] .qb-card:hover,
+:root[data-anim='max'] .qb-card:focus-visible {
+  transform: translateY(calc(var(--levanta) * 2.5)) scale(1.02);
+}
+
+:root[data-anim='max'] .qb-lobby__grid .qb-card.qb-alvo {
+  transform: scale(1.09);
+}
+
+/* O fantasma vivo inclina e muda de escala a cada quadro: camada propria, para
+   o Chromium mover a imagem pronta em vez de repintar card e sombra a cada
+   quadro. A sombra mais longa e o [...]. */
+:root .qb-card.qb-card--fantasma.qb-card--fantasma-vivo {
+  will-change: transform;
+  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.38);
 }
 
 /* ============================================================== modais */

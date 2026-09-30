@@ -72,6 +72,9 @@
   --levanta: -2px;
   --levanta-sombra: 0 4px 12px rgba(20, 28, 46, 0.14);
   --ease-saida: cubic-bezier(0.22, 0.75, 0.3, 1);
+  /* A mola do nivel MAXIMO de movimento: passa do ponto e volta. Mesma curva
+     do `CURVA_MOLA` de `ui/movimento.ts` -- as duas tem de concordar. */
+  --ease-mola: cubic-bezier(0.34, 1.56, 0.64, 1);
 
   /*
     CROMO FLUTUANTE -- a barra de baixo, a fila de ferramentas, o painel de
@@ -532,7 +535,20 @@
   e o que se via era a foto nitida do palco por tras. Pego pela captura, e
   confirmado lendo o `background-image` calculado: "none".
 */
-:root[data-fundo='foto'][data-vidro='pronto'] .qb-lobby__painel {
+/*
+  Os botoes do cabecalho e a busca entraram aqui em 30/09/2026. Eles ficaram de
+  fora na primeira rodada ("sao pequenos"), e a medicao seguinte mostrou que o
+  resto do custo era deles: com o `--chrome-blur` inteiro -- que tem o
+  deslocamento de refracao `url(#qb-refracao)`, o filtro mais caro que ha na
+  CPU --, o arrasto ficava em ~100 q/s alternando quadros de 7, 14 e 21 ms num
+  monitor de 144 Hz. Sem eles, 144 cravado. Mesmo preco do painel: perdem a
+  ondulacao, mantem o desfoque e a cor.
+*/
+:root[data-fundo='foto'][data-vidro='pronto'] .qb-lobby__painel,
+:root[data-fundo='foto'][data-vidro='pronto'] .qb-libsearch__field,
+:root[data-fundo='foto'][data-vidro='pronto']
+  .qb-lobby
+  .qb-btn:not(.qb-btn--primary):not(.qb-btn--active):not(.qb-btn--danger) {
   backdrop-filter: none;
   background:
     var(--chrome-sheen),
@@ -587,6 +603,23 @@
 
 :root[data-anim='off'] {
   --levanta: 0px;
+}
+
+/*
+  O NIVEL MAXIMO (30/09/2026): as mesmas transicoes, com MOLA.
+
+  O `--levanta` NAO muda aqui, e e de proposito: os 2px sao o limite para o
+  botao nao fugir do cursor numa fila apertada (ver o comentario do token), e
+  isso nao depende de gosto por movimento. O que ganha curso maior sao os cards
+  do menu, que sao alvos grandes -- em `ui.css`, junto do arrastar.
+*/
+:root[data-anim='max'] .qb-btn {
+  transition:
+    background-color 0.14s ease,
+    border-color 0.14s ease,
+    color 0.14s ease,
+    box-shadow 0.3s var(--ease-mola),
+    transform 0.3s var(--ease-mola);
 }
 
 /*
