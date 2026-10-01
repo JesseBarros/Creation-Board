@@ -16,7 +16,7 @@
 | Uma verificação do auto-teste **reprovou** | **[B15](#b15--uma-verificação-do-auto-teste-falhou-uma-vez-e-não-reproduziu)**, e o `ENGENHARIA.md` em *"A verificação de arrastar"* |
 | `Ctrl+V` não cola, atalho não responde | **[B6](#b6--ctrlv-não-cola-imagem-da-área-de-transferência)** — o caminho até o atalho, não o atalho |
 | **Texto** distorce, quebra sozinho ou some ao sair da caixa | **[B19](#b19--redimensionar-texto-distorcia-o-desenho-da-letra)** e **[B21](#b21--a-quebra-de-linha-mudava-ao-sair-da-caixa)** |
-| **Fantasma** do desenho ao dar zoom, ou rastro ao rolar | **[B18](#b18--rastro-de-tinta-ao-rolar-a-tela-devagar)** — corrigido em 21/09 com composição pela CPU, e o preço está escrito |
+| **Fantasma** do desenho ao dar zoom, ou rastro ao rolar | **[B18](#b18--rastro-de-tinta-ao-rolar-a-tela-devagar)** — contornado em 21/09 com composição pela CPU; em 30/09 confirmado que é **desta máquina** (não aparece em outros PCs) |
 | **Borracha** apaga em bolas ou trava o app | **[B24](#b24--a-borracha-apagava-em-bolas-e-travava-o-aplicativo)** |
 | **Borracha** trava só com **zoom alto** | **[B25](#b25--a-borracha-travava-o-app-com-zoom-alto)** — outro defeito, não o B24 |
 | **Animações** de hover não acontecem | **[B26](#b26--as-animações-pararam-de-funcionar--e-não-tinham-parado)** |
@@ -464,6 +464,10 @@ de texto aberta. Se não rasgar mais, fecha.
 
 ### B8 — A tela pisca preto ao passar o mouse sobre ícones e cartões
 `corrigido` · `alto` · 06/08/2026 · **causa localizada em 14/08/2026**
+
+> **30/09/2026:** em outros computadores, o mesmo app com a composição pela GPU e **sem** as
+> correções não mostrou defeito gráfico — o problema é desta máquina. Ver o fim do
+> [B18](#b18--rastro-de-tinta-ao-rolar-e-fantasma-do-desenho-ao-dar-zoom).
 
 **Causa: a conta de região suja, na composição por GPU.** O Chromium repinta e troca só o
 pedaço da tela que mudou. Nesta máquina essa conta erra: o que ficou de fora mantém os
@@ -1811,7 +1815,8 @@ correta do que estava desenhado.
 ### B18 — Rastro de tinta ao rolar, e fantasma do desenho ao dar zoom
 `corrigido` · `medio` · 20/09/2026, fechado em 21/09/2026
 
-> **Corrigido desligando a composição por GPU** (`disable-gpu-compositing`, no modo `padrao`
+
+>**Corrigido desligando a composição por GPU** (`disable-gpu-compositing`, no modo `padrao`
 > do `QB_GPU`), por decisão de produto, depois de uma caçada que eliminou todo o resto. **O preço
 > está medido e assumido: 144,0 para 77,1 fps na fase leve.** O fim da história está na seção
 > *"Como isto foi fechado"*, no fim deste item — leia por lá se quiser só a conclusão. O que
@@ -2119,6 +2124,19 @@ app seria rápido e **desaparece onde ele já estava lento** — na fase pesada 
   despercebido e o custo fica para sempre.
 - Subir de Electron **não** foi testado contra este bug. A escada de versões do
   `ENGENHARIA.md` mediu o piscar do B8, não o fantasma do zoom.
+
+#### 30/09/2026 — em outros computadores, não aparece
+
+
+O teste: um instalador à parte, **`npm run dist:gpu`** (`release-gpu/`, nome *"Creation Board
+GPU"*), com o modo `normal` embutido no build (`QB_BUILD_GPU`, porque lá não há terminal para
+passar `QB_GPU`), levado a outros computadores. Conferido no próprio `app.asar` que o modo
+embutido era `normal`.
+
+**Resultado, nas palavras do teste:** [...]
+
+**O que isso muda:**
+
 
 ---
 

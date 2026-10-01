@@ -802,7 +802,8 @@ o que elas **não** fazem, e por quê:
 - **O teto agora é a composição pela CPU.** Um único `fillRect` por quadro, sem mais nada, já
   fica em 57 q/s na janela cheia: qualquer mudança no canvas obriga a janela inteira a ser
   recomposta por software (~17 ms). A composição pela GPU arrasta a ~67 q/s, mas é ela que traz
-  de volta o fantasma do B18 — trocar é decisão de produto, com esse preço na mesa, e não foi feito.
+  de volta o fantasma do B18 — **na máquina de teste**: no mesmo dia o build com GPU rodou limpo em
+  outros computadores (ver o fim do B18). Trocar o padrão é decisão de produto, e não foi feito.
 - **O desfoque da barra quase não pesa** no quadro (89 contra 95 q/s com `QB_BLUR=0`): ficou.
 - **A camada de cima vazia custa ~14 q/s** e não foi mexida. A saída medida embrulhava as
   operações de pintura do canvas; foi desfeita por ser invasiva (ver o B32).
@@ -940,7 +941,7 @@ mantém desenhar barato num quadro cheio.
 |---|---|
 | Imagens de fundo | **Fotografias do Unsplash**, a 2560 de largura (Sean Oulashin e Felix Wegerer). Entram sob a **Licença Unsplash**, e não sob a MIT — a procedência está por arquivo no `assets/fundos/LEIA-ME.md`. Trocar é substituir o arquivo mantendo o nome; nenhuma linha de código muda. |
 | Pastas | **Índice no app**, não subpastas reais no disco. Arrastar nunca move arquivo. Clicar numa pasta abre uma **janela** sobre a tela principal (desde 24/09 — antes trocava a tela). Dentro dela, o X **só tira da pasta**. |
-| Fantasma ao dar zoom (B18) | Corrigido por **composição pela CPU** (`QB_GPU=padrao`), decisão de produto com o custo medido: −22% de fps no caso leve, +20% no pesado. É contorno, não causa encontrada. **Custo no menu, achado em 24/09:** o desfoque ao vivo do painel ia a 14 q/s — resolvido com o vidro pronto, sem mexer no B18. |
+| Fantasma ao dar zoom (B18) | Corrigido por **composição pela CPU** (`QB_GPU=padrao`), decisão de produto com o custo medido: −22% de fps no caso leve, +20% no pesado. É contorno, não causa encontrada — e em 30/09 ficou confirmado que o defeito é **da máquina de teste**: o build com GPU e sem correções (`npm run dist:gpu`) não mostrou nada em outros computadores. Trocar o padrão para a GPU é decisão de produto, ainda não tomada. **Custo no menu, achado em 24/09:** o desfoque ao vivo do painel ia a 14 q/s — resolvido com o vidro pronto, sem mexer no B18. |
 | "Restaurar padrão" | Volta para a foto que vem com o app, não para o fundo sem imagem. |
 | Movimento | O app anima por padrão, independente do Windows. Toda animação nova tem de passar por `[data-anim='off']`. |
 
