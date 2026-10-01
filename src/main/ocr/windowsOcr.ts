@@ -53,12 +53,52 @@ const TIMEOUT_MS = 5 * 60 * 1000;
 
 const INDISPONIVEL: OcrReport = { available: false, language: '', items: [], ms: 0 };
 
+/** O prefixo das pastas de lote: e por ele que a varredura reconhece as sobras. */
+const PREFIXO = 'qb-ocr-';
+/** Nenhuma leitura dura isto; uma pasta mais velha e sobra, e nao lote em andamento. */
+const SOBRA_DEPOIS_DE_MS = 10 * 60 * 1000;
+
+/**
+ * Apaga as pastas de lote que SOBRARAM na pasta temporaria (B30, 30/09/2026).
+ *
+ * Cada lote apaga a propria pasta no `finally` -- mas so se o app continuar
+ * aberto ate a leitura terminar. Fechar o app no meio de uma leitura (ou o
+ * selftest terminar logo depois de colar uma imagem) deixava a pasta para
+ * tras, com a print dentro: uma copia da imagem da pessoa esquecida no disco.
+ * Esta varredura roda ao iniciar, nao depende de o app ter fechado bem, e so
+ * toca no que e dele: o prefixo `qb-ocr-` e mais velho que qualquer leitura.
+ */
+export async function limparSobrasDeOcr(): Promise<number> {
+  const tmp = app.getPath('temp');
+  let nomes: string[];
+  try {
+    nomes = await fs.readdir(tmp);
+  } catch {
+    return 0;
+  }
+  let apagadas = 0;
+  for (const nome of nomes) {
+    if (!nome.startsWith(PREFIXO)) continue;
+    const caminho = join(tmp, nome);
+    try {
+      const info = await fs.stat(caminho);
+      if (!info.isDirectory() || Date.now() - info.mtimeMs < SOBRA_DEPOIS_DE_MS) continue;
+      await fs.rm(caminho, { recursive: true, force: true });
+      apagadas++;
+    } catch {
+      // Sobra que nao saiu agora sai na proxima abertura.
+    }
+  }
+  if (apagadas > 0) console.log(`[ocr] ${apagadas} pasta(s) de leitura esquecida(s) apagada(s)`);
+  return apagadas;
+}
+
 export async function recognize(items: readonly OcrItem[]): Promise<OcrReport> {
   if (items.length === 0) return { available: true, language: '', items: [], ms: 0 };
   if (process.platform !== 'win32') return INDISPONIVEL;
 
   const inicio = Date.now();
-  const dir = join(app.getPath('temp'), `qb-ocr-${process.pid}-${Date.now().toString(36)}`);
+  const dir = join(app.getPath('temp'), `${PREFIXO}${process.pid}-${Date.now().toString(36)}`);
   await fs.mkdir(dir, { recursive: true });
 
   try {
@@ -109,7 +149,7 @@ export async function recognize(items: readonly OcrItem[]): Promise<OcrReport> {
     console.log(`[ocr] falhou: ${String(err)}`);
     return { ...INDISPONIVEL, ms: Date.now() - inicio };
   } finally {
-    await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
+    await fs.rm(dir, { recursive: true, force: true }).catch((e: unknown) => console.warn(`[ocr] nao apagou ${dir}: ${String(e)}`));
   }
 }
 
@@ -165,23 +205,46 @@ foreach($p in (Get-ChildItem -LiteralPath '${pasta}' -File | Sort-Object Name)){
 `;
 }
 
+/**
+ * O comando de partida: FIXO, sem nada variavel dentro. Ele poe a entrada em
+ * UTF-8 (o padrao do console e a pagina de codigo antiga, e um caminho com
+ * acento -- C:\Users\José -- chegaria corrompido) e executa, como UM bloco, o
+ * script que chega pela entrada padrao.
+ *
+ * POR QUE PELA ENTRADA, e nao `-EncodedCommand` (B29, 30/09/2026). Era
+ * `-EncodedCommand`, escolhido para nao montar comando por concatenacao nem
+ * depender da politica de execucao. Mas PowerShell com comando codificado,
+ * disparado por um programa desconhecido, e a assinatura classica de malware, e
+ * o antivirus do Windows segurava a CRIACAO do processo para inspecionar:
+ * 1,8 s por leitura (3,5 s na primeira), medido no app instalado. Criar
+ * processo e chamada sincrona no processo principal, entao a janela inteira
+ * congelava a cada print colada. Pela entrada padrao a criacao leva ~10 ms, e as
+ * duas garantias continuam: nada e concatenado na linha de comando, e script
+ * lido da entrada nao passa pela politica de execucao.
+ *
+ * `-Command -` sozinho NAO serve: ele le a entrada linha a linha, como alguem
+ * digitando, e blocos de varias linhas nao rodam -- conferido.
+ */
+const PARTIDA =
+  '[Console]::InputEncoding=[System.Text.Encoding]::UTF8; ' +
+  '& ([scriptblock]::Create([Console]::In.ReadToEnd()))';
+
 function rodarPowerShell(texto: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const env = { ...process.env };
     delete env['ELECTRON_RUN_AS_NODE'];
 
+    // Criar o processo e uma chamada SINCRONA no processo principal: enquanto
+    // ela nao volta, a janela inteira nao responde. Medido e registrado quando
+    // passa de 100 ms -- ver o B29 no BUGS.md.
+    const antesDoSpawn = performance.now();
     const filho = spawn(
       'powershell.exe',
-      [
-        '-NoProfile',
-        '-NonInteractive',
-        '-ExecutionPolicy',
-        'Bypass',
-        '-EncodedCommand',
-        Buffer.from(texto, 'utf16le').toString('base64'),
-      ],
-      { env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] },
+      ['-NoProfile', '-NonInteractive', '-Command', PARTIDA],
+      { env, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] },
     );
+    const custoDoSpawn = performance.now() - antesDoSpawn;
+    if (custoDoSpawn > 100) console.warn(`[ocr] criar o PowerShell segurou o processo principal por ${Math.round(custoDoSpawn)} ms`);
 
     let out = '';
     let err = '';
@@ -194,6 +257,11 @@ function rodarPowerShell(texto: string): Promise<string> {
       filho.kill();
       reject(new Error(`OCR passou de ${TIMEOUT_MS / 1000}s`));
     }, TIMEOUT_MS);
+
+    // O script inteiro de uma vez, e a entrada fechada: e o fim dela que diz ao
+    // `ReadToEnd` que o script acabou.
+    filho.stdin.on('error', () => undefined);
+    filho.stdin.end(texto, 'utf8');
 
     filho.on('error', (e) => {
       clearTimeout(guarda);

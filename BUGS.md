@@ -21,7 +21,7 @@
 | **Borracha** trava só com **zoom alto** | **[B25](#b25--a-borracha-travava-o-app-com-zoom-alto)** — outro defeito, não o B24 |
 | **Animações** de hover não acontecem | **[B26](#b26--as-animações-pararam-de-funcionar--e-não-tinham-parado)** |
 
-**Estado: um item aberto, o B15.** Última atualização: 30/09/2026 (B27 e B28, achados e corrigidos no preparo da 1.1.0). O B10, que esta linha ainda listava como aberto, está fechado desde 14/08.
+**Estado: um item aberto, o B15.** Última atualização: 30/09/2026 (B27 a B30, achados e corrigidos no preparo da 1.1.0). O B10, que esta linha ainda listava como aberto, está fechado desde 14/08.
 
 **A rodada de 20–21/09/2026 fechou oito itens e abriu um.** Ela veio de usar o app para
 montar resumos de verdade, e quase tudo que apareceu estava em texto e em interface: o
@@ -78,6 +78,40 @@ duas vezes.
 ---
 
 ## Bugs
+
+### B29 — Colar uma print congelava a janela inteira por 1 a 2 segundos
+`corrigido` · `alto` · 30/09/2026
+
+
+
+Um experimento no empacotado isolou o gatilho: `cmd.exe` 13 ms, `powershell -Command` 10 ms,
+`-ExecutionPolicy Bypass` sozinho 10 ms, **`-EncodedCommand` sozinho 1.762 ms**. PowerShell com
+comando codificado, disparado por um programa desconhecido, é a assinatura clássica de
+malware, e o antivírus segura a criação para inspecionar. Vindo do Electron de
+desenvolvimento, passava direto.
+
+**A correção:** o script vai pela **entrada padrão**, e a linha de comando é um texto fixo que
+o lê inteiro e o executa como um bloco (`-Command -` sozinho não serve: lê linha a linha e
+blocos não rodam — conferido). Criar o processo caiu para ~10 ms, a leitura no empacotado de
+4,5 s para 0,8 s, e as garantias do `-EncodedCommand` continuam (nada concatenado, sem
+depender da política de execução). Conferido com a pasta temporária num caminho com acento.
+
+**Guarda nova, no lugar certo:** o `check:dist` mede as travadas do processo principal
+durante o selftest **dentro do executável** e reprova acima de 500 ms. Conferida ao contrário:
+com o `-EncodedCommand` de volta, o selftest dizia "tudo passou" e o `check:dist` reprovou
+(6 travadas, a pior de 3,5 s).
+
+**Por que só apareceu agora:** antes do B28 a leitura só rodava ao abrir um quadro, uma vez.
+Com o B28 ela passou a rodar a cada print colada — e o custo escondido virou trava visível.
+
+### B30 — Fechar o app no meio de uma leitura deixava a print na pasta temporária
+`corrigido` · `médio` · 30/09/2026
+
+Achado investigando o B29: oito pastas `qb-ocr-*` esquecidas na pasta temporária, cada uma com
+uma imagem. Cada lote de leitura apaga a própria pasta no fim — mas só se o app continuar
+aberto até lá. Fechar no meio (ou o selftest terminar logo depois de colar uma imagem)
+deixava a pasta, com uma cópia da print da pessoa esquecida no disco.
+
 
 ### B28 — Print colada com o quadro aberto não aparecia na busca
 `corrigido` · `médio` · 30/09/2026

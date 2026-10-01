@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron';
 import { IPC } from '@shared/ipc-contract';
 import type { OcrItem, OcrReport } from '@shared/ocr';
-import { recognize } from '../ocr/windowsOcr';
+import { limparSobrasDeOcr, recognize } from '../ocr/windowsOcr';
 
 /**
  * Ponte do OCR.
@@ -17,6 +17,8 @@ import { recognize } from '../ocr/windowsOcr';
 let fila: Promise<unknown> = Promise.resolve();
 
 export function registerOcrIpc(): void {
+  // Em segundo plano, sem segurar a abertura: ver `limparSobrasDeOcr`.
+  void limparSobrasDeOcr();
   ipcMain.handle(IPC.ocrRecognize, async (_e, items: OcrItem[]): Promise<OcrReport> => {
     const proxima = fila.then(() => recognize(items));
     // A fila nao pode morrer com uma falha: um lote que der erro deixaria todos

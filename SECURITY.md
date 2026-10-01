@@ -207,14 +207,6 @@ são instrumentos de desenvolvimento, não configuração de usuário.
 O OCR chama `powershell.exe` para alcançar a API de reconhecimento do Windows. Como isso é a
 única execução externa do app, ela é feita com cuidado explícito:
 
-| Escolha | Por quê |
-|---|---|
-| **`-EncodedCommand`** em vez de gravar um `.ps1` | Não depende da política de execução da máquina **e elimina qualquer escape de aspas** — não há string de comando sendo montada por concatenação |
-| **`-NoProfile -NonInteractive`** | O perfil do usuário não é carregado, e o processo nunca fica esperando entrada |
-| **`ELECTRON_RUN_AS_NODE` removido** do ambiente do filho | Herdar essa variável muda o comportamento do binário; limpar é fechar uma via de influência externa |
-| **`windowsHide: true`** | Nenhuma janela de console pisca na tela |
-| **Pasta temporária por lote, apagada no fim** | Os bytes precisam tocar o disco (a API lê de arquivo); deixar rastro seria acumular imagens do usuário no temp |
-| **Teto de tempo** | Um lote que trave não deixa o processo pendurado |
 
 ---
 

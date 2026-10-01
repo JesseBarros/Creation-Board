@@ -582,6 +582,19 @@ if (!gotLock) {
   blindarPaginas();
 
   void app.whenReady().then(() => {
+    // Durante o selftest (tambem no empacotado, pelo check:dist), registra toda
+    // travada do processo principal acima de 100 ms: ela congela a janela sem
+    // parar o desenho da pagina, e nenhuma guarda do renderer a ve.
+    if (process.env['QB_SELFTEST']) {
+      let ultimo = Date.now();
+      setInterval(() => {
+        const agora = Date.now();
+        const atraso = agora - ultimo - 50;
+        if (atraso > 100) console.log(`[main] processo principal travou ${atraso} ms`);
+        ultimo = agora;
+      }, 50).unref();
+    }
+
     // Permissoes negadas e rede bloqueada -- ver `blindagem.ts`. Em
     // desenvolvimento, so o servidor do Vite passa.
     blindarSessao(isDev ? process.env['ELECTRON_RENDERER_URL'] : undefined);

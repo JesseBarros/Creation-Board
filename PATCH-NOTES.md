@@ -30,7 +30,7 @@
 - Tema claro mais confortável para a vista.
 - A borracha apaga em traço contínuo e não trava mais com zoom alto.
 - Corrigido o desenho duplicado ("fantasma") que aparecia ao dar zoom.
-- Uma print colada ou arrastada para o quadro já entra na busca (`Ctrl+F`) na hora, sem precisar reabrir o quadro.
+- Uma print colada ou arrastada para o quadro já entra na busca (`Ctrl+F`) na hora, sem precisar reabrir o quadro — e sem travar a janela.
 
 ### Segurança e privacidade
 - Fotos coladas num quadro **não levam mais os dados escondidos da imagem** (localização de GPS, modelo do celular, data) para o arquivo nem para o SVG exportado.
@@ -76,7 +76,7 @@ Seus quadros continuam na mesma pasta (`C:\Creation Board`) e abrem normalmente.
 - A lighter theme that's easier on the eyes.
 - The eraser erases in a continuous stroke and no longer freezes at high zoom.
 - Fixed the duplicated ("ghost") drawing that appeared when zooming.
-- A screenshot pasted or dragged into a board is searchable (`Ctrl+F`) right away, without reopening the board.
+- A screenshot pasted or dragged into a board is searchable (`Ctrl+F`) right away, without reopening the board — and without freezing the window.
 
 ### Security and privacy
 - Photos pasted into a board **no longer carry hidden image data** (GPS location, phone model, date) into the file or the exported SVG.
