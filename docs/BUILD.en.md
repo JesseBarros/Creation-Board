@@ -50,6 +50,7 @@ They only work outside the installed app.
 | `QB_PERFIL=<name>` | A separate Electron profile: runs with the app already open. **Always with `QB_BOARDS`** |
 | `QB_SHOT=<file.png>` | Captures the window a few seconds after it opens |
 | `QB_BENCH_LOBBY=1` | Measures the home screen's frame rate (idle, hover, drag, folder) |
+| `QB_BENCH_QUADRO=1` | Measures an open board's frame rate: dragging and fast Ctrl+wheel on the largest board in `QB_BOARDS` |
 | `QB_GPU=<mode>` | Switches the compositing mode (see `src/main/index.ts`) |
 
 ## Building the installer

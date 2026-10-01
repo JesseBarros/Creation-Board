@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, screen } from 'electron';
 import { join } from 'node:path';
 import { writeFile } from 'node:fs/promises';
 import { registerAppIpc } from './ipc/app';
@@ -244,7 +244,18 @@ function createWindow(): void {
     },
   });
 
-  mainWindow.once('ready-to-show', () => mainWindow?.show());
+  mainWindow.once('ready-to-show', () => {
+    // A bancada do quadro mede na janela MAXIMIZADA: e como se usa, e o custo
+    // de compor cresce com a area.
+    if (process.env['QB_BENCH_QUADRO'] === '1' && isDev) {
+      // A area de trabalho da tela principal ANTES de maximizar: sozinho, o
+      // maximizar as vezes abria a janela com metade da largura, e a medida de
+      // uma execucao deixava de valer para a outra.
+      mainWindow?.setBounds(screen.getPrimaryDisplay().workArea);
+      mainWindow?.maximize();
+    }
+    mainWindow?.show();
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -328,6 +339,9 @@ function createWindow(): void {
   // QB_BENCH_LOBBY=1 mede a cadencia de quadros do MENU PRINCIPAL -- parado,
   // cards levantando e o arrasto da Parte 4. Ver `dev/lobbyBench.ts`.
   const benchLobby = process.env['QB_BENCH_LOBBY'] === '1';
+  // QB_BENCH_QUADRO=1 mede o QUADRO aberto com os gestos de verdade -- arrastar
+  // com o botao direito e Ctrl+roda rapido. Ver `dev/quadroBench.ts`.
+  const benchQuadro = process.env['QB_BENCH_QUADRO'] === '1';
   const selftest = process.env['QB_SELFTEST'];
   // QB_IMPORT=<caminho> importa o arquivo e imprime o relatorio no terminal, sem
   // gravar nada. QB_IMPORT_SAVE=1 grava o .wbd de verdade.
@@ -348,6 +362,8 @@ function createWindow(): void {
     ? `?bench=${encodeURIComponent(bench)}`
     : benchLobby
       ? '?benchlobby=1'
+      : benchQuadro
+      ? '?benchquadro=1'
       : selftest
       ? '?selftest=1'
       : importPath
@@ -437,6 +453,8 @@ function createWindow(): void {
     ? 'BENCH_RESULT'
     : benchLobby
       ? 'LOBBYBENCH_FIM'
+      : benchQuadro
+      ? 'QUADROBENCH_FIM'
       : selftest
       ? 'SELFTEST_FIM'
       : importPath

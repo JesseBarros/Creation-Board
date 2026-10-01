@@ -65,6 +65,87 @@ export class Renderer {
    */
   readonly #raster = new RasterCache();
 
+  /*
+    ARRASTAR SEM REDESENHAR TUDO (B32, 30/09/2026).
+
+    Medido no quadro de teste (1.063 objetos), arrastando com o botao direito:
+    56-59 quadros por segundo, com 13 ms de desenho por quadro -- TODOS os objetos
+    visiveis redesenhados a cada quadro, para mostrar o mesmo conteudo alguns
+    pixels ao lado. Com a composicao pela CPU (o padrao, por causa do B18) o
+    canvas e desenhado por software, e 13 ms e quase o quadro inteiro de 16.
+
+    Arrastar sem mudar o zoom so DESLOCA a imagem. Entao o quadro anterior e
+    copiado deslocado sobre si mesmo, e so as faixas que entraram na tela agora
+    sao desenhadas -- fundo, grade e os objetos que tocam a faixa, recortados
+    nela. A copia custa o mesmo para 10 ou 10 mil objetos.
+
+    O deslocamento e em pixels INTEIROS: meio pixel borraria a imagem, e o
+    borrao se acumularia a cada quadro. Quando o movimento real nao e inteiro
+    (escala de tela de 125% ou 150%), a imagem fica ate meio pixel fora do lugar
+    durante o arrasto, e `precisaDeOutroQuadro` pede um quadro completo assim
+    que a camera para.
+
+    So desliza quando o quadro anterior e confiavel. Qualquer outra coisa faz o
+    desenho completo de sempre:
+    - zoom, tamanho ou objeto escondido diferentes;
+    - o documento, as preferencias ou o tema mudaram desde entao;
+    - faltou alguma imagem (ainda decodificando: o lugar dela tem um substituto);
+    - algum texto ficou com o bitmap de outra escala (o teto do B31);
+    - a camera NAO mexeu: um pedido de redesenho sem movimento e alguem dizendo
+      que algo mudou, e o desenho completo e a resposta segura.
+
+    O selftest compara, pixel a pixel, um quadro deslizado com o desenho
+    completo da mesma posicao.
+  */
+  #anterior: {
+    zoom: number;
+    camX: number;
+    camY: number;
+    /** Translacao REAL usada no quadro, em px fisicos (pode diferir da ideal em ate meio pixel). */
+    tx: number;
+    ty: number;
+    oculto: ObjectId | null;
+  } | null = null;
+  #faltouImagem = false;
+  #textoAtrasado = false;
+  #assentar = false;
+  #visiveis = 0;
+  #deslizes = 0;
+
+  /** Desliga o deslizar -- so para as medicoes compararem os dois caminhos. */
+  deslizarLigado = true;
+
+  /** Quantos quadros foram deslizados em vez de desenhados por inteiro -- para as medicoes. */
+  get deslizes(): number {
+    return this.#deslizes;
+  }
+
+  /**
+   * O ultimo quadro deixou algo para depois: texto com bitmap de outra escala
+   * (B31) ou a imagem meio pixel fora do lugar (B32). Quem agenda os quadros
+   * deve pedir mais um.
+   */
+  get precisaDeOutroQuadro(): boolean {
+    return this.#textoAtrasado || this.#assentar;
+  }
+
+  /** O proximo quadro sera desenhado por inteiro, sem aproveitar o anterior. */
+  descartarQuadroAnterior(): void {
+    this.#anterior = null;
+  }
+
+  /** Resolve a imagem e anota quando ela ainda nao existe (o lugar dela recebe um substituto). */
+  readonly #resolverImagem = (assetId: string): ImageBitmap | undefined => {
+    const b = this.resolveImage?.(assetId);
+    if (!b) this.#faltouImagem = true;
+    return b;
+  };
+
+  /** Numeros do cache de bitmap -- para as medicoes (`QB_BENCH_QUADRO`). */
+  get estatisticasDoCache(): { entradas: number; mb: number; acertos: number; erros: number } {
+    return this.#raster.stats;
+  }
+
   #theme: RenderTheme = { boardBg: '#f2f4f7', exportBg: '#ffffff', gridColor: '#d3d9e4' };
   #adapt: ColorAdapter = (c) => c;
 
@@ -76,6 +157,7 @@ export class Renderer {
   set theme(t: RenderTheme) {
     this.#theme = t;
     this.#adapt = createColorAdapter(t.boardBg);
+    this.#anterior = null;
     // Os bitmaps guardam a cor JA adaptada: mantidos, o tema novo mostraria a
     // cor do tema velho.
     this.#raster.clear();
@@ -91,6 +173,9 @@ export class Renderer {
   get adapt(): ColorAdapter {
     return this.#adapt;
   }
+
+  /** Chamado ao fim de um quadro que deixou algo para depois (ver `precisaDeOutroQuadro`). */
+  aoPrecisarDeOutroQuadro: (() => void) | undefined;
 
   /** Resolvedor de bitmaps, injetado para o Renderer nao depender do AssetStore. */
   resolveImage: ((assetId: string) => ImageBitmap | undefined) | undefined;
@@ -156,6 +241,10 @@ export class Renderer {
       this.staticCanvas.getContext('2d', { alpha: !semAlfa, desynchronized: desync }),
     );
     this.#overlayCtx = must(this.overlayCanvas.getContext('2d', { desynchronized: desync }));
+
+    // Conteudo mudou: o quadro anterior deixa de valer para o deslizar (B32).
+    doc.on('objects', () => (this.#anterior = null));
+    doc.on('prefs', () => (this.#anterior = null));
   }
 
   get overlayCtx(): CanvasRenderingContext2D {
@@ -176,6 +265,7 @@ export class Renderer {
     this.#cssW = cssW;
     this.#cssH = cssH;
     this.#dpr = dpr;
+    this.#anterior = null;
 
     for (const c of [this.staticCanvas, this.overlayCanvas]) {
       c.width = Math.max(1, Math.round(cssW * dpr));
@@ -188,9 +278,100 @@ export class Renderer {
 
   render(): RenderStats {
     const t0 = performance.now();
-    const ctx = this.#staticCtx;
     const zoom = this.camera.zoom;
     const lod = lodForZoom(zoom);
+    const s = zoom * this.#dpr;
+    this.#raster.iniciarQuadro();
+
+    const deslizado = this.#deslizar(zoom, lod, s);
+    const drawn = deslizado ?? this.#desenharTudo(zoom, lod, s);
+    this.#textoAtrasado = this.#raster.pendente;
+    if (this.precisaDeOutroQuadro) this.aoPrecisarDeOutroQuadro?.();
+
+    return {
+      total: this.doc.size,
+      visible: this.#visiveis,
+      drawn,
+      renderMs: performance.now() - t0,
+      lod,
+    };
+  }
+
+  /**
+   * Desloca o quadro anterior e desenha so as faixas novas (B32). Devolve
+   * quantos objetos desenhou, ou `null` quando o quadro anterior nao serve.
+   */
+  #deslizar(zoom: number, lod: LodLevel, s: number): number | null {
+    const a = this.#anterior;
+    if (
+      !a ||
+      !this.deslizarLigado ||
+      a.zoom !== zoom ||
+      a.oculto !== this.hiddenId ||
+      this.#faltouImagem ||
+      this.#textoAtrasado ||
+      (a.camX === this.camera.x && a.camY === this.camera.y)
+    ) {
+      return null;
+    }
+    const W = this.staticCanvas.width;
+    const H = this.staticCanvas.height;
+    const dx = Math.round(-this.camera.x * s - a.tx);
+    const dy = Math.round(-this.camera.y * s - a.ty);
+    // Pulo grande (mais de meia tela de faixa nova): o completo custa o mesmo.
+    if (Math.abs(dx) * H + Math.abs(dy) * W > (W * H) / 2) return null;
+
+    const ctx = this.#staticCtx;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    if (dx !== 0 || dy !== 0) ctx.drawImage(this.staticCanvas, dx, dy);
+
+    const tx = a.tx + dx;
+    const ty = a.ty + dy;
+    // A grade da faixa e calculada pela translacao REAL, e nao pela camera: e
+    // ela que casa com o que foi deslocado.
+    const cam = { x: -tx / s, y: -ty / s, zoom };
+
+    const faixas: Array<{ x: number; y: number; w: number; h: number }> = [];
+    if (dx > 0) faixas.push({ x: 0, y: 0, w: dx, h: H });
+    else if (dx < 0) faixas.push({ x: W + dx, y: 0, w: -dx, h: H });
+    const x0 = dx > 0 ? dx : 0;
+    const x1 = dx < 0 ? W + dx : W;
+    if (dy > 0) faixas.push({ x: x0, y: 0, w: x1 - x0, h: dy });
+    else if (dy < 0) faixas.push({ x: x0, y: H + dy, w: x1 - x0, h: -dy });
+
+    let drawn = 0;
+    for (const f of faixas) {
+      if (f.w <= 0 || f.h <= 0) continue;
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.beginPath();
+      ctx.rect(f.x, f.y, f.w, f.h);
+      ctx.clip();
+      ctx.fillStyle = this.#theme.boardBg;
+      ctx.fillRect(f.x, f.y, f.w, f.h);
+      paintGrid(ctx, cam, this.#cssW, this.#cssH, this.doc.prefs, this.#theme.gridColor, this.#dpr);
+      const mundo = inflate({ x: (f.x - tx) / s, y: (f.y - ty) / s, w: f.w / s, h: f.h / s }, 4 / zoom);
+      ctx.setTransform(s, 0, 0, s, tx, ty);
+      drawn += this.#pintarObjetos(ctx, this.doc.queryVisible(mundo), zoom, lod, s);
+      ctx.restore();
+    }
+
+    a.camX = this.camera.x;
+    a.camY = this.camera.y;
+    a.tx = tx;
+    a.ty = ty;
+    this.#assentar = Math.abs(tx + this.camera.x * s) > 1e-3 || Math.abs(ty + this.camera.y * s) > 1e-3;
+    this.#deslizes++;
+    return drawn;
+  }
+
+  /** O desenho completo: fundo, grade e todos os objetos visiveis. */
+  #desenharTudo(zoom: number, lod: LodLevel, s: number): number {
+    const ctx = this.#staticCtx;
+    this.#faltouImagem = false;
+    this.#assentar = false;
 
     /*
       A LIMPEZA NAO PODE DEPENDER DE NINGUEM TER SE COMPORTADO.
@@ -214,18 +395,33 @@ export class Renderer {
     ctx.fillStyle = this.#theme.boardBg;
     ctx.fillRect(0, 0, this.staticCanvas.width, this.staticCanvas.height);
 
-    // A grade e desenhada em px de tela; o scale do DPR fica por conta do ctx.
-    ctx.setTransform(this.#dpr, 0, 0, this.#dpr, 0, 0);
-    paintGrid(ctx, this.camera, this.#cssW, this.#cssH, this.doc.prefs, this.#theme.gridColor);
+    // A grade e desenhada em pixel fisico, e por isso recebe o DPR (B33).
+    paintGrid(ctx, this.camera, this.#cssW, this.#cssH, this.doc.prefs, this.#theme.gridColor, this.#dpr);
 
     // Culling: o indice espacial devolve so o que intersecta o viewport.
     // A margem cobre tracos cuja espessura extrapola um pouco o AABB.
     const view = inflate(this.camera.viewportRect(this.#cssW, this.#cssH), 4 / zoom);
     const objects = this.doc.queryVisible(view);
+    this.#visiveis = objects.length;
 
     // Transformacao mundo -> device px, aplicada uma vez para todos os objetos.
-    const s = zoom * this.#dpr;
-    ctx.setTransform(s, 0, 0, s, -this.camera.x * s, -this.camera.y * s);
+    const tx = -this.camera.x * s;
+    const ty = -this.camera.y * s;
+    ctx.setTransform(s, 0, 0, s, tx, ty);
+    const drawn = this.#pintarObjetos(ctx, objects, zoom, lod, s);
+
+    this.#anterior = { zoom, camX: this.camera.x, camY: this.camera.y, tx, ty, oculto: this.hiddenId };
+    return drawn;
+  }
+
+  /** Desenha a lista na ordem dada, pulando o objeto escondido e o que e menor que meio pixel. */
+  #pintarObjetos(
+    ctx: CanvasRenderingContext2D,
+    objects: readonly BoardObject[],
+    zoom: number,
+    lod: LodLevel,
+    s: number,
+  ): number {
 
     // Abaixo de meio pixel de tela o objeto nao contribui com nada visivel.
     const minWorldSize = 0.5 / zoom;
@@ -256,14 +452,7 @@ export class Renderer {
       this.#paintOne(obj, ctx, zoom, lod, s);
       drawn++;
     }
-
-    return {
-      total: this.doc.size,
-      visible: objects.length,
-      drawn,
-      renderMs: performance.now() - t0,
-      lod,
-    };
+    return drawn;
   }
 
   /**
@@ -295,7 +484,7 @@ export class Renderer {
       deviceScale: s,
       objectScale: Math.abs(t.scaleY),
       adapt: this.#adapt,
-      image: this.resolveImage,
+      image: this.resolveImage ? this.#resolverImagem : undefined,
     };
 
     // Texto e post-it passam pelo cache: sao os unicos cujo desenho envolve

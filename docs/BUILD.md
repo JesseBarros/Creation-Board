@@ -50,6 +50,7 @@ Valem só fora do app instalado.
 | `QB_PERFIL=<nome>` | Perfil do Electron separado: roda com o app aberto. **Sempre com `QB_BOARDS`** |
 | `QB_SHOT=<arquivo.png>` | Fotografa a janela alguns segundos depois de abrir |
 | `QB_BENCH_LOBBY=1` | Mede a fluidez do menu principal (parado, hover, arrasto, pasta) |
+| `QB_BENCH_QUADRO=1` | Mede a fluidez do quadro aberto: arrastar e Ctrl+roda rápido no maior quadro de `QB_BOARDS` |
 | `QB_GPU=<modo>` | Troca o modo de composição (ver `src/main/index.ts`) |
 
 ## Gerar o instalador

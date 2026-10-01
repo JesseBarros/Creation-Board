@@ -16,11 +16,12 @@ const MAX_SCREEN_STEP = 90;
 
 export function paintGrid(
   ctx: CanvasRenderingContext2D,
-  camera: Camera,
+  camera: Pick<Camera, 'x' | 'y' | 'zoom'>,
   viewportW: number,
   viewportH: number,
   prefs: Readonly<BoardPrefs>,
   color: string,
+  dpr = 1,
 ): void {
   if (!prefs.grid.enabled) return;
 
@@ -29,9 +30,19 @@ export function paintGrid(
   while (step < MIN_SCREEN_STEP) step *= 2;
   while (step > MAX_SCREEN_STEP) step /= 2;
 
+  /*
+    Tudo daqui para baixo e em pixel FISICO. Ate 30/09/2026 a grade era
+    desenhada com a transformacao zerada mas com medidas em px CSS: numa tela com
+    escala de 125% ou 150% ela cobria so parte do quadro e andava mais devagar
+    que o conteudo ao arrastar (B33). Com DPR 1 nada muda.
+  */
+  step *= dpr;
+  viewportW *= dpr;
+  viewportH *= dpr;
+
   // Offset da primeira linha: onde a origem do mundo cai na tela, modulo o passo.
-  const originX = -camera.x * camera.zoom;
-  const originY = -camera.y * camera.zoom;
+  const originX = -camera.x * camera.zoom * dpr;
+  const originY = -camera.y * camera.zoom * dpr;
   const startX = ((originX % step) + step) % step;
   const startY = ((originY % step) + step) % step;
 
@@ -54,7 +65,7 @@ export function paintGrid(
     ctx.stroke();
   } else {
     ctx.fillStyle = color;
-    const r = camera.zoom > 1.5 ? 1.5 : 1;
+    const r = (camera.zoom > 1.5 ? 1.5 : 1) * dpr;
     for (let x = startX; x < viewportW; x += step) {
       for (let y = startY; y < viewportH; y += step) {
         ctx.fillRect(Math.round(x), Math.round(y), r, r);

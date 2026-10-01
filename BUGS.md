@@ -20,8 +20,9 @@
 | **Borracha** apaga em bolas ou trava o app | **[B24](#b24--a-borracha-apagava-em-bolas-e-travava-o-aplicativo)** |
 | **Borracha** trava só com **zoom alto** | **[B25](#b25--a-borracha-travava-o-app-com-zoom-alto)** — outro defeito, não o B24 |
 | **Animações** de hover não acontecem | **[B26](#b26--as-animações-pararam-de-funcionar--e-não-tinham-parado)** |
+| **Arrastar** o quadro aberto pesa, ou o **zoom rápido** trava | **[B31](#b31--zoom-rápido-com-ctrlroda-travava-o-quadro)** e **[B32](#b32--arrastar-o-quadro-redesenhava-tudo-a-cada-quadro)** — e o `QB_BENCH_QUADRO` para medir |
 
-**Estado: um item aberto, o B15.** Última atualização: 30/09/2026 (B27 a B30, achados e corrigidos no preparo da 1.1.0). O B10, que esta linha ainda listava como aberto, está fechado desde 14/08.
+**Estado: dois itens abertos, o B15 e o B34.** Última atualização: 30/09/2026 (B27 a B33, achados e corrigidos no preparo da 1.1.0; o B34 foi achado conferindo o B33). O B10, que esta linha ainda listava como aberto, está fechado desde 14/08.
 
 **A rodada de 20–21/09/2026 fechou oito itens e abriu um.** Ela veio de usar o app para
 montar resumos de verdade, e quase tudo que apareceu estava em texto e em interface: o
@@ -78,6 +79,75 @@ duas vezes.
 ---
 
 ## Bugs
+
+### B31 — Zoom rápido com Ctrl+roda travava o quadro
+`corrigido` · `alto` · 30/09/2026
+
+
+**Medido com uma bancada nova**, `QB_BENCH_QUADRO=1`, que dispara os eventos que a mão dispara
+(roda com Ctrl, botão direito arrastando) numa cópia do quadro de teste (1.063 objetos, ~640
+textos), janela maximizada: **25 quadros por segundo, travadas de 153 ms, 2,7 s de tarefas
+longas em 4 s, 14.583 textos redesenhados.**
+
+**A causa:** o texto é desenhado uma vez num bitmap e depois só colado (o cache de
+rasterização), com a escala em degraus de potência de dois. Cada vez que o zoom cruzava um
+degrau, **todos** os textos visíveis eram redesenhados do zero **no mesmo quadro** — e ir e
+voltar rápido cruza o mesmo degrau várias vezes por segundo.
+
+
+**Hipótese descartada no caminho:** deixar o bitmap de um degrau acima servir de vez ao
+afastar. Evitava trabalho, mas deixava o texto **em repouso** num bitmap diferente do de antes
+— mudança visual permanente para ganhar tempo só durante o gesto. Saiu antes do commit.
+
+**Guarda no selftest**, conferida ao contrário: com 740 textos na tela, cruzar um degrau refaz
+só uma parte no primeiro quadro e pede outro; os seguintes terminam; depois disso nenhum texto
+é refeito. Sem o teto, reprova (740 de 740 no primeiro quadro); com o aviso de "falta
+terminar" calado, reprova também.
+
+### B32 — Arrastar o quadro redesenhava tudo a cada quadro
+`corrigido` · `médio` · 30/09/2026
+
+
+**A correção:** arrastar sem mudar o zoom só **desloca** a imagem. O quadro anterior é copiado
+deslocado sobre si mesmo, e só as faixas que entraram na tela são desenhadas (fundo, grade e os
+objetos que tocam a faixa, recortados nela). Em pixels **inteiros**: meio pixel borraria, e o
+borrão se acumularia. Qualquer coisa fora do caso simples faz o desenho completo de sempre:
+zoom, tamanho ou texto em edição diferentes, documento/preferências/tema alterados, imagem
+ainda carregando, texto esperando o teto do B31, ou um pedido de redesenho **sem** a câmera
+ter mexido.
+
+Depois: **desenho de 0,3 ms** por quadro (era 12) e **68–71 q/s** (era 59–61, medido na mesma
+execução com o caminho antigo ligado). O que limita agora não é o app: com a composição pela
+CPU, qualquer mudança no canvas em tela cheia custa ~17 ms para a janela ser recomposta —
+medido com um único `fillRect` por quadro, que já fica em 57 q/s.
+
+**Guarda no selftest:** três arrastos em direções diferentes, e o resultado comparado pixel a
+pixel com o desenho completo da mesma posição, nas duas grades. Tolera só a suavização de
+borda, que o rasterizador calcula um pouco diferente conforme o lote (1 a 17 níveis de 255, em
+algumas centenas de pixels num milhão). Conferida ao contrário com três sabotagens — faixa sem
+objetos, faixa sem grade, cópia 1 px fora —, todas reprovadas com centenas a cem mil pixels de
+costura. Também roda com escala de tela de 150% (`-- --force-device-scale-factor=1.5`).
+
+**Tentado e desfeito:** esconder a camada de cima quando vazia (ganhava ~14 q/s) embrulhando as
+operações de pintura do canvas dela. Era a peça mais invasiva, e ainda se comportou diferente
+do previsto (a camada nunca ficava vazia: algum pintor desenha nela todo quadro). Saiu antes do
+commit: resolver o desempenho sem trocar as práticas do app.
+
+### B33 — Com escala de tela acima de 100%, a grade cobria só parte do quadro
+`corrigido` · `baixo` · 30/09/2026
+
+
+**A correção:** a grade recebe o DPR e desenha em pixel físico. Era pré-requisito do B32: com a
+grade antiga a faixa nova não casava com a parte deslocada, e a guarda do B32 em 150% reprova
+a grade antiga com 6 mil a 174 mil pixels de costura.
+
+### B34 — Um teste do arrasto de pastas reprova com escala de tela de 150%
+`aberto` · `baixo` · 30/09/2026
+
+Achado conferindo o B33 com `--force-device-scale-factor=1.5`: a verificação [...] reprova (quadro sobre quadro na janela da
+pasta não acende). **Reprova igual na versão anterior às mudanças do B31–B33** — conferido
+com as mudanças guardadas —, então não vem delas. Com 100% passa. Falta saber se é só o teste
+(coordenadas simuladas) ou se o arrasto real numa tela de 150% também erra o alvo.
 
 ### B29 — Colar uma print congelava a janela inteira por 1 a 2 segundos
 `corrigido` · `alto` · 30/09/2026

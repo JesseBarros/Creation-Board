@@ -102,7 +102,43 @@ export class RasterCache {
   #acertos = 0;
   #erros = 0;
 
+  /*
+    O ZOOM SEM TEMPESTADE (B31, 30/09/2026).
+
+    Medido no quadro de teste (1.063 objetos, ~640 textos), com Ctrl+roda rapido
+    para cima e para baixo: 14.583 textos redesenhados em 4 s, 25 quadros por
+    segundo e travadas de 150 ms. Cada vez que o zoom cruzava um degrau de
+    escala, TODOS os textos visiveis eram redesenhados do zero no mesmo quadro --
+    e ir e voltar rapido cruza o mesmo degrau varias vezes por segundo.
+
+    A regra que desfaz isso: **o redesenho tem teto por quadro.** O que nao
+    couber nos `ORCAMENTO_MS` deste quadro usa o bitmap que ja tem, de outra
+    escala -- um instante menos nitido (ou mais pesado, se for maior) -- e
+    `pendente` avisa o renderizador para pedir mais quadros, que vao refazendo o
+    resto. Parado, todo texto termina no bitmap da escala certa: o quadro em
+    repouso e o mesmo de antes, pixel a pixel. So o caminho ate ele mudou.
+
+    Objeto que ainda nao tem bitmap nenhum e desenhado de qualquer jeito: nao ha
+    o que mostrar no lugar, e isso so acontece ao abrir o quadro.
+  */
+  /** Quanto tempo de redesenho cabe num quadro. */
+  static readonly ORCAMENTO_MS = 4;
+
+  #gastoNoQuadro = 0;
+  #pendente = false;
+
   constructor(private readonly orcamentoBytes = 192 * 1024 * 1024) {}
+
+  /** Chamado no comeco de cada quadro: zera o tempo de redesenho gasto e o aviso. */
+  iniciarQuadro(): void {
+    this.#gastoNoQuadro = 0;
+    this.#pendente = false;
+  }
+
+  /** Algum objeto foi mostrado com um bitmap de outra escala, esperando a vez de ser refeito. */
+  get pendente(): boolean {
+    return this.#pendente;
+  }
 
   get bytes(): number {
     return this.#bytes;
@@ -150,17 +186,24 @@ export class RasterCache {
       this.#acertos++;
       return existente.canvas;
     }
+    // Bitmap de outra escala: so e refeito se ainda couber neste quadro (B31).
+    if (existente && this.#gastoNoQuadro >= RasterCache.ORCAMENTO_MS) {
+      this.#pendente = true;
+      return existente.canvas;
+    }
 
     const w = Math.ceil((obj.w + RASTER_PAD * 2) * escala);
     const h = Math.ceil((obj.h + RASTER_PAD * 2) * escala);
     if (!(w > 0) || !(h > 0) || w > MAX_SIDE || h > MAX_SIDE) return null;
 
+    const antes = performance.now();
     const canvas = new OffscreenCanvas(w, h);
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
 
     ctx.setTransform(escala, 0, 0, escala, RASTER_PAD * escala, RASTER_PAD * escala);
     pintar(ctx, escala);
+    this.#gastoNoQuadro += performance.now() - antes;
 
     const bytes = w * h * 4;
     if (existente) {

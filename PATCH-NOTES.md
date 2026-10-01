@@ -30,6 +30,7 @@
 - Tema claro mais confortável para a vista.
 - A borracha apaga em traço contínuo e não trava mais com zoom alto.
 - Corrigido o desenho duplicado ("fantasma") que aparecia ao dar zoom.
+- Arrastar o quadro ficou mais leve, e o zoom rápido com `Ctrl`+roda não trava mais, mesmo em quadros grandes.
 - Uma print colada ou arrastada para o quadro já entra na busca (`Ctrl+F`) na hora, sem precisar reabrir o quadro — e sem travar a janela.
 
 ### Segurança e privacidade
@@ -76,6 +77,7 @@ Seus quadros continuam na mesma pasta (`C:\Creation Board`) e abrem normalmente.
 - A lighter theme that's easier on the eyes.
 - The eraser erases in a continuous stroke and no longer freezes at high zoom.
 - Fixed the duplicated ("ghost") drawing that appeared when zooming.
+- Dragging a board is lighter, and fast `Ctrl`+wheel zooming no longer stutters, even on large boards.
 - A screenshot pasted or dragged into a board is searchable (`Ctrl+F`) right away, without reopening the board — and without freezing the window.
 
 ### Security and privacy

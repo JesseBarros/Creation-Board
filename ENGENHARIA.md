@@ -788,6 +788,31 @@ Abrir e fechar a janela a cada 400 ms fica em **130**, porque as animações de
 
 ---
 
+## O quadro aberto: arrastar e zoom rápido — medido em 30/09/2026
+
+
+| gesto | antes | depois |
+|---|---|---|
+| arrastar | 59–61 q/s · pior 42 ms · desenho 12 ms | **68–71 q/s** · pior 28 ms · desenho **0,3 ms** |
+| Ctrl+roda rápido | 25 q/s · pior 153 ms · 2,7 s de tarefas longas | **63–66 q/s** · pior 28 ms · **nenhuma** |
+
+As duas correções estão no [BUGS.md](BUGS.md) (**B31** e **B32**). O que fica registrado aqui é
+o que elas **não** fazem, e por quê:
+
+- **O teto agora é a composição pela CPU.** Um único `fillRect` por quadro, sem mais nada, já
+  fica em 57 q/s na janela cheia: qualquer mudança no canvas obriga a janela inteira a ser
+  recomposta por software (~17 ms). A composição pela GPU arrasta a ~67 q/s, mas é ela que traz
+  de volta o fantasma do B18 — trocar é decisão de produto, com esse preço na mesa, e não foi feito.
+- **O desfoque da barra quase não pesa** no quadro (89 contra 95 q/s com `QB_BLUR=0`): ficou.
+- **A camada de cima vazia custa ~14 q/s** e não foi mexida. A saída medida embrulhava as
+  operações de pintura do canvas; foi desfeita por ser invasiva (ver o B32).
+- **Com outros programas pesados abertos**, a bancada mede a máquina: uma rodada com um jogo
+  aberto deu 40 q/s para o mesmo código que deu 89 sem ele. Comparar sempre na mesma
+  execução — por isso a bancada mede o arrasto também com o caminho antigo
+  (`arrastar sem deslizar`).
+
+---
+
 ## Decisões que não estão óbvias no código
 
 0. **NADA DE NUVEM. Decidido em 14/08/2026, com a alternativa toda avaliada.** foi perguntado

@@ -409,6 +409,9 @@ export class App {
       // a cada evento de ponteiro sem tocar em nenhum objeto do documento.
       () => this.#paintOverlay(),
     );
+    // Texto ainda com o bitmap de outra escala (B31) ou o quadro meio pixel fora
+    // do lugar depois de deslizar (B32): mais um quadro, ate assentar.
+    this.#renderer.aoPrecisarDeOutroQuadro = () => this.#scheduler.invalidate();
 
     this.#input = new ViewportInput(
       this.#host,
@@ -514,6 +517,9 @@ export class App {
       void import('./dev/selftest').then((m) => m.runSelfTest(this.#host, this));
     } else if (bench) {
       void this.#runAutoBenchmark(Number(bench));
+    } else if (params.get('benchquadro')) {
+      dismissBootScreen(true);
+      void import('./dev/quadroBench').then((m) => m.runQuadroBench(this.#host, this));
     } else if (params.get('exemplos')) {
       // QB_EXEMPLOS=1: grava quadros de exemplo e mostra o menu com eles -- para
       // as capturas do README. Ver `dev/exemplos.ts`.
@@ -1009,6 +1015,31 @@ export class App {
    * `app.quit()` nao surte efeito e a execucao automatizada fica pendurada
    * esperando alguem clicar no X.
    */
+  /** JavaScript inteiro do ultimo quadro (desenhar + camada de cima) -- para as medicoes. */
+  get quadroMs(): number {
+    return this.#scheduler.quadroMs;
+  }
+
+  /** O ultimo quadro deixou algo para depois (B31/B32) -- para o selftest. */
+  get precisaDeOutroQuadro(): boolean {
+    return this.#renderer.precisaDeOutroQuadro;
+  }
+
+  /** Liga e desliga o deslizar (B32) -- para as medicoes compararem. */
+  set deslizarLigado(v: boolean) {
+    this.#renderer.deslizarLigado = v;
+  }
+
+  /** Quadros deslizados em vez de redesenhados (B32) -- para as medicoes. */
+  get quadrosDeslizados(): number {
+    return this.#renderer.deslizes;
+  }
+
+  /** Numeros do cache de bitmap do renderizador -- para as medicoes. */
+  get estatisticasDoCache(): { entradas: number; mb: number; acertos: number; erros: number } {
+    return this.#renderer.estatisticasDoCache;
+  }
+
   markClean(): void {
     if (!this.#session.dirty) return;
     this.#session.dirty = false;

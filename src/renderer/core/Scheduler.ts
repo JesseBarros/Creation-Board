@@ -44,6 +44,12 @@ export class Scheduler {
   #lastRenderAt = 0;
   #lastActivity = 0;
   #last: RenderStats = { total: 0, visible: 0, drawn: 0, renderMs: 0, lod: 'full' };
+  /** JavaScript INTEIRO do ultimo quadro de conteudo: desenhar + camada de cima. Para as medicoes. */
+  #quadroMs = 0;
+
+  get quadroMs(): number {
+    return this.#quadroMs;
+  }
 
   constructor(
     private readonly render: () => RenderStats,
@@ -90,7 +96,9 @@ export class Scheduler {
       this.#dirty = false;
       this.#overlayDirty = false;
 
+      const inicioDoQuadro = performance.now();
       this.#last = this.render();
+      this.#quadroMs = performance.now() - inicioDoQuadro;
 
       if (this.#lastRenderAt > 0) {
         const dt = now - this.#lastRenderAt;
