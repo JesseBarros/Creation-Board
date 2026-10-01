@@ -9,7 +9,7 @@ import type { Plugin } from 'vite';
  *
  * Ate a auditoria de 30/09/2026 o afrouxamento morava no proprio `index.html`
  * e ia junto para o `.exe`: `ws:` sem host deixava a pagina abrir WebSocket
- * para QUALQUER servidor, o que contradizia o "nada sai da maquina" do
+ * para QUALQUER servidor, o que contradizia o [...] do
  * SECURITY.md. O main ainda bloqueia a rede por fora (ver `main/index.ts`);
  * esta e a segunda barreira.
  */
@@ -18,7 +18,7 @@ function cspDeDesenvolvimento(): Plugin {
     name: 'csp-de-desenvolvimento',
     apply: 'serve',
     transformIndexHtml: (html) =>
-      html.replace("connect-src 'self'", "connect-src 'self' ws://localhost:* http://localhost:*"),
+      html.replace([...], "connect-src 'self' ws://localhost:* http://localhost:*"),
   };
 }
 
@@ -35,6 +35,9 @@ export default defineConfig({
     // resolvidas via node_modules dentro do asar em vez de inlined.
     plugins: [externalizeDepsPlugin()],
     resolve: { alias },
+    // Modo de composicao padrao do app empacotado. So muda para levar um build de
+    // teste a outro computador (ver `gpuModo` em main/index.ts).
+    define: { __GPU_PADRAO_DO_BUILD__: JSON.stringify(process.env['QB_BUILD_GPU'] ?? 'padrao') },
     build: {
       outDir: 'out/main',
       rollupOptions: { input: { index: resolve(__dirname, 'src/main/index.ts') } },

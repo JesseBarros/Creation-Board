@@ -192,7 +192,16 @@ const GPU_MODOS: Record<string, { nota: string; aplicar: () => void }> = {
   },
 };
 
-const gpuModo = process.env['QB_GPU'] ?? (process.env['QB_NOGPU'] === '1' ? 'off' : 'padrao');
+/*
+  O padrao pode ser trocado NO BUILD, e so por ele: `QB_BUILD_GPU=normal` na hora
+  de empacotar gera um instalador que ja abre sem nenhuma correcao de
+  composicao. Existe para levar o app a OUTRO computador e responder "o B8/B18 e
+  desta maquina ou do codigo?" (30/09/2026) -- la nao ha terminal para passar
+  `QB_GPU`. Sem a variavel, o build sai com `padrao`, como sempre.
+*/
+declare const __GPU_PADRAO_DO_BUILD__: string;
+const gpuModo =
+  process.env['QB_GPU'] ?? (process.env['QB_NOGPU'] === '1' ? 'off' : __GPU_PADRAO_DO_BUILD__);
 const escolhido = GPU_MODOS[gpuModo];
 if (escolhido) {
   escolhido.aplicar();
