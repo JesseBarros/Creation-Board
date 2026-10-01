@@ -2137,6 +2137,21 @@ embutido era `normal`.
 
 **O que isso muda:**
 
+- A família inteira (B1, B7, B8, B18) passa a ser tratada como **defeito do ambiente desta
+  máquina** — alguma otimização feita nela, segundo ele —, e não do app nem do Electron 33.
+  Bate com o que a caçada já tinha: nada no nosso código curava, e só a composição mudava
+  alguma coisa; e com a pista do B8 de que **o VS Code, outro Chromium, também falha** aqui.
+- O contorno (`padrao`: composição pela CPU) continua sendo o padrão do app **por enquanto**.
+  Trocar o padrão para a GPU — ganho de fluidez para todo mundo, e o contorno só para quem
+  precisar — é decisão de produto, e não foi feita.
+- **Foram dois computadores, os dois com Windows**, e em nenhum o defeito apareceu
+  (confirmado no mesmo dia). O que não foi registrado: quais placas de vídeo e
+  monitores, e se o piscar do B8 foi testado separadamente do fantasma.
+- **Próximo passo, combinado para a sessão seguinte** (finalizar o app): composição pela
+  GPU como padrão, e uma opção em Configurações para voltar à CPU (*"compatibilidade
+  gráfica"*, valendo ao reabrir) — que ele ligaria na máquina de teste. Antes de adotar: medir o
+  zoom rápido com GPU de novo, com a máquina livre (a única medição, 13 q/s, foi feita com um
+  jogo aberto), e conferir o B8 nesse modo.
 
 ---
 
