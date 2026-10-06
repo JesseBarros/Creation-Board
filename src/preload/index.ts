@@ -36,6 +36,7 @@ const api: CreationBoardApi = {
       ipcRenderer.invoke(IPC.graficosLer) as Promise<EstadoGraficos>,
     gravar: (compatibilidade: boolean): Promise<void> =>
       ipcRenderer.invoke(IPC.graficosGravar, compatibilidade) as Promise<void>,
+    reabrir: (): Promise<void> => ipcRenderer.invoke(IPC.graficosReabrir) as Promise<void>,
   },
 
   board: {

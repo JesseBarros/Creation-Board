@@ -1204,6 +1204,12 @@ export class App {
             toast(App.#mensagemDeIpc(err), 'error');
           }
         },
+        reabrir: () => {
+          // A cor e a ferramenta escolhidas esperam 400 ms para ir ao disco;
+          // reabrir antes disso as perderia.
+          this.drawStyle.flush();
+          void window.quadro.graficos.reabrir();
+        },
       },
     );
   }

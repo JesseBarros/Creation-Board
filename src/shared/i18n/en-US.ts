@@ -154,7 +154,8 @@ export const enUS: Traducao = {
   'config.compatDica':
     'Turn this on if the screen flickers or the drawing appears doubled when zooming. The screen is then ' +
     'composed by the processor instead of the graphics card, which makes panning and zooming a little less smooth.',
-  'config.compatReabrir': 'Close and reopen the app to apply.',
+  'config.compatReabrir': 'Takes effect after the app reopens.',
+  'config.compatReabrirAgora': 'Reopen now',
 
   // ------------------------------------------------------------ quadro (App)
   'quadro.semNome': 'Untitled board',

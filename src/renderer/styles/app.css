@@ -1032,6 +1032,17 @@
   line-height: 1.3;
 }
 
+/* "Reabrir agora" (compatibilidade grafica): no fim do aviso, e nao numa
+   linha propria -- e a resposta direta ao que o aviso acabou de dizer. */
+.qb-dialog__reabrir {
+  margin-left: 8px;
+  vertical-align: baseline;
+}
+
+.qb-dialog__reabrir[hidden] {
+  display: none;
+}
+
 .qb-dialog__hint--warn {
   color: var(--warn);
 }

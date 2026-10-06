@@ -23,6 +23,7 @@ export const IPC = {
   appIdioma: 'app:idioma',
   graficosLer: 'graficos:ler',
   graficosGravar: 'graficos:gravar',
+  graficosReabrir: 'graficos:reabrir',
   boardSave: 'board:save',
   boardList: 'board:list',
   boardLoad: 'board:load',
@@ -147,6 +148,11 @@ export interface CreationBoardApi {
     ler(): Promise<EstadoGraficos>;
     /** Grava a opcao; vale na proxima vez que o app abrir. */
     gravar(compatibilidade: boolean): Promise<void>;
+    /**
+     * Fecha e abre o app de novo, para a opcao valer. Em desenvolvimento so
+     * fecha: o servidor do Vite morre junto com a janela (ver `ipc/app.ts`).
+     */
+    reabrir(): Promise<void>;
   };
 
   board: {

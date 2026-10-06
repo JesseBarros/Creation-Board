@@ -585,6 +585,8 @@ export interface AcoesConfig {
   escolherFundo(tema: TemaFundo): Promise<string | null>;
   restaurarFundo(tema: TemaFundo): Promise<void>;
   gravarCompatibilidade(ligada: boolean): Promise<void>;
+  /** Fecha e abre o app de novo, para a compatibilidade valer. */
+  reabrir(): void;
 }
 
 /**
@@ -765,13 +767,27 @@ export function settingsDialog(atual: Configuracoes, acoes: AcoesConfig): void {
   // Vale ao REABRIR (as chaves do Chromium so entram antes de o app ficar
   // pronto), entao a dica avisa quando o escolhido difere do que esta em uso --
   // senao o clique pareceria nao ter feito nada.
+  //
+  // O botao "Reabrir agora" so aparece com a mudanca pendente: foi o que faltou
+  // quando no teste -- ligou a opcao, nao reabriu, e o defeito continuava.
   const dicaCompat = document.createElement('p');
   dicaCompat.className = 'qb-dialog__hint';
+  const textoCompat = document.createElement('span');
+  const reabrir = document.createElement('button');
+  reabrir.type = 'button';
+  reabrir.className = 'qb-btn qb-dialog__reabrir';
+  reabrir.textContent = t('config.compatReabrirAgora');
+  reabrir.addEventListener('click', () => {
+    reabrir.disabled = true;
+    acoes.reabrir();
+  });
+  dicaCompat.append(textoCompat, reabrir);
   const pintarDicaCompat = (): void => {
     const pendente = estado.graficos.compatibilidade !== estado.graficos.emUso;
-    dicaCompat.textContent = pendente
+    textoCompat.textContent = pendente
       ? `${t('config.compatDica')} ${t('config.compatReabrir')}`
       : t('config.compatDica');
+    reabrir.hidden = !pendente;
   };
   pintarDicaCompat();
   const linhaCompat = group(

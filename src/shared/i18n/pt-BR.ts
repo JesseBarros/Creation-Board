@@ -157,7 +157,8 @@ export const ptBR = {
   'config.compatDica':
     'Ligue se a tela piscar ou o desenho aparecer duplicado ao dar zoom. A tela passa a ser montada pelo ' +
     'processador em vez da placa de vídeo, o que deixa arrastar e dar zoom um pouco menos fluidos.',
-  'config.compatReabrir': 'Feche e abra o aplicativo de novo para aplicar.',
+  'config.compatReabrir': 'Vale depois de reabrir o aplicativo.',
+  'config.compatReabrirAgora': 'Reabrir agora',
 
   // ------------------------------------------------------------ quadro (App)
   'quadro.semNome': 'Quadro sem nome',

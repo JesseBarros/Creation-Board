@@ -38,4 +38,18 @@ export function registerAppIpc(compatEmUso: boolean): void {
     if (typeof ligada !== 'boolean') throw new Error('Valor invalido.');
     await gravarCompatibilidade(app.getPath('userData'), ligada);
   });
+
+  // "Reabrir agora", ao lado do aviso de que a opcao so vale ao reabrir.
+  //
+  // `quit`, e nao `exit`: passa pelo fechamento normal da janela. So aparece em
+  // Configuracoes, que so abre no menu principal -- nao ha quadro aberto.
+  //
+  // Em DESENVOLVIMENTO so fecha. O `electron-vite dev` encerra o servidor do
+  // Vite quando o Electron sai (`ps.on('close', process.exit)`), e um app
+  // relancado abriria apontando para um servidor morto: janela em branco.
+  ipcMain.handle(IPC.graficosReabrir, (): void => {
+    if (app.isPackaged) app.relaunch();
+    else console.log('[graficos] fechando; rode `npm run dev` de novo para reabrir (em dev nao ha relancar)');
+    app.quit();
+  });
 }
