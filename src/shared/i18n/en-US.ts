@@ -130,30 +130,28 @@ export const enUS: Traducao = {
 
   // configuracoes
   'config.titulo': 'Settings',
+  'config.secaoGeral': 'General',
+  'config.secaoAparencia': 'Appearance',
+  'config.secaoDesempenho': 'Performance',
   'config.idioma': 'Language',
-  'config.idiomaDica': 'The window reloads to apply the new language.',
+  'config.idiomaDica': 'The window reloads when you switch.',
   'config.animacoes': 'Animations',
   'config.animDesligadas': 'Off',
   'config.animLigadas': 'On',
   'config.animMaximas': 'Maximum',
-  'config.animDica':
-    'Maximum makes the home screen livelier: boards bounce in, tilt as you drag them, and folders react when ' +
-    'they receive a board. Off removes the button lift and transitions — it helps on slower computers and ' +
-    'suits anyone who prefers less motion on screen.',
+  'config.animDicaOff': 'No transitions — for anyone who prefers less motion.',
+  'config.animDicaOn': 'Smooth transitions on the home screen and buttons.',
+  'config.animDicaMax': 'Boards bounce, tilt as you drag, and folders react.',
   'config.fundoClaro': 'Light theme background',
   'config.fundoEscuro': 'Dark theme background',
-  'config.escolherImagem': 'Choose image…',
+  'config.trocarImagem': 'Change…',
   'config.restaurarPadrao': 'Restore default',
-  'config.imagemPadrao': 'Image that comes with the app',
-  'config.fundoDica':
-    'The chosen image is copied into the boards folder, so it keeps working even if you move or delete the ' +
-    'original file.',
+  'config.imagemPadrao': 'Default image',
+  'config.fundoDica': 'The chosen image is copied into the boards folder.',
   'config.compat': 'Graphics compatibility',
   'config.compatDesligada': 'Off',
   'config.compatLigada': 'On',
-  'config.compatDica':
-    'Turn this on if the screen flickers or the drawing appears doubled when zooming. The screen is then ' +
-    'composed by the processor instead of the graphics card, which makes panning and zooming a little less smooth.',
+  'config.compatDica': 'Fixes a flickering screen or doubled drawing when zooming, at a small cost in smoothness.',
   'config.compatReabrir': 'Takes effect after the app reopens.',
   'config.compatReabrirAgora': 'Reopen now',
 

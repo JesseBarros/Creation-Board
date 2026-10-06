@@ -1,6 +1,7 @@
 import type { EstadoGraficos, TemaFundo } from '@shared/ipc-contract';
 import type { NivelDeMovimento } from './movimento';
 import { NOMES_DOS_IDIOMAS, t, type Idioma } from '@shared/i18n';
+import { icon } from './icons';
 
 /**
  * Dialogos modais e avisos temporarios.
@@ -525,6 +526,16 @@ function group(
   title.className = 'qb-dialog__row-label';
   title.textContent = label;
 
+  row.append(title, seg(options, initial, onPick));
+  return row;
+}
+
+/** Os botoes segmentados sozinhos, sem rotulo: o `group` e Configuracoes usam. */
+function seg(
+  options: ReadonlyArray<readonly [string, string]>,
+  initial: string,
+  onPick: (value: string) => void,
+): HTMLElement {
   const buttons = document.createElement('div');
   buttons.className = 'qb-seg';
 
@@ -542,8 +553,7 @@ function group(
     buttons.append(b);
   }
 
-  row.append(title, buttons);
-  return row;
+  return buttons;
 }
 
 let toastTimer = 0;
@@ -584,55 +594,99 @@ export interface AcoesConfig {
   /** Abre o seletor. Devolve o nome do arquivo, ou null se cancelou. */
   escolherFundo(tema: TemaFundo): Promise<string | null>;
   restaurarFundo(tema: TemaFundo): Promise<void>;
+  /** A imagem que vale agora para o tema (a escolhida, ou a que vem com o app), para a miniatura. */
+  previaDoFundo(tema: TemaFundo): string;
   gravarCompatibilidade(ligada: boolean): Promise<void>;
   /** Fecha e abre o app de novo, para a compatibilidade valer. */
   reabrir(): void;
 }
 
 /**
- * Linha de "arquivo escolhido": rotulo, o nome atual, e os dois botoes.
- *
- * O `group()` acima so faz segmentado, e um seletor de arquivo nao e uma
- * escolha entre opcoes conhecidas -- por isso um construtor proprio em vez de
- * torcer aquele.
+ * Uma linha de Configuracoes: nome e descricao curta a esquerda, o controle a
+ * direita. A descricao e UMA frase -- a tela antiga explicava cada opcao num
+ * paragrafo, e a soma deles era o que a deixava pesada.
  */
-function linhaArquivo(opts: {
-  label: string;
-  nome: string | null;
+function linhaConfig(
+  nome: string,
+  descricao: string,
+  controle: HTMLElement,
+): { linha: HTMLElement; desc: HTMLElement } {
+  const linha = document.createElement('div');
+  linha.className = 'qb-config__linha';
+
+  const texto = document.createElement('div');
+  texto.className = 'qb-config__texto';
+  const n = document.createElement('span');
+  n.className = 'qb-config__nome';
+  n.textContent = nome;
+  const desc = document.createElement('span');
+  desc.className = 'qb-config__desc';
+  desc.textContent = descricao;
+  texto.append(n, desc);
+
+  linha.append(texto, controle);
+  return { linha, desc };
+}
+
+/** Um bloco com titulo e as linhas num cartao, separadas por um fio. */
+function secaoConfig(titulo: string, ...linhas: HTMLElement[]): HTMLElement {
+  const secao = document.createElement('section');
+  secao.className = 'qb-config__secao';
+  const h = document.createElement('h3');
+  h.className = 'qb-config__secao-titulo';
+  h.textContent = titulo;
+  const cartao = document.createElement('div');
+  cartao.className = 'qb-config__cartao';
+  cartao.append(...linhas);
+  secao.append(h, cartao);
+  return secao;
+}
+
+/**
+ * A linha de um fundo: miniatura, nome do arquivo, Trocar e Restaurar.
+ *
+ * A MINIATURA responde [...] sem ler nada -- a tela antiga
+ * dizia so o nome, e "Imagem que vem com o aplicativo" nao mostra qual e.
+ * Restaurar e um icone e some quando ja e o padrao: aceso, prometeria uma acao
+ * que nao faz nada.
+ */
+function linhaFundo(opts: {
+  nome: string;
+  arquivo: string | null;
+  previa: () => string;
   escolher: () => Promise<string | null>;
   restaurar: () => Promise<void>;
 }): HTMLElement {
-  const row = document.createElement('div');
-  row.className = 'qb-dialog__row';
-
-  const title = document.createElement('span');
-  title.className = 'qb-dialog__row-label';
-  title.textContent = opts.label;
-
-  const caixa = document.createElement('div');
-  caixa.className = 'qb-dialog__arquivo';
-
-  const nome = document.createElement('span');
-  nome.className = 'qb-dialog__arquivo-nome';
-
-  const escolher = document.createElement('button');
-  escolher.type = 'button';
-  escolher.className = 'qb-btn';
-  escolher.textContent = t('config.escolherImagem');
+  const controle = document.createElement('div');
+  controle.className = 'qb-config__fundo';
 
   const restaurar = document.createElement('button');
   restaurar.type = 'button';
-  restaurar.className = 'qb-btn';
-  restaurar.textContent = t('config.restaurarPadrao');
+  restaurar.className = 'qb-btn qb-btn--icon';
+  restaurar.title = t('config.restaurarPadrao');
+  restaurar.setAttribute('aria-label', t('config.restaurarPadrao'));
+  restaurar.append(icon('desfazer', 15));
 
-  const pintar = (atual: string | null): void => {
-    nome.textContent = atual ?? t('config.imagemPadrao');
-    nome.title = atual ?? '';
-    // Sem imagem propria nao ha o que restaurar: o botao aceso prometeria uma
-    // acao que nao faz nada.
-    restaurar.disabled = atual === null;
+  const trocar = document.createElement('button');
+  trocar.type = 'button';
+  trocar.className = 'qb-btn';
+  trocar.textContent = t('config.trocarImagem');
+
+  controle.append(restaurar, trocar);
+  const { linha, desc } = linhaConfig(opts.nome, '', controle);
+
+  const miniatura = document.createElement('span');
+  miniatura.className = 'qb-config__miniatura';
+  linha.prepend(miniatura);
+
+  let atual = opts.arquivo;
+  const pintar = (): void => {
+    desc.textContent = atual ?? t('config.imagemPadrao');
+    desc.title = atual ?? '';
+    restaurar.hidden = atual === null;
+    miniatura.style.backgroundImage = `url("${opts.previa()}")`;
   };
-  pintar(opts.nome);
+  pintar();
 
   /*
     Os dois botoes ficam travados enquanto o dialogo NATIVO estiver aberto.
@@ -641,182 +695,182 @@ function linhaArquivo(opts: {
     atras do modal -- sem foco, sem jeito obvio de fechar, e travando a janela
     para quem nao percebeu que ele existe.
   */
-  const enquanto = async (fn: () => Promise<string | null | void>): Promise<void> => {
-    escolher.disabled = true;
+  const enquanto = async (fn: () => Promise<void>): Promise<void> => {
+    trocar.disabled = true;
     restaurar.disabled = true;
     try {
-      return void (await fn());
+      await fn();
     } finally {
-      escolher.disabled = false;
-      // `pintar` decide o estado do restaurar; chamado por quem invocou.
+      trocar.disabled = false;
+      restaurar.disabled = false;
+      pintar();
     }
   };
 
-  escolher.addEventListener('click', () => {
+  trocar.addEventListener('click', () => {
     void enquanto(async () => {
       const novo = await opts.escolher();
       // Cancelou: mantem o que estava, e nao apaga a escolha anterior.
-      if (novo !== null) pintar(novo);
-      else pintar(nome.title || null);
+      if (novo !== null) atual = novo;
     });
   });
 
   restaurar.addEventListener('click', () => {
     void enquanto(async () => {
       await opts.restaurar();
-      pintar(null);
+      atual = null;
     });
   });
 
-  caixa.append(nome, escolher, restaurar);
-  row.append(title, caixa);
-  return row;
+  return linha;
 }
 
 /**
  * Configuracoes do aplicativo, abertas pelo menu principal.
  *
- * Hoje tem um item so, e isso e de proposito: ela nasceu em 21/09/2026 para
- * abrigar o interruptor de animacoes, e encher a tela de opcoes que ninguem
- * pediu seria inventar trabalho. O formato ja comporta a proxima -- e uma
- * lista de linhas, e cada linha e uma pergunta.
+ * REDESENHADA em 06/10/2026 ([...]): tres secoes em cartoes, uma frase por opcao, miniatura no lugar
+ * dos botoes empilhados do fundo, e o fechar no cabecalho.
  *
  * Aplica NA HORA, sem botao de confirmar: o efeito e visivel na propria tela
  * atras do dialogo, entao confirmar uma coisa que ja esta acontecendo so
- * acrescenta um passo. Fechar e a unica saida, e nao ha o que desfazer.
+ * acrescenta um passo. A excecao e a compatibilidade grafica, que so vale ao
+ * reabrir -- e por isso ela traz o proprio botao de reabrir.
  */
 export function settingsDialog(atual: Configuracoes, acoes: AcoesConfig): void {
   const panel = document.createElement('div');
-  panel.className = 'qb-dialog';
-
-  const h = document.createElement('h2');
-  h.className = 'qb-dialog__title';
-  h.textContent = t('config.titulo');
+  panel.className = 'qb-dialog qb-config';
 
   const estado: Configuracoes = { ...atual };
 
-  // Em ordem de intensidade, e nao de uso: quem le da esquerda para a direita
-  // entende a escala sem ler a dica.
+  // --- cabecalho
+  const cabecalho = document.createElement('div');
+  cabecalho.className = 'qb-config__cabecalho';
+  const h = document.createElement('h2');
+  h.className = 'qb-dialog__title';
+  h.textContent = t('config.titulo');
+  const fechar = document.createElement('button');
+  fechar.type = 'button';
+  fechar.className = 'qb-btn qb-btn--icon qb-config__fechar';
+  fechar.title = t('comum.fechar');
+  fechar.setAttribute('aria-label', t('comum.fechar'));
+  fechar.append(icon('fechar', 16));
+  fechar.addEventListener('click', () => modal.close());
+  cabecalho.append(h, fechar);
+
+  // --- Geral
   // O idioma primeiro: e a linha que quem abriu o app na lingua errada procura.
   // As opcoes aparecem SEMPRE na propria lingua -- "English (US)" para quem nao
   // le portugues, e vice-versa.
-  const linhaIdioma = group(
+  const idioma = linhaConfig(
     t('config.idioma'),
-    (Object.entries(NOMES_DOS_IDIOMAS) as [Idioma, string][]).map(([valor, nome]) => [nome, valor] as const),
-    estado.idioma,
-    (v) => {
-      if (v === 'pt-BR' || v === 'en-US') {
-        estado.idioma = v;
-        acoes.onChange({ ...estado });
-      }
-    },
+    t('config.idiomaDica'),
+    seg(
+      (Object.entries(NOMES_DOS_IDIOMAS) as [Idioma, string][]).map(([valor, nome]) => [nome, valor] as const),
+      estado.idioma,
+      (v) => {
+        if (v === 'pt-BR' || v === 'en-US') {
+          estado.idioma = v;
+          acoes.onChange({ ...estado });
+        }
+      },
+    ),
   );
-  const dicaIdioma = document.createElement('p');
-  dicaIdioma.className = 'qb-dialog__hint';
-  dicaIdioma.textContent = t('config.idiomaDica');
 
-  const linha = group(
+  // A descricao acompanha o nivel escolhido: diz o que AQUELE nivel faz, em vez
+  // de explicar os tres de uma vez.
+  const dicaDoNivel = (n: NivelDeMovimento): string =>
+    n === 'off' ? t('config.animDicaOff') : n === 'max' ? t('config.animDicaMax') : t('config.animDicaOn');
+  // Em ordem de intensidade, e nao de uso: quem le da esquerda para a direita
+  // entende a escala sem ler a dica.
+  const animacoes = linhaConfig(
     t('config.animacoes'),
-    [
-      [t('config.animDesligadas'), 'off'],
-      [t('config.animLigadas'), 'on'],
-      [t('config.animMaximas'), 'max'],
-    ],
-    estado.animacoes,
-    (v) => {
-      estado.animacoes = v === 'off' || v === 'max' ? v : 'on';
-      acoes.onChange({ ...estado });
-    },
+    dicaDoNivel(estado.animacoes),
+    seg(
+      [
+        [t('config.animDesligadas'), 'off'],
+        [t('config.animLigadas'), 'on'],
+        [t('config.animMaximas'), 'max'],
+      ],
+      estado.animacoes,
+      (v) => {
+        estado.animacoes = v === 'off' || v === 'max' ? v : 'on';
+        animacoes.desc.textContent = dicaDoNivel(estado.animacoes);
+        acoes.onChange({ ...estado });
+      },
+    ),
   );
 
-  const dica = document.createElement('p');
-  dica.className = 'qb-dialog__hint';
-  dica.textContent = t('config.animDica');
-
-  const actions = document.createElement('div');
-  actions.className = 'qb-dialog__actions';
-
-  const fechar = document.createElement('button');
-  fechar.type = 'button';
-  fechar.className = 'qb-btn qb-btn--primary';
-  fechar.textContent = t('comum.fechar');
-  fechar.addEventListener('click', () => modal.close());
-  actions.append(fechar);
-
-  const fundoClaro = linhaArquivo({
-    label: t('config.fundoClaro'),
-    nome: estado.fundos.claro,
+  // --- Aparencia
+  const fundoClaro = linhaFundo({
+    nome: t('config.fundoClaro'),
+    arquivo: estado.fundos.claro,
+    previa: () => acoes.previaDoFundo('claro'),
     escolher: () => acoes.escolherFundo('claro'),
     restaurar: () => acoes.restaurarFundo('claro'),
   });
-
-  const fundoEscuro = linhaArquivo({
-    label: t('config.fundoEscuro'),
-    nome: estado.fundos.escuro,
+  const fundoEscuro = linhaFundo({
+    nome: t('config.fundoEscuro'),
+    arquivo: estado.fundos.escuro,
+    previa: () => acoes.previaDoFundo('escuro'),
     escolher: () => acoes.escolherFundo('escuro'),
     restaurar: () => acoes.restaurarFundo('escuro'),
   });
+  const aparencia = secaoConfig(t('config.secaoAparencia'), fundoClaro, fundoEscuro);
+  const notaFundo = document.createElement('p');
+  notaFundo.className = 'qb-config__nota';
+  notaFundo.textContent = t('config.fundoDica');
+  aparencia.append(notaFundo);
 
-  const dicaFundo = document.createElement('p');
-  dicaFundo.className = 'qb-dialog__hint';
-  dicaFundo.textContent = t('config.fundoDica');
-
-  // A ultima linha por ser a mais tecnica: quem precisa dela chega aqui
+  // --- Desempenho
+  // A ultima secao por ser a mais tecnica: quem precisa dela chega aqui
   // procurando, e quem nao precisa nao tem por que mexer.
   //
   // Vale ao REABRIR (as chaves do Chromium so entram antes de o app ficar
-  // pronto), entao a dica avisa quando o escolhido difere do que esta em uso --
-  // senao o clique pareceria nao ter feito nada.
-  //
-  // O botao "Reabrir agora" so aparece com a mudanca pendente: foi o que faltou
-  // quando no teste -- ligou a opcao, nao reabriu, e o defeito continuava.
-  const dicaCompat = document.createElement('p');
-  dicaCompat.className = 'qb-dialog__hint';
-  const textoCompat = document.createElement('span');
+  // pronto). A faixa de reabrir so aparece com a mudanca pendente: foi o que
+  // faltou quando no teste -- ligou a opcao, nao reabriu, e o defeito
+  // continuava.
+  const pendente = document.createElement('div');
+  pendente.className = 'qb-config__pendente';
+  const pendenteTexto = document.createElement('span');
+  pendenteTexto.textContent = t('config.compatReabrir');
   const reabrir = document.createElement('button');
   reabrir.type = 'button';
-  reabrir.className = 'qb-btn qb-dialog__reabrir';
+  reabrir.className = 'qb-btn qb-btn--primary';
   reabrir.textContent = t('config.compatReabrirAgora');
   reabrir.addEventListener('click', () => {
     reabrir.disabled = true;
     acoes.reabrir();
   });
-  dicaCompat.append(textoCompat, reabrir);
-  const pintarDicaCompat = (): void => {
-    const pendente = estado.graficos.compatibilidade !== estado.graficos.emUso;
-    textoCompat.textContent = pendente
-      ? `${t('config.compatDica')} ${t('config.compatReabrir')}`
-      : t('config.compatDica');
-    reabrir.hidden = !pendente;
+  pendente.append(pendenteTexto, reabrir);
+  const pintarPendente = (): void => {
+    pendente.hidden = estado.graficos.compatibilidade === estado.graficos.emUso;
   };
-  pintarDicaCompat();
-  const linhaCompat = group(
+  pintarPendente();
+
+  const compat = linhaConfig(
     t('config.compat'),
-    [
-      [t('config.compatDesligada'), 'off'],
-      [t('config.compatLigada'), 'on'],
-    ],
-    estado.graficos.compatibilidade ? 'on' : 'off',
-    (v) => {
-      const ligada = v === 'on';
-      estado.graficos = { ...estado.graficos, compatibilidade: ligada };
-      pintarDicaCompat();
-      void acoes.gravarCompatibilidade(ligada);
-    },
+    t('config.compatDica'),
+    seg(
+      [
+        [t('config.compatDesligada'), 'off'],
+        [t('config.compatLigada'), 'on'],
+      ],
+      estado.graficos.compatibilidade ? 'on' : 'off',
+      (v) => {
+        const ligada = v === 'on';
+        estado.graficos = { ...estado.graficos, compatibilidade: ligada };
+        pintarPendente();
+        void acoes.gravarCompatibilidade(ligada);
+      },
+    ),
   );
+  compat.linha.dataset['config'] = 'compat';
 
   panel.append(
-    h,
-    linhaIdioma,
-    dicaIdioma,
-    linha,
-    dica,
-    fundoClaro,
-    fundoEscuro,
-    dicaFundo,
-    linhaCompat,
-    dicaCompat,
-    actions,
+    cabecalho,
+    secaoConfig(t('config.secaoGeral'), idioma.linha, animacoes.linha),
+    aparencia,
+    secaoConfig(t('config.secaoDesempenho'), compat.linha, pendente),
   );
   const modal = openModal(panel, () => modal.close());
   fechar.focus();

@@ -77,6 +77,10 @@ import { generateStressBatches } from './dev/stress';
 import { resolve as resolveShortcut, type ShortcutId } from './shortcuts';
 import { esquecerVidro, fotoDoPalco, vidroDe } from './ui/vidroPronto';
 import { nivelInicial, type NivelDeMovimento } from './ui/movimento';
+// As mesmas fotos do `--lobby-foto` do base.css, para a miniatura de
+// Configuracoes. O Vite junta as duas referencias num arquivo so.
+import fotoPraia from './assets/fundos/praia.webp';
+import fotoGalaxia from './assets/fundos/galaxia.webp';
 import { idiomaAtual, t } from '@shared/i18n';
 import { IDIOMA_KEY } from './idioma';
 
@@ -552,6 +556,9 @@ export class App {
       // tela -- exatamente o susto que a tela de abertura existe para evitar.
       void Promise.all([this.goToLobby(), this.#carregarFundos()]).then(() => {
         if (!segurar) dismissBootScreen();
+        // QB_CONFIG=1 abre Configuracoes sozinho, para o QB_SHOT fotografa-la
+        // (o redesenho de 06/10/2026 foi escolhido por prancha, nos dois temas).
+        if (params.get('config')) void this.#openSettings();
       });
     }
   }
@@ -1202,6 +1209,8 @@ export class App {
         },
         escolherFundo: (tema) => this.#escolherFundo(tema),
         restaurarFundo: (tema) => this.#restaurarFundo(tema),
+        previaDoFundo: (tema) =>
+          tema === 'claro' ? (this.#fundos.light ?? fotoPraia) : (this.#fundos.dark ?? fotoGalaxia),
         gravarCompatibilidade: async (ligada) => {
           try {
             await window.quadro.graficos.gravar(ligada);

@@ -133,30 +133,28 @@ export const ptBR = {
 
   // configuracoes
   'config.titulo': 'Configurações',
+  'config.secaoGeral': 'Geral',
+  'config.secaoAparencia': 'Aparência',
+  'config.secaoDesempenho': 'Desempenho',
   'config.idioma': 'Idioma',
-  'config.idiomaDica': 'A janela recarrega para aplicar o novo idioma.',
+  'config.idiomaDica': 'A janela recarrega ao trocar.',
   'config.animacoes': 'Animações',
   'config.animDesligadas': 'Desligadas',
   'config.animLigadas': 'Ligadas',
   'config.animMaximas': 'Máximas',
-  'config.animDica':
-    'Máximas deixa o menu mais vivo: os quadros saltam ao entrar, inclinam ao ser arrastados e as pastas ' +
-    'reagem ao receber um quadro. Desligadas remove o levantar dos botões e as transições — ajuda em ' +
-    'computadores mais fracos e atende a quem prefere menos movimento na tela.',
+  'config.animDicaOff': 'Sem transições — para quem prefere menos movimento.',
+  'config.animDicaOn': 'Transições suaves no menu e nos botões.',
+  'config.animDicaMax': 'Quadros saltam, inclinam ao arrastar, e as pastas reagem.',
   'config.fundoClaro': 'Fundo do tema claro',
   'config.fundoEscuro': 'Fundo do tema escuro',
-  'config.escolherImagem': 'Escolher imagem…',
+  'config.trocarImagem': 'Trocar…',
   'config.restaurarPadrao': 'Restaurar padrão',
-  'config.imagemPadrao': 'Imagem que vem com o aplicativo',
-  'config.fundoDica':
-    'A imagem escolhida é copiada para a pasta dos quadros, então continua valendo mesmo que você mova ' +
-    'ou apague o arquivo original.',
+  'config.imagemPadrao': 'Imagem padrão',
+  'config.fundoDica': 'A imagem escolhida é copiada para a pasta dos quadros.',
   'config.compat': 'Compatibilidade gráfica',
   'config.compatDesligada': 'Desligada',
   'config.compatLigada': 'Ligada',
-  'config.compatDica':
-    'Ligue se a tela piscar ou o desenho aparecer duplicado ao dar zoom. A tela passa a ser montada pelo ' +
-    'processador em vez da placa de vídeo, o que deixa arrastar e dar zoom um pouco menos fluidos.',
+  'config.compatDica': 'Corrige tela piscando ou desenho duplicado no zoom, com um pouco menos de fluidez.',
   'config.compatReabrir': 'Vale depois de reabrir o aplicativo.',
   'config.compatReabrirAgora': 'Reabrir agora',
 

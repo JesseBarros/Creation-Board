@@ -438,6 +438,9 @@ function createWindow(): void {
   // `renderer/dev/exemplos.ts`). So em desenvolvimento, e sempre com QB_BOARDS.
   if (isDev && process.env['QB_EXEMPLOS'] === '1') query = `${query}${query ? '&' : '?'}exemplos=1`;
 
+  // QB_CONFIG=1 abre Configuracoes ao subir -- so para a foto do QB_SHOT.
+  if (isDev && process.env['QB_CONFIG'] === '1') query = `${query}${query ? '&' : '?'}config=1`;
+
   const anim = process.env['QB_ANIM'];
   if (anim === 'off' || anim === 'on' || anim === 'max') query = `${query}${query ? '&' : '?'}anim=${anim}`;
 

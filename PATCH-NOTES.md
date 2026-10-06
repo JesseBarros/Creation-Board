@@ -8,6 +8,7 @@
 - **Foto de fundo**, uma por tema (praia no claro, céu estrelado no escuro), trocável em **Configurações** por uma imagem sua.
 - Os quadros ficam num **painel de vidro** com desfoque discreto, que deixa o fundo aparecer.
 - Título novo, na mesma assinatura da logo, e o caminho da pasta de quadros num selo discreto.
+- **Configurações** redesenhada: seções em cartões, uma frase por opção e a miniatura de cada fundo.
 
 ### Pastas
 - Crie pastas com **Nova pasta** ou **arrastando um quadro sobre outro**.
@@ -59,6 +60,7 @@ Seus quadros continuam na mesma pasta (`C:\Creation Board`) e abrem normalmente.
 - **Background photo**, one per theme (a beach in light, a starry sky in dark), which you can replace with your own image in **Settings**.
 - Your boards sit on a **glass panel** with a subtle blur that lets the background show through.
 - A new title that matches the logo, and the boards folder path in a discreet badge.
+- Redesigned **Settings**: sections in cards, one sentence per option, and a thumbnail of each background.
 
 ### Folders
 - Create folders with **New folder** or by **dragging one board onto another**.

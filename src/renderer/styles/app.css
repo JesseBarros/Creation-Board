@@ -987,38 +987,6 @@
 }
 
 /*
-  A linha de "arquivo escolhido" (plano de fundo, em Configuracoes).
-
-  Envolve em vez de espremer: o nome de um arquivo pode ser longo, e dois botoes
-  ao lado dele nao cabem em qualquer largura de dialogo. `flex-wrap` deixa os
-  botoes descerem para a linha de baixo em vez de o nome virar reticencias cedo
-  demais -- o nome e a unica coisa ali que responde [...].
-*/
-.qb-dialog__arquivo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.qb-dialog__arquivo-nome {
-  color: var(--fg-muted);
-  font-size: 12px;
-  max-width: 220px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Restaurar desabilitado quando ja e o padrao: apagado, e sem o cursor de
-   clique, para nao prometer uma acao que nao faria nada. */
-.qb-dialog__arquivo .qb-btn:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-/*
  * O que vai sair, escrito antes de exportar (B13).
  *
  * `min-height` porque o texto troca de uma para duas linhas conforme a escolha,
@@ -1032,19 +1000,133 @@
   line-height: 1.3;
 }
 
-/* "Reabrir agora" (compatibilidade grafica): no fim do aviso, e nao numa
-   linha propria -- e a resposta direta ao que o aviso acabou de dizer. */
-.qb-dialog__reabrir {
-  margin-left: 8px;
-  vertical-align: baseline;
-}
-
-.qb-dialog__reabrir[hidden] {
-  display: none;
-}
-
 .qb-dialog__hint--warn {
   color: var(--warn);
+}
+
+/*
+  CONFIGURACOES, redesenhada em 06/10/2026 ([...]). Tres secoes, cada uma num cartao; uma linha por opcao, com nome
+  e UMA frase a esquerda e o controle a direita. A largura cresceu de 400 para
+  540 px: com os textos ao lado dos controles, e nao embaixo, a tela ficou mais
+  baixa, e e a altura que pesava.
+*/
+/* Dupla classe: o `.qb-dialog` do ui.css carrega depois e venceria a largura. */
+.qb-dialog.qb-config {
+  max-width: 540px;
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 18px 20px 20px;
+}
+
+.qb-config__cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.qb-config__cabecalho .qb-dialog__title {
+  margin: 0;
+  font-size: 17px;
+}
+
+.qb-config__secao + .qb-config__secao {
+  margin-top: 16px;
+}
+
+.qb-config__secao-titulo {
+  margin: 10px 2px 7px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.qb-config__cartao {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.qb-config__linha {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+}
+
+.qb-config__linha + .qb-config__linha,
+.qb-config__linha + .qb-config__pendente {
+  border-top: 1px solid var(--border);
+}
+
+.qb-config__texto {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.qb-config__nome {
+  font-size: 13.5px;
+  font-weight: 550;
+  color: var(--fg);
+}
+
+.qb-config__desc {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* O controle nunca encolhe: quem cede espaco e o texto, que quebra linha. */
+.qb-config__linha > .qb-seg,
+.qb-config__fundo {
+  flex-shrink: 0;
+}
+
+/* O nome de um arquivo e uma palavra so, e pode ser longo: reticencias. */
+.qb-config__fundo ~ * .qb-config__desc,
+.qb-config__linha:has(.qb-config__miniatura) .qb-config__desc {
+  white-space: nowrap;
+}
+
+.qb-config__miniatura {
+  flex-shrink: 0;
+  width: 64px;
+  height: 40px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--panel) center / cover no-repeat;
+}
+
+.qb-config__fundo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.qb-config__nota {
+  margin: 7px 2px 0;
+  font-size: 11.5px;
+  color: var(--fg-muted);
+}
+
+/* A faixa de [...]: so existe com a mudanca pendente. */
+.qb-config__pendente {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  color: var(--fg);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 /* Botoes segmentados: uma escolha por linha, sem o peso visual de um select. */
