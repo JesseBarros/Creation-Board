@@ -21,6 +21,7 @@ import type { Idioma } from './i18n';
 export const IPC = {
   appInfo: 'app:info',
   appIdioma: 'app:idioma',
+  appRecarregar: 'app:recarregar',
   graficosLer: 'graficos:ler',
   graficosGravar: 'graficos:gravar',
   graficosReabrir: 'graficos:reabrir',
@@ -143,6 +144,12 @@ export interface CreationBoardApi {
   getAppInfo(): Promise<AppInfo>;
   /** O idioma escolhido pela pagina, para os dialogos nativos e as mensagens do main. */
   definirIdioma(idioma: Idioma): Promise<void>;
+  /**
+   * Recarrega a janela -- pelo processo principal, e nao por `location.reload()`:
+   * no app instalado o bloqueio de navegacao cancela o recarregar da propria
+   * pagina (ver `ipc/app.ts`).
+   */
+  recarregar(): Promise<void>;
 
   graficos: {
     ler(): Promise<EstadoGraficos>;

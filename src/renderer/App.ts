@@ -82,7 +82,7 @@ import { nivelInicial, type NivelDeMovimento } from './ui/movimento';
 import fotoPraia from './assets/fundos/praia.webp';
 import fotoGalaxia from './assets/fundos/galaxia.webp';
 import { idiomaAtual, t } from '@shared/i18n';
-import { IDIOMA_KEY } from './idioma';
+import { escolherIdioma, IDIOMA_KEY } from './idioma';
 
 const THEMES: Record<'light' | 'dark', RenderTheme> = {
   /*
@@ -1184,7 +1184,10 @@ export class App {
     const graficos = await window.quadro.graficos.ler();
     settingsDialog(
       {
-        idioma: idiomaAtual(),
+        // O escolhido pode ainda nao estar em uso: grava na hora, vale ao
+        // recarregar. A tela mostra o escolhido e acende o "Aplicar".
+        idioma: escolherIdioma(),
+        idiomaEmUso: idiomaAtual(),
         graficos,
         animacoes: this.#animacoes,
         fundos: {
@@ -1194,15 +1197,11 @@ export class App {
       },
       {
         onChange: (c) => {
-          // O IDIOMA recarrega a janela: os textos sao escritos
-          // quando cada tela e montada, e redesenhar tudo no lugar arriscaria
-          // sobrar texto no idioma antigo. As Configuracoes so abrem no menu
-          // principal, onde nao ha quadro com alteracao pendente para perder.
-          if (c.idioma !== idiomaAtual()) {
-            localStorage.setItem(IDIOMA_KEY, c.idioma);
-            location.reload();
-            return;
-          }
+          // O IDIOMA grava na hora e vale ao recarregar -- pelo "Aplicar
+          // alteracoes" ou na proxima abertura (decisao de produto, 06/10/2026). Os
+          // textos sao escritos quando cada tela e montada, e redesenhar tudo
+          // no lugar arriscaria sobrar texto no idioma antigo.
+          localStorage.setItem(IDIOMA_KEY, c.idioma);
           this.#animacoes = c.animacoes;
           localStorage.setItem(ANIM_KEY, this.#animacoes);
           this.#applyAnimacoes();
@@ -1219,8 +1218,10 @@ export class App {
           }
         },
         // A cor e a ferramenta pendentes vao ao disco no `pagehide` do
-        // fechamento (ver `#guardUnsavedOnClose`), que o reabrir tambem dispara.
+        // fechamento (ver `#guardUnsavedOnClose`), que os dois tambem disparam.
+        // As Configuracoes so abrem no menu principal: nao ha quadro aberto.
         reabrir: () => void window.quadro.graficos.reabrir(),
+        recarregar: () => void window.quadro.recarregar(),
       },
     );
   }

@@ -22,7 +22,7 @@
 | **Animações** de hover não acontecem | **[B26](#b26--as-animações-pararam-de-funcionar--e-não-tinham-parado)** |
 | **Arrastar** o quadro aberto pesa, ou o **zoom rápido** trava | **[B31](#b31--zoom-rápido-com-ctrlroda-travava-o-quadro)** e **[B32](#b32--arrastar-o-quadro-redesenhava-tudo-a-cada-quadro)** — e o `QB_BENCH_QUADRO` para medir |
 
-**Estado: dois itens abertos, o B15 e o B34.** Última atualização: 30/09/2026 (B27 a B33, achados e corrigidos no preparo da 1.1.0; o B34 foi achado conferindo o B33). O B10, que esta linha ainda listava como aberto, está fechado desde 14/08.
+**Estado: dois itens abertos, o B15 e o B34.** Última atualização: 06/10/2026 (B35, achado testando o instalador da 1.1.0; antes, B27 a B33 no preparo da 1.1.0; o B34 foi achado conferindo o B33). O B10, que esta linha ainda listava como aberto, está fechado desde 14/08.
 
 **A rodada de 20–21/09/2026 fechou oito itens e abriu um.** Ela veio de usar o app para
 montar resumos de verdade, e quase tudo que apareceu estava em texto e em interface: o
@@ -148,6 +148,31 @@ Achado conferindo o B33 com `--force-device-scale-factor=1.5`: a verificação [
 pasta não acende). **Reprova igual na versão anterior às mudanças do B31–B33** — conferido
 com as mudanças guardadas —, então não vem delas. Com 100% passa. Falta saber se é só o teste
 (coordenadas simuladas) ou se o arrasto real numa tela de 150% também erra o alvo.
+
+### B35 — Trocar o idioma no app instalado não aplicava
+`corrigido` · `médio` · 06/10/2026
+
+
+**A causa:** a troca gravava a escolha e chamava `location.reload()`. No app **instalado**, o
+`will-navigate` de `main/index.ts` — que impede um link colado numa caixa de texto de
+sequestrar a janela — cancela **toda** navegação que a página inicia, e recarregar a si mesma é
+uma delas. No dev ele libera o servidor do Vite, e por isso o defeito não aparecia lá.
+
+**Medido, e não suposto:** o executável empacotado aberto com `--remote-debugging-port`, uma
+marca posta na página, e o recarregar pedido. Com `location.reload()` a marca **sobreviveu**
+(não recarregou); com o caminho novo, sumiu.
+
+**Correção:** o recarregar é pedido ao processo principal (`app:recarregar` →
+`webContents.reload()`), que é programático e não passa pelo bloqueio — que fica inteiro para
+o resto; conferido que o `location.reload()` continua barrado. E, o idioma deixou
+de recarregar sozinho: Configurações ganhou **"Aplicar alterações"** no rodapé, aceso só com
+algo pendente, que recarrega a janela (idioma) ou fecha e reabre o app (compatibilidade
+gráfica). O idioma grava na hora, então vale também na próxima abertura sem clicar.
+
+
+**Guarda no selftest:** o rodapé apagado sem pendência, aceso com "reabre" ao mudar a
+compatibilidade e com "recarrega" ao mudar o idioma, uma reabertura e uma recarga. Conferida
+ao contrário com o botão que nunca reabre (reprova: 0 reaberturas, 2 recargas).
 
 ### B29 — Colar uma print congelava a janela inteira por 1 a 2 segundos
 `corrigido` · `alto` · 30/09/2026

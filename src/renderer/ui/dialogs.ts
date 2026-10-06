@@ -573,7 +573,10 @@ export function toast(message: string, kind: 'ok' | 'error' = 'ok'): void {
 
 /** O que a tela de Configuracoes devolve. */
 export interface Configuracoes {
+  /** O idioma ESCOLHIDO (gravado). */
   idioma: Idioma;
+  /** O idioma desta janela -- difere do escolhido ate recarregar. */
+  idiomaEmUso: Idioma;
   animacoes: NivelDeMovimento;
   /** Nome do arquivo escolhido por tema, ou null para a imagem que vem com o app. */
   fundos: { claro: string | null; escuro: string | null };
@@ -599,6 +602,8 @@ export interface AcoesConfig {
   gravarCompatibilidade(ligada: boolean): Promise<void>;
   /** Fecha e abre o app de novo, para a compatibilidade valer. */
   reabrir(): void;
+  /** Recarrega a janela, para o idioma valer. */
+  recarregar(): void;
 }
 
 /**
@@ -731,10 +736,11 @@ function linhaFundo(opts: {
  * REDESENHADA em 06/10/2026 ([...]): tres secoes em cartoes, uma frase por opcao, miniatura no lugar
  * dos botoes empilhados do fundo, e o fechar no cabecalho.
  *
- * Aplica NA HORA, sem botao de confirmar: o efeito e visivel na propria tela
- * atras do dialogo, entao confirmar uma coisa que ja esta acontecendo so
- * acrescenta um passo. A excecao e a compatibilidade grafica, que so vale ao
- * reabrir -- e por isso ela traz o proprio botao de reabrir.
+ * Animacoes e fundos aplicam NA HORA: o efeito e visivel na propria tela atras
+ * do dialogo. Idioma e compatibilidade grafica sao gravados na hora mas so valem
+ * ao recarregar (idioma) ou reabrir (compatibilidade) -- e para isso existe o
+ * "Aplicar alteracoes" do rodape, pedido com a 1.1.0 instalada: trocar o
+ * idioma e fechar a tela nao mudava nada, e nao havia como aplicar dali.
  */
 export function settingsDialog(atual: Configuracoes, acoes: AcoesConfig): void {
   const panel = document.createElement('div');
@@ -771,6 +777,7 @@ export function settingsDialog(atual: Configuracoes, acoes: AcoesConfig): void {
         if (v === 'pt-BR' || v === 'en-US') {
           estado.idioma = v;
           acoes.onChange({ ...estado });
+          pintarRodape();
         }
       },
     ),
@@ -824,29 +831,6 @@ export function settingsDialog(atual: Configuracoes, acoes: AcoesConfig): void {
   // --- Desempenho
   // A ultima secao por ser a mais tecnica: quem precisa dela chega aqui
   // procurando, e quem nao precisa nao tem por que mexer.
-  //
-  // Vale ao REABRIR (as chaves do Chromium so entram antes de o app ficar
-  // pronto). A faixa de reabrir so aparece com a mudanca pendente: foi o que
-  // faltou quando no teste -- ligou a opcao, nao reabriu, e o defeito
-  // continuava.
-  const pendente = document.createElement('div');
-  pendente.className = 'qb-config__pendente';
-  const pendenteTexto = document.createElement('span');
-  pendenteTexto.textContent = t('config.compatReabrir');
-  const reabrir = document.createElement('button');
-  reabrir.type = 'button';
-  reabrir.className = 'qb-btn qb-btn--primary';
-  reabrir.textContent = t('config.compatReabrirAgora');
-  reabrir.addEventListener('click', () => {
-    reabrir.disabled = true;
-    acoes.reabrir();
-  });
-  pendente.append(pendenteTexto, reabrir);
-  const pintarPendente = (): void => {
-    pendente.hidden = estado.graficos.compatibilidade === estado.graficos.emUso;
-  };
-  pintarPendente();
-
   const compat = linhaConfig(
     t('config.compat'),
     t('config.compatDica'),
@@ -859,18 +843,56 @@ export function settingsDialog(atual: Configuracoes, acoes: AcoesConfig): void {
       (v) => {
         const ligada = v === 'on';
         estado.graficos = { ...estado.graficos, compatibilidade: ligada };
-        pintarPendente();
+        pintarRodape();
         void acoes.gravarCompatibilidade(ligada);
       },
     ),
   );
   compat.linha.dataset['config'] = 'compat';
 
+  // --- rodape: "Aplicar alteracoes"
+  //
+  // Sempre a vista, e apagado quando nao ha nada a aplicar -- assim quem trocou
+  // o idioma sabe onde ir, e quem nao trocou nada nao e convidado a recarregar
+  // a toa. Se a compatibilidade mudou, reabre o app inteiro (as chaves do
+  // Chromium so entram ao abrir), e isso ja leva o idioma junto; senao, basta
+  // recarregar a janela.
+  const idiomaEmUso = atual.idiomaEmUso;
+  const rodape = document.createElement('div');
+  rodape.className = 'qb-config__rodape';
+  const rodapeTexto = document.createElement('span');
+  rodapeTexto.className = 'qb-config__rodape-texto';
+  const aplicar = document.createElement('button');
+  aplicar.type = 'button';
+  aplicar.className = 'qb-btn qb-btn--primary qb-config__aplicar';
+  aplicar.textContent = t('config.aplicar');
+  rodape.append(rodapeTexto, aplicar);
+  const reabrirPendente = (): boolean => estado.graficos.compatibilidade !== estado.graficos.emUso;
+  const recarregarPendente = (): boolean => estado.idioma !== idiomaEmUso;
+  const pintarRodape = (): void => {
+    const reabre = reabrirPendente();
+    const recarrega = recarregarPendente();
+    aplicar.disabled = !reabre && !recarrega;
+    rodapeTexto.textContent = reabre
+      ? t('config.aplicarReabre')
+      : recarrega
+        ? t('config.aplicarRecarrega')
+        : '';
+  };
+  aplicar.addEventListener('click', () => {
+    const reabre = reabrirPendente();
+    aplicar.disabled = true;
+    if (reabre) acoes.reabrir();
+    else acoes.recarregar();
+  });
+  pintarRodape();
+
   panel.append(
     cabecalho,
     secaoConfig(t('config.secaoGeral'), idioma.linha, animacoes.linha),
     aparencia,
-    secaoConfig(t('config.secaoDesempenho'), compat.linha, pendente),
+    secaoConfig(t('config.secaoDesempenho'), compat.linha),
+    rodape,
   );
   const modal = openModal(panel, () => modal.close());
   fechar.focus();

@@ -134,7 +134,7 @@ export const enUS: Traducao = {
   'config.secaoAparencia': 'Appearance',
   'config.secaoDesempenho': 'Performance',
   'config.idioma': 'Language',
-  'config.idiomaDica': 'The window reloads when you switch.',
+  'config.idiomaDica': 'Takes effect when you apply changes.',
   'config.animacoes': 'Animations',
   'config.animDesligadas': 'Off',
   'config.animLigadas': 'On',
@@ -152,8 +152,9 @@ export const enUS: Traducao = {
   'config.compatDesligada': 'Off',
   'config.compatLigada': 'On',
   'config.compatDica': 'Fixes a flickering screen or doubled drawing when zooming, at a small cost in smoothness.',
-  'config.compatReabrir': 'Takes effect after the app reopens.',
-  'config.compatReabrirAgora': 'Reopen now',
+  'config.aplicar': 'Apply changes',
+  'config.aplicarRecarrega': 'The window reloads to apply.',
+  'config.aplicarReabre': 'The app closes and reopens to apply.',
 
   // ------------------------------------------------------------ quadro (App)
   'quadro.semNome': 'Untitled board',

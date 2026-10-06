@@ -28,6 +28,19 @@ export function registerAppIpc(compatEmUso: boolean): void {
     if (idiomaValido(idioma)) definirIdioma(idioma);
   });
 
+  // "Aplicar alterações" de Configurações, quando so o idioma mudou.
+  //
+  // Pelo processo principal, e nao por `location.reload()` na pagina: no app
+  // INSTALADO o `will-navigate` de `index.ts` cancela toda navegacao que a
+  // pagina inicia -- inclusive recarregar a si mesma --, e a troca de idioma
+  // gravava a escolha e nao aplicava (relato em 06/10/2026, com a 1.1.0
+  // instalada; no dev nao aparecia, porque la o servidor do Vite e liberado).
+  // `webContents.reload()` e programatico e nao passa por aquele bloqueio, que
+  // continua inteiro para o resto.
+  ipcMain.handle(IPC.appRecarregar, (e): void => {
+    e.sender.reload();
+  });
+
   ipcMain.handle(IPC.graficosLer, (): EstadoGraficos => ({
     compatibilidade: lerCompatibilidade(app.getPath('userData')),
     emUso: compatEmUso,

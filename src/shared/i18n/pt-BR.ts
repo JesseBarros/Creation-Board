@@ -137,7 +137,7 @@ export const ptBR = {
   'config.secaoAparencia': 'Aparência',
   'config.secaoDesempenho': 'Desempenho',
   'config.idioma': 'Idioma',
-  'config.idiomaDica': 'A janela recarrega ao trocar.',
+  'config.idiomaDica': 'Vale ao aplicar as alterações.',
   'config.animacoes': 'Animações',
   'config.animDesligadas': 'Desligadas',
   'config.animLigadas': 'Ligadas',
@@ -155,8 +155,9 @@ export const ptBR = {
   'config.compatDesligada': 'Desligada',
   'config.compatLigada': 'Ligada',
   'config.compatDica': 'Corrige tela piscando ou desenho duplicado no zoom, com um pouco menos de fluidez.',
-  'config.compatReabrir': 'Vale depois de reabrir o aplicativo.',
-  'config.compatReabrirAgora': 'Reabrir agora',
+  'config.aplicar': 'Aplicar alterações',
+  'config.aplicarRecarrega': 'A janela recarrega para aplicar.',
+  'config.aplicarReabre': 'O aplicativo fecha e abre de novo para aplicar.',
 
   // ------------------------------------------------------------ quadro (App)
   'quadro.semNome': 'Quadro sem nome',

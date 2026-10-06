@@ -30,6 +30,7 @@ const api: CreationBoardApi = {
   getAppInfo: (): Promise<AppInfo> => ipcRenderer.invoke(IPC.appInfo) as Promise<AppInfo>,
   definirIdioma: (idioma: Idioma): Promise<void> =>
     ipcRenderer.invoke(IPC.appIdioma, idioma) as Promise<void>,
+  recarregar: (): Promise<void> => ipcRenderer.invoke(IPC.appRecarregar) as Promise<void>,
 
   graficos: {
     ler: (): Promise<EstadoGraficos> =>
