@@ -16,7 +16,7 @@
 
 ### Animações
 - O menu ganhou movimento: cards entram em sequência, o quadro arrastado acompanha o mouse, e a pasta reage ao receber um quadro.
-- Três níveis em **Configurações**: Desligadas, Ligadas e **Máximas**.
+- Três níveis em **Configurações**: Desligadas, Ligadas e **Máximas**, que é como o app abre na primeira vez.
 - Arrastar ficou fluido: 144 quadros por segundo em monitor de 144 Hz.
 
 ### Português e inglês
@@ -67,7 +67,7 @@ Seus quadros continuam na mesma pasta (`C:\Creation Board`) e abrem normalmente.
 
 ### Animations
 - The home screen now moves: cards come in one after another, the dragged board follows the mouse, and folders react when they receive a board.
-- Three levels in **Settings**: Off, On and **Maximum**.
+- Three levels in **Settings**: Off, On and **Maximum**, which is how the app opens the first time.
 - Dragging is smooth: 144 frames per second on a 144 Hz monitor.
 
 ### Portuguese and English

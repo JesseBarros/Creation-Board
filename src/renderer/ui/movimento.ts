@@ -44,6 +44,19 @@ export const CURVA_MOLA = 'cubic-bezier(0.34, 1.56, 0.64, 1)';
 /** A curva de quem e SUGADO para dentro de algo: comeca devagar e acelera. */
 export const CURVA_SUGAR = 'cubic-bezier(0.55, 0, 0.75, 0.2)';
 
+/**
+ * O nivel com que o app abre: o forcado por `QB_ANIM`, senao o gravado em
+ * Configuracoes, senao o PADRAO -- MAXIMAS desde 06/10/2026, decisao de produto (era
+ * Ligadas). Quem ja gravou um nivel continua com o seu.
+ */
+export const NIVEL_PADRAO: NivelDeMovimento = 'max';
+
+export function nivelInicial(forcado: string | null, gravado: string | null): NivelDeMovimento {
+  const valido = (v: string | null): NivelDeMovimento | null =>
+    v === 'off' || v === 'on' || v === 'max' ? v : null;
+  return valido(forcado) ?? valido(gravado) ?? NIVEL_PADRAO;
+}
+
 export function nivelDeMovimento(): NivelDeMovimento {
   const v = document.documentElement.dataset['anim'];
   return v === 'off' ? 'off' : v === 'max' ? 'max' : 'on';

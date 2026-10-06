@@ -76,7 +76,7 @@ import type { SaveBoardResult } from '@shared/wbd';
 import { generateStressBatches } from './dev/stress';
 import { resolve as resolveShortcut, type ShortcutId } from './shortcuts';
 import { esquecerVidro, fotoDoPalco, vidroDe } from './ui/vidroPronto';
-import type { NivelDeMovimento } from './ui/movimento';
+import { nivelInicial, type NivelDeMovimento } from './ui/movimento';
 import { idiomaAtual, t } from '@shared/i18n';
 import { IDIOMA_KEY } from './idioma';
 
@@ -372,16 +372,16 @@ export class App {
     // em 21/09/2026. Só desliga quem gravou 'off' aqui, pelo diálogo de
     // Configurações. O porquê está no comentário do `[data-anim]` no base.css.
     //
-    // Três níveis desde 30/09/2026 ('off' | 'on' | 'max'). O que já estava
-    // gravado ('on'/'off') continua valendo como está; qualquer outra coisa é
-    // o padrão.
+    // Três níveis desde 30/09/2026 ('off' | 'on' | 'max'), e desde 06/10 o
+    // padrão é o MÁXIMO (ver `nivelInicial`). O que já estava gravado continua
+    // valendo como está; qualquer outra coisa é o padrão.
     //
     // `QB_ANIM=off|on|max` manda no nível desta execução sem gravar nada,
     // pelo mesmo motivo do `QB_THEME`: medir o menu com as animações máximas
     // não pode depender do que está no `localStorage` da máquina.
     const animForcada = new URLSearchParams(location.search).get('anim');
     const animGravada = localStorage.getItem(ANIM_KEY);
-    this.#animacoes = App.#nivelDe(animForcada) ?? App.#nivelDe(animGravada) ?? 'on';
+    this.#animacoes = nivelInicial(animForcada, animGravada);
     this.#applyAnimacoes();
     // Mesmo criterio do tema: o modo forcado vale para esta execucao e nao
     // grava nada, para a foto de conferencia nao depender da maquina.
@@ -1091,6 +1091,11 @@ export class App {
       e.preventDefault();
       e.returnValue = '';
     });
+    // A cor e a ferramenta esperam 400 ms para ir ao disco (ver DrawStyle).
+    // Fechar o app logo depois de trocar perdia a escolha -- o `flush` existia
+    // para isto, mas ninguem o chamava (achado em 06/10/2026). `pagehide`, e nao
+    // `beforeunload`: so dispara quando a janela de fato vai embora.
+    window.addEventListener('pagehide', () => this.drawStyle.flush());
   }
 
   // ----------------------------------------------------------------- visao
@@ -1204,12 +1209,9 @@ export class App {
             toast(App.#mensagemDeIpc(err), 'error');
           }
         },
-        reabrir: () => {
-          // A cor e a ferramenta escolhidas esperam 400 ms para ir ao disco;
-          // reabrir antes disso as perderia.
-          this.drawStyle.flush();
-          void window.quadro.graficos.reabrir();
-        },
+        // A cor e a ferramenta pendentes vao ao disco no `pagehide` do
+        // fechamento (ver `#guardUnsavedOnClose`), que o reabrir tambem dispara.
+        reabrir: () => void window.quadro.graficos.reabrir(),
       },
     );
   }
@@ -1267,10 +1269,6 @@ export class App {
     // seletor nenhum. Desligado e máximo são as exceções.
     if (this.#animacoes === 'on') delete document.documentElement.dataset['anim'];
     else document.documentElement.dataset['anim'] = this.#animacoes;
-  }
-
-  static #nivelDe(v: string | null): NivelDeMovimento | null {
-    return v === 'off' || v === 'on' || v === 'max' ? v : null;
   }
 
   /**
