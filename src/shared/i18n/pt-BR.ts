@@ -151,6 +151,13 @@ export const ptBR = {
   'config.fundoDica':
     'A imagem escolhida é copiada para a pasta dos quadros, então continua valendo mesmo que você mova ' +
     'ou apague o arquivo original.',
+  'config.compat': 'Compatibilidade gráfica',
+  'config.compatDesligada': 'Desligada',
+  'config.compatLigada': 'Ligada',
+  'config.compatDica':
+    'Ligue se a tela piscar ou o desenho aparecer duplicado ao dar zoom. A tela passa a ser montada pelo ' +
+    'processador em vez da placa de vídeo, o que deixa arrastar e dar zoom um pouco menos fluidos.',
+  'config.compatReabrir': 'Feche e abra o aplicativo de novo para aplicar.',
 
   // ------------------------------------------------------------ quadro (App)
   'quadro.semNome': 'Quadro sem nome',

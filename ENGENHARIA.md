@@ -74,12 +74,15 @@ npm run check:dist    # o MESMO auto-teste, dentro do .exe empacotado
 Modos de diagnóstico, todos por variável de ambiente e nenhum gravando preferência:
 
 ```
-QB_GPU=padrao|comp|swap|canvas|raster|dc|angle|off|normal
+QB_GPU=normal|compat|comp|swap|canvas|raster|dc|angle|off
                                   # escada de composição do B8 e do B18.
-                                  # `padrao` é o que o app usa e é a SOMA de
-                                  # `comp` + `swap`; os outros são degraus
-                                  # puros, para bissecção. `normal` não aplica
-                                  # nada e traz os dois bugs de volta.
+                                  # `normal` (GPU, nada aplicado) é o padrão
+                                  # desde 06/10/2026. `compat` é a opção
+                                  # "compatibilidade gráfica" de Configurações
+                                  # (a SOMA de `comp` + `swap`; até 06/10 se
+                                  # chamava `padrao`). Os outros são degraus
+                                  # puros, para bissecção. QB_GPU manda na
+                                  # opção gravada.
 QB_ALPHA=1                        # devolve o canal alfa à camada estática (B18)
 QB_DESYNC=1                       # `desynchronized` nos dois canvas (B18).
                                   # ATENÇÃO: introduz um piscar preto ao clicar
@@ -941,7 +944,7 @@ mantém desenhar barato num quadro cheio.
 |---|---|
 | Imagens de fundo | **Fotografias do Unsplash**, a 2560 de largura (Sean Oulashin e Felix Wegerer). Entram sob a **Licença Unsplash**, e não sob a MIT — a procedência está por arquivo no `assets/fundos/LEIA-ME.md`. Trocar é substituir o arquivo mantendo o nome; nenhuma linha de código muda. |
 | Pastas | **Índice no app**, não subpastas reais no disco. Arrastar nunca move arquivo. Clicar numa pasta abre uma **janela** sobre a tela principal (desde 24/09 — antes trocava a tela). Dentro dela, o X **só tira da pasta**. |
-| Fantasma ao dar zoom (B18) | Corrigido por **composição pela CPU** (`QB_GPU=padrao`), decisão de produto com o custo medido: −22% de fps no caso leve, +20% no pesado. É contorno, não causa encontrada — e em 30/09 ficou confirmado que o defeito é **da máquina de teste**: o build com GPU e sem correções (`npm run dist:gpu`) não mostrou nada em outros computadores. Trocar o padrão para a GPU é decisão de produto, ainda não tomada. **Custo no menu, achado em 24/09:** o desfoque ao vivo do painel ia a 14 q/s — resolvido com o vidro pronto, sem mexer no B18. |
+| Fantasma ao dar zoom (B18) | Contornado por **composição pela CPU**, que foi o padrão de 21/09 a 06/10. É contorno, não causa encontrada — e em 30/09 ficou confirmado que o defeito é **da máquina de teste**: o build com GPU e sem correções não mostrou nada em dois outros computadores. **Desde 06/10 a GPU é o padrão** (arrastar 56 → 144 q/s, zoom rápido 40 → 77 q/s no quadro de teste), e o contorno virou a opção **"Compatibilidade gráfica"** de Configurações (`src/main/graficos.ts`), que vale ao reabrir e que se liga no PC de teste. **Custo no menu, achado em 24/09:** o desfoque ao vivo do painel ia a 14 q/s — resolvido com o vidro pronto, sem mexer no B18. |
 | "Restaurar padrão" | Volta para a foto que vem com o app, não para o fundo sem imagem. |
 | Movimento | O app anima por padrão, independente do Windows. Toda animação nova tem de passar por `[data-anim='off']`. |
 
@@ -1052,9 +1055,10 @@ mantém desenhar barato num quadro cheio.
 
 ```
 npm run typecheck
-npm run selftest      # 175/175, tem de terminar com "tudo passou"
+npm run selftest      # 183/183, tem de terminar com "tudo passou"
 npm run check:fundo   # 22 casos da validação do fundo personalizado
 npm run check:pastas  # 26 casos do índice de pastas
+npm run check:graficos # 19 casos da opção de compatibilidade gráfica
 ```
 
 E a regra que vale desde o B24: **cada checagem nova é conferida ao contrário** —

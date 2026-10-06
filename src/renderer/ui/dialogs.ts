@@ -1,4 +1,4 @@
-import type { TemaFundo } from '@shared/ipc-contract';
+import type { EstadoGraficos, TemaFundo } from '@shared/ipc-contract';
 import type { NivelDeMovimento } from './movimento';
 import { NOMES_DOS_IDIOMAS, t, type Idioma } from '@shared/i18n';
 
@@ -567,6 +567,8 @@ export interface Configuracoes {
   animacoes: NivelDeMovimento;
   /** Nome do arquivo escolhido por tema, ou null para a imagem que vem com o app. */
   fundos: { claro: string | null; escuro: string | null };
+  /** A "compatibilidade grafica": gravada e em uso (so vale ao reabrir). */
+  graficos: EstadoGraficos;
 }
 
 /**
@@ -582,6 +584,7 @@ export interface AcoesConfig {
   /** Abre o seletor. Devolve o nome do arquivo, ou null se cancelou. */
   escolherFundo(tema: TemaFundo): Promise<string | null>;
   restaurarFundo(tema: TemaFundo): Promise<void>;
+  gravarCompatibilidade(ligada: boolean): Promise<void>;
 }
 
 /**
@@ -756,7 +759,49 @@ export function settingsDialog(atual: Configuracoes, acoes: AcoesConfig): void {
   dicaFundo.className = 'qb-dialog__hint';
   dicaFundo.textContent = t('config.fundoDica');
 
-  panel.append(h, linhaIdioma, dicaIdioma, linha, dica, fundoClaro, fundoEscuro, dicaFundo, actions);
+  // A ultima linha por ser a mais tecnica: quem precisa dela chega aqui
+  // procurando, e quem nao precisa nao tem por que mexer.
+  //
+  // Vale ao REABRIR (as chaves do Chromium so entram antes de o app ficar
+  // pronto), entao a dica avisa quando o escolhido difere do que esta em uso --
+  // senao o clique pareceria nao ter feito nada.
+  const dicaCompat = document.createElement('p');
+  dicaCompat.className = 'qb-dialog__hint';
+  const pintarDicaCompat = (): void => {
+    const pendente = estado.graficos.compatibilidade !== estado.graficos.emUso;
+    dicaCompat.textContent = pendente
+      ? `${t('config.compatDica')} ${t('config.compatReabrir')}`
+      : t('config.compatDica');
+  };
+  pintarDicaCompat();
+  const linhaCompat = group(
+    t('config.compat'),
+    [
+      [t('config.compatDesligada'), 'off'],
+      [t('config.compatLigada'), 'on'],
+    ],
+    estado.graficos.compatibilidade ? 'on' : 'off',
+    (v) => {
+      const ligada = v === 'on';
+      estado.graficos = { ...estado.graficos, compatibilidade: ligada };
+      pintarDicaCompat();
+      void acoes.gravarCompatibilidade(ligada);
+    },
+  );
+
+  panel.append(
+    h,
+    linhaIdioma,
+    dicaIdioma,
+    linha,
+    dica,
+    fundoClaro,
+    fundoEscuro,
+    dicaFundo,
+    linhaCompat,
+    dicaCompat,
+    actions,
+  );
   const modal = openModal(panel, () => modal.close());
   fechar.focus();
 }

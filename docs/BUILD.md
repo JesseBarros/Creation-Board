@@ -25,11 +25,12 @@ editar `src/main/` ou `src/preload/` reinicia o processo principal.
 
 ```
 npm run typecheck       # TypeScript estrito nos dois projetos
-npm run selftest        # o auto-teste no app de verdade (180 verificações)
+npm run selftest        # o auto-teste no app de verdade (183 verificações)
 npm run check:idiomas   # os dois idiomas: nada fixo no código, acentos, traduções
 npm run check:imagens   # metadados de imagem: o corte e as imagens do repositório
 npm run check:pastas    # índice de pastas, caminhos fora da pasta, bomba de zip
 npm run check:fundo     # validação da imagem de fundo escolhida
+npm run check:graficos  # a opção de compatibilidade gráfica: leitura e quem manda
 npm run check:colors    # contraste das cores do quadro nos dois temas
 npm run check:dist      # o auto-teste rodando dentro do app empacotado
 ```
@@ -51,7 +52,7 @@ Valem só fora do app instalado.
 | `QB_SHOT=<arquivo.png>` | Fotografa a janela alguns segundos depois de abrir |
 | `QB_BENCH_LOBBY=1` | Mede a fluidez do menu principal (parado, hover, arrasto, pasta) |
 | `QB_BENCH_QUADRO=1` | Mede a fluidez do quadro aberto: arrastar e Ctrl+roda rápido no maior quadro de `QB_BOARDS` |
-| `QB_GPU=<modo>` | Troca o modo de composição (ver `src/main/index.ts`) |
+| `QB_GPU=<modo>` | Troca o modo de composição, por cima da opção de Configurações (ver `src/main/index.ts`) |
 
 ## Gerar o instalador
 

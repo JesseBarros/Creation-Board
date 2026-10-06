@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import {
   IPC,
   type AppInfo,
+  type EstadoGraficos,
   type CreationBoardApi,
   type ExportRequest,
   type ExportResult,
@@ -29,6 +30,13 @@ const api: CreationBoardApi = {
   getAppInfo: (): Promise<AppInfo> => ipcRenderer.invoke(IPC.appInfo) as Promise<AppInfo>,
   definirIdioma: (idioma: Idioma): Promise<void> =>
     ipcRenderer.invoke(IPC.appIdioma, idioma) as Promise<void>,
+
+  graficos: {
+    ler: (): Promise<EstadoGraficos> =>
+      ipcRenderer.invoke(IPC.graficosLer) as Promise<EstadoGraficos>,
+    gravar: (compatibilidade: boolean): Promise<void> =>
+      ipcRenderer.invoke(IPC.graficosGravar, compatibilidade) as Promise<void>,
+  },
 
   board: {
     save: (req: SaveBoardRequest): Promise<SaveBoardResult> =>

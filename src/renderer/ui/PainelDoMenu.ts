@@ -86,10 +86,10 @@ export class PainelDoMenu {
 
     // O que nao muda durante a execucao sai uma vez so.
     const params = new URLSearchParams(location.search);
-    const gpu = params.get('gpu') ?? 'padrao';
+    const gpu = params.get('gpu') ?? 'normal';
     this.#escrever(
       'Composição',
-      gpu === 'padrao' || gpu === 'comp' ? 'CPU' : gpu === 'normal' ? 'GPU' : gpu,
+      gpu === 'compat' || gpu === 'comp' ? 'CPU' : gpu === 'normal' ? 'GPU' : gpu,
     );
     this.#escrever('Desfoque', params.get('blur') === '0' ? t('painelMenu.desligado') : t('painelMenu.ligado'));
   }

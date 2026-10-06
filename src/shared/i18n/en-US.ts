@@ -148,6 +148,13 @@ export const enUS: Traducao = {
   'config.fundoDica':
     'The chosen image is copied into the boards folder, so it keeps working even if you move or delete the ' +
     'original file.',
+  'config.compat': 'Graphics compatibility',
+  'config.compatDesligada': 'Off',
+  'config.compatLigada': 'On',
+  'config.compatDica':
+    'Turn this on if the screen flickers or the drawing appears doubled when zooming. The screen is then ' +
+    'composed by the processor instead of the graphics card, which makes panning and zooming a little less smooth.',
+  'config.compatReabrir': 'Close and reopen the app to apply.',
 
   // ------------------------------------------------------------ quadro (App)
   'quadro.semNome': 'Untitled board',

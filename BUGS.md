@@ -16,7 +16,7 @@
 | Uma verificação do auto-teste **reprovou** | **[B15](#b15--uma-verificação-do-auto-teste-falhou-uma-vez-e-não-reproduziu)**, e o `ENGENHARIA.md` em *"A verificação de arrastar"* |
 | `Ctrl+V` não cola, atalho não responde | **[B6](#b6--ctrlv-não-cola-imagem-da-área-de-transferência)** — o caminho até o atalho, não o atalho |
 | **Texto** distorce, quebra sozinho ou some ao sair da caixa | **[B19](#b19--redimensionar-texto-distorcia-o-desenho-da-letra)** e **[B21](#b21--a-quebra-de-linha-mudava-ao-sair-da-caixa)** |
-| **Fantasma** do desenho ao dar zoom, ou rastro ao rolar | **[B18](#b18--rastro-de-tinta-ao-rolar-a-tela-devagar)** — contornado em 21/09 com composição pela CPU; em 30/09 confirmado que é **desta máquina** (não aparece em outros PCs) |
+| **Fantasma** do desenho ao dar zoom, ou rastro ao rolar | **[B18](#b18--rastro-de-tinta-ao-rolar-a-tela-devagar)** — contornado em 21/09 com composição pela CPU; em 30/09 confirmado que é **desta máquina** (não aparece em outros PCs); desde 06/10 o contorno é a opção **Compatibilidade gráfica** em Configurações |
 | **Borracha** apaga em bolas ou trava o app | **[B24](#b24--a-borracha-apagava-em-bolas-e-travava-o-aplicativo)** |
 | **Borracha** trava só com **zoom alto** | **[B25](#b25--a-borracha-travava-o-app-com-zoom-alto)** — outro defeito, não o B24 |
 | **Animações** de hover não acontecem | **[B26](#b26--as-animações-pararam-de-funcionar--e-não-tinham-parado)** |
@@ -2152,6 +2152,31 @@ embutido era `normal`.
   gráfica"*, valendo ao reabrir) — que ele ligaria na máquina de teste. Antes de adotar: medir o
   zoom rápido com GPU de novo, com a máquina livre (a única medição, 13 q/s, foi feita com um
   jogo aberto), e conferir o B8 nesse modo.
+
+#### 06/10/2026 — a GPU vira o padrão; o contorno vira opção
+
+Decisão de produto, com o número na mesa. A bancada do quadro (`QB_BENCH_QUADRO=1`) foi rodada
+com a máquina livre, na cópia do quadro de teste de 1.063 objetos, janela maximizada, **três
+rodadas de cada modo, alternadas**, e comparadas as medianas:
+
+| gesto | contorno (CPU) | GPU |
+|---|---|---|
+| arrastar | 58,9 / 45,6 / 56,3 → **56 q/s** | 143 / 144 / 144 → **144 q/s** |
+| zoom rápido | 30,2 / 40,1 / 45,0 → **40 q/s** | 79,7 / 76,5 / 73,5 → **77 q/s** |
+| tarefas longas no zoom | até 7 (398 ms) | **nenhuma** |
+
+(Os 13 q/s da medição de 30/09 com GPU eram o jogo aberto, como se suspeitava.)
+
+**O que mudou:**
+
+
+**Guardas:** `npm run check:graficos` (19 casos: arquivo ausente, corrompido ou com o tipo
+errado cai na GPU; a ordem `QB_GPU` > `QB_NOGPU` > opção > padrão), conferido ao contrário
+com duas sabotagens — aceitar `1` como ligado, e o nome errado cair na GPU —, as duas
+reprovadas. No selftest, a linha de Configurações grava ao clicar e mostra o aviso de
+reabrir; conferida ao contrário tirando o aviso. De ponta a ponta, pelo relatório do
+próprio Chromium (`QB_DIAG=1`): sem arquivo, `gpu_compositing` *enabled*; opção ligada,
+*disabled_software*; ligada com `QB_GPU=normal`, *enabled*; arquivo corrompido, *enabled*.
 
 ---
 

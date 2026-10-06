@@ -25,11 +25,12 @@ editing `src/main/` or `src/preload/` restarts the main process.
 
 ```
 npm run typecheck       # strict TypeScript on both projects
-npm run selftest        # the self-test inside the real app (180 checks)
+npm run selftest        # the self-test inside the real app (183 checks)
 npm run check:idiomas   # both languages: nothing hardcoded, accents, translations
 npm run check:imagens   # image metadata: the stripping and the repository images
 npm run check:pastas    # folder index, paths outside the folder, zip bombs
 npm run check:fundo     # validation of the chosen background image
+npm run check:graficos  # the graphics compatibility option: reading it and precedence
 npm run check:colors    # board color contrast in both themes
 npm run check:dist      # the self-test running inside the packaged app
 ```
@@ -51,7 +52,7 @@ They only work outside the installed app.
 | `QB_SHOT=<file.png>` | Captures the window a few seconds after it opens |
 | `QB_BENCH_LOBBY=1` | Measures the home screen's frame rate (idle, hover, drag, folder) |
 | `QB_BENCH_QUADRO=1` | Measures an open board's frame rate: dragging and fast Ctrl+wheel on the largest board in `QB_BOARDS` |
-| `QB_GPU=<mode>` | Switches the compositing mode (see `src/main/index.ts`) |
+| `QB_GPU=<mode>` | Switches the compositing mode, overriding the Settings option (see `src/main/index.ts`) |
 
 ## Building the installer
 

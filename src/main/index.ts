@@ -10,13 +10,50 @@ import { registerExportIpc } from './ipc/exporter';
 import { registerOcrIpc } from './ipc/ocr';
 import { abrirLinkExterno, blindarPaginas, blindarSessao } from './blindagem';
 import { definirIdioma, idiomaDoSistema, idiomaValido } from '@shared/i18n';
+import { lerCompatibilidade, MODO_COMPAT, MODO_PADRAO, resolverModo } from './graficos';
 
 const isDev = !app.isPackaged;
 
+// QB_PERFIL=<nome> roda esta execucao num PERFIL separado do Electron (pasta de
+// dados propria), e com isso fora da trava de instancia unica do app aberto.
+//
+// Existe pela armadilha 4 do ENGENHARIA.md: com o app de teste aberto, selftest,
+// captura e bancada simplesmente nao subiam -- a trava fechava o segundo
+// processo calado. O perfil separa `localStorage` e trava; o disco se separa
+// com o `QB_BOARDS` apontando para copias. Usar os DOIS juntos: so o perfil,
+// sem `QB_BOARDS`, poria dois processos gravando na mesma pasta de quadros.
+//
+// Vem ANTES do modo de composicao: a opcao "compatibilidade grafica" mora no
+// `userData`, e o perfil separado tem de ler a dele, e nao a do app instalado.
+//
+// Ignorado no app instalado, como todo QB_*. Nome saneado: vira nome de pasta.
+const perfil = process.env['QB_PERFIL'];
+if (perfil && isDev && /^[a-z0-9-]{1,32}$/i.test(perfil)) {
+  app.setPath('userData', join(app.getPath('userData'), '..', `creation-board-${perfil}`));
+  console.log(`[perfil] execucao no perfil separado "${perfil}"`);
+}
+
 /**
+ * A GPU E O PADRAO DESDE 06/10/2026. O contorno abaixo virou a opcao
+ * "compatibilidade grafica" de Configuracoes (modo `compat`).
+ *
+ * De 21/09 a 06/10 o contorno foi o padrao de todo mundo. Em 30/09 ficou
+ * provado que o B8 e o B18 sao DA MAQUINA de teste: o instalador com
+ * GPU (modo `normal`) rodou limpo em dois outros PCs com Windows. E o preco do
+ * contorno, medido em 06/10 com a bancada do quadro (`QB_BENCH_QUADRO=1`, o
+ * quadro de teste de 1.063 objetos, tres rodadas alternadas, medianas):
+ *
+ *   gesto           compat (CPU)    normal (GPU)
+ *   arrastar           56 q/s         144 q/s
+ *   zoom rapido        40 q/s          77 q/s   (0 tarefas longas, contra ate 7)
+ *
+ * Ver `graficos.ts` para onde a opcao mora e quem manda em quem.
+ *
+ * O historico abaixo continua valendo: e o que a opcao faz, e por que.
+ *
  * COMPOSICAO PELA CPU + REPINTURA COMPLETA -- correcao do B18 e do B8.
  *
- * O padrao aplica TRES chaves, e elas consertam DOIS bugs diferentes. Que
+ * O modo `compat` aplica TRES chaves, e elas consertam DOIS bugs diferentes. Que
  * sejam dois importa: eles tem sintomas, historias e provas distintas, e
  * junta-los num so foi exatamente o erro que atrasou o B1/B7/B8 por oito dias.
  *
@@ -79,22 +116,22 @@ const isDev = !app.isPackaged;
  * (Chromium de 2024) compondo num Windows e num driver de 2026. Subir de
  * Electron e o conserto de verdade, e esta registrado como item da Fase 9.
  *
- * `QB_GPU=<modo>` substitui este padrao -- inclusive `QB_GPU=normal`, que nao
- * aplica nada e serve para reproduzir os bugs de novo.
+ * `QB_GPU=<modo>` substitui o modo da execucao, inclusive o da opcao --
+ * `QB_GPU=normal` numa maquina com a opcao ligada reproduz os bugs de novo.
  *
- * POR QUE O PADRAO E UM MODO PROPRIO, e nao `comp`: a escada e EXCLUSIVA, um
- * modo por execucao. Fazer de `comp` o padrao derrubaria as duas chaves do B8
+ * POR QUE O `compat` E UM MODO PROPRIO, e nao `comp`: a escada e EXCLUSIVA, um
+ * modo por execucao. Fazer a opcao usar `comp` derrubaria as duas chaves do B8
  * junto, e o B8 ja sumiu sozinho uma vez -- e pode voltar do mesmo jeito. Os
  * degraus puros continuam puros, para bisseccao; o padrao e a soma deles.
  *
  * Precisa vir ANTES do app ficar pronto; depois disso nao tem efeito.
  */
 const GPU_MODOS: Record<string, { nota: string; aplicar: () => void }> = {
-  // Nada aplicado: e assim que o bug volta. Existe para conferir que a correcao
-  // ainda e necessaria depois de subir de Electron -- sem isso, o dia em que ela
-  // virar desnecessaria passa despercebido e o custo fica para sempre.
+  // O PADRAO desde 06/10/2026: composicao pela GPU, nada aplicado. Na maquina
+  // do mantenedor, e assim que o B8/B18 volta -- e e com ele que se confere,
+  // depois de subir de Electron, se a opcao ainda e necessaria la.
   normal: {
-    nota: 'sem correcao alguma (reproduz o bug de proposito)',
+    nota: 'composicao pela GPU, sem correcao (o padrao)',
     aplicar: () => {},
   },
   // O caminho do Windows para mostrar o que a GPU desenhou. Testado no B8 e
@@ -109,17 +146,18 @@ const GPU_MODOS: Record<string, { nota: string; aplicar: () => void }> = {
     },
   },
   /*
-    O MODO PADRAO: a soma do `comp` com o `swap`.
+    A "COMPATIBILIDADE GRAFICA": a soma do `comp` com o `swap`. Foi o padrao de
+    21/09 a 06/10/2026 (chamava `padrao`); hoje e a opcao de Configuracoes.
 
     Existe como entrada propria porque a escada e exclusiva -- um modo por
-    execucao. Se o padrao fosse `comp`, as duas chaves do B8 sairiam junto, e o
+    execucao. Se a opcao fosse `comp`, as duas chaves do B8 sairiam junto, e o
     B8 ja sumiu sozinho uma vez, o que significa que pode voltar do mesmo jeito.
     Os degraus puros abaixo continuam puros, para bisseccao.
 
     Ver o cabecalho deste arquivo para as duas investigacoes inteiras.
   */
-  padrao: {
-    nota: 'composicao pela CPU + repintura completa (correcao do B18 e do B8)',
+  [MODO_COMPAT]: {
+    nota: 'compatibilidade grafica: composicao pela CPU + repintura completa (B18 e B8)',
     aplicar: () => {
       app.commandLine.appendSwitch('disable-gpu-compositing');
       app.commandLine.appendSwitch('ui-disable-partial-swap');
@@ -192,29 +230,25 @@ const GPU_MODOS: Record<string, { nota: string; aplicar: () => void }> = {
   },
 };
 
-/*
-  O padrao pode ser trocado NO BUILD, e so por ele: `QB_BUILD_GPU=normal` na hora
-  de empacotar gera um instalador que ja abre sem nenhuma correcao de
-  composicao. Existe para levar o app a OUTRO computador e responder "o B8/B18 e
-  desta maquina ou do codigo?" (30/09/2026) -- la nao ha terminal para passar
-  `QB_GPU`. Sem a variavel, o build sai com `padrao`, como sempre.
-*/
-declare const __GPU_PADRAO_DO_BUILD__: string;
-const gpuModo =
-  process.env['QB_GPU'] ?? (process.env['QB_NOGPU'] === '1' ? 'off' : __GPU_PADRAO_DO_BUILD__);
-const escolhido = GPU_MODOS[gpuModo];
-if (escolhido) {
-  escolhido.aplicar();
+// O `QB_BUILD_GPU` e o `npm run dist:gpu` sairam em 06/10/2026: existiam para
+// levar um instalador com GPU a outro computador, e a GPU virou o padrao.
+const { modo: gpuModo, pedidoInvalido } = resolverModo({
+  qbGpu: process.env['QB_GPU'],
+  qbNoGpu: process.env['QB_NOGPU'],
+  compatibilidade: lerCompatibilidade(app.getPath('userData')),
+  existe: (m) => m in GPU_MODOS,
+});
+GPU_MODOS[gpuModo]!.aplicar();
+// Nome errado cai no que a opcao diz, e nao na GPU: na maquina que precisa do
+// contorno, um QB_GPU com erro de digitacao faria o bug voltar calado.
+if (pedidoInvalido !== null) {
+  console.log(
+    `[gpu] modo "${pedidoInvalido}" nao existe; usando "${gpuModo}". Opcoes: ${Object.keys(GPU_MODOS).join(', ')}`,
+  );
+} else if (gpuModo !== MODO_PADRAO) {
   // So anuncia o que foge do padrao: uma linha por abertura dizendo que esta
   // tudo normal e ruido no terminal.
-  if (gpuModo !== 'padrao') console.log(`[gpu] modo "${gpuModo}": ${escolhido.nota}`);
-} else {
-  // Nome errado cai no padrao, e nao no nada: um QB_GPU com erro de digitacao
-  // faria o bug voltar calado, que e o pior desfecho possivel.
-  GPU_MODOS['padrao']!.aplicar();
-  console.log(
-    `[gpu] modo "${gpuModo}" nao existe; usando "padrao". Opcoes: ${Object.keys(GPU_MODOS).join(', ')}`,
-  );
+  console.log(`[gpu] modo "${gpuModo}": ${GPU_MODOS[gpuModo]!.nota}`);
 }
 
 let mainWindow: BrowserWindow | null = null;
@@ -450,9 +484,8 @@ function createWindow(): void {
 
   // O modo de composicao EFETIVO vai para a pagina, para o F3 do menu poder
   // dizer "CPU" ou "GPU" ao lado da cadencia -- sem isso, um numero ruim nao
-  // diria se e o padrao do B18 ou uma execucao com `QB_GPU` trocado. Nome
-  // errado cai no padrao la em cima, e aqui tambem.
-  query = `${query}${query ? '&' : '?'}gpu=${GPU_MODOS[gpuModo] ? gpuModo : 'padrao'}`;
+  // diria se e a opcao de compatibilidade ou uma execucao com `QB_GPU` trocado.
+  query = `${query}${query ? '&' : '?'}gpu=${gpuModo}`;
 
   // Os modos de verificacao terminam imprimindo um marcador. Fechar a janela
   // nesse ponto e o que torna `QB_IMPORT`/`--selftest`/`QB_BENCH` utilizaveis
@@ -577,21 +610,7 @@ function createWindow(): void {
   }
 }
 
-// QB_PERFIL=<nome> roda esta execucao num PERFIL separado do Electron (pasta de
-// dados propria), e com isso fora da trava de instancia unica do app aberto.
-//
-// Existe pela armadilha 4 do ENGENHARIA.md: com o app de teste aberto, selftest,
-// captura e bancada simplesmente nao subiam -- a trava fechava o segundo
-// processo calado. O perfil separa `localStorage` e trava; o disco se separa
-// com o `QB_BOARDS` apontando para copias. Usar os DOIS juntos: so o perfil,
-// sem `QB_BOARDS`, poria dois processos gravando na mesma pasta de quadros.
-//
-// Ignorado no app instalado, como todo QB_*. Nome saneado: vira nome de pasta.
-const perfil = process.env['QB_PERFIL'];
-if (perfil && isDev && /^[a-z0-9-]{1,32}$/i.test(perfil)) {
-  app.setPath('userData', join(app.getPath('userData'), '..', `creation-board-${perfil}`));
-  console.log(`[perfil] execucao no perfil separado "${perfil}"`);
-}
+// (O QB_PERFIL fica no topo do arquivo, antes do modo de composicao.)
 
 // Instancia unica: abrir o atalho de novo foca a janela existente em vez de
 // subir um segundo processo brigando pelo mesmo arquivo de autosave.
@@ -642,7 +661,7 @@ if (!gotLock) {
         console.log(`[diag] GPU ${JSON.stringify(app.getGPUFeatureStatus())}`);
       }, 8000);
     }
-    registerAppIpc();
+    registerAppIpc(gpuModo === MODO_COMPAT);
     registerBoardIpc();
     registerImportIpc();
     registerFundoIpc();

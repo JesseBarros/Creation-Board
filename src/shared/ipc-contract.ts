@@ -21,6 +21,8 @@ import type { Idioma } from './i18n';
 export const IPC = {
   appInfo: 'app:info',
   appIdioma: 'app:idioma',
+  graficosLer: 'graficos:ler',
+  graficosGravar: 'graficos:gravar',
   boardSave: 'board:save',
   boardList: 'board:list',
   boardLoad: 'board:load',
@@ -48,6 +50,17 @@ export interface AppInfo {
   node: string;
   platform: NodeJS.Platform;
   packaged: boolean;
+}
+
+/**
+ * A opcao "compatibilidade grafica" (ver `main/graficos.ts`). Sao dois valores
+ * porque ela so vale ao reabrir: o gravado pode ser diferente do que esta em uso.
+ */
+export interface EstadoGraficos {
+  /** O que esta gravado -- vale na proxima abertura. */
+  compatibilidade: boolean;
+  /** Se ESTA execucao esta com a composicao pela CPU. */
+  emUso: boolean;
 }
 
 export type ExportFormat = 'png' | 'svg' | 'pdf';
@@ -129,6 +142,12 @@ export interface CreationBoardApi {
   getAppInfo(): Promise<AppInfo>;
   /** O idioma escolhido pela pagina, para os dialogos nativos e as mensagens do main. */
   definirIdioma(idioma: Idioma): Promise<void>;
+
+  graficos: {
+    ler(): Promise<EstadoGraficos>;
+    /** Grava a opcao; vale na proxima vez que o app abrir. */
+    gravar(compatibilidade: boolean): Promise<void>;
+  };
 
   board: {
     save(req: SaveBoardRequest): Promise<SaveBoardResult>;

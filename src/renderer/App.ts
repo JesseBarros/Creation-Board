@@ -344,7 +344,7 @@ export class App {
       openBoard: (s) => void this.openBoard(s),
       openDemo: () => void this.openDemo(),
       toggleTheme: () => this.toggleTheme(),
-      openSettings: () => this.#openSettings(),
+      openSettings: () => void this.#openSettings(),
       importBoards: () => void this.#pickAndImport(),
       openBoardAt: (path, id) => void this.openBoardAt(path, id),
     });
@@ -1166,10 +1166,14 @@ export class App {
    * Aplica a cada clique, e não ao fechar: o efeito aparece na própria tela
    * atrás do diálogo, e é isso que torna a escolha conferível sem sair dela.
    */
-  #openSettings(): void {
+  async #openSettings(): Promise<void> {
+    // A opcao de compatibilidade mora no processo principal (vale antes de a
+    // janela existir), entao e a unica que precisa ser perguntada.
+    const graficos = await window.quadro.graficos.ler();
     settingsDialog(
       {
         idioma: idiomaAtual(),
+        graficos,
         animacoes: this.#animacoes,
         fundos: {
           claro: localStorage.getItem(FUNDO_KEY.claro),
@@ -1193,6 +1197,13 @@ export class App {
         },
         escolherFundo: (tema) => this.#escolherFundo(tema),
         restaurarFundo: (tema) => this.#restaurarFundo(tema),
+        gravarCompatibilidade: async (ligada) => {
+          try {
+            await window.quadro.graficos.gravar(ligada);
+          } catch (err) {
+            toast(App.#mensagemDeIpc(err), 'error');
+          }
+        },
       },
     );
   }

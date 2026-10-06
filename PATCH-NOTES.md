@@ -29,9 +29,12 @@
 - Uma barra só, com ícones novos, e as opções da ferramenta num painel que sobe da barra.
 - Tema claro mais confortável para a vista.
 - A borracha apaga em traço contínuo e não trava mais com zoom alto.
-- Corrigido o desenho duplicado ("fantasma") que aparecia ao dar zoom.
 - Arrastar o quadro ficou mais leve, e o zoom rápido com `Ctrl`+roda não trava mais, mesmo em quadros grandes.
 - Uma print colada ou arrastada para o quadro já entra na busca (`Ctrl+F`) na hora, sem precisar reabrir o quadro — e sem travar a janela.
+
+### Desempenho
+- Arrastar um quadro de mais de mil objetos acompanha um monitor de 144 Hz.
+- **Compatibilidade gráfica**, em **Configurações**: se no seu computador a tela piscar, ou o desenho aparecer duplicado ao dar zoom, ligue a opção e abra o app de novo. A tela passa a ser montada pelo processador em vez da placa de vídeo — um pouco menos fluido, mas sem esses defeitos.
 
 ### Segurança e privacidade
 - Fotos coladas num quadro **não levam mais os dados escondidos da imagem** (localização de GPS, modelo do celular, data) para o arquivo nem para o SVG exportado.
@@ -76,9 +79,12 @@ Seus quadros continuam na mesma pasta (`C:\Creation Board`) e abrem normalmente.
 - A single toolbar with new icons, and tool options in a panel that rises from the bar.
 - A lighter theme that's easier on the eyes.
 - The eraser erases in a continuous stroke and no longer freezes at high zoom.
-- Fixed the duplicated ("ghost") drawing that appeared when zooming.
 - Dragging a board is lighter, and fast `Ctrl`+wheel zooming no longer stutters, even on large boards.
 - A screenshot pasted or dragged into a board is searchable (`Ctrl+F`) right away, without reopening the board — and without freezing the window.
+
+### Performance
+- Panning a board with over a thousand objects keeps up with a 144 Hz monitor.
+- **Graphics compatibility**, in **Settings**: if the screen flickers on your computer, or the drawing appears doubled when zooming, turn it on and reopen the app. The screen is then composed by the processor instead of the graphics card — a little less smooth, but without those glitches.
 
 ### Security and privacy
 - Photos pasted into a board **no longer carry hidden image data** (GPS location, phone model, date) into the file or the exported SVG.
