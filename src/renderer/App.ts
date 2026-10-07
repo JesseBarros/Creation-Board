@@ -339,7 +339,7 @@ export class App {
         warnIfLowContrast: (color) => this.warnIfLowContrast(color),
         toggleTextFormat: (what) => this.toggleTextFormat(what),
         setTextAlign: (align) => this.setTextAlign(align),
-        retomarEdicao: () => this.#editor.retomarFoco(),
+        retomarEdicao: () => this.#retomarEdicao(),
         restyleNotes: ({ bg, alert }) =>
           this.restyleSelectedNotes({
             ...(bg !== undefined ? { bg } : {}),
@@ -364,6 +364,15 @@ export class App {
       if (agora === tamanhoDoTexto) return;
       tamanhoDoTexto = agora;
       this.setTextFontSize(agora);
+    });
+    // A COR da paleta do Texto, do mesmo jeito: vale para o trecho selecionado
+    // na caixa aberta, ou para as caixas selecionadas (ver `setTextColor`).
+    let corDoTexto = this.drawStyle.color('text');
+    this.drawStyle.onChange(() => {
+      const agora = this.drawStyle.color('text');
+      if (agora === corDoTexto) return;
+      corDoTexto = agora;
+      this.setTextColor(agora);
     });
 
     /*
@@ -2130,6 +2139,59 @@ export class App {
    * seguinte dentro da janela do historico, como mover um objeto. A altura e
    * remedida junto; a largura fica, e o texto reflui nela.
    */
+  /**
+   * A cor escolhida na paleta do Texto (07/10/2026, pedido: [...]).
+   *
+   * - **digitando**: pinta o trecho selecionado, ou o texto todo com `Ctrl+A`
+   *   (ver `TextEditor.aplicarCor`). Se o foco esta no seletor de cor do
+   *   Windows, a cor espera ele fechar (`#retomarEdicao`).
+   * - **com caixas selecionadas**: a caixa inteira muda de cor, e a cor de
+   *   trecho que houvesse nela sai -- e o que [...] quer dizer
+   *   para quem selecionou a caixa. Um passo de desfazer.
+   * - sem nada disso: so a cor do proximo texto, como sempre foi.
+   */
+  setTextColor(cor: string): void {
+    if (this.#editor.isEditing) {
+      if (!this.#editor.temFoco) {
+        this.#corPendente = cor;
+        return;
+      }
+      this.#editor.aplicarCor(cor);
+      return;
+    }
+
+    const alvos = this.selection
+      .objects(this.doc)
+      .filter((o): o is TextObject => o.type === 'text' && !o.locked);
+    const before = new Map<string, ObjectPatch>();
+    const after = new Map<string, ObjectPatch>();
+    for (const obj of alvos) {
+      if (obj.color === cor && obj.content.every((s) => s.color === undefined)) continue;
+      before.set(obj.id, { color: obj.color, content: obj.content });
+      after.set(obj.id, {
+        color: cor,
+        content: obj.content.map(({ color: _cor, ...resto }) => resto),
+      });
+    }
+    if (after.size === 0) return;
+
+    this.history.push(new PatchObjects(this.doc, before, after, 'Cor do texto'));
+    this.history.seal();
+    this.#markDirty();
+    this.#scheduler.invalidate();
+  }
+
+  /** A cor escolhida no seletor do Windows, esperando a caixa voltar a ter foco. */
+  #corPendente: string | null = null;
+
+  /** Devolve o foco a caixa aberta, e aplica a cor que esperava por ela. */
+  #retomarEdicao(): void {
+    this.#editor.retomarFoco();
+    const cor = this.#corPendente;
+    this.#corPendente = null;
+    if (cor !== null && this.#editor.isEditing) this.#editor.aplicarCor(cor);
+  }
+
   setTextFontSize(size: number): void {
     if (this.#editor.setNewFontSize(size)) return;
     const emEdicao = this.#editingText();

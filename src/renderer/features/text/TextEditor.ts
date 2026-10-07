@@ -50,6 +50,17 @@ export class TextEditor {
   /** Caixa recem-criada: ainda nao esta no documento. */
   #isNew = false;
   #disposers: Array<() => void> = [];
+  /**
+   * A ultima selecao feita DENTRO da caixa. Clicar no "+" da paleta (o seletor
+   * de cor do Windows) tira a selecao daqui, e e a esta que a cor escolhida
+   * tem de voltar.
+   */
+  #intervalo: Range | null = null;
+  /**
+   * O seletor de cor do Windows esta aberto por cima da caixa: o `blur` da
+   * janela que ele causa NAO e [...], e nao pode fechar a edicao.
+   */
+  #seletorAberto = false;
 
   constructor(host: HTMLElement, ctx: ToolContext, callbacks: EditorCallbacks) {
     this.#ctx = ctx;
@@ -216,9 +227,45 @@ export class TextEditor {
    */
   retomarFoco(): void {
     if (!this.#target) return;
+    this.#seletorAberto = false;
     this.el.focus({ preventScroll: true });
     const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0 || !this.el.contains(sel.anchorNode)) placeCaret(this.el, 'end');
+    if (sel && sel.rangeCount > 0 && this.el.contains(sel.anchorNode)) return;
+    // A selecao saiu da caixa (o clique no "+" da paleta a levou junto): volta
+    // a ultima feita aqui dentro, e so sem ela o cursor vai para o fim.
+    const salvo = this.#intervalo;
+    if (sel && salvo && this.el.contains(salvo.startContainer) && this.el.contains(salvo.endContainer)) {
+      sel.removeAllRanges();
+      sel.addRange(salvo);
+      return;
+    }
+    placeCaret(this.el, 'end');
+  }
+
+  /** O foco do teclado esta na caixa aberta? */
+  get temFoco(): boolean {
+    return this.#target !== null && this.el.contains(document.activeElement);
+  }
+
+  /**
+   * Pinta o trecho SELECIONADO na caixa aberta (07/10/2026, pedido: [...];
+   * com `Ctrl+A` dentro da caixa, muda o texto todo). Sem selecao, vale para as
+   * proximas letras, como o negrito.
+   *
+   * Pelo `execCommand`, o mesmo caminho do `Ctrl+B`: o navegador ja sabe partir
+   * um trecho no meio e juntar com o vizinho, e o `Ctrl+Z` de dentro da caixa
+   * desfaz. Com `styleWithCSS` a cor sai em `style="color"`, que e o que o
+   * `domToSpans` le -- sem ele viria um `<font color>`, que ele nao conhece.
+   *
+   * So caixa de TEXTO: o post-it tem a cor do texto presa ao papel.
+   */
+  aplicarCor(cor: string): boolean {
+    if (!this.#target || this.#target.type !== 'text') return false;
+    this.retomarFoco();
+    document.execCommand('styleWithCSS', false, 'true');
+    document.execCommand('foreColor', false, cor);
+    document.execCommand('styleWithCSS', false, 'false');
+    return true;
   }
 
   /** Fecha sem gravar. Usado ao trocar de quadro. */
@@ -237,6 +284,8 @@ export class TextEditor {
   #close(): void {
     this.#target = null;
     this.#isNew = false;
+    this.#intervalo = null;
+    this.#seletorAberto = false;
     this.el.hidden = true;
     this.el.replaceChildren();
     this.#callbacks.onEditingChanged(null);
@@ -345,15 +394,41 @@ export class TextEditor {
         // Controle de formatacao (o B/I/U da barra) age DENTRO da caixa, e nao
         // fora dela: fechar a edicao aqui era o que fazia o negrito valer para o
         // objeto inteiro em vez da palavra seguinte. Ver ToolBar.
-        if (e.target instanceof Element && e.target.closest('[data-keep-edit]')) return;
+        const controle = e.target instanceof Element ? e.target.closest<HTMLElement>('[data-keep-edit]') : null;
+        if (controle) {
+          // O "+" da paleta abre o seletor do Windows, que tira o foco da janela.
+          if (controle.dataset['keepEdit'] === 'seletor') this.#seletorAberto = true;
+          return;
+        }
         this.commit();
       },
       { capture: true },
     );
 
+    // Guarda a selecao feita dentro da caixa (ver `#intervalo`).
+    on(document, 'selectionchange', () => {
+      if (!this.#target) return;
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0 && this.el.contains(sel.anchorNode) && this.el.contains(sel.focusNode)) {
+        this.#intervalo = sel.getRangeAt(0).cloneRange();
+      }
+    });
+
     // Perder o foco da janela no meio da digitacao grava o que existe: o
-    // contrario -- descartar -- perderia texto sem aviso.
-    on(window, 'blur', () => this.commit());
+    // contrario -- descartar -- perderia texto sem aviso. A excecao e o seletor
+    // de cor do Windows aberto a partir da paleta: ele e parte da edicao.
+    on(window, 'blur', () => {
+      if (this.#seletorAberto) return;
+      this.commit();
+    });
+    // Voltar a janela encerra a excecao: um segundo `blur` ja e sair do app.
+    on(window, 'focus', () => {
+      if (!this.#seletorAberto) return;
+      // O `change` do seletor chega depois do foco; da tempo a ele.
+      setTimeout(() => {
+        this.#seletorAberto = false;
+      }, 0);
+    });
   }
 }
 

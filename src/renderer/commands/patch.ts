@@ -45,6 +45,11 @@ export interface ObjectPatch {
    */
   crop?: Rect | null;
   /**
+   * Cor da caixa de texto inteira (07/10/2026: a paleta do Texto com a caixa
+   * selecionada). Anda junto de `content`, que perde a cor de trecho.
+   */
+  color?: string;
+  /**
    * Cadeado e olho do painel de camadas (M8).
    *
    * Entram aqui, e nao num comando proprio, porque `PatchObjects` ja e o comando
@@ -68,6 +73,7 @@ export function snapshotPatch(obj: BoardObject, fields: ObjectPatch): ObjectPatc
   if (fields.fontSize !== undefined && obj.type === 'text') out.fontSize = obj.fontSize;
   if (fields.autoHeight !== undefined && obj.type === 'text') out.autoHeight = obj.autoHeight;
   if (fields.align !== undefined && obj.type === 'text') out.align = obj.align;
+  if (fields.color !== undefined && obj.type === 'text') out.color = obj.color;
   if (fields.crop !== undefined && obj.type === 'image') out.crop = obj.crop ?? null;
   if (fields.locked !== undefined) out.locked = obj.locked;
   if (fields.hidden !== undefined) out.hidden = obj.hidden;
@@ -101,6 +107,7 @@ export function applyPatches(
       autoHeight?: boolean;
       align?: 'left' | 'center' | 'right';
       crop?: Rect | undefined;
+      color?: string;
     };
     if (patch.transform) next.transform = { ...patch.transform };
     if (patch.w !== undefined && 'w' in obj) next.w = patch.w;
@@ -111,6 +118,7 @@ export function applyPatches(
     if (patch.fontSize !== undefined && obj.type === 'text') next.fontSize = patch.fontSize;
     if (patch.autoHeight !== undefined && obj.type === 'text') next.autoHeight = patch.autoHeight;
     if (patch.align !== undefined && obj.type === 'text') next.align = patch.align;
+    if (patch.color !== undefined && obj.type === 'text') next.color = patch.color;
     // `null` no patch significa "sem recorte", e o campo do objeto e opcional:
     // guardar o null cru deixaria `crop` presente e falso ao mesmo tempo.
     if (patch.crop !== undefined && obj.type === 'image') {

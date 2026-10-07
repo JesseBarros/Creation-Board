@@ -124,8 +124,22 @@ function merge(style: SpanStyle, el: HTMLElement): SpanStyle {
   }
   if (el.tagName === 'I' || el.tagName === 'EM' || css.fontStyle === 'italic') out.italic = true;
   if (el.tagName === 'U' || css.textDecorationLine.includes('underline')) out.underline = true;
-  if (css.color) out.color = css.color;
+  if (css.color) out.color = paraHex(css.color);
   return out;
+}
+
+/**
+ * A cor no formato do resto do documento, `#rrggbb`. O navegador devolve
+ * `rgb(r, g, b)` por `style.color` mesmo quando recebeu hex; guardar assim
+ * deixaria no arquivo dois jeitos de escrever a mesma cor, e o "mesmo estilo"
+ * de dois trechos vizinhos deixaria de juntar.
+ */
+export function paraHex(cor: string): string {
+  const m = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)$/.exec(cor.trim());
+  if (!m) return cor;
+  // Alfa abaixo de 1 nao tem `#rrggbb`: fica como veio.
+  if (m[4] !== undefined && Number(m[4]) < 1) return cor;
+  return `#${[m[1], m[2], m[3]].map((c) => Math.min(255, Number(c)).toString(16).padStart(2, '0')).join('')}`;
 }
 
 function weightOf(value: string): number {

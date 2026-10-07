@@ -389,7 +389,7 @@ export class ToolBar {
    *
    * Fica numa linha propria, separada do B/I/U, porque responde outra pergunta.
    * Negrito e italico valem para um TRECHO -- uma palavra no meio da frase.
-   * Alinhamento vale para a CAIXA inteira, e nao existe [...].
+   * Alinhamento vale para a CAIXA inteira, e nao existe "meia linha centrada".
    * Misturar os seis botoes na mesma fila sugeriria que todos funcionam igual.
    *
    * E o que permite distinguir titulo de paragrafo num resumo: titulo centrado,
@@ -545,6 +545,7 @@ export class ToolBar {
       b.title = color;
       b.setAttribute('aria-label', t('cor.rotulo', color));
       b.addEventListener('click', () => this.style.setColor(id, color));
+      this.#manterEdicao(b, id);
       this.#colorRow.append(b);
     }
 
@@ -561,10 +562,30 @@ export class ToolBar {
       b.title = t('cor.escolhida', custom);
       b.setAttribute('aria-label', t('cor.rotulo', custom));
       b.addEventListener('click', () => this.style.setColor(id, custom));
+      this.#manterEdicao(b, id);
       this.#colorRow.append(b);
     }
 
-    this.#colorRow.append(this.#customColorButton(id));
+    const outra = this.#customColorButton(id);
+    // O "+" nao pode segurar o foco como as amostras (impediria o seletor de
+    // abrir): ele avisa o TextEditor, que segura a caixa aberta enquanto o
+    // seletor do Windows estiver por cima. Ver `TextEditor.aplicarCor`.
+    if (id === 'text') outra.dataset['keepEdit'] = 'seletor';
+    else delete outra.dataset['keepEdit'];
+    this.#colorRow.append(outra);
+  }
+
+  /**
+   * Na paleta do TEXTO, a amostra pinta o trecho selecionado na caixa aberta
+   * (ver `App.setTextColor`) -- e o clique nao pode fechar a caixa, pelo mesmo
+   * motivo do B/I/U (ver `#renderTextFormat`).
+   */
+  #manterEdicao(b: HTMLElement, id: StyleToolId): void {
+    if (id !== 'text') return;
+    b.dataset['keepEdit'] = '1';
+    const segurarFoco = (e: Event): void => e.preventDefault();
+    b.addEventListener('pointerdown', segurarFoco);
+    b.addEventListener('mousedown', segurarFoco);
   }
 
   /**
@@ -596,7 +617,12 @@ export class ToolBar {
       });
       // O aviso so sai quando a escolha termina: durante o arraste do seletor a
       // cor passa por dezenas de valores, e avisar em cada um seria ruido.
-      input.addEventListener('change', () => this.actions.warnIfLowContrast(input.value));
+      input.addEventListener('change', () => {
+        this.actions.warnIfLowContrast(input.value);
+        // Com uma caixa de texto aberta, a cor espera o seletor fechar e entra
+        // no trecho que estava selecionado nela (ver `App.retomarEdicao`).
+        if (this.#customTool === 'text') this.actions.retomarEdicao();
+      });
 
       wrap.append(input, icon('mais', 15));
       this.#customColor = wrap;
@@ -647,7 +673,8 @@ export class ToolBar {
         B/I/U. Diferente deles, aqui nao da para segurar o foco com
         `preventDefault`: isso impediria o proprio arraste. Entao a barra leva o
         foco durante o gesto e o devolve a caixa ao soltar, com o cursor onde
-        estava -- quem estava digitando continua digitando (06/10/2026: [...]).
+        estava -- quem estava digitando continua digitando (06/10/2026: "na
+        criacao de texto a barrinha nao funciona").
       */
       slider.dataset['keepEdit'] = '1';
       slider.addEventListener('change', () => this.actions.retomarEdicao());

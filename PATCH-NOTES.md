@@ -40,6 +40,7 @@
 ### Quadro
 - Redimensionar texto **não distorce mais as letras**: o canto muda o tamanho da fonte e a lateral muda a largura da caixa.
 - **Negrito, itálico e sublinhado** enquanto se digita, numa palavra só.
+- **Cor do texto já escrito**: selecione um trecho e escolha a cor no menu de Texto; com `Ctrl+A` dentro da caixa, muda o texto todo. Com a caixa selecionada no quadro, muda a caixa inteira.
 - A barra de **tamanho** do menu de Texto muda o texto que você está escrevendo, ou o selecionado, sem fechar a caixa (antes, só valia para o próximo texto).
 - Uma barra só, com ícones novos, e as opções da ferramenta num painel que sobe da barra.
 - Tema claro mais confortável para a vista.
@@ -107,6 +108,7 @@ Seus quadros continuam na mesma pasta (`C:\Creation Board`) e abrem normalmente.
 ### Board
 - Resizing text **no longer distorts the letters**: the corner changes the font size and the side changes the box width.
 - **Bold, italic and underline** while typing, on a single word.
+- **Color of text already written**: select a passage and pick a color in the Text menu; with `Ctrl+A` inside the box, the whole text changes. With the box selected on the board, the whole box changes.
 - The **size** slider in the Text menu changes the text you're typing, or the selected one, without closing the box (before, it only applied to the next text).
 - A single toolbar with new icons, and tool options in a panel that rises from the bar.
 - A lighter theme that's easier on the eyes.
