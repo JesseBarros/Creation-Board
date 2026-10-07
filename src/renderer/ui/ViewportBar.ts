@@ -18,7 +18,14 @@ export interface ViewportBarActions {
   redo(): void;
 }
 
-const PRESETS = [0.01, 0.05, 0.25, 0.5, 1, 2, 4, 8, 16, 64];
+/**
+ * O zoom da BARRA vai ate 100% (06/10/2026): o + e os niveis do
+ * menu servem para voltar a escala real, e nao para mergulhar. Ctrl+roda e os
+ * atalhos de teclado continuam indo de 1% a 6400% -- o padrao do app.
+ */
+export const ZOOM_MAXIMO_DA_BARRA = 1;
+
+const PRESETS = [0.01, 0.05, 0.25, 0.5, 1];
 
 /**
  * Barra flutuante inferior do quadro.
@@ -44,6 +51,7 @@ const PRESETS = [0.01, 0.05, 0.25, 0.5, 1, 2, 4, 8, 16, 64];
 export class ViewportBar {
   readonly el: HTMLElement;
   #zoomLabel: HTMLButtonElement;
+  #plusBtn!: HTMLButtonElement;
   #menu: HTMLElement;
   #gridBtn: HTMLButtonElement;
   #rulerBtn: HTMLButtonElement;
@@ -137,6 +145,7 @@ export class ViewportBar {
     const plus = iconButton('mais', 'zoom-mais', t('barra.zoomMais'), () =>
       this.actions.zoomIn(),
     );
+    this.#plusBtn = plus;
 
     this.#zoomLabel = document.createElement('button');
     this.#zoomLabel.type = 'button';
@@ -208,6 +217,8 @@ export class ViewportBar {
 
   setZoom(zoom: number): void {
     this.#zoomLabel.textContent = `${Math.round(zoom * 100)}%`;
+    // Apagado no teto da barra -- e acima dele, quando a roda levou mais longe.
+    this.#plusBtn.disabled = zoom >= ZOOM_MAXIMO_DA_BARRA - 1e-9;
   }
 
   setGridEnabled(on: boolean): void {

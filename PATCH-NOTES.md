@@ -10,6 +10,7 @@
 - Título novo, na mesma assinatura da logo, e o caminho da pasta de quadros num selo discreto.
 - **Configurações** redesenhada: seções em cartões, uma frase por opção, a miniatura de cada fundo e um botão **Aplicar alterações**.
 - Na primeira abertura, o app segue o tema do Windows: claro ou escuro.
+- A grade de quadros rola **dentro do painel**: título, busca e botões ficam sempre à vista.
 
 ### Criar, salvar e fechar
 - **`Ctrl+N`** cria um quadro novo, no menu ou de dentro de um quadro.
@@ -39,6 +40,7 @@
 - Tema claro mais confortável para a vista.
 - A borracha apaga em traço contínuo e não trava mais com zoom alto.
 - Arrastar o quadro ficou mais leve, e o zoom rápido com `Ctrl`+roda não trava mais, mesmo em quadros grandes.
+- Os botões de zoom da barra vão até 100%, a escala real; `Ctrl`+roda continua aproximando até 6400%.
 - Uma print colada ou arrastada para o quadro já entra na busca (`Ctrl+F`) na hora, sem precisar reabrir o quadro — e sem travar a janela.
 
 ### Desempenho
@@ -70,6 +72,7 @@ Seus quadros continuam na mesma pasta (`C:\Creation Board`) e abrem normalmente.
 - A new title that matches the logo, and the boards folder path in a discreet badge.
 - Redesigned **Settings**: sections in cards, one sentence per option, a thumbnail of each background, and an **Apply changes** button.
 - On first launch, the app follows the Windows theme: light or dark.
+- The board grid scrolls **inside the panel**: the title, search and buttons always stay in view.
 
 ### Create, save and close
 - **`Ctrl+N`** creates a new board, from the home screen or from inside a board.
@@ -98,6 +101,7 @@ Seus quadros continuam na mesma pasta (`C:\Creation Board`) e abrem normalmente.
 - A lighter theme that's easier on the eyes.
 - The eraser erases in a continuous stroke and no longer freezes at high zoom.
 - Dragging a board is lighter, and fast `Ctrl`+wheel zooming no longer stutters, even on large boards.
+- The zoom buttons on the bar go up to 100%, the real scale; `Ctrl`+wheel still zooms in up to 6400%.
 - A screenshot pasted or dragged into a board is searchable (`Ctrl+F`) right away, without reopening the board — and without freezing the window.
 
 ### Performance

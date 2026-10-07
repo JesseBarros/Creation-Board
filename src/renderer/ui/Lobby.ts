@@ -883,7 +883,8 @@ export class Lobby {
       }
     });
     tornarArrastavel<Alvo>(card, {
-      rolagem: this.#rolagem,
+      // O painel, e nao a coluna: e ele que rola desde 06/10/2026.
+      rolagem: this.#painel,
       alvoEm: (el) => this.#alvoEm(el, card),
       soltar: (alvo) => void this.#soltar(summary, alvo),
     });
