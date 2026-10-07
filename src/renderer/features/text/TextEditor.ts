@@ -194,6 +194,33 @@ export class TextEditor {
     this.#applyStyle(atual);
   }
 
+  /**
+   * Corpo da fonte de uma caixa NOVA, que ainda nao existe no documento (a
+   * barra de tamanho do menu de Texto, com a caixa recem-criada aberta). Ela
+   * nasce desta copia no `commit`, entao basta trocar aqui. Devolve false se o
+   * que esta aberto nao e um texto novo -- ai o App patcha o documento.
+   */
+  setNewFontSize(size: number): boolean {
+    const alvo = this.#target;
+    if (!alvo || !this.#isNew || alvo.type !== 'text') return false;
+    this.#target = { ...alvo, fontSize: size };
+    this.#applyStyle(this.#target);
+    this.sync();
+    return true;
+  }
+
+  /**
+   * Devolve o foco a caixa aberta (depois da barra de tamanho do menu). O
+   * Chromium restaura a selecao que ficou dentro dela; se nao ficou nenhuma, o
+   * cursor vai para o fim, que e onde quem estava digitando parou.
+   */
+  retomarFoco(): void {
+    if (!this.#target) return;
+    this.el.focus({ preventScroll: true });
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || !this.el.contains(sel.anchorNode)) placeCaret(this.el, 'end');
+  }
+
   /** Fecha sem gravar. Usado ao trocar de quadro. */
   abort(): void {
     if (!this.#target) return;

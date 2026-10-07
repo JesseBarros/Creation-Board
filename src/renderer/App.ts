@@ -13,7 +13,7 @@ import { ToolManager } from './tools/ToolManager';
 import { ALERT_ICONS, DrawStyle } from './tools/DrawStyle';
 import { hasStyle, type EditableObject, type ToolContext, type ToolId } from './tools/types';
 import { TextEditor } from './features/text/TextEditor';
-import { PatchObjects, RestyleNotes, type NoteStyle } from './commands';
+import { PatchObjects, RestyleNotes, TransformObjects, type NoteStyle } from './commands';
 import { snapshotPatch, type ObjectPatch } from './commands/patch';
 import type { Rect } from '@shared/geometry/rect';
 import { contentHeight, styleOf } from './render/text/layout';
@@ -304,6 +304,7 @@ export class App {
         warnIfLowContrast: (color) => this.warnIfLowContrast(color),
         toggleTextFormat: (what) => this.toggleTextFormat(what),
         setTextAlign: (align) => this.setTextAlign(align),
+        retomarEdicao: () => this.#editor.retomarFoco(),
         restyleNotes: ({ bg, alert }) =>
           this.restyleSelectedNotes({
             ...(bg !== undefined ? { bg } : {}),
@@ -317,6 +318,18 @@ export class App {
     // Uma barra so: a fila de ferramentas entra DENTRO da barra inferior em vez
     // de flutuar sozinha na borda esquerda. Ver `ViewportBar.mountTools`.
     this.#bar.mountTools(this.#toolbar.el);
+
+    // A barra de tamanho do menu de Texto vale para o texto aberto ou
+    // selecionado, e nao so para o proximo (ver `setTextFontSize`). So reage
+    // quando o tamanho do TEXTO mudou: mexer na cor, ou na espessura da caneta,
+    // nao toca em caixa nenhuma.
+    let tamanhoDoTexto = this.drawStyle.width('text');
+    this.drawStyle.onChange(() => {
+      const agora = this.drawStyle.width('text');
+      if (agora === tamanhoDoTexto) return;
+      tamanhoDoTexto = agora;
+      this.setTextFontSize(agora);
+    });
 
     /*
       O B/I/U precisa acompanhar o cursor, e `selectionchange` e o unico evento
@@ -2021,6 +2034,47 @@ export class App {
     // estava ate a caixa fechar.
     this.#editor.refreshStyle();
     this.#syncTextFormat();
+  }
+
+  /**
+   * O tamanho do texto pela barra do menu de Texto.
+   *
+   * A barra mudava so o tamanho do PROXIMO texto, e foi relatado que ela "nao
+   * funciona" (06/10/2026): quem a move esta olhando para o texto que acabou de
+   * escrever, ou para o selecionado. Agora ela vale para eles, pelo mesmo caminho
+   * do alinhamento -- a caixa aberta, senao a selecao -- e continua definindo o
+   * tamanho dos proximos.
+   *
+   * Um passo de desfazer por arraste: o `TransformObjects` se funde com o
+   * seguinte dentro da janela do historico, como mover um objeto. A altura e
+   * remedida junto; a largura fica, e o texto reflui nela.
+   */
+  setTextFontSize(size: number): void {
+    if (this.#editor.setNewFontSize(size)) return;
+    const emEdicao = this.#editingText();
+    const alvos = emEdicao
+      ? [emEdicao]
+      : this.selection
+          .objects(this.doc)
+          .filter((o): o is TextObject => o.type === 'text' && !o.locked);
+    if (alvos.length === 0) return;
+
+    const before = new Map<string, ObjectPatch>();
+    const after = new Map<string, ObjectPatch>();
+    for (const obj of alvos) {
+      if (obj.fontSize === size) continue;
+      before.set(obj.id, { fontSize: obj.fontSize, h: obj.h });
+      after.set(obj.id, {
+        fontSize: size,
+        h: obj.autoHeight ? contentHeight(obj.content, { ...styleOf(obj), fontSize: size }) : obj.h,
+      });
+    }
+    if (after.size === 0) return;
+
+    this.history.push(new TransformObjects(this.doc, before, after, 'Tamanho do texto'));
+    this.#markDirty();
+    this.#scheduler.invalidate();
+    this.#editor.refreshStyle();
   }
 
   /**

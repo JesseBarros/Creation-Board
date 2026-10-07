@@ -42,6 +42,8 @@ export interface ToolBarActions {
   toggleTextFormat(what: 'bold' | 'italic' | 'underline'): void;
   /** Alinha a caixa de texto. Ver `App.setTextAlign`. */
   setTextAlign(align: TextAlign): void;
+  /** Devolve o foco a caixa de texto aberta, depois de mexer na barra de tamanho. */
+  retomarEdicao(): void;
 }
 
 interface ToolDef {
@@ -638,6 +640,17 @@ export class ToolBar {
         this.style.setPercent(this.#widthTool, Number(slider.value));
         readout.textContent = `${slider.value}%`;
       });
+
+      /*
+        Com uma caixa de texto aberta, a barra muda o tamanho DELA (ver
+        `App.setTextFontSize`) -- e o clique nao pode fechar a caixa, como o
+        B/I/U. Diferente deles, aqui nao da para segurar o foco com
+        `preventDefault`: isso impediria o proprio arraste. Entao a barra leva o
+        foco durante o gesto e o devolve a caixa ao soltar, com o cursor onde
+        estava -- quem estava digitando continua digitando (06/10/2026: [...]).
+      */
+      slider.dataset['keepEdit'] = '1';
+      slider.addEventListener('change', () => this.actions.retomarEdicao());
 
       this.#slider = slider;
       this.#pctLabel = readout;
