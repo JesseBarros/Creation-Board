@@ -16,7 +16,7 @@
 - Na primeira abertura, o app segue o tema do Windows: claro ou escuro. A **tela de abertura** também segue o tema, sem piscar escuro antes do claro.
 - A grade de quadros rola **dentro do painel**: título, busca e botões ficam sempre à vista.
 - A busca em todos os quadros ficou centralizada, e levanta como os botões ao passar o mouse.
-- Tela principal reequilibrada: a busca e os quadros no mesmo painel de vidro, que cresce com a biblioteca em vez de ocupar a tela toda; título e botões numa linha só.
+- Tela principal reequilibrada: a busca e os quadros no mesmo painel de vidro, com margens iguais e a busca sempre à vista; título e botões numa linha só.
 - Um **+** no fim da grade cria um quadro ou uma pasta, sem subir até o cabeçalho.
 - Com a biblioteca vazia, a tela inicial oferece **Criar quadro novo** ao lado de importar, e ensina o `Ctrl+N`.
 
@@ -89,7 +89,7 @@ Seus quadros continuam na mesma pasta (`C:\Creation Board`) e abrem normalmente.
 - On first launch, the app follows the Windows theme: light or dark. The **splash screen** follows the theme too, with no dark flash before the light one.
 - The board grid scrolls **inside the panel**: the title, search and buttons always stay in view.
 - The search across all boards is now centered, and lifts like the buttons on hover.
-- A rebalanced home screen: the search and the boards share one glass panel, which grows with your library instead of filling the screen; the title and buttons sit on a single line.
+- A rebalanced home screen: the search and the boards share one glass panel, with even margins and the search always in view; the title and buttons sit on a single line.
 - A **+** at the end of the grid creates a board or a folder, without going up to the header.
 - With an empty library, the home screen offers **Create a new board** next to importing, and teaches `Ctrl+N`.
 

@@ -177,14 +177,13 @@
   ainda precisa rolar.
 */
 /*
-  O PAINEL ABRACA O CONTEUDO (07/10/2026, proposta de equilibrio aceita por
-  ele). Antes ele ocupava a coluna inteira mesmo com um quadro so, e a tela
-  virava 70% de vidro vazio. Agora: `flex: 0 1 auto` -- a altura do que tem
-  dentro, e no maximo o que sobra da coluna; dali para cima quem rola e a
-  lista (`.qb-lobby__lista`), com a busca parada no alto.
+  O PAINEL PREENCHE A COLUNA (07/10/2026). Chegou a abracar o conteudo, e a
+  foto embaixo ficava [...] (palavras do teste); vendo a prancha
+  com as tres alturas, foi escolhido a tela cheia. Quem rola e a lista
+  (`.qb-lobby__lista`), com a busca parada no alto.
 */
 .qb-lobby__painel {
-  flex: 0 1 auto;
+  flex: 1 1 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -224,9 +223,12 @@
   mais longe da borda esquerda do vidro do que da de cima.
 */
 .qb-lobby__lista {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  /* Coluna, para a mensagem de vazio poder ficar no MEIO do vidro. */
+  display: flex;
+  flex-direction: column;
   scrollbar-gutter: stable both-edges;
   margin-inline: -10px;
   /* Espaco para o card levantar e crescer no hover sem ser cortado. */
@@ -239,6 +241,15 @@
 
 .qb-lobby__lista[hidden] {
   display: none;
+}
+
+/* A biblioteca vazia: a mensagem no centro do painel, e nao colada na busca. */
+.qb-lobby__lista > .qb-lobby__empty {
+  margin-block: auto;
+}
+
+.qb-lobby__lista > .qb-lobby__grid {
+  flex: none;
 }
 
 
