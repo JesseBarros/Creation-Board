@@ -378,17 +378,22 @@
 /* ============================================ busca em todos os quadros */
 
 /*
-  Ela ocupa a largura toda e fica sozinha na linha, abaixo do cabecalho.
+  Sozinha na linha, abaixo do cabecalho -- e CENTRALIZADA desde 06/10/2026
+  (pedido: [...]).
 
   Nao entrou na fila de botoes de proposito: ali ela viraria mais um controle
   entre outros quatro, e ela nao e um controle -- e a porta de entrada de quem
-  sabe o que procura e nao em qual quadro. Largura cheia e o que diz isso sem
-  precisar de rotulo.
+  sabe o que procura e nao em qual quadro. A linha propria continua dizendo
+  isso; a largura de leitura (640px) e o que a tirou de faixa de ponta a ponta.
+  Os resultados descem na mesma coluna, e o olho nao precisa atravessar a tela.
 */
 .qb-libsearch {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  width: 100%;
+  max-width: 640px;
+  align-self: center;
   margin-bottom: 22px;
 }
 
@@ -396,11 +401,11 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 0 13px;
-  height: 40px;
+  padding: 0 16px;
+  height: 42px;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 11px;
+  border-radius: 999px;
   color: var(--fg-muted);
   transition: border-color 0.14s ease, box-shadow 0.14s ease;
 }

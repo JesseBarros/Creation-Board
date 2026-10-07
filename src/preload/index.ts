@@ -3,6 +3,7 @@ import {
   IPC,
   type AppInfo,
   type EstadoGraficos,
+  type PlanoPastaQuadros,
   type CreationBoardApi,
   type ExportRequest,
   type ExportResult,
@@ -32,6 +33,13 @@ const api: CreationBoardApi = {
     ipcRenderer.invoke(IPC.appIdioma, idioma) as Promise<void>,
   recarregar: (): Promise<void> => ipcRenderer.invoke(IPC.appRecarregar) as Promise<void>,
   fecharJanela: (): Promise<void> => ipcRenderer.invoke(IPC.appFechar) as Promise<void>,
+
+  pastaQuadros: {
+    escolher: (): Promise<PlanoPastaQuadros | null> =>
+      ipcRenderer.invoke(IPC.pastaQuadrosEscolher) as Promise<PlanoPastaQuadros | null>,
+    mover: (): Promise<{ movidos: number; destino: string }> =>
+      ipcRenderer.invoke(IPC.pastaQuadrosMover) as Promise<{ movidos: number; destino: string }>,
+  },
 
   graficos: {
     ler: (): Promise<EstadoGraficos> =>

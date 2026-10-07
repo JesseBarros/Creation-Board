@@ -42,6 +42,8 @@ export const IPC = {
   fundoLimpar: 'fundo:limpar',
   pastasLer: 'pastas:ler',
   pastasGravar: 'pastas:gravar',
+  pastaQuadrosEscolher: 'pastaQuadros:escolher',
+  pastaQuadrosMover: 'pastaQuadros:mover',
 } as const;
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC];
@@ -64,6 +66,19 @@ export interface EstadoGraficos {
   compatibilidade: boolean;
   /** Se ESTA execucao esta com a composicao pela CPU. */
   emUso: boolean;
+}
+
+/**
+ * O que a troca da pasta dos quadros vai fazer, para a pagina confirmar antes.
+ * Ver `main/ipc/pastaQuadros.ts`.
+ */
+export interface PlanoPastaQuadros {
+  destino: string;
+  /** Quantos quadros vao. */
+  quadros: number;
+  /** Nomes que ja existem no destino: com algum, nada sera movido. */
+  conflitos: string[];
+  problema: 'mesma' | 'dentro' | null;
 }
 
 export type ExportFormat = 'png' | 'svg' | 'pdf';
@@ -156,6 +171,13 @@ export interface CreationBoardApi {
    * alteracoes pendentes (ver `#guardUnsavedOnClose` no App).
    */
   fecharJanela(): Promise<void>;
+
+  pastaQuadros: {
+    /** Abre o seletor de pasta e devolve o plano, ou null se cancelou. */
+    escolher(): Promise<PlanoPastaQuadros | null>;
+    /** Move tudo para a pasta escolhida no `escolher`. */
+    mover(): Promise<{ movidos: number; destino: string }>;
+  };
 
   graficos: {
     ler(): Promise<EstadoGraficos>;

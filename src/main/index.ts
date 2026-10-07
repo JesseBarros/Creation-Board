@@ -5,6 +5,7 @@ import { registerAppIpc } from './ipc/app';
 import { registerBoardIpc } from './ipc/board';
 import { registerFundoIpc } from './ipc/fundo';
 import { registerPastasIpc } from './ipc/pastas';
+import { registerPastaQuadrosIpc } from './ipc/pastaQuadros';
 import { registerImportIpc } from './ipc/importer';
 import { registerExportIpc } from './ipc/exporter';
 import { registerOcrIpc } from './ipc/ocr';
@@ -669,6 +670,7 @@ if (!gotLock) {
     registerImportIpc();
     registerFundoIpc();
     registerPastasIpc();
+    registerPastaQuadrosIpc();
     registerExportIpc();
     registerOcrIpc();
     createWindow();

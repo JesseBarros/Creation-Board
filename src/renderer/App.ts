@@ -42,6 +42,7 @@ import { dismissBootScreen } from './bootScreen';
 import {
   exportDialog,
   newBoardDialog,
+  confirmDialog,
   promptText,
   settingsDialog,
   toast,
@@ -1273,6 +1274,7 @@ export class App {
         idioma: escolherIdioma(),
         idiomaEmUso: idiomaAtual(),
         graficos,
+        pastaDosQuadros: await window.quadro.board.folder(),
         animacoes: this.#animacoes,
         fundos: {
           claro: localStorage.getItem(FUNDO_KEY.claro),
@@ -1306,8 +1308,44 @@ export class App {
         // As Configuracoes so abrem no menu principal: nao ha quadro aberto.
         reabrir: () => void window.quadro.graficos.reabrir(),
         recarregar: () => void window.quadro.recarregar(),
+        trocarPastaDosQuadros: () => void this.#trocarPastaDosQuadros(),
       },
     );
+  }
+
+  /**
+   * Trocar a pasta dos quadros: escolher, conferir, confirmar, mover, recarregar.
+   *
+   * O main so devolve o PLANO no primeiro passo -- nada se mexe antes da
+   * confirmacao, e os casos que recusariam (mesma pasta, uma dentro da outra,
+   * nomes repetidos) sao ditos antes de perguntar qualquer coisa. Depois de
+   * mover, a janela recarrega: menu, busca, pastas e fundos passam a ler da
+   * pasta nova, e as Configuracoes so abrem no menu -- nao ha quadro aberto.
+   */
+  async #trocarPastaDosQuadros(): Promise<void> {
+    try {
+      const plano = await window.quadro.pastaQuadros.escolher();
+      if (!plano) return; // cancelou o seletor
+      if (plano.problema) {
+        toast(t(plano.problema === 'mesma' ? 'pastaQuadros.mesma' : 'pastaQuadros.dentro'), 'error');
+        return;
+      }
+      if (plano.conflitos.length > 0) {
+        toast(t('pastaQuadros.conflitos', plano.conflitos.join(', ')), 'error');
+        return;
+      }
+      const ok = await confirmDialog({
+        title: t('pastaQuadros.confirmarTitulo'),
+        message: t('pastaQuadros.confirmarMensagem', plano.quadros, plano.destino),
+        confirmLabel: t('pastaQuadros.mover'),
+      });
+      if (!ok) return;
+      const r = await window.quadro.pastaQuadros.mover();
+      toast(t('pastaQuadros.movidos', r.movidos));
+      setTimeout(() => void window.quadro.recarregar(), 1200);
+    } catch (err) {
+      toast(App.#mensagemDeIpc(err), 'error');
+    }
   }
 
   /**
