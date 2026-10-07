@@ -8,7 +8,8 @@ import { ICONES_PNG } from './iconesPersonalizados';
  * impoem: nenhuma tela de creditos, nenhum link, nenhum pagamento.
  *
  * A troca aconteceu em 21/09/2026. O conjunto anterior era desenhado a mao aqui
- * dentro e o veredito dele foi direto: [...]. Desenhar quarenta icones consistentes e trabalho de quem faz isso
+ * dentro e o veredito dele foi direto: "nao sao horriveis, mas nao sao
+ * excelentes". Desenhar quarenta icones consistentes e trabalho de quem faz isso
  * em tempo integral -- o Lucide tem 2.112 deles, na mesma grade de 24, e
  * resolvidos por gente que conhece o oficio.
  *
@@ -47,6 +48,7 @@ export type IconName =
   | 'voltar'
   | 'salvar'
   | 'exportar'
+  | 'importar'
   | 'desfazer'
   | 'refazer'
   | 'grade'
@@ -119,6 +121,11 @@ const ICONS: Record<IconName, IconSpec> = {
     svg: '<path d="M12 3v12" /><path d="m17 8-5-5-5 5" /><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />',
     corpo: [2],
   },
+  // O par do `exportar`: a seta ENTRA na bandeja (Lucide "download").
+  importar: {
+    svg: '<path d="M12 15V3" /><path d="m7 10 5 5 5-5" /><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />',
+    corpo: [2],
+  },
   desfazer: { svg: '<path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" />' },
   refazer: { svg: '<path d="m15 14 5-5-5-5" /><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13" />' },
   grade: {
@@ -155,8 +162,9 @@ const ICONS: Record<IconName, IconSpec> = {
   /*
     `sliders-horizontal` do Lucide, e nao a engrenagem.
 
-    Engrenagem e o simbolo generico de [...] e promete mais
-    do que esta tela tem. Os controles deslizantes dizem [...], que e exatamente o conteudo: hoje so as animacoes.
+    Engrenagem e o simbolo generico de "configuracoes de sistema" e promete mais
+    do que esta tela tem. Os controles deslizantes dizem "preferencias que voce
+    ajusta", que e exatamente o conteudo: hoje so as animacoes.
   */
   ajustes: {
     svg: '<path d="M10 5H3" /><path d="M12 19H3" /><path d="M14 3v4" /><path d="M16 17v4" /><path d="M21 12h-9" /><path d="M21 19h-5" /><path d="M21 5h-7" /><path d="M8 10v4" /><path d="M8 12H3" />',
@@ -204,7 +212,7 @@ const ICONS: Record<IconName, IconSpec> = {
     corpo: [0],
   },
   // So o CIRCULO leva corpo -- preencher as tres formas apagaria o cruzamento
-  // entre elas, que e justamente o que diz [...].
+  // entre elas, que e justamente o que diz "mais de uma forma".
   formas: {
     svg: '<path d="M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z" /><rect x="3" y="14" width="7" height="7" rx="1" /><circle cx="17.5" cy="17.5" r="3.5" />',
     corpo: [2],

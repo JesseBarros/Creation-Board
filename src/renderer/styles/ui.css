@@ -152,9 +152,8 @@
   flex-direction: column;
 }
 
-/* Cabecalho e busca nao esticam nem encolhem: sao a altura que pedirem. */
-.qb-lobby__header,
-.qb-lobby__rolagem > .qb-libsearch {
+/* O cabecalho nao estica nem encolhe: e a altura que pedir. */
+.qb-lobby__header {
   flex: none;
 }
 
@@ -177,40 +176,71 @@
   reserva: com a busca aberta o painel sai, e uma lista longa de resultados
   ainda precisa rolar.
 */
+/*
+  O PAINEL ABRACA O CONTEUDO (07/10/2026, proposta de equilibrio aceita por
+  ele). Antes ele ocupava a coluna inteira mesmo com um quadro so, e a tela
+  virava 70% de vidro vazio. Agora: `flex: 0 1 auto` -- a altura do que tem
+  dentro, e no maximo o que sobra da coluna; dali para cima quem rola e a
+  lista (`.qb-lobby__lista`), com a busca parada no alto.
+*/
 .qb-lobby__painel {
-  flex: 1 1 0;
+  flex: 0 1 auto;
   min-height: 0;
-  overflow-y: auto;
-  /*
-    O lugar da barra de rolagem fica SEMPRE reservado (07/10/2026, o tremor
-    com a pasta aberta, relatado). Sem isto, perto do ponto em que a
-    fileira cabe exata, a barra aparecer estreitava a grade, os cards
-    encolhiam (a miniatura guarda a proporcao), passavam a caber, a barra
-    sumia, eles alargavam -- e qualquer hover reabria esse vai e vem, com
-    todos os cards tremendo juntos. Com o lugar reservado, a largura da grade
-    nao depende da barra. `both-edges`: a mesma folga dos dois lados, e a
-    grade continua centrada no vidro.
-  */
-  scrollbar-gutter: stable both-edges;
+  display: flex;
+  flex-direction: column;
   padding: 20px;
   border-radius: 18px;
+}
+
+/*
+  A busca, primeira linha do painel: centralizada numa largura de leitura (o
+  pedido de 06/10), e com os resultados rolando dentro dela quando passam da
+  altura -- os cards somem enquanto se busca.
+*/
+.qb-lobby__painel > .qb-libsearch {
+  flex: 0 1 auto;
+  min-height: 0;
+  margin: 0 auto 20px;
+}
+
+.qb-lobby__painel > .qb-libsearch .qb-libsearch__results {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/*
+  A LISTA e quem rola.
+
+  O lugar da barra de rolagem fica SEMPRE reservado (07/10/2026, o tremor com
+  a pasta aberta, relatado). Sem isto, perto do ponto em que a fileira
+  cabe exata, a barra aparecer estreitava a grade, os cards encolhiam (a
+  miniatura guarda a proporcao), passavam a caber, a barra sumia, eles
+  alargavam -- e qualquer hover reabria esse vai e vem, com todos os cards
+  tremendo juntos. Com o lugar reservado, a largura da grade nao depende da
+  barra. `both-edges`: a mesma folga dos dois lados, e a grade continua
+  centrada no vidro.
+
+  A margem negativa devolve essa folga: sem ela, o primeiro card ficava 10px
+  mais longe da borda esquerda do vidro do que da de cima.
+*/
+.qb-lobby__lista {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable both-edges;
+  margin-inline: -10px;
+  /* Espaco para o card levantar e crescer no hover sem ser cortado. */
+  padding: 8px 0;
+  margin-block: -8px;
   /* Barra fina e discreta, dentro do vidro. */
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--fg) 28%, transparent) transparent;
 }
 
-.qb-lobby__painel::-webkit-scrollbar {
-  width: 8px;
+.qb-lobby__lista[hidden] {
+  display: none;
 }
 
-.qb-lobby__painel::-webkit-scrollbar-thumb {
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--fg) 28%, transparent);
-}
-
-.qb-lobby__painel::-webkit-scrollbar-track {
-  background: transparent;
-}
 
 /*
   `hidden` precisa ganhar do `display` da regra acima.
@@ -229,7 +259,7 @@
   align-items: center;
   gap: 14px;
   flex-wrap: wrap;
-  margin-bottom: 26px;
+  margin-bottom: 22px;
 }
 
 /* A marca a esquerda do titulo, alinhada pelo meio das duas linhas de texto. */
@@ -252,8 +282,9 @@
 */
 .qb-lobby__marca {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
 }
 
 .qb-lobby__title {
@@ -329,7 +360,6 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-top: 10px;
   padding: 3px 10px 3px 8px;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--fg) 10%, transparent);
@@ -365,7 +395,7 @@
 /* Caminho longo (pasta dentro de pastas) nao estica a pilula ate os botoes: corta
    com reticencias, e o caminho inteiro fica no balao do `title`. */
 .qb-lobby__folder {
-  max-width: min(460px, 45vw);
+  max-width: min(360px, 28vw);
 }
 
 .qb-lobby__folder-texto {
@@ -377,7 +407,22 @@
 
 .qb-lobby__tools {
   display: flex;
+  align-items: center;
   gap: 8px;
+}
+
+/* Uma altura so na fila: com `align-items: center` os botoes de icone nao
+   esticam mais ate a altura dos escritos, e viravam pilulas achatadas. */
+.qb-lobby__tools .qb-btn {
+  height: 34px;
+}
+
+/* O fio entre as utilidades (icones) e as acoes (escritas). */
+.qb-lobby__fio {
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: color-mix(in srgb, var(--fg) 18%, transparent);
 }
 
 .qb-lobby__grid {
@@ -399,7 +444,9 @@
   justify-content: center;
   min-height: 150px;
   padding: 0;
-  border: none;
+  /* A borda fina e neutra dos cards: sem ela, o "+" parecia vidro de outro
+     material ao lado deles (nem tracejada, nem azul -- o pedido). */
+  border: 1px solid var(--border);
   border-radius: 12px;
   color: var(--fg-muted);
   cursor: pointer;
@@ -439,8 +486,6 @@
   gap: 12px;
   width: 100%;
   max-width: 640px;
-  align-self: center;
-  margin-bottom: 22px;
 }
 
 .qb-libsearch__field {

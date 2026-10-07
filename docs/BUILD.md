@@ -25,7 +25,7 @@ editar `src/main/` ou `src/preload/` reinicia o processo principal.
 
 ```
 npm run typecheck       # TypeScript estrito nos dois projetos
-npm run selftest        # o auto-teste no app de verdade (199 verificações)
+npm run selftest        # o auto-teste no app de verdade (200 verificações)
 npm run check:idiomas   # os dois idiomas: nada fixo no código, acentos, traduções
 npm run check:imagens   # metadados de imagem: o corte e as imagens do repositório
 npm run check:pastas    # índice de pastas, caminhos fora da pasta, bomba de zip

@@ -78,6 +78,8 @@ export class Lobby {
   /** O que rola. A raiz e palco parado -- ver a montagem no construtor. */
   #rolagem!: HTMLElement;
   #painel!: HTMLElement;
+  /** Quem ROLA dentro do painel: a grade e o vazio, abaixo da busca. */
+  #lista!: HTMLElement;
   #grid: HTMLElement;
   #empty: HTMLElement;
   /** O "+" que abre a escolha entre quadro e pasta (ver `#criarBloco`). */
@@ -219,6 +221,9 @@ export class Lobby {
 
     const importBtn = textButton(t('lobby.importarArquivo'), () => this.actions.importBoards());
     importBtn.title = t('lobby.importarDica');
+    // Toda acao escrita leva icone (07/10/2026): era a unica sem, e a fila
+    // ficava com tres regras diferentes.
+    importBtn.prepend(icon('importar', 15));
     const newBtn = textButton(t('lobby.novoQuadro'), () => this.actions.newBoard());
     newBtn.classList.add('qb-btn--primary');
     // O "+" era texto dentro do rotulo e alinhava mal com a letra; como icone
@@ -233,7 +238,12 @@ export class Lobby {
     importBtn.dataset['tour'] = 'importar';
     newBtn.dataset['tour'] = 'novo';
 
-    tools.append(this.#themeBtn, configBtn, this.#novaPastaBtn, importBtn, newBtn);
+    // Utilidades de um lado, acoes do outro, separadas por um fio: a fila le
+    // como dois grupos, e nao como cinco botoes de pesos diferentes.
+    const fio = document.createElement('span');
+    fio.className = 'qb-lobby__fio';
+    fio.setAttribute('aria-hidden', 'true');
+    tools.append(this.#themeBtn, configBtn, fio, this.#novaPastaBtn, importBtn, newBtn);
     header.append(titleBox, tools);
 
     // A busca da biblioteca fica ABAIXO do cabecalho, em linha propria, e nao
@@ -360,13 +370,25 @@ export class Lobby {
       this.#fecharPasta();
     });
 
+    /*
+      A BUSCA MORA NO PAINEL desde 07/10/2026 (proposta de equilibrio aprovada): o painel virou "a biblioteca" -- a busca e a primeira linha, e
+      embaixo dela a lista que rola. Solta sobre a foto, centralizada entre um
+      titulo a esquerda e botoes a direita, ela nao se alinhava com nada.
+
+      Quem rola e a LISTA, e nao o painel: a busca fica parada no alto, como o
+      titulo e os botoes (o pedido de 06/10 continua valendo).
+    */
+    this.#lista = document.createElement('div');
+    this.#lista.className = 'qb-lobby__lista';
+    this.#lista.append(this.#empty, this.#grid);
+
     this.#painel = document.createElement('div');
     this.#painel.className = 'qb-lobby__painel';
-    this.#painel.append(this.#empty, this.#grid);
+    this.#painel.append(this.#search.el, this.#lista);
 
     this.#rolagem = document.createElement('div');
     this.#rolagem.className = 'qb-lobby__rolagem';
-    this.#rolagem.append(header, this.#search.el, this.#painel);
+    this.#rolagem.append(header, this.#painel);
     this.#desempenho = new PainelDoMenu(() => this.el.querySelectorAll('.qb-card').length);
     this.el.append(this.#rolagem, this.#janela, this.#desempenho.el);
   }
@@ -391,13 +413,12 @@ export class Lobby {
    * que nao tem relacao com o que ela procurou -- e os cards sao altos, entao os
    * resultados comecariam abaixo da dobra.
    *
-   * QUEM SOME E O PAINEL, e nao a grade. Enquanto a grade era o elemento de
-   * cima, esconde-la bastava; com o vidro em volta, esconder so o conteudo
-   * deixaria uma lamina vazia pousada sob os resultados da busca.
+   * QUEM SOME E A LISTA, e nao o painel: desde 07/10/2026 a busca mora no
+   * painel, e os resultados aparecem no mesmo vidro, no lugar dos cards.
    */
   #syncSearchState(): void {
     const buscando = this.#search.active;
-    this.#painel.hidden = buscando;
+    this.#lista.hidden = buscando;
     // A janela sai junto: ela e parte da grade, e nao da busca.
     this.#janela.hidden = buscando || this.#pastaAberta === null;
     this.el.classList.toggle('qb-lobby--pasta-aberta', !this.#janela.hidden);
@@ -930,8 +951,8 @@ export class Lobby {
       }
     });
     tornarArrastavel<Alvo>(card, {
-      // O painel, e nao a coluna: e ele que rola desde 06/10/2026.
-      rolagem: this.#painel,
+      // A lista, e nao o painel: e ela que rola desde 07/10/2026.
+      rolagem: this.#lista,
       alvoEm: (el) => this.#alvoEm(el, card),
       soltar: (alvo) => void this.#soltar(summary, alvo),
     });
