@@ -181,6 +181,17 @@
   flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
+  /*
+    O lugar da barra de rolagem fica SEMPRE reservado (07/10/2026, o tremor
+    com a pasta aberta, relatado). Sem isto, perto do ponto em que a
+    fileira cabe exata, a barra aparecer estreitava a grade, os cards
+    encolhiam (a miniatura guarda a proporcao), passavam a caber, a barra
+    sumia, eles alargavam -- e qualquer hover reabria esse vai e vem, com
+    todos os cards tremendo juntos. Com o lugar reservado, a largura da grade
+    nao depende da barra. `both-edges`: a mesma folga dos dois lados, e a
+    grade continua centrada no vidro.
+  */
+  scrollbar-gutter: stable both-edges;
   padding: 20px;
   border-radius: 18px;
   /* Barra fina e discreta, dentro do vidro. */
@@ -901,6 +912,8 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  /* Pelo mesmo motivo do `.qb-lobby__painel`. */
+  scrollbar-gutter: stable both-edges;
   padding: 16px 18px 20px;
 }
 
