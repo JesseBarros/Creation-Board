@@ -153,6 +153,21 @@ export class Renderer {
     return this.#theme;
   }
 
+  #grade = false;
+
+  /** O pontilhado de fundo: preferencia do app, posta pelo App (ver `toggleGrid`). */
+  get grade(): boolean {
+    return this.#grade;
+  }
+
+  set grade(ligada: boolean) {
+    if (ligada === this.#grade) return;
+    this.#grade = ligada;
+    // O proximo frame nao pode reaproveitar o anterior deslocado: ele tem a
+    // grade no estado velho.
+    this.#anterior = null;
+  }
+
   /** Trocar o tema reconstroi o adaptador de cor (e com ele, seu cache). */
   set theme(t: RenderTheme) {
     this.#theme = t;
@@ -351,7 +366,7 @@ export class Renderer {
       ctx.clip();
       ctx.fillStyle = this.#theme.boardBg;
       ctx.fillRect(f.x, f.y, f.w, f.h);
-      paintGrid(ctx, cam, this.#cssW, this.#cssH, this.doc.prefs, this.#theme.gridColor, this.#dpr);
+      paintGrid(ctx, cam, this.#cssW, this.#cssH, this.doc.prefs, this.#grade, this.#theme.gridColor, this.#dpr);
       const mundo = inflate({ x: (f.x - tx) / s, y: (f.y - ty) / s, w: f.w / s, h: f.h / s }, 4 / zoom);
       ctx.setTransform(s, 0, 0, s, tx, ty);
       drawn += this.#pintarObjetos(ctx, this.doc.queryVisible(mundo), zoom, lod, s);
@@ -396,7 +411,7 @@ export class Renderer {
     ctx.fillRect(0, 0, this.staticCanvas.width, this.staticCanvas.height);
 
     // A grade e desenhada em pixel fisico, e por isso recebe o DPR (B33).
-    paintGrid(ctx, this.camera, this.#cssW, this.#cssH, this.doc.prefs, this.#theme.gridColor, this.#dpr);
+    paintGrid(ctx, this.camera, this.#cssW, this.#cssH, this.doc.prefs, this.#grade, this.#theme.gridColor, this.#dpr);
 
     // Culling: o indice espacial devolve so o que intersecta o viewport.
     // A margem cobre tracos cuja espessura extrapola um pouco o AABB.

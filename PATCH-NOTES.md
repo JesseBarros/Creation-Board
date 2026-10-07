@@ -46,6 +46,7 @@
 - A borracha apaga em traço contínuo e não trava mais com zoom alto.
 - Arrastar o quadro ficou mais leve, e o zoom rápido com `Ctrl`+roda não trava mais, mesmo em quadros grandes.
 - Os botões de zoom da barra vão até 100%, a escala real; `Ctrl`+roda continua aproximando até 6400%.
+- **Régua** e **pontilhado** vêm desligados no primeiro uso, e o app lembra como você os deixou: a mesma escolha vale para todos os quadros.
 - Uma print colada ou arrastada para o quadro já entra na busca (`Ctrl+F`) na hora, sem precisar reabrir o quadro — e sem travar a janela.
 
 ### Desempenho
@@ -112,6 +113,7 @@ Seus quadros continuam na mesma pasta (`C:\Creation Board`) e abrem normalmente.
 - The eraser erases in a continuous stroke and no longer freezes at high zoom.
 - Dragging a board is lighter, and fast `Ctrl`+wheel zooming no longer stutters, even on large boards.
 - The zoom buttons on the bar go up to 100%, the real scale; `Ctrl`+wheel still zooms in up to 6400%.
+- **Rulers** and the **dot grid** start off on first use, and the app remembers how you left them: the same choice applies to every board.
 - A screenshot pasted or dragged into a board is searchable (`Ctrl+F`) right away, without reopening the board — and without freezing the window.
 
 ### Performance

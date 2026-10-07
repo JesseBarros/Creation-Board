@@ -10,6 +10,10 @@ import type { BoardPrefs } from '@shared/model/document';
  * O passo se adapta ao zoom: multiplica o tamanho base por potencias de 2 ate a
  * distancia na tela cair numa faixa confortavel, senao com zoom afastado a
  * grade vira uma mancha solida e com zoom aproximado some.
+ *
+ * QUEM LIGA E DESLIGA e a preferencia do app (`ligada`), e nao o
+ * `prefs.grid.enabled` do arquivo -- ver `toggleGrid` no App. Do arquivo vem so
+ * o desenho: tipo e tamanho.
  */
 const MIN_SCREEN_STEP = 12;
 const MAX_SCREEN_STEP = 90;
@@ -20,10 +24,11 @@ export function paintGrid(
   viewportW: number,
   viewportH: number,
   prefs: Readonly<BoardPrefs>,
+  ligada: boolean,
   color: string,
   dpr = 1,
 ): void {
-  if (!prefs.grid.enabled) return;
+  if (!ligada) return;
 
   let step = prefs.grid.size * camera.zoom;
   if (step <= 0) return;

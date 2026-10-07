@@ -167,6 +167,25 @@ const ANIM_KEY = 'qb.animacoes';
  */
 const FUNDO_KEY = { claro: 'qb.fundo.claro', escuro: 'qb.fundo.escuro' } as const;
 const RULERS_KEY = 'qb.rulers';
+/**
+ * O pontilhado de fundo do quadro, como preferencia DO APP, e nao de cada
+ * quadro (07/10/2026): desligado no primeiro uso, gravado na hora
+ * em que muda, e o mesmo em todo quadro que abrir depois.
+ *
+ * Antes morava no `prefs.grid.enabled` de cada quadro, ligado por padrao, e nem
+ * marcava o quadro como alterado: a escolha ora ficava, ora se perdia, e um
+ * quadro novo herdava o estado do anterior. O campo continua no arquivo (o
+ * formato nao muda, e versoes antigas o leem), mas a tela nao o obedece mais.
+ */
+const GRADE_KEY = 'qb.grade';
+
+/**
+ * Regua e pontilhado no primeiro uso: DESLIGADOS. So liga o que foi gravado
+ * como ligado; ausente ou qualquer outra coisa vale desligado.
+ */
+export function preferenciaDeExibicao(gravado: string | null): boolean {
+  return gravado === '1';
+}
 const DEMO_SEED = 2000;
 /** Lote da geracao de carga: grande o bastante para ser eficiente, pequeno o
  *  bastante para a janela repintar entre um e outro. */
@@ -221,6 +240,7 @@ export class App {
   #redesenhoDeParada = 0;
 
   #rulers: boolean;
+  #grade: boolean;
   /** Levantar dos botões, transições e o movimento do menu. Ver `#applyAnimacoes`. */
   #animacoes: NivelDeMovimento;
   /**
@@ -425,7 +445,9 @@ export class App {
       localStorage.getItem(THEME_KEY),
       matchMedia('(prefers-color-scheme: dark)').matches,
     );
-    this.#rulers = localStorage.getItem(RULERS_KEY) === '1';
+    this.#rulers = preferenciaDeExibicao(localStorage.getItem(RULERS_KEY));
+    this.#grade = preferenciaDeExibicao(localStorage.getItem(GRADE_KEY));
+    this.#renderer.grade = this.#grade;
     // LIGADO por padrao, e de propósito independente do Windows -- decisão de produto
     // em 21/09/2026. Só desliga quem gravou 'off' aqui, pelo diálogo de
     // Configurações. O porquê está no comentário do `[data-anim]` no base.css.
@@ -1244,8 +1266,11 @@ export class App {
   }
 
   toggleGrid(): void {
-    this.doc.setPrefs({ grid: { ...this.doc.prefs.grid, enabled: !this.doc.prefs.grid.enabled } });
-    this.#bar.setGridEnabled(this.doc.prefs.grid.enabled);
+    this.#grade = !this.#grade;
+    localStorage.setItem(GRADE_KEY, this.#grade ? '1' : '0');
+    this.#renderer.grade = this.#grade;
+    this.#bar.setGridEnabled(this.#grade);
+    this.#scheduler.invalidate();
   }
 
   toggleRulers(): void {
@@ -1517,7 +1542,7 @@ export class App {
     void window.quadro.temaDaJanela(this.#theme);
     this.#aplicarFundo();
     this.#renderer.theme = this.#themeComPapel();
-    this.#bar.setGridEnabled(this.doc.prefs.grid.enabled);
+    this.#bar.setGridEnabled(this.#grade);
     // Os dois interruptores de tema mostram o PROXIMO tema, e por isso trocam de
     // glifo junto. O do lobby existe separado porque o lobby nao tem a barra.
     this.#bar.setTheme(this.#theme);
@@ -2268,6 +2293,10 @@ export class App {
 
   get rulersEnabled(): boolean {
     return this.#rulers;
+  }
+
+  get gridEnabled(): boolean {
+    return this.#grade;
   }
 
   /**
