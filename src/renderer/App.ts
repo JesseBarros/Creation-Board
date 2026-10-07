@@ -130,6 +130,22 @@ const AUTOSAVE_IDLE_MS = 3_000;
 const AUTOSAVE_MAX_MS = 30_000;
 
 const THEME_KEY = 'qb.theme';
+
+/**
+ * O tema com que o app abre: o forcado por `QB_THEME`, senao o escolhido pelo
+ * botao de tema, senao O DO WINDOWS (06/10/2026, pedido: com o Windows no
+ * escuro, o app abria claro). O Electron segue o modo de aplicativos do Windows
+ * no `prefers-color-scheme` (`nativeTheme.themeSource` e 'system' por padrao).
+ */
+export function temaInicial(
+  forcado: string | null,
+  gravado: string | null,
+  windowsEscuro: boolean,
+): 'light' | 'dark' {
+  if (forcado === 'light' || forcado === 'dark') return forcado;
+  if (gravado === 'light' || gravado === 'dark') return gravado;
+  return windowsEscuro ? 'dark' : 'light';
+}
 const ANIM_KEY = 'qb.animacoes';
 /**
  * Só o RÓTULO da imagem de fundo escolhida, por tema — nunca os bytes.
@@ -376,10 +392,11 @@ export class App {
     // seja, nao era repetivel, que e justamente o que os modos QB_* existem
     // para resolver.
     const temaForcado = new URLSearchParams(location.search).get('theme');
-    this.#theme =
-      temaForcado === 'light' || temaForcado === 'dark'
-        ? temaForcado
-        : ((localStorage.getItem(THEME_KEY) as 'light' | 'dark' | null) ?? 'light');
+    this.#theme = temaInicial(
+      temaForcado,
+      localStorage.getItem(THEME_KEY),
+      matchMedia('(prefers-color-scheme: dark)').matches,
+    );
     this.#rulers = localStorage.getItem(RULERS_KEY) === '1';
     // LIGADO por padrao, e de propósito independente do Windows -- decisão de produto
     // em 21/09/2026. Só desliga quem gravou 'off' aqui, pelo diálogo de
@@ -629,11 +646,14 @@ export class App {
   async newBoard(): Promise<void> {
     // A escolha do papel vem ANTES de o quadro existir: é a única hora em que
     // ela é barata. Cancelar aqui não cria nada e devolve ao lobby.
-    const papel = await newBoardDialog();
-    if (papel === null) return;
+    const escolha = await newBoardDialog();
+    if (escolha === null) return;
+    // Pelo Ctrl+N dentro de um quadro: o papel vem antes, e so depois o aviso
+    // do quadro atual -- cancelar o papel nao pode ter mexido em nada.
+    if (this.#view === 'board' && !(await this.#confirmDiscard())) return;
 
     this.doc.clear();
-    this.doc.setPrefs({ background: papel });
+    this.doc.setPrefs({ background: escolha.papel });
     this.#resetEditingState();
     this.#session = { path: null, name: t('quadro.semNome'), dirty: false };
     this.#enterBoard();
@@ -642,6 +662,9 @@ export class App {
     this.#applyTheme();
     this.camera.reset(this.#renderer.viewportW, this.#renderer.viewportH);
     this.#onCameraChanged();
+    // Com nome, ja nasce salvo: tem arquivo, entra no autosave, e o X nunca
+    // pergunta por ele. Um nome repetido vira "(2)" no disco (wbdFile).
+    if (escolha.nome && (await this.gravarNovo(escolha.nome))) this.#updateTitle();
   }
 
   async openBoard(summary: BoardSummary): Promise<void> {
@@ -929,7 +952,8 @@ export class App {
   async gravarNovo(nome: string): Promise<string | null> {
     const r = await this.#writeBoard(null, nome);
     if (!r) return null;
-    this.#session = { path: r.path, name: nome, dirty: false };
+    // O nome GRAVADO, que pode ter ganhado um "(2)" se o pedido ja existia.
+    this.#session = { path: r.path, name: r.name, dirty: false };
     return r.path;
   }
 
@@ -2522,6 +2546,8 @@ export class App {
       selectAll: () => selectAll(this.#toolCtx),
       find: () => this.openSearch(),
       findLibrary: () => this.#lobby.focusSearch(),
+      newBoard: () => void this.newBoard(),
+      saveLobby: () => toast(t('lobby.nadaParaSalvar')),
       debugLobby: () => this.#lobby.alternarDesempenho(),
       duplicate: () => void duplicateSelection(this.#toolCtx),
       copy: () => this.copySelection(),

@@ -9,6 +9,13 @@
 - Os quadros ficam num **painel de vidro** com desfoque discreto, que deixa o fundo aparecer.
 - Título novo, na mesma assinatura da logo, e o caminho da pasta de quadros num selo discreto.
 - **Configurações** redesenhada: seções em cartões, uma frase por opção, a miniatura de cada fundo e um botão **Aplicar alterações**.
+- Na primeira abertura, o app segue o tema do Windows: claro ou escuro.
+
+### Criar, salvar e fechar
+- **`Ctrl+N`** cria um quadro novo, no menu ou de dentro de um quadro.
+- Dê **nome** ao quadro já ao criar: ele nasce salvo.
+- Fechar o app com um quadro não salvo **avisa** que o progresso será perdido e oferece salvar antes.
+- Corrigido: depois de sair de um quadro sem salvar, o X do Windows não fechava mais o app.
 
 ### Pastas
 - Crie pastas com **Nova pasta** ou **arrastando um quadro sobre outro**.
@@ -61,6 +68,13 @@ Seus quadros continuam na mesma pasta (`C:\Creation Board`) e abrem normalmente.
 - Your boards sit on a **glass panel** with a subtle blur that lets the background show through.
 - A new title that matches the logo, and the boards folder path in a discreet badge.
 - Redesigned **Settings**: sections in cards, one sentence per option, a thumbnail of each background, and an **Apply changes** button.
+- On first launch, the app follows the Windows theme: light or dark.
+
+### Create, save and close
+- **`Ctrl+N`** creates a new board, from the home screen or from inside a board.
+- **Name** a board as you create it: it starts out saved.
+- Closing the app with an unsaved board **warns** that the progress will be lost and offers to save first.
+- Fixed: after leaving a board without saving, the Windows X button no longer closed the app.
 
 ### Folders
 - Create folders with **New folder** or by **dragging one board onto another**.

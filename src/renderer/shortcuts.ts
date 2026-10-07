@@ -47,7 +47,9 @@ export type ShortcutId =
   | 'rulerUnit'
   | 'layers'
   | 'findLibrary'
-  | 'debugLobby';
+  | 'debugLobby'
+  | 'newBoard'
+  | 'saveLobby';
 
 export interface ShortcutDef {
   /** Ausente = entrada apenas informativa (gesto de mouse, sem tecla). */
@@ -86,7 +88,13 @@ export interface ShortcutDef {
 }
 
 export const SHORTCUTS: ShortcutDef[] = [
+  // Ctrl+N vale nos dois lugares (06/10/2026, pedido: criar mais rapido).
+  // Dentro de um quadro, passa pelo aviso de alteracoes nao salvas.
+  { id: 'newBoard', group: 'atalhoGrupo.arquivo', keys: 'Ctrl+N', label: 'atalho.novoQuadro', scope: 'global' },
   { id: 'save', group: 'atalhoGrupo.arquivo', keys: 'Ctrl+S', label: 'atalho.salvar', scope: 'board' },
+  // O Ctrl+S no menu nao fazia NADA, e quem aperta por habito ficava sem
+  // resposta. Nao ha o que salvar ali: ele lembra do Ctrl+N.
+  { id: 'saveLobby', group: 'atalhoGrupo.arquivo', keys: 'Ctrl+S', label: 'atalho.salvarNoMenu', scope: 'lobby' },
   { id: 'lobby', group: 'atalhoGrupo.arquivo', keys: 'Ctrl+O', label: 'atalho.voltarAoMenu', scope: 'board' },
   { id: 'export', group: 'atalhoGrupo.arquivo', keys: 'Ctrl+E', label: 'atalho.exportar', scope: 'board' },
   {

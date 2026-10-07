@@ -28,6 +28,7 @@ export const enUS: Traducao = {
 
   // ------------------------------------------------------------ menu principal
   'lobby.pastaDosQuadros': 'My boards',
+  'lobby.nadaParaSalvar': 'Nothing to save here. Ctrl+N creates a new board.',
   'lobby.abrirPastaNoExplorador': 'Open the boards folder in File Explorer',
   'lobby.abrirPastaNoExploradorCom': (caminho) => `Open the boards folder in File Explorer\n${caminho}`,
   'lobby.alternarTema': 'Toggle theme',
@@ -97,6 +98,8 @@ export const enUS: Traducao = {
   'papel.menta': 'Mint',
   'papel.rotulo': (nome) => `${nome} paper`,
   'novoQuadro.titulo': 'New board',
+  'novoQuadro.nome': 'Board name',
+  'novoQuadro.nomeDica': 'Optional — you can name it when saving',
   'novoQuadro.mensagem':
     'Choose the paper. A lightly tinted background makes sticky notes and highlights stand out more than white does.',
   'novoQuadro.criar': 'Create board',
@@ -276,6 +279,8 @@ export const enUS: Traducao = {
   'atalhoGrupo.manipular': 'Move and resize',
   'atalhoGrupo.visualizacao': 'View',
   'atalho.salvar': 'Save board',
+  'atalho.novoQuadro': 'New board',
+  'atalho.salvarNoMenu': 'On the home screen: a reminder that Ctrl+N creates a board',
   'atalho.voltarAoMenu': 'Back to the home screen',
   'atalho.exportar': 'Export as PNG, SVG or PDF',
   'atalho.autosave': 'Saves automatically 3 s after the last change (only after the first Ctrl+S)',

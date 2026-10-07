@@ -207,9 +207,19 @@ export const DEFAULT_PAPER = BOARD_PAPERS[0]!.cor;
  *
  * Aparece na criação porque é ali que a decisão é barata: o quadro está vazio, e
  * trocar depois muda o fundo de um resumo já montado. Quem não quiser escolher
- * aperta Enter e leva o neutro -- o diálogo abre com ele em foco.
+ * aperta Enter e leva o neutro.
+ *
+ * O NOME veio em 06/10/2026, pedido: com nome, o quadro já nasce salvo
+ * (tem arquivo, entra no autosave, e nunca vira "não salvo"). Sem nome, é como
+ * antes -- o nome é pedido na primeira vez que salvar.
  */
-export function newBoardDialog(): Promise<string | null> {
+export interface NovoQuadro {
+  papel: string;
+  /** Vazio = sem nome ainda. */
+  nome: string;
+}
+
+export function newBoardDialog(): Promise<NovoQuadro | null> {
   return new Promise((resolve) => {
     const panel = document.createElement('div');
     panel.className = 'qb-dialog';
@@ -221,6 +231,18 @@ export function newBoardDialog(): Promise<string | null> {
     const p = document.createElement('p');
     p.className = 'qb-dialog__message';
     p.textContent = t('novoQuadro.mensagem');
+
+    // O nome vem primeiro: e o que a pessoa ja tem na cabeca ao criar. O foco
+    // abre nele, e Enter cria -- com ou sem nome.
+    const rotuloNome = document.createElement('label');
+    rotuloNome.className = 'qb-dialog__label';
+    rotuloNome.textContent = t('novoQuadro.nome');
+    const nome = document.createElement('input');
+    nome.className = 'qb-dialog__input';
+    nome.type = 'text';
+    nome.maxLength = 120;
+    nome.placeholder = t('novoQuadro.nomeDica');
+    rotuloNome.append(nome);
 
     const grade = document.createElement('div');
     grade.className = 'qb-papers';
@@ -267,17 +289,24 @@ export function newBoardDialog(): Promise<string | null> {
     ok.textContent = t('novoQuadro.criar');
 
     actions.append(cancel, ok);
-    panel.append(h, p, grade, actions);
+    panel.append(h, rotuloNome, p, grade, actions);
 
-    const done = (value: string | null): void => {
+    const done = (value: NovoQuadro | null): void => {
       modal.close();
       resolve(value);
     };
     const modal = openModal(panel, () => done(null));
 
+    const criar = (): void => done({ papel: escolhida, nome: nome.value.trim() });
     cancel.addEventListener('click', () => done(null));
-    ok.addEventListener('click', () => done(escolhida));
-    ok.focus();
+    ok.addEventListener('click', criar);
+    nome.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        criar();
+      }
+    });
+    nome.focus();
   });
 }
 

@@ -28,6 +28,7 @@ export const ptBR = {
 
   // ------------------------------------------------------------ menu principal
   'lobby.pastaDosQuadros': 'Meus quadros',
+  'lobby.nadaParaSalvar': 'Nada para salvar aqui. Ctrl+N cria um quadro novo.',
   'lobby.abrirPastaNoExplorador': 'Abrir a pasta dos quadros no Explorador',
   'lobby.abrirPastaNoExploradorCom': (caminho: string) => `Abrir a pasta dos quadros no Explorador\n${caminho}`,
   'lobby.alternarTema': 'Alternar tema',
@@ -99,6 +100,8 @@ export const ptBR = {
   'papel.menta': 'Menta',
   'papel.rotulo': (nome: string) => `Papel ${nome}`,
   'novoQuadro.titulo': 'Novo quadro',
+  'novoQuadro.nome': 'Nome do quadro',
+  'novoQuadro.nomeDica': 'Opcional — dá para dar nome ao salvar',
   'novoQuadro.mensagem':
     'Escolha o papel. Um fundo levemente colorido faz os post-its e as marcações se destacarem mais do que sobre o branco.',
   'novoQuadro.criar': 'Criar quadro',
@@ -280,6 +283,8 @@ export const ptBR = {
   'atalhoGrupo.manipular': 'Mover e ajustar',
   'atalhoGrupo.visualizacao': 'Visualização',
   'atalho.salvar': 'Salvar quadro',
+  'atalho.novoQuadro': 'Novo quadro',
+  'atalho.salvarNoMenu': 'No menu principal: lembra que o Ctrl+N cria um quadro',
   'atalho.voltarAoMenu': 'Voltar ao menu principal',
   'atalho.exportar': 'Exportar em PNG, SVG ou PDF',
   'atalho.autosave': 'Salva sozinho 3 s depois da última alteração (só depois do primeiro Ctrl+S)',
