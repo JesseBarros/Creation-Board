@@ -637,6 +637,8 @@ export interface AcoesConfig {
   recarregar(): void;
   /** Escolher outra pasta e mover os quadros para ela (o App conduz a conversa). */
   trocarPastaDosQuadros(): void;
+  /** Mostra os tutoriais de novo. A tela de Configuracoes fecha antes. */
+  verTutorial(): void;
 }
 
 /**
@@ -851,6 +853,17 @@ export function settingsDialog(atual: Configuracoes, acoes: AcoesConfig): void {
   pasta.desc.title = estado.pastaDosQuadros;
   pasta.linha.dataset['config'] = 'pasta';
 
+  const verTutorial = document.createElement('button');
+  verTutorial.type = 'button';
+  verTutorial.className = 'qb-btn';
+  verTutorial.textContent = t('config.tutorialVer');
+  verTutorial.addEventListener('click', () => {
+    modal.close();
+    acoes.verTutorial();
+  });
+  const tutorial = linhaConfig(t('config.tutorial'), t('config.tutorialDica'), verTutorial);
+  tutorial.linha.dataset['config'] = 'tutorial';
+
   // --- Aparencia
   const fundoClaro = linhaFundo({
     nome: t('config.fundoClaro'),
@@ -933,7 +946,7 @@ export function settingsDialog(atual: Configuracoes, acoes: AcoesConfig): void {
 
   panel.append(
     cabecalho,
-    secaoConfig(t('config.secaoGeral'), idioma.linha, animacoes.linha, pasta.linha),
+    secaoConfig(t('config.secaoGeral'), idioma.linha, animacoes.linha, pasta.linha, tutorial.linha),
     aparencia,
     secaoConfig(t('config.secaoDesempenho'), compat.linha),
     rodape,

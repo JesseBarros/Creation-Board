@@ -4,6 +4,10 @@
 
 ## O que há de novo
 
+### Primeiros passos
+- Um **tutorial guiado** na primeira abertura ilumina cada botão do menu e termina criando o seu primeiro quadro. Dentro do quadro, outro passo a passo apresenta cada ferramenta.
+- Os dois podem ser pulados, e revistos em **Configurações → Tutorial**.
+
 ### Menu principal repaginado
 - **Foto de fundo**, uma por tema (praia no claro, céu estrelado no escuro), trocável em **Configurações** por uma imagem sua.
 - Os quadros ficam num **painel de vidro** com desfoque discreto, que deixa o fundo aparecer.
@@ -67,6 +71,10 @@ Seus quadros continuam na mesma pasta (`C:\Creation Board`) e abrem normalmente.
 [Português](#creation-board-110) · **English**
 
 ## What's new
+
+### First steps
+- A **guided tutorial** on first launch highlights each button on the home screen and ends by creating your first board. Inside the board, another walkthrough introduces each tool.
+- Both can be skipped, and replayed in **Settings → Tutorial**.
 
 ### Redesigned home screen
 - **Background photo**, one per theme (a beach in light, a starry sky in dark), which you can replace with your own image in **Settings**.

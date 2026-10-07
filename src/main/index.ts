@@ -442,6 +442,10 @@ function createWindow(): void {
   // QB_CONFIG=1 abre Configuracoes ao subir -- so para a foto do QB_SHOT.
   if (isDev && process.env['QB_CONFIG'] === '1') query = `${query}${query ? '&' : '?'}config=1`;
 
+  // Sem tutorial nas fotos (QB_SHOT) e quando pedido (QB_TOUR=off): ele bloqueia
+  // a tela e entraria na captura. Ver `#automatizado` no App.
+  if (process.env['QB_SHOT'] || process.env['QB_TOUR'] === 'off') query = `${query}${query ? '&' : '?'}tour=off`;
+
   const anim = process.env['QB_ANIM'];
   if (anim === 'off' || anim === 'on' || anim === 'max') query = `${query}${query ? '&' : '?'}anim=${anim}`;
 

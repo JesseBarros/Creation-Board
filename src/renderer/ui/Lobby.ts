@@ -223,6 +223,14 @@ export class Lobby {
     // ele tem o mesmo peso dos outros glifos e fica na linha de base certa.
     newBtn.prepend(icon('mais', 15));
 
+    // Os alvos do tutorial do menu (ver `tutoriais.ts`): por atributo, e nao
+    // por texto, que muda com o idioma.
+    this.#themeBtn.dataset['tour'] = 'tema';
+    configBtn.dataset['tour'] = 'config';
+    this.#novaPastaBtn.dataset['tour'] = 'pasta';
+    importBtn.dataset['tour'] = 'importar';
+    newBtn.dataset['tour'] = 'novo';
+
     tools.append(this.#themeBtn, configBtn, this.#novaPastaBtn, importBtn, newBtn);
     header.append(titleBox, tools);
 
@@ -235,6 +243,7 @@ export class Lobby {
       openAt: (path, id) => this.actions.openBoardAt(path, id),
     });
     this.#search.el.addEventListener('qb-libsearch-change', () => this.#syncSearchState());
+    this.#search.el.querySelector<HTMLElement>('.qb-libsearch__field')?.setAttribute('data-tour', 'busca');
 
     // ---- grade de cards
     this.#grid = document.createElement('div');

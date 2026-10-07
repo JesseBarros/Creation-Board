@@ -78,6 +78,14 @@ import { generateStressBatches } from './dev/stress';
 import { resolve as resolveShortcut, type ShortcutId } from './shortcuts';
 import { esquecerVidro, fotoDoPalco, vidroDe } from './ui/vidroPronto';
 import { nivelInicial, type NivelDeMovimento } from './ui/movimento';
+import { iniciarTour } from './ui/Tour';
+import {
+  esquecerTutoriais,
+  marcarTutorialVisto,
+  passosDoMenu,
+  passosDoQuadro,
+  tutorialVisto,
+} from './ui/tutoriais';
 // As mesmas fotos do `--lobby-foto` do base.css, para a miniatura de
 // Configuracoes. O Vite junta as duas referencias num arquivo so.
 import fotoPraia from './assets/fundos/praia.webp';
@@ -221,6 +229,8 @@ export class App {
    * com o app. Os bytes chegam por IPC — a CSP não permite `file:`.
    */
   #fundos: { light: string | null; dark: string | null } = { light: null, dark: null };
+  /** Execucao automatica (selftest, capturas, bancadas): sem tutorial. */
+  #automatizado = false;
   /** O aviso do X ja esta na tela (B36). */
   #perguntandoAoFechar = false;
   /** A pagina ja decidiu fechar: o proximo `beforeunload` deixa passar. */
@@ -546,6 +556,14 @@ export class App {
       params.get('selftest') !== null ||
       bench !== null;
     if (modoDeVerificacao) dismissBootScreen(true);
+    // Os tutoriais nunca aparecem por cima de uma execucao automatica: o
+    // balao bloqueia cliques e entraria na foto. `tour=off` vem do main com
+    // QB_SHOT ou QB_TOUR=off.
+    this.#automatizado =
+      modoDeVerificacao ||
+      ['exemplos', 'config', 'benchquadro', 'benchlobby'].some((k) => params.get(k) !== null) ||
+      params.get('boot') === 'hold' ||
+      params.get('tour') === 'off';
 
     if (importPath) {
       this.#enterBoard();
@@ -604,6 +622,9 @@ export class App {
         // QB_CONFIG=1 abre Configuracoes sozinho, para o QB_SHOT fotografa-la
         // (o redesenho de 06/10/2026 foi escolhido por prancha, nos dois temas).
         if (params.get('config')) void this.#openSettings();
+        // Meio segundo: a tela de abertura sai com um esmaecer, e o tutorial
+        // nascendo por baixo dele pareceria um piscar.
+        else if (!segurar) setTimeout(() => this.#talvezTutorialDoMenu(), 500);
       });
     }
   }
@@ -621,8 +642,32 @@ export class App {
     await this.#lobby.refresh();
   }
 
+  /** Primeira abertura: o passo a passo do menu, que termina criando o primeiro quadro. */
+  #talvezTutorialDoMenu(): void {
+    if (this.#automatizado || this.#view !== 'lobby' || tutorialVisto('menu')) return;
+    iniciarTour(passosDoMenu(), {
+      rotuloFinal: t('tour.menu.final'),
+      aoTerminar: (completo) => {
+        marcarTutorialVisto('menu');
+        if (completo) void this.newBoard();
+      },
+    });
+  }
+
+  /** Primeira vez dentro de um quadro: um passo por ferramenta. */
+  #talvezTutorialDoQuadro(): void {
+    if (this.#automatizado || this.#view !== 'board' || tutorialVisto('quadro')) return;
+    // Visto JA ao abrir: se a pessoa sair do quadro no meio, ele nao volta a
+    // cada quadro aberto -- "Ver de novo" em Configuracoes e o caminho.
+    marcarTutorialVisto('quadro');
+    iniciarTour(passosDoQuadro(), { rotuloFinal: t('tour.quadro.final'), aoTerminar: () => {} });
+  }
+
   #enterBoard(): void {
     this.#view = 'board';
+    // Depois do primeiro quadro desenhado: a barra precisa estar medida para
+    // o destaque cair em cima de cada ferramenta.
+    setTimeout(() => this.#talvezTutorialDoQuadro(), 450);
     this.#lobby.el.hidden = true;
     // O laco de medicao do F3 do menu nao pode continuar rodando por baixo do
     // quadro: ele pediria um quadro de animacao por vsync a toa, e o F3 do
@@ -1309,6 +1354,10 @@ export class App {
         reabrir: () => void window.quadro.graficos.reabrir(),
         recarregar: () => void window.quadro.recarregar(),
         trocarPastaDosQuadros: () => void this.#trocarPastaDosQuadros(),
+        verTutorial: () => {
+          esquecerTutoriais();
+          this.#talvezTutorialDoMenu();
+        },
       },
     );
   }

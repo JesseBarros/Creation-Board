@@ -1338,3 +1338,124 @@
 .qb-bar__btn--primary:hover {
   background: color-mix(in srgb, var(--accent) 85%, #000);
 }
+
+/* ============================================================ tutorial */
+
+/*
+  O TUTORIAL (06/10/2026). A camada inteira bloqueia cliques -- o tutorial
+  ensina, e um clique no botao iluminado abriria um dialogo por baixo do balao.
+
+  O destaque e um BURACO: um retangulo transparente com uma sombra enorme em
+  volta, que escurece todo o resto. O elemento iluminado e o de verdade, no
+  lugar dele. Sem alvo (boas-vindas), o buraco some e a sombra cobre tudo.
+*/
+.qb-tour {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+}
+
+.qb-tour__foco {
+  position: fixed;
+  border-radius: 12px;
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--accent) 70%, transparent),
+    0 0 0 9999px rgba(6, 9, 18, 0.62);
+  transition:
+    left 0.28s var(--ease-saida),
+    top 0.28s var(--ease-saida),
+    width 0.28s var(--ease-saida),
+    height 0.28s var(--ease-saida);
+  pointer-events: none;
+}
+
+.qb-tour__foco--nenhum {
+  left: 50% !important;
+  top: 50% !important;
+  width: 0 !important;
+  height: 0 !important;
+  box-shadow: 0 0 0 9999px rgba(6, 9, 18, 0.62);
+}
+
+.qb-tour__balao {
+  position: fixed;
+  width: min(340px, calc(100vw - 16px));
+  padding: 16px 18px 14px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  color: var(--fg);
+  transition:
+    left 0.28s var(--ease-saida),
+    top 0.28s var(--ease-saida);
+}
+
+/* A setinha aponta para o centro do alvo (`--seta-x`, posta pelo Tour.ts). */
+.qb-tour__balao[data-lado='embaixo']::before,
+.qb-tour__balao[data-lado='em-cima']::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--seta-x, 50%) - 7px);
+  width: 12px;
+  height: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  transform: rotate(45deg);
+}
+
+.qb-tour__balao[data-lado='embaixo']::before {
+  top: -7px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.qb-tour__balao[data-lado='em-cima']::before {
+  bottom: -7px;
+  border-left: none;
+  border-top: none;
+}
+
+.qb-tour__contador {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.qb-tour__titulo {
+  margin: 4px 0 6px;
+  font-size: 15.5px;
+  font-weight: 650;
+}
+
+.qb-tour__texto {
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--fg-muted);
+}
+
+.qb-tour__acoes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* "Pular" e uma saida, e nao uma acao: texto simples, empurrado para a esquerda. */
+.qb-tour__pular {
+  margin-right: auto;
+  padding: 4px 2px;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+
+.qb-tour__pular:hover {
+  color: var(--fg);
+  text-decoration: underline;
+}
