@@ -611,8 +611,6 @@ export interface Configuracoes {
   fundos: { claro: string | null; escuro: string | null };
   /** A "compatibilidade grafica": gravada e em uso (so vale ao reabrir). */
   graficos: EstadoGraficos;
-  /** Onde os quadros moram hoje. */
-  pastaDosQuadros: string;
 }
 
 /**
@@ -635,8 +633,6 @@ export interface AcoesConfig {
   reabrir(): void;
   /** Recarrega a janela, para o idioma valer. */
   recarregar(): void;
-  /** Escolher outra pasta e mover os quadros para ela (o App conduz a conversa). */
-  trocarPastaDosQuadros(): void;
   /** Mostra os tutoriais de novo. A tela de Configuracoes fecha antes. */
   verTutorial(): void;
 }
@@ -842,17 +838,6 @@ export function settingsDialog(atual: Configuracoes, acoes: AcoesConfig): void {
     ),
   );
 
-  // A pasta dos quadros: o caminho inteiro na dica, porque a linha corta.
-  const trocarPasta = document.createElement('button');
-  trocarPasta.type = 'button';
-  trocarPasta.className = 'qb-btn';
-  trocarPasta.textContent = t('config.trocarImagem');
-  trocarPasta.addEventListener('click', () => acoes.trocarPastaDosQuadros());
-  const pasta = linhaConfig(t('config.pastaQuadros'), estado.pastaDosQuadros, trocarPasta);
-  pasta.desc.classList.add('qb-config__desc--caminho');
-  pasta.desc.title = estado.pastaDosQuadros;
-  pasta.linha.dataset['config'] = 'pasta';
-
   const verTutorial = document.createElement('button');
   verTutorial.type = 'button';
   verTutorial.className = 'qb-btn';
@@ -946,7 +931,7 @@ export function settingsDialog(atual: Configuracoes, acoes: AcoesConfig): void {
 
   panel.append(
     cabecalho,
-    secaoConfig(t('config.secaoGeral'), idioma.linha, animacoes.linha, pasta.linha, tutorial.linha),
+    secaoConfig(t('config.secaoGeral'), idioma.linha, animacoes.linha, tutorial.linha),
     aparencia,
     secaoConfig(t('config.secaoDesempenho'), compat.linha),
     rodape,

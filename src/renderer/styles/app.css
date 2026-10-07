@@ -1095,11 +1095,6 @@
   white-space: nowrap;
 }
 
-/* Um caminho de pasta e uma palavra so: reticencias, e o inteiro na dica. */
-.qb-config__desc--caminho {
-  white-space: nowrap;
-}
-
 .qb-config__miniatura {
   flex-shrink: 0;
   width: 64px;

@@ -31,7 +31,6 @@ npm run check:imagens   # metadados de imagem: o corte e as imagens do repositó
 npm run check:pastas    # índice de pastas, caminhos fora da pasta, bomba de zip
 npm run check:fundo     # validação da imagem de fundo escolhida
 npm run check:graficos  # a opção de compatibilidade gráfica: leitura e quem manda
-npm run check:mover-pasta # trocar a pasta dos quadros: tudo vai, nada duplica, falha volta
 npm run check:colors    # contraste das cores do quadro nos dois temas
 npm run check:dist      # o auto-teste rodando dentro do app empacotado
 ```

@@ -212,19 +212,6 @@ export const ptBR = {
   'config.restaurarPadrao': 'Restaurar padrão',
   'config.imagemPadrao': 'Imagem padrão',
   'config.fundoDica': 'A imagem escolhida é copiada para a pasta dos quadros.',
-  'config.pastaQuadros': 'Pasta dos quadros',
-  'pastaQuadros.escolherTitulo': 'Escolha a nova pasta dos quadros',
-  'pastaQuadros.confirmarTitulo': 'Mudar a pasta dos quadros?',
-  'pastaQuadros.confirmarMensagem': (n: number, destino: string) =>
-    `${plural(n, 'quadro', 'quadros')}, as pastas do menu e os fundos escolhidos vão para “${destino}”. ` +
-    `Eles são movidos, e não copiados: nada fica para trás nem duplicado.`,
-  'pastaQuadros.mover': 'Mover',
-  'pastaQuadros.mesma': 'Essa já é a pasta dos quadros.',
-  'pastaQuadros.dentro': 'Escolha uma pasta que não fique dentro da atual, nem a contenha.',
-  'pastaQuadros.conflitos': (nomes: string) =>
-    `A pasta escolhida já tem quadros com estes nomes: ${nomes}. Nada foi movido. ` +
-    `Renomeie ou tire esses arquivos de lá e tente de novo.`,
-  'pastaQuadros.movidos': (n: number) => `Pronto: ${plural(n, 'quadro movido', 'quadros movidos')}.`,
   'config.compat': 'Compatibilidade gráfica',
   'config.compatDesligada': 'Desligada',
   'config.compatLigada': 'Ligada',
@@ -580,11 +567,6 @@ export const ptBR = {
     `Este quadro foi salvo por uma versão mais nova do Creation Board ` +
     `(formato ${formato}; esta versão lê até o ${suportado}).`,
   'erro.wbdInvalido': 'Arquivo .wbd inválido: faltam partes obrigatórias.',
-  'erro.moverJaExiste': (caminho: string) => `Nada foi movido: “${caminho}” já existe na pasta escolhida.`,
-  'erro.moverCopiaIncompleta': (caminho: string) => `Nada foi movido: a cópia de “${caminho}” saiu incompleta.`,
-  'erro.pastaEscolhidaSemAcesso': (pasta: string, motivo: string) =>
-    `A pasta dos quadros escolhida em Configurações, “${pasta}”, não está acessível (${motivo}). ` +
-    `Se ela está num pendrive ou disco externo, conecte-o e abra o app de novo.`,
   'erro.pastaSemPermissao': (pasta: string, motivo: string) =>
     `A pasta de quadros “${pasta}” existe e tem quadros salvos, mas não aceitou gravação (${motivo}). ` +
     `Os quadros NÃO foram movidos: corrija a permissão da pasta em vez de deixar o app gravar em outro lugar.`,

@@ -31,7 +31,6 @@ npm run check:imagens   # image metadata: the stripping and the repository image
 npm run check:pastas    # folder index, paths outside the folder, zip bombs
 npm run check:fundo     # validation of the chosen background image
 npm run check:graficos  # the graphics compatibility option: reading it and precedence
-npm run check:mover-pasta # moving the boards folder: everything goes, nothing duplicates, failures roll back
 npm run check:colors    # board color contrast in both themes
 npm run check:dist      # the self-test running inside the packaged app
 ```

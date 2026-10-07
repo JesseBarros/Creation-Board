@@ -348,31 +348,3 @@ export function criarPastaCom(
   for (const arquivo of nomesArquivo) r = moverParaPasta(r, arquivo, id);
   return r;
 }
-
-// ------------------------------------------------- trocar a pasta (06/10/2026)
-
-/**
- * Junta o indice da pasta de ORIGEM ao da pasta de DESTINO, ao mudar a pasta
- * dos quadros de lugar.
- *
- * As pastas do destino ficam como estao, e as da origem entram depois delas. Um
- * id repetido ganha sufixo (a identidade tem de ser unica), e um NOME repetido
- * vira "Nome (2)", pelo mesmo `nomeLivre` do menu -- duas pastas "Provas" lado a
- * lado seriam indistinguiveis. Os quadros citados nao mudam de nome: a mudanca
- * recusa nomes de arquivo repetidos antes de chegar aqui.
- */
-export function juntarIndices(destino: IndicePastas, origem: IndicePastas): IndicePastas {
-  const pastas = destino.pastas.map((p) => ({ ...p, quadros: [...p.quadros] }));
-  const ids = new Set(pastas.map((p) => p.id));
-  for (const p of origem.pastas) {
-    let id = p.id;
-    for (let n = 2; ids.has(id); n++) id = `${p.id}-${n}`;
-    ids.add(id);
-    const nome = nomeLivre(
-      pastas.map((x) => x.nome),
-      p.nome,
-    );
-    pastas.push({ id, nome, quadros: [...p.quadros] });
-  }
-  return { versao: VERSAO_INDICE, pastas };
-}

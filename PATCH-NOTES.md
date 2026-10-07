@@ -16,7 +16,6 @@
 - Na primeira abertura, o app segue o tema do Windows: claro ou escuro.
 - A grade de quadros rola **dentro do painel**: título, busca e botões ficam sempre à vista.
 - A busca em todos os quadros ficou centralizada.
-- Escolha **onde ficam seus quadros**, em **Configurações**: eles são movidos para a pasta nova junto com as pastas do menu e os fundos — nada é copiado nem fica para trás.
 
 ### Criar, salvar e fechar
 - **`Ctrl+N`** cria um quadro novo, no menu ou de dentro de um quadro.
@@ -84,7 +83,6 @@ Seus quadros continuam na mesma pasta (`C:\Creation Board`) e abrem normalmente.
 - On first launch, the app follows the Windows theme: light or dark.
 - The board grid scrolls **inside the panel**: the title, search and buttons always stay in view.
 - The search across all boards is now centered.
-- Choose **where your boards live**, in **Settings**: they're moved to the new folder along with the home screen folders and backgrounds — nothing is copied or left behind.
 
 ### Create, save and close
 - **`Ctrl+N`** creates a new board, from the home screen or from inside a board.

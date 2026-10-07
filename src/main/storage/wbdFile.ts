@@ -3,7 +3,6 @@ import { promises as fs } from 'node:fs';
 import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import { zip, type Unzipped, type Zippable } from 'fflate';
 import { descompactar, LIMITE_WBD } from './zipSeguro';
-import { lerPastaEscolhida } from './pastaEscolhida';
 import { t } from '@shared/i18n';
 import {
   WBD_ENTRY,
@@ -94,7 +93,7 @@ export function boardsDir(): string {
  * duas. Em desenvolvimento isso acontece toda vez que o electron-vite reinicia o
  * processo principal, porque o velho ainda nao morreu quando o novo ja sonda.
  */
-export async function podeEscrever(dir: string): Promise<true | string> {
+async function podeEscrever(dir: string): Promise<true | string> {
   const probe = join(dir, `.escrita-ok-${process.pid}-${Math.random().toString(36).slice(2, 8)}`);
   try {
     await fs.mkdir(dir, { recursive: true });
@@ -125,15 +124,6 @@ async function temQuadros(dir: string): Promise<boolean> {
  * concorrentes entrarem juntas antes da primeira terminar, e cada uma sondar a
  * pasta por conta propria. Com a sonda de nome fixo, isso era metade do B11.
  */
-/**
- * A pasta acabou de mudar de lugar (Configuracoes): o resto deste processo
- * passa a usar a nova sem precisar reabrir o app.
- */
-export function definirPastaResolvida(dir: string): void {
-  resolvedDir = dir;
-  resolvendo = null;
-}
-
 export function ensureBoardsDir(): Promise<string> {
   if (resolvedDir) return Promise.resolve(resolvedDir);
   resolvendo ??= resolverDir().then(
@@ -159,19 +149,6 @@ async function resolverDir(): Promise<string> {
     // comecar vazio.
     console.log(`[boards] pasta trocada por QB_BOARDS: ${custom}`);
     return custom;
-  }
-
-  // A pasta escolhida em Configuracoes. Inacessivel (pendrive fora, permissao)
-  // FALHA ALTO, e nunca cai calada no padrao: cair calado numa pasta vazia foi
-  // o B11, com metade dos quadros "sumida" e nenhuma pista do porque.
-  const escolhidaPeloUsuario = lerPastaEscolhida(app.getPath('userData'));
-  if (escolhidaPeloUsuario) {
-    await fs.mkdir(escolhidaPeloUsuario, { recursive: true }).catch(() => undefined);
-    const ok = await podeEscrever(escolhidaPeloUsuario);
-    if (ok !== true) throw new Error(t('erro.pastaEscolhidaSemAcesso', escolhidaPeloUsuario, String(ok)));
-    console.log(`[boards] pasta escolhida em Configuracoes: ${escolhidaPeloUsuario}`);
-    await migrateLegacyBoards(escolhidaPeloUsuario);
-    return escolhidaPeloUsuario;
   }
 
   const primary = join(process.env['SystemDrive'] ?? 'C:', '\\', DIR_NAME);

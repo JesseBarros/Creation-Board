@@ -208,19 +208,6 @@ export const enUS: Traducao = {
   'config.restaurarPadrao': 'Restore default',
   'config.imagemPadrao': 'Default image',
   'config.fundoDica': 'The chosen image is copied into the boards folder.',
-  'config.pastaQuadros': 'Boards folder',
-  'pastaQuadros.escolherTitulo': 'Choose the new boards folder',
-  'pastaQuadros.confirmarTitulo': 'Move the boards folder?',
-  'pastaQuadros.confirmarMensagem': (n, destino) =>
-    `${plural(n, 'board', 'boards')}, the home screen folders and the chosen backgrounds will go to “${destino}”. ` +
-    `They are moved, not copied: nothing is left behind or duplicated.`,
-  'pastaQuadros.mover': 'Move',
-  'pastaQuadros.mesma': 'That is already the boards folder.',
-  'pastaQuadros.dentro': "Choose a folder that isn't inside the current one, and doesn't contain it.",
-  'pastaQuadros.conflitos': (nomes) =>
-    `The chosen folder already has boards with these names: ${nomes}. Nothing was moved. ` +
-    `Rename or remove those files there and try again.`,
-  'pastaQuadros.movidos': (n) => `Done: ${plural(n, 'board moved', 'boards moved')}.`,
   'config.compat': 'Graphics compatibility',
   'config.compatDesligada': 'Off',
   'config.compatLigada': 'On',
@@ -573,11 +560,6 @@ export const enUS: Traducao = {
     `This board was saved by a newer version of Creation Board ` +
     `(format ${formato}; this version reads up to ${suportado}).`,
   'erro.wbdInvalido': 'Invalid .wbd file: required parts are missing.',
-  'erro.moverJaExiste': (caminho) => `Nothing was moved: “${caminho}” already exists in the chosen folder.`,
-  'erro.moverCopiaIncompleta': (caminho) => `Nothing was moved: the copy of “${caminho}” came out incomplete.`,
-  'erro.pastaEscolhidaSemAcesso': (pasta, motivo) =>
-    `The boards folder chosen in Settings, “${pasta}”, isn't reachable (${motivo}). ` +
-    `If it's on a USB stick or external drive, connect it and open the app again.`,
   'erro.pastaSemPermissao': (pasta, motivo) =>
     `The boards folder “${pasta}” exists and has saved boards, but it can't be written to (${motivo}). ` +
     `The boards were NOT moved: fix the folder's permissions instead of letting the app save somewhere else.`,
