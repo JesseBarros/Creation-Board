@@ -56,7 +56,7 @@ uses the Windows engine, without downloading or sending anything.
 > Get-FileHash "Creation Board-Setup-1.1.0.exe" -Algorithm SHA256
 > ```
 >
-> The result must be `074E089EF9BC04AB13E8A711E996D28295C1E7344235DDAD8F461698A08B588F`.
+> The result must be `10E6F7EF2F7645207884F26F073BEDB3DBA04AEA13790601085784877B3EE34F`.
 
 **Coming from 1.0.0?** Install over it. Your boards stay in `C:\Creation Board` and open as
 usual. Uninstalling never deletes boards.
