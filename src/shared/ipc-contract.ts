@@ -22,6 +22,7 @@ export const IPC = {
   appInfo: 'app:info',
   appIdioma: 'app:idioma',
   appRecarregar: 'app:recarregar',
+  appFechar: 'app:fechar',
   graficosLer: 'graficos:ler',
   graficosGravar: 'graficos:gravar',
   graficosReabrir: 'graficos:reabrir',
@@ -150,6 +151,11 @@ export interface CreationBoardApi {
    * pagina (ver `ipc/app.ts`).
    */
   recarregar(): Promise<void>;
+  /**
+   * Fecha a janela depois de a pagina ja ter perguntado o que fazer com as
+   * alteracoes pendentes (ver `#guardUnsavedOnClose` no App).
+   */
+  fecharJanela(): Promise<void>;
 
   graficos: {
     ler(): Promise<EstadoGraficos>;

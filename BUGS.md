@@ -22,7 +22,7 @@
 | **Animações** de hover não acontecem | **[B26](#b26--as-animações-pararam-de-funcionar--e-não-tinham-parado)** |
 | **Arrastar** o quadro aberto pesa, ou o **zoom rápido** trava | **[B31](#b31--zoom-rápido-com-ctrlroda-travava-o-quadro)** e **[B32](#b32--arrastar-o-quadro-redesenhava-tudo-a-cada-quadro)** — e o `QB_BENCH_QUADRO` para medir |
 
-**Estado: dois itens abertos, o B15 e o B34.** Última atualização: 06/10/2026 (B35, achado testando o instalador da 1.1.0; antes, B27 a B33 no preparo da 1.1.0; o B34 foi achado conferindo o B33). O B10, que esta linha ainda listava como aberto, está fechado desde 14/08.
+**Estado: dois itens abertos, o B15 e o B34.** Última atualização: 06/10/2026 (B35 e B36, achados testando o instalador da 1.1.0; antes, B27 a B33 no preparo da 1.1.0; o B34 foi achado conferindo o B33). O B10, que esta linha ainda listava como aberto, está fechado desde 14/08.
 
 **A rodada de 20–21/09/2026 fechou oito itens e abriu um.** Ela veio de usar o app para
 montar resumos de verdade, e quase tudo que apareceu estava em texto e em interface: o
@@ -148,6 +148,26 @@ Achado conferindo o B33 com `--force-device-scale-factor=1.5`: a verificação [
 pasta não acende). **Reprova igual na versão anterior às mudanças do B31–B33** — conferido
 com as mudanças guardadas —, então não vem delas. Com 100% passa. Falta saber se é só o teste
 (coordenadas simuladas) ou se o arrasto real numa tela de 150% também erra o alvo.
+
+### B36 — Depois de sair de um quadro sem salvar, o X não fechava mais o app
+`corrigido` · `alto` · 06/10/2026
+
+
+**Dois defeitos que se encontravam:**
+
+1. **"Sair sem salvar" não descartava de verdade.** O `#confirmDiscard` devolvia "pode ir",
+   mas o quadro largado continuava marcado como sujo na memória. Já no menu, sem quadro
+   nenhum na tela, o app ainda achava que havia trabalho a perder.
+2. **O guarda do X cancelava calado.** O `beforeunload` fazia `preventDefault` — num
+   navegador isso mostra um aviso; no Electron só **cancela** o fechamento, sem mostrar nada.
+   Juntando os dois: o X não respondia, para sempre, depois de qualquer [...].
+
+**Correção:** descartar limpa o estado; o guarda só vale com um quadro na tela; e o X
+cancelado abre o aviso do próprio app (o mesmo de voltar ao menu), agora com o título *"Perder
+o progresso não salvo?"* e o botão **Perder o progresso**. Decidido, a página pede ao processo
+principal para fechar (`app:fechar`) e deixa o próximo `beforeunload` passar. Dois cliques no X
+abrem um aviso só.
+
 
 ### B35 — Trocar o idioma no app instalado não aplicava
 `corrigido` · `médio` · 06/10/2026

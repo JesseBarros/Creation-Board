@@ -102,9 +102,10 @@ export const enUS: Traducao = {
   'novoQuadro.criar': 'Create board',
 
   // sair com alteracoes pendentes
-  'naoSalvo.titulo': 'Unsaved changes',
-  'naoSalvo.mensagem': (nome) => `“${nome}” has changes that haven't been saved yet.`,
-  'naoSalvo.sairSemSalvar': "Don't save",
+  'naoSalvo.titulo': 'Lose unsaved progress?',
+  'naoSalvo.mensagem': (nome) =>
+    `“${nome}” has changes that haven't been saved yet. If you leave without saving, all of that progress will be lost.`,
+  'naoSalvo.sairSemSalvar': 'Lose progress',
   'naoSalvo.salvarESair': 'Save and leave',
 
   // exportar

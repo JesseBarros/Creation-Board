@@ -204,6 +204,15 @@ export class App {
    * com o app. Os bytes chegam por IPC — a CSP não permite `file:`.
    */
   #fundos: { light: string | null; dark: string | null } = { light: null, dark: null };
+  /** O aviso do X ja esta na tela (B36). */
+  #perguntandoAoFechar = false;
+  /** A pagina ja decidiu fechar: o proximo `beforeunload` deixa passar. */
+  #fechandoDeVez = false;
+  /**
+   * Fecha a janela de vez. Publico e substituivel de proposito: o selftest
+   * troca por um contador, senao conferir o aviso do X fecharia o proprio teste.
+   */
+  fecharJanela: () => void = () => void window.quadro.fecharJanela();
   /** Conta os pedidos de vidro pronto: so o ULTIMO pode escrever. Ver `#aplicarVidro`. */
   #vidroPedido = 0;
   /** `QB_FUNDO=off`: sem foto nenhuma nesta execução. Ver `#aplicarFundo`. */
@@ -1047,6 +1056,11 @@ export class App {
     return this.#renderer.estatisticasDoCache;
   }
 
+  /** O quadro aberto tem alteracoes nao salvas. */
+  get alteracoesPendentes(): boolean {
+    return this.#session.dirty;
+  }
+
   markClean(): void {
     if (!this.#session.dirty) return;
     this.#session.dirty = false;
@@ -1084,19 +1098,47 @@ export class App {
 
     const escolha = await unsavedDialog(this.#session.name);
     if (escolha === 'cancelar') return false;
-    if (escolha === 'descartar') return true;
+    if (escolha === 'descartar') {
+      // Descartado e DESCARTADO: sem isto o quadro largado continuava marcado
+      // como sujo na memoria, e ja no menu o X da janela era cancelado em
+      // silencio -- o app [...] (B36).
+      this.#session = { ...this.#session, dirty: false };
+      return true;
+    }
 
     await this.save();
     return !this.#session.dirty;
   }
 
+  /**
+   * O X da janela com um quadro nao salvo aberto (B36).
+   *
+   * O `beforeunload` cancelado, num navegador, mostra um aviso; no Electron ele
+   * so CANCELA o fechamento, calado -- e o X parecia quebrado. Agora o
+   * cancelamento abre o aviso do proprio app (o mesmo de voltar ao menu):
+   * salvar e sair, perder o progresso, ou cancelar. Decidido, a pagina pede ao
+   * processo principal para fechar, e esta funcao deixa passar.
+   *
+   * So vale com um QUADRO na tela: no menu nao ha o que perder, e recarregar
+   * (Configuracoes) ou reabrir o app nao pode esbarrar num quadro largado.
+   */
   #guardUnsavedOnClose(): void {
-    // Aviso do proprio navegador ao fechar a janela. O dialogo nativo do
-    // Electron entra na Fase 8, junto com o autosave.
     window.addEventListener('beforeunload', (e) => {
+      if (this.#fechandoDeVez || this.#view !== 'board') return;
       if (!this.#session.dirty || this.doc.size === 0) return;
       e.preventDefault();
       e.returnValue = '';
+      if (this.#perguntandoAoFechar) return; // dois cliques no X: um aviso so
+      this.#perguntandoAoFechar = true;
+      void this.#confirmDiscard()
+        .then((pode) => {
+          if (!pode) return;
+          this.#fechandoDeVez = true;
+          this.fecharJanela();
+        })
+        .finally(() => {
+          this.#perguntandoAoFechar = false;
+        });
     });
     // A cor e a ferramenta esperam 400 ms para ir ao disco (ver DrawStyle).
     // Fechar o app logo depois de trocar perdia a escolha -- o `flush` existia

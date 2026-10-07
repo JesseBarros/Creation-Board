@@ -104,9 +104,10 @@ export const ptBR = {
   'novoQuadro.criar': 'Criar quadro',
 
   // sair com alteracoes pendentes
-  'naoSalvo.titulo': 'Alterações não salvas',
-  'naoSalvo.mensagem': (nome: string) => `“${nome}” tem alterações que ainda não foram salvas.`,
-  'naoSalvo.sairSemSalvar': 'Sair sem salvar',
+  'naoSalvo.titulo': 'Perder o progresso não salvo?',
+  'naoSalvo.mensagem': (nome: string) =>
+    `“${nome}” tem alterações que ainda não foram salvas. Se sair sem salvar, todo esse progresso será perdido.`,
+  'naoSalvo.sairSemSalvar': 'Perder o progresso',
   'naoSalvo.salvarESair': 'Salvar e sair',
 
   // exportar
