@@ -14,13 +14,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Creation Board</title>
     <!--
+      O tema da abertura, decidido ANTES do primeiro frame: script classico e
+      sincrono, de proposito fora do `main.ts` (modulo roda tarde demais). Ver o
+      porque no proprio arquivo. Tem de vir antes do estilo e do corpo da pagina.
+      O aviso do Vite no build ("can't be bundled without type=module") e
+      esperado: e justamente o que este script nao pode ser.
+    -->
+    <script src="./tema-inicial.js"></script>
+    <!--
       A tela de abertura mora AQUI, e nao num modulo, porque ela precisa estar
       pintada no primeiro frame -- antes de qualquer CSS ou JavaScript carregar.
       Montada por script, ela apareceria depois do momento em que serve.
 
-      O fundo escuro nao e escolha de tema: e a mesma cor do `backgroundColor` da
-      janela (main/index.ts) e do fundo da propria logo. Os tres iguais fazem a
-      janela abrir sem nenhuma troca de cor ate o app assumir.
+      Ela SEGUE O TEMA desde 07/10/2026 (pedido: sem piscada ao abrir). No
+      escuro, o fundo e a cor do fundo da propria logo; no claro, o fundo do
+      tema claro, e a logo vira um bloco de cantos arredondados, como o icone do
+      app. Quem decide o tema antes do primeiro frame e o `tema-inicial.js`, e a
+      janela (`backgroundColor` em main/index.ts) usa as mesmas duas cores.
 
       Quem a remove e o `bootScreen.ts`, quando a biblioteca esta listada.
     -->
@@ -75,6 +85,27 @@
         border-radius: 2px;
         background: linear-gradient(90deg, #2b6ef0, #58a6ff);
         animation: qb-boot-slide 1150ms ease-in-out infinite;
+      }
+      /*
+        TEMA CLARO. A logo e um PNG OPACO de fundo quase preto, e a peca branca
+        dela sumiria num fundo claro -- entao ela nao e recortada: vira um bloco
+        de cantos arredondados, como o icone do app na barra de tarefas. O fundo
+        e o `--bg` do tema claro (base.css), a mesma cor da janela no main.
+      */
+      :root[data-theme='light'] #qb-boot {
+        background: #d6dbe5;
+      }
+      :root[data-theme='light'] #qb-boot .qb-boot__mark {
+        border-radius: 26px;
+        box-shadow:
+          0 12px 32px rgba(22, 32, 54, 0.22),
+          0 2px 6px rgba(22, 32, 54, 0.12);
+      }
+      :root[data-theme='light'] #qb-boot .qb-boot__name {
+        color: #5a6474;
+      }
+      :root[data-theme='light'] #qb-boot .qb-boot__pulse {
+        background: #bcc3cf;
       }
       @keyframes qb-boot-in {
         from {

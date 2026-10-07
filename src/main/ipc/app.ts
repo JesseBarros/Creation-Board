@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { IPC, type AppInfo, type EstadoGraficos } from '@shared/ipc-contract';
 import { definirIdioma, idiomaValido } from '@shared/i18n';
+import { COR_DA_JANELA, temaDaJanelaValido } from '@shared/abertura';
 import { gravarCompatibilidade, lerCompatibilidade } from '../graficos';
 
 /**
@@ -46,6 +47,13 @@ export function registerAppIpc(compatEmUso: boolean): void {
   // passar desta vez, porque foi ela quem decidiu.
   ipcMain.handle(IPC.appFechar, (e): void => {
     BrowserWindow.fromWebContents(e.sender)?.close();
+  });
+
+  // O fundo da janela segue o tema da pagina (07/10/2026). Validado: o valor
+  // vem do renderer.
+  ipcMain.handle(IPC.appTema, (e, tema: unknown): void => {
+    if (!temaDaJanelaValido(tema)) return;
+    BrowserWindow.fromWebContents(e.sender)?.setBackgroundColor(COR_DA_JANELA[tema]);
   });
 
   ipcMain.handle(IPC.graficosLer, (): EstadoGraficos => ({

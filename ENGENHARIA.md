@@ -1055,10 +1055,11 @@ mantém desenhar barato num quadro cheio.
 
 ```
 npm run typecheck
-npm run selftest      # 191/191, tem de terminar com "tudo passou"
+npm run selftest      # 193/193, tem de terminar com "tudo passou"
 npm run check:fundo   # 22 casos da validação do fundo personalizado
 npm run check:pastas  # 26 casos do índice de pastas
 npm run check:graficos # 19 casos da opção de compatibilidade gráfica
+npm run check:abertura # a tela de abertura segue o tema: regra, lugar do script e cores
 ```
 
 E a regra que vale desde o B24: **cada checagem nova é conferida ao contrário** —

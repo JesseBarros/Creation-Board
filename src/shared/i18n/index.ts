@@ -55,11 +55,17 @@ export function idiomaValido(v: unknown): v is Idioma {
 }
 
 /**
- * O idioma a partir das preferencias do sistema: qualquer portugues vira
- * `pt-BR`, e qualquer outra coisa, `en-US` -- decisao de produto: "segue o Windows".
+ * O idioma a partir das preferencias do sistema -- decisao de produto: "segue o
+ * Windows". So o portugues DO BRASIL vira `pt-BR`; qualquer outro idioma,
+ * inclusive o portugues de Portugal, vira `en-US` (07/10/2026: "se o windows =
+ * outra lingua diferente de ptbr e ingles us = ingles padrao"; [...]).
+ *
+ * `pt` sem pais conta como Brasil: e como o Chromium chama o portugues quando
+ * o sistema nao diz a variante, e quem chega assim mais provavelmente le pt-BR.
  */
 export function idiomaDoSistema(preferidos: readonly string[]): Idioma {
-  return preferidos[0]?.toLowerCase().startsWith('pt') ? 'pt-BR' : 'en-US';
+  const primeiro = preferidos[0]?.toLowerCase().replace('_', '-');
+  return primeiro === 'pt-br' || primeiro === 'pt' ? 'pt-BR' : 'en-US';
 }
 
 /** O texto de uma chave no idioma atual. */

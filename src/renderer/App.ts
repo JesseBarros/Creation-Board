@@ -1513,6 +1513,8 @@ export class App {
 
   #applyTheme(): void {
     document.documentElement.dataset['theme'] = this.#theme;
+    // O fundo da janela vai junto (ver `shared/abertura.ts`).
+    void window.quadro.temaDaJanela(this.#theme);
     this.#aplicarFundo();
     this.#renderer.theme = this.#themeComPapel();
     this.#bar.setGridEnabled(this.doc.prefs.grid.enabled);

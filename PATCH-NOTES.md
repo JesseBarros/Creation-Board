@@ -13,7 +13,7 @@
 - Os quadros ficam num **painel de vidro** com desfoque discreto, que deixa o fundo aparecer.
 - Título novo, na mesma assinatura da logo, e o caminho da pasta de quadros num selo discreto.
 - **Configurações** redesenhada: seções em cartões, uma frase por opção, a miniatura de cada fundo e um botão **Aplicar alterações**.
-- Na primeira abertura, o app segue o tema do Windows: claro ou escuro.
+- Na primeira abertura, o app segue o tema do Windows: claro ou escuro. A **tela de abertura** também segue o tema, sem piscar escuro antes do claro.
 - A grade de quadros rola **dentro do painel**: título, busca e botões ficam sempre à vista.
 - A busca em todos os quadros ficou centralizada.
 
@@ -34,7 +34,7 @@
 - Arrastar ficou fluido: 144 quadros por segundo em monitor de 144 Hz.
 
 ### Português e inglês
-- O app inteiro em **português do Brasil** e **inglês americano**, incluindo o instalador. Na primeira abertura, segue o idioma do Windows; dá para trocar em **Configurações**.
+- O app inteiro em **português do Brasil** e **inglês americano**, incluindo o instalador. Na primeira abertura, segue o idioma do Windows: português do Brasil abre em português, e qualquer outro idioma abre em inglês. Dá para trocar em **Configurações**.
 - Todos os textos em português foram revisados: acentos, plurais e termos consistentes.
 
 ### Quadro
@@ -80,7 +80,7 @@ Seus quadros continuam na mesma pasta (`C:\Creation Board`) e abrem normalmente.
 - Your boards sit on a **glass panel** with a subtle blur that lets the background show through.
 - A new title that matches the logo, and the boards folder path in a discreet badge.
 - Redesigned **Settings**: sections in cards, one sentence per option, a thumbnail of each background, and an **Apply changes** button.
-- On first launch, the app follows the Windows theme: light or dark.
+- On first launch, the app follows the Windows theme: light or dark. The **splash screen** follows the theme too, with no dark flash before the light one.
 - The board grid scrolls **inside the panel**: the title, search and buttons always stay in view.
 - The search across all boards is now centered.
 
@@ -101,7 +101,7 @@ Seus quadros continuam na mesma pasta (`C:\Creation Board`) e abrem normalmente.
 - Dragging is smooth: 144 frames per second on a 144 Hz monitor.
 
 ### Portuguese and English
-- The whole app in **Brazilian Portuguese** and **US English**, including the installer. On first launch it follows the Windows language; you can switch in **Settings**.
+- The whole app in **Brazilian Portuguese** and **US English**, including the installer. On first launch it follows the Windows language: Brazilian Portuguese opens in Portuguese, and any other language opens in English. You can switch in **Settings**.
 
 ### Board
 - Resizing text **no longer distorts the letters**: the corner changes the font size and the side changes the box width.

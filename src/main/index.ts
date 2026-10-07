@@ -1,4 +1,5 @@
-import { app, BrowserWindow, screen } from 'electron';
+import { app, BrowserWindow, nativeTheme, screen } from 'electron';
+import { COR_DA_JANELA } from '@shared/abertura';
 import { join } from 'node:path';
 import { writeFile } from 'node:fs/promises';
 import { registerAppIpc } from './ipc/app';
@@ -260,12 +261,13 @@ function createWindow(): void {
     minWidth: 940,
     minHeight: 600,
     show: false,
-    // Cor de fundo igual a da TELA DE ABERTURA, que por sua vez e a cor exata do
-    // fundo da logo (medido: rgb(6,9,18)). As tres iguais fazem a janela abrir
-    // sem nenhuma troca de cor ate o app assumir. Antes era a cor do tema
-    // escuro, que ja evitava o flash branco -- mas com a marca embutida, uma cor
-    // diferente deixaria o retangulo opaco dela aparecendo como mancha.
-    backgroundColor: '#060912',
+    // Cor de fundo igual a da TELA DE ABERTURA, no tema do Windows (07/10/2026:
+    // antes era sempre a escura, e com o tema claro a janela abria escura e
+    // virava clara -- a "piscada" que foi pedido para tirar). Quem escolheu um
+    // tema diferente do Windows nao ve diferenca: a janela so aparece depois do
+    // primeiro frame (`ready-to-show`), e a pagina avisa o tema dela logo ao
+    // montar (`app:tema`). Ver `shared/abertura.ts`.
+    backgroundColor: COR_DA_JANELA[nativeTheme.shouldUseDarkColors ? 'dark' : 'light'],
     autoHideMenuBar: true,
     title: 'Creation Board',
     // O icone da JANELA -- barra de titulo, barra de tarefas e Alt+Tab.

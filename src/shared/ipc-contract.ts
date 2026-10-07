@@ -23,6 +23,7 @@ export const IPC = {
   appIdioma: 'app:idioma',
   appRecarregar: 'app:recarregar',
   appFechar: 'app:fechar',
+  appTema: 'app:tema',
   graficosLer: 'graficos:ler',
   graficosGravar: 'graficos:gravar',
   graficosReabrir: 'graficos:reabrir',
@@ -156,6 +157,12 @@ export interface CreationBoardApi {
    * alteracoes pendentes (ver `#guardUnsavedOnClose` no App).
    */
   fecharJanela(): Promise<void>;
+  /**
+   * O tema que a pagina acabou de aplicar, para a COR DE FUNDO DA JANELA seguir
+   * junto (ver `shared/abertura.ts`): sem isso, ao redimensionar, a borda nova
+   * aparecia na cor do outro tema por um instante.
+   */
+  temaDaJanela(tema: 'light' | 'dark'): Promise<void>;
 
   graficos: {
     ler(): Promise<EstadoGraficos>;
