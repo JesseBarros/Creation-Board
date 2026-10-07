@@ -279,8 +279,12 @@ export class Lobby {
       this.actions.importBoards(),
     );
     importCta.classList.add('qb-btn--primary');
-    const demoBtn = textButton(t('lobby.vazioDemonstracao'), () => this.actions.openDemo());
-    emptyActions.append(importCta, demoBtn);
+    // Criar ficou no lugar do [...] (07/10/2026, pedido
+    // dele): a primeira tela tem de oferecer o caminho mais comum, e nao so
+    // trazer de fora. A demonstracao continua no App (`openDemo`).
+    const criarCta = textButton(t('lobby.vazioCriar'), () => this.actions.newBoard());
+    criarCta.prepend(icon('mais', 15));
+    emptyActions.append(importCta, criarCta);
     this.#empty.append(emptyTitle, emptyHint, emptyActions);
 
     /*

@@ -41,9 +41,9 @@ export const ptBR = {
   'lobby.criarDica': 'Criar um quadro ou uma pasta',
   'lobby.novoQuadro': 'Novo quadro',
   'lobby.vazioTitulo': 'Nenhum quadro salvo ainda.',
-  'lobby.vazioDica': 'Crie um quadro novo e salve com Ctrl+S — ele aparece aqui com uma miniatura.',
+  'lobby.vazioDica': 'Crie um quadro novo com Ctrl+N — ele aparece aqui com uma miniatura.',
   'lobby.vazioImportar': 'Importar um quadro de outro aplicativo',
-  'lobby.vazioDemonstracao': 'Abrir o quadro de demonstração',
+  'lobby.vazioCriar': 'Criar quadro novo',
   'lobby.semMiniatura': 'Sem miniatura',
   'lobby.metaDoCard': (data: string, objetos: number, tamanho: string) =>
     `${data} · ${plural(objetos, 'objeto', 'objetos')} · ${tamanho}`,

@@ -18,6 +18,7 @@
 - A busca em todos os quadros ficou centralizada, e levanta como os botões ao passar o mouse.
 - Tela principal reequilibrada: a busca e os quadros no mesmo painel de vidro, que cresce com a biblioteca em vez de ocupar a tela toda; título e botões numa linha só.
 - Um **+** no fim da grade cria um quadro ou uma pasta, sem subir até o cabeçalho.
+- Com a biblioteca vazia, a tela inicial oferece **Criar quadro novo** ao lado de importar, e ensina o `Ctrl+N`.
 
 ### Criar, salvar e fechar
 - **`Ctrl+N`** cria um quadro novo, no menu ou de dentro de um quadro.
@@ -90,6 +91,7 @@ Seus quadros continuam na mesma pasta (`C:\Creation Board`) e abrem normalmente.
 - The search across all boards is now centered, and lifts like the buttons on hover.
 - A rebalanced home screen: the search and the boards share one glass panel, which grows with your library instead of filling the screen; the title and buttons sit on a single line.
 - A **+** at the end of the grid creates a board or a folder, without going up to the header.
+- With an empty library, the home screen offers **Create a new board** next to importing, and teaches `Ctrl+N`.
 
 ### Create, save and close
 - **`Ctrl+N`** creates a new board, from the home screen or from inside a board.
