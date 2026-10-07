@@ -375,6 +375,41 @@
   gap: 18px;
 }
 
+/*
+  O "+" que fecha a grade (07/10/2026). No vidro dos cards, sem borda e sem
+  azul: o pedido foi o "glass minimalista" do resto do menu -- o tracejado
+  e o azul destoavam. Ocupa a altura da fileira, como os cards ao lado; o
+  `min-height` e so para nunca virar uma faixa fina. O vidro vem do base.css,
+  junto do `.qb-card`.
+*/
+.qb-lobby__criar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 150px;
+  padding: 0;
+  border: none;
+  border-radius: 12px;
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition:
+    color 0.14s ease,
+    box-shadow 0.16s var(--ease-saida),
+    transform 0.16s var(--ease-saida);
+}
+
+.qb-lobby__criar:hover,
+.qb-lobby__criar:focus-visible {
+  color: var(--fg);
+  transform: translateY(var(--levanta));
+  box-shadow: var(--levanta-sombra);
+  outline: none;
+}
+
+.qb-lobby__criar:active {
+  transform: translateY(0) scale(0.97);
+}
+
 /* ============================================ busca em todos os quadros */
 
 /*
@@ -407,12 +442,26 @@
   border: 1px solid var(--border);
   border-radius: 999px;
   color: var(--fg-muted);
-  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+  transition:
+    border-color 0.14s ease,
+    color 0.14s ease,
+    box-shadow 0.16s var(--ease-saida),
+    transform 0.16s var(--ease-saida);
+}
+
+/*
+  Levanta como os botoes do menu (07/10/2026, pedido: [...]). Com o foco ela continua levantada e a lupa
+  acende -- SEM o anel azul de antes, que nao combinava com o vidro.
+*/
+.qb-libsearch__field:hover,
+.qb-libsearch__field:focus-within {
+  transform: translateY(var(--levanta));
+  box-shadow: var(--levanta-sombra);
 }
 
 .qb-libsearch__field:focus-within {
-  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: color-mix(in srgb, var(--fg) 22%, transparent);
+  color: var(--fg);
 }
 
 .qb-libsearch__input {
@@ -1458,4 +1507,74 @@
 .qb-tour__pular:hover {
   color: var(--fg);
   text-decoration: underline;
+}
+
+/*
+  A ESCOLHA DO "+" DO MENU (ver `criarDialog`): duas opcoes grandes e
+  quadradas, lado a lado, com o mesmo levantar dos botoes e sem azul.
+*/
+.qb-dialog--criar {
+  max-width: 440px;
+}
+
+.qb-criar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 16px 0 4px;
+}
+
+.qb-criar__opcao {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  aspect-ratio: 1;
+  padding: 16px 14px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--fg);
+  text-align: center;
+  cursor: pointer;
+  transition:
+    background-color 0.14s ease,
+    border-color 0.14s ease,
+    box-shadow 0.16s var(--ease-saida),
+    transform 0.16s var(--ease-saida);
+}
+
+.qb-criar__opcao:hover,
+.qb-criar__opcao:focus-visible {
+  background: color-mix(in srgb, var(--fg) 7%, var(--panel-2));
+  border-color: color-mix(in srgb, var(--fg) 20%, transparent);
+  transform: translateY(var(--levanta));
+  box-shadow: var(--levanta-sombra);
+  outline: none;
+}
+
+.qb-criar__opcao:active {
+  transform: translateY(0) scale(0.97);
+}
+
+.qb-criar__icone {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--fg) 7%, transparent);
+  color: var(--fg);
+}
+
+.qb-criar__nome {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.qb-criar__dica {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--fg-muted);
 }

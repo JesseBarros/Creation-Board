@@ -534,6 +534,7 @@
 
 :root .qb-lobby__painel,
 :root .qb-card,
+:root .qb-lobby__criar,
 :root .qb-libsearch__field,
 :root .qb-lobby .qb-btn:not(.qb-btn--primary):not(.qb-btn--active):not(.qb-btn--danger) {
   background: var(--chrome-sheen), var(--veu-superficie, var(--veu-lobby));

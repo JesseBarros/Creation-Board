@@ -310,6 +310,72 @@ export function newBoardDialog(): Promise<NovoQuadro | null> {
   });
 }
 
+/** O que o "+" da grade do menu vai criar. */
+export type Criacao = 'quadro' | 'pasta';
+
+/**
+ * A escolha do "+" da grade (07/10/2026, pedido: [...], no mesmo jeito dos outros dialogos
+ * de criar). Duas opcoes grandes, lado a lado; cada uma leva ao dialogo de
+ * sempre -- o "Novo quadro" ou o "Nova pasta" --, e esta janela so pergunta.
+ */
+export function criarDialog(): Promise<Criacao | null> {
+  return new Promise((resolve) => {
+    const panel = document.createElement('div');
+    panel.className = 'qb-dialog qb-dialog--criar';
+
+    const h = document.createElement('h2');
+    h.className = 'qb-dialog__title';
+    h.textContent = t('criar.titulo');
+
+    const opcoes = document.createElement('div');
+    opcoes.className = 'qb-criar';
+
+    const opcao = (
+      valor: Criacao,
+      nome: Parameters<typeof icon>[0],
+      rotulo: string,
+      dica: string,
+    ): HTMLButtonElement => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'qb-criar__opcao';
+      b.dataset['value'] = valor;
+      const simbolo = document.createElement('span');
+      simbolo.className = 'qb-criar__icone';
+      simbolo.append(icon(nome, 26));
+      const titulo = document.createElement('span');
+      titulo.className = 'qb-criar__nome';
+      titulo.textContent = rotulo;
+      const texto = document.createElement('span');
+      texto.className = 'qb-criar__dica';
+      texto.textContent = dica;
+      b.append(simbolo, titulo, texto);
+      b.addEventListener('click', () => done(valor));
+      return b;
+    };
+    const quadro = opcao('quadro', 'lapis', t('criar.quadro'), t('criar.quadroDica'));
+    opcoes.append(quadro, opcao('pasta', 'novaPasta', t('criar.pasta'), t('criar.pastaDica')));
+
+    const actions = document.createElement('div');
+    actions.className = 'qb-dialog__actions';
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'qb-btn';
+    cancel.textContent = t('comum.cancelar');
+    cancel.addEventListener('click', () => done(null));
+    actions.append(cancel);
+
+    panel.append(h, opcoes, actions);
+
+    const done = (value: Criacao | null): void => {
+      modal.close();
+      resolve(value);
+    };
+    const modal = openModal(panel, () => done(null));
+    quadro.focus();
+  });
+}
+
 /** O que fazer com um quadro que tem alteracoes pendentes. */
 export type UnsavedChoice = 'salvar' | 'descartar' | 'cancelar';
 

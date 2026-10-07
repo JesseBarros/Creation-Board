@@ -15,7 +15,8 @@
 - **Configurações** redesenhada: seções em cartões, uma frase por opção, a miniatura de cada fundo e um botão **Aplicar alterações**.
 - Na primeira abertura, o app segue o tema do Windows: claro ou escuro. A **tela de abertura** também segue o tema, sem piscar escuro antes do claro.
 - A grade de quadros rola **dentro do painel**: título, busca e botões ficam sempre à vista.
-- A busca em todos os quadros ficou centralizada.
+- A busca em todos os quadros ficou centralizada, e levanta como os botões ao passar o mouse.
+- Um **+** no fim da grade cria um quadro ou uma pasta, sem subir até o cabeçalho.
 
 ### Criar, salvar e fechar
 - **`Ctrl+N`** cria um quadro novo, no menu ou de dentro de um quadro.
@@ -84,7 +85,8 @@ Seus quadros continuam na mesma pasta (`C:\Creation Board`) e abrem normalmente.
 - Redesigned **Settings**: sections in cards, one sentence per option, a thumbnail of each background, and an **Apply changes** button.
 - On first launch, the app follows the Windows theme: light or dark. The **splash screen** follows the theme too, with no dark flash before the light one.
 - The board grid scrolls **inside the panel**: the title, search and buttons always stay in view.
-- The search across all boards is now centered.
+- The search across all boards is now centered, and lifts like the buttons on hover.
+- A **+** at the end of the grid creates a board or a folder, without going up to the header.
 
 ### Create, save and close
 - **`Ctrl+N`** creates a new board, from the home screen or from inside a board.

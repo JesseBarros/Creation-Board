@@ -1,7 +1,7 @@
 import type { BoardSummary } from '@shared/wbd';
 import { formatDate } from '../features/storage/boardIO';
 import { formatarBytes, t } from '@shared/i18n';
-import { confirmDialog, promptText, toast } from './dialogs';
+import { confirmDialog, criarDialog, promptText, toast } from './dialogs';
 import { icon, type IconName } from './icons';
 import { LibrarySearch } from './LibrarySearch';
 import { invalidateLibraryIndex } from '../features/search/libraryQuery';
@@ -80,6 +80,8 @@ export class Lobby {
   #painel!: HTMLElement;
   #grid: HTMLElement;
   #empty: HTMLElement;
+  /** O "+" que abre a escolha entre quadro e pasta (ver `#criarBloco`). */
+  #criar: HTMLButtonElement;
   #folderLabel: HTMLButtonElement;
   /** O texto do caminho, dentro da pilula -- o icone e irmao dele. */
   #folderTexto: HTMLElement;
@@ -248,6 +250,7 @@ export class Lobby {
     // ---- grade de cards
     this.#grid = document.createElement('div');
     this.#grid.className = 'qb-lobby__grid';
+    this.#criar = this.#criarBloco();
 
     this.#empty = document.createElement('div');
     this.#empty.className = 'qb-lobby__empty';
@@ -483,6 +486,10 @@ export class Lobby {
     this.#grid.replaceChildren();
     for (const p of pastas) this.#grid.append(this.#cardPasta(p, p.id === aberta?.id));
     for (const b of soltos) this.#grid.append(this.#card(b, null));
+    // O "+" FECHA a grade, a direita dos quadros -- e some com
+    // ela vazia: ali a tela de vazio ja tem os dois botoes de criar, e um
+    // terceiro caminho so competiria com eles.
+    if (!this.#semNada()) this.#grid.append(this.#criar);
 
     this.#janelaGrade.replaceChildren();
     if (aberta) {
@@ -668,6 +675,37 @@ export class Lobby {
     }
     await this.refresh();
     return true;
+  }
+
+  /**
+   * O "+" da grade (07/10/2026): um atalho para criar, no lugar
+   * onde o olho ja esta -- os quadros --, e nao so no cabecalho. So o sinal,
+   * sem texto; o clique abre a escolha entre quadro e pasta (`criarDialog`), e
+   * cada uma leva ao MESMO dialogo dos botoes do cabecalho (nada de um segundo
+   * jeito de criar).
+   *
+   * Nao e um `.qb-card`: essa classe e o que o arrastar, o contador do F3 e a
+   * bancada procuram, e este bloco nao e quadro nem alvo de soltar.
+   */
+  #criarBloco(): HTMLButtonElement {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'qb-lobby__criar';
+    b.title = t('lobby.criarDica');
+    b.setAttribute('aria-label', t('lobby.criarDica'));
+    b.setAttribute('aria-haspopup', 'dialog');
+    // Chave fixa para a entrada animada (`#entrarNovos`): sem ela, contaria
+    // como um quadro sem arquivo.
+    b.dataset['arquivo'] = '+';
+    b.append(icon('mais', 30));
+    b.addEventListener('click', () => void this.#escolherCriacao());
+    return b;
+  }
+
+  async #escolherCriacao(): Promise<void> {
+    const escolha = await criarDialog();
+    if (escolha === 'quadro') this.actions.newBoard();
+    else if (escolha === 'pasta') await this.#novaPasta();
   }
 
   async #novaPasta(): Promise<void> {
