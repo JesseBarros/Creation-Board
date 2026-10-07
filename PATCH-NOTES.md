@@ -33,6 +33,7 @@
 - O menu ganhou movimento: cards entram em sequência, o quadro arrastado acompanha o mouse, e a pasta reage ao receber um quadro.
 - Três níveis em **Configurações**: Desligadas, Ligadas e **Máximas**, que é como o app abre na primeira vez.
 - Arrastar ficou fluido: 144 quadros por segundo em monitor de 144 Hz.
+- Corrigido: com o mouse parado na borda de um quadro ou botão, ele ficava subindo e descendo sem parar. Agora fica levantado e parado.
 
 ### Português e inglês
 - O app inteiro em **português do Brasil** e **inglês americano**, incluindo o instalador. Na primeira abertura, segue o idioma do Windows: português do Brasil abre em português, e qualquer outro idioma abre em inglês. Dá para trocar em **Configurações**.
@@ -103,6 +104,7 @@ Seus quadros continuam na mesma pasta (`C:\Creation Board`) e abrem normalmente.
 - The home screen now moves: cards come in one after another, the dragged board follows the mouse, and folders react when they receive a board.
 - Three levels in **Settings**: Off, On and **Maximum**, which is how the app opens the first time.
 - Dragging is smooth: 144 frames per second on a 144 Hz monitor.
+- Fixed: with the mouse resting on the edge of a board or button, it kept moving up and down nonstop. Now it stays lifted and still.
 
 ### Portuguese and English
 - The whole app in **Brazilian Portuguese** and **US English**, including the installer. On first launch it follows the Windows language: Brazilian Portuguese opens in Portuguese, and any other language opens in English. You can switch in **Settings**.

@@ -1362,6 +1362,72 @@
 }
 
 /*
+  O LEVANTAR NAO TREME (07/10/2026, bug relatado com captura: [...]).
+
+  O laco: com o mouse parado na borda de BAIXO, o hover levanta o controle, a
+  borda sobe e sai de baixo do mouse, o hover cai, o controle desce, o hover
+  volta -- para sempre. No nivel Maximas o card sobe 5px com mola, e o laco
+  fica bem visivel.
+
+  A decisao de produto foi que, com o mouse em cima, o controle FICA levantado e
+  parado. Entao, enquanto levantado, uma faixa invisivel embaixo dele cobre o
+  lugar de onde ele saiu: o mouse continua "em cima", e o laco nao comeca. A
+  faixa so existe no hover e tem a altura do levantar (mais 1px); e fina
+  demais para pegar um clique que era de outra coisa.
+
+  `:where` no `position`: peso zero, para nao desfazer o `absolute` de quem ja
+  tem posicao propria.
+*/
+:where(
+    .qb-btn,
+    .qb-card,
+    .qb-lobby__criar,
+    .qb-libsearch__field,
+    .qb-criar__opcao,
+    .qb-bar__btn,
+    .qb-tools__btn,
+    .qb-tools__format,
+    .qb-tools__align,
+    .qb-layers__btn,
+    .qb-search__btn,
+    .qb-seg__btn,
+    .qb-tools__color,
+    .qb-tools__shape,
+    .qb-tools__alert,
+    .qb-paper,
+    .qb-debug__btn
+  ) {
+  position: relative;
+}
+
+:is(
+    .qb-btn,
+    .qb-card,
+    .qb-lobby__criar,
+    .qb-libsearch__field,
+    .qb-criar__opcao,
+    .qb-bar__btn,
+    .qb-tools__btn,
+    .qb-tools__format,
+    .qb-tools__align,
+    .qb-layers__btn,
+    .qb-search__btn,
+    .qb-seg__btn,
+    .qb-tools__color,
+    .qb-tools__shape,
+    .qb-tools__alert,
+    .qb-paper,
+    .qb-debug__btn
+  ):hover::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: calc(1px - var(--levanta));
+}
+
+/*
   Apertar desfaz o levantar, e nao encolhe por cima dele -- mesma conta do
   `.qb-btn`. Sem zerar o deslocamento o botao encolhe ainda suspenso, que le
   como "recuou" e nao como "afundou".

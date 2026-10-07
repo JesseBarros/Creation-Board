@@ -608,7 +608,9 @@
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 12px;
-  overflow: hidden;
+  /* Sem `overflow: hidden` desde 07/10/2026: ele cortaria tambem a faixa de
+     hover (ver "O LEVANTAR NAO TREME" no app.css). Quem arredonda a miniatura
+     agora e ela mesma, em `.qb-card__thumb`. */
   cursor: pointer;
   transition:
     border-color 0.12s,
@@ -635,6 +637,9 @@
   aspect-ratio: 8 / 5;
   background: var(--panel-2);
   border-bottom: 1px solid var(--border);
+  /* Os cantos de cima do card (12px menos a borda de 1px). */
+  border-radius: 11px 11px 0 0;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1025,6 +1030,11 @@
 :root[data-anim='max'] .qb-card:hover,
 :root[data-anim='max'] .qb-card:focus-visible {
   transform: translateY(calc(var(--levanta) * 2.5)) scale(1.02);
+}
+
+/* A faixa de hover acompanha o levantar maior (ver "O LEVANTAR NAO TREME"). */
+:root[data-anim='max'] .qb-card:hover::after {
+  height: calc(2px - var(--levanta) * 2.5);
 }
 
 :root[data-anim='max'] .qb-lobby__grid .qb-card.qb-alvo {
