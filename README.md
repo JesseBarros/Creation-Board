@@ -54,7 +54,7 @@ de texto usa o motor do Windows, sem baixar nem enviar nada.
 > Get-FileHash "Creation Board-Setup-1.1.0.exe" -Algorithm SHA256
 > ```
 >
-> O resultado tem de ser `10E6F7EF2F7645207884F26F073BEDB3DBA04AEA13790601085784877B3EE34F`.
+> O resultado tem de ser `0016248C775931E2A2B9A672F1CD4C8A3C25F84E1A79BD9F25F676E46C9F56E9`.
 
 **Vindo da 1.0.0?** Instale por cima. Seus quadros continuam em `C:\Creation Board` e abrem
 normalmente. Desinstalar nunca apaga quadros.
