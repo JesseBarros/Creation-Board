@@ -11,14 +11,15 @@ Como usar o **Creation Board** no dia a dia. Se você ainda não instalou, comec
 
 É a tela que abre com o app: seus quadros, com miniatura, data, número de objetos e tamanho.
 
-- **Novo quadro** cria um quadro e pergunta a cor do papel.
+- **Novo quadro** (ou `Ctrl+N`) cria um quadro e pergunta o nome e a cor do papel. Com nome, ele já nasce salvo.
+- O **+** no fim da grade cria um quadro ou uma pasta.
 - **Importar arquivo** traz quadros exportados de outro aplicativo (ver [Importar](#importar-de-outros-aplicativos)).
-- **Buscar em todos os quadros** procura texto em toda a biblioteca de uma vez, inclusive o texto dentro das imagens.
-- O selo com o caminho, abaixo do título, abre a pasta dos quadros no Explorador.
+- **Buscar em todos os quadros**, no alto do painel, procura texto em toda a biblioteca de uma vez, inclusive o texto dentro das imagens.
+- O selo com o caminho, ao lado do título, abre a pasta dos quadros no Explorador.
 
 ### Pastas
 
-- **Nova pasta** cria uma pasta vazia. **Arrastar um quadro sobre outro** cria uma pasta com os dois e pergunta o nome.
+- **Nova pasta** (ou o **+**) cria uma pasta vazia. **Arrastar um quadro sobre outro** cria uma pasta com os dois e pergunta o nome.
 - Arraste um quadro sobre uma pasta para guardá-lo nela.
 - Clique numa pasta para abri-la numa janela, com a tela principal ainda à vista. Arrastar um quadro da janela para a tela principal o tira da pasta. `Esc` fecha a janela.
 - Renomear (lápis ou `F2`) e excluir estão no próprio card da pasta. **Excluir uma pasta nunca apaga quadros**: eles voltam para a tela principal.
@@ -29,9 +30,13 @@ As pastas são uma organização do app, e não pastas do Windows: os arquivos `
 
 O botão de ajustes, ao lado do tema, abre:
 
-- **Idioma:** Português (Brasil) ou English (US). Na primeira abertura, o app segue o idioma do Windows. Trocar recarrega a janela.
-- **Animações:** Desligadas, Ligadas (padrão) ou **Máximas**, que dá mais movimento ao menu: os quadros saltam ao entrar, inclinam ao ser arrastados e as pastas reagem ao receber um quadro.
+- **Idioma:** Português (Brasil) ou English (US). Na primeira abertura, o app segue o Windows: português do Brasil abre em português, e os outros idiomas, em inglês.
+- **Animações:** Desligadas, Ligadas ou **Máximas** (padrão).
+- **Tutorial:** **Ver de novo** mostra os passos guiados do menu e do quadro.
 - **Fundo do tema claro / escuro:** uma imagem sua no lugar da foto que vem com o app. A imagem é copiada para a pasta dos quadros, sem os dados escondidos (como localização de GPS). **Restaurar padrão** volta para a foto original.
+- **Compatibilidade gráfica:** desativa a aceleração por GPU. Use se a tela piscar ou o desenho duplicar; o defeito depende da placa de vídeo de cada computador.
+
+Idioma e compatibilidade gráfica valem ao clicar em **Aplicar alterações**, no rodapé (a compatibilidade reabre o app).
 
 O botão de sol/lua alterna entre o tema claro e o escuro.
 
@@ -43,6 +48,7 @@ Todos os atalhos estão dentro do app: tecla **`F1`**, ou o botão de teclado na
 
 | Ação | Como |
 |---|---|
+| Novo quadro | `Ctrl+N` · no menu ou dentro de um quadro |
 | Salvar | `Ctrl+S` · depois do primeiro, salva sozinho 3 s após a última alteração |
 | Exportar | `Ctrl+E` — PNG, SVG ou PDF; o quadro todo ou a seleção |
 | Voltar ao menu principal | `Ctrl+O` |
@@ -59,7 +65,7 @@ Todos os atalhos estão dentro do app: tecla **`F1`**, ou o botão de teclado na
 | Buscar no quadro | `Ctrl+F` · `Enter` próximo · `Shift+Enter` anterior · `Esc` fecha |
 | Mover o quadro | **Botão direito + arrastar** · botão do meio · dois dedos no trackpad · roda do mouse |
 | Zoom | `Ctrl` + roda · pinça · `Ctrl+0` em 100% · `Ctrl+1` ajusta à tela |
-| Grade · réguas · unidade | `G` · `R` · `U` (px ou cm) |
+| Pontilhado · réguas · unidade | `G` · `R` · `U` (px ou cm) · pontilhado e réguas começam desligados, e o app lembra a escolha |
 | Painel de camadas | `C` |
 | Menu de contexto | Clique direito sem arrastar |
 
@@ -91,6 +97,8 @@ As **réguas** (`R`) mostram a posição no topo e à esquerda, em px ou cm (`U`
 - **Texto** (`T`): clique cria uma caixa; arrastar define a largura. Clicar numa caixa que já existe abre a caixa, em vez de criar outra.
 - **Redimensionar texto** não distorce as letras: o **canto** muda o tamanho da fonte e a **lateral** muda a largura da caixa (o texto se reorganiza).
 - **Negrito, itálico e sublinhado** valem enquanto se digita, numa palavra só. Colar dentro da caixa cola texto puro.
+- **Cor do texto:** selecione um trecho e escolha a cor no painel do Texto. `Ctrl+A` dentro da caixa muda o texto todo; com a caixa selecionada no quadro, muda a caixa inteira.
+- A **barra de tamanho** do painel vale para o texto em edição ou selecionado.
 - **Post-it** (`N`) tem tamanho próprio. A cor e o **alerta** (importante, dúvida, revisar) se escolhem no painel, e os mesmos botões mudam o post-it selecionado.
 - Um post-it **fixado** (menu de contexto) vira uma ficha no canto da tela enquanto estiver fora da vista.
 

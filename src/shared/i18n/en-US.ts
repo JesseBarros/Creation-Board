@@ -228,8 +228,7 @@ export const enUS: Traducao = {
   'quadro.nomeDeArquivo': 'board',
   'quadro.dicaVazioHtml':
     '<strong>Empty board.</strong> Pick the pen (<kbd>P</kbd>) and start drawing.<br>' +
-    'Import a board from the home screen, or press <kbd>F3</kbd> to generate a test load and ' +
-    '<kbd>F1</kbd> to see the shortcuts.',
+    'Import a board from the home screen, or see the shortcuts with <kbd>F1</kbd>.',
   'quadro.erroAbrirNome': (nome, erro) => `Couldn't open “${nome}”: ${erro}`,
   'quadro.erroAbrir': (erro) => `Couldn't open the board: ${erro}`,
   'quadro.salvarTitulo': 'Save board',

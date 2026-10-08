@@ -232,8 +232,7 @@ export const ptBR = {
   'quadro.nomeDeArquivo': 'quadro',
   'quadro.dicaVazioHtml':
     '<strong>Quadro vazio.</strong> Escolha a caneta (<kbd>P</kbd>) e desenhe.<br>' +
-    'Importe um quadro pelo menu principal, ou use <kbd>F3</kbd> para gerar carga de teste e ' +
-    '<kbd>F1</kbd> para ver os atalhos.',
+    'Importe um quadro pelo menu principal, ou veja os atalhos com <kbd>F1</kbd>.',
   'quadro.erroAbrirNome': (nome: string, erro: string) => `Não foi possível abrir “${nome}”: ${erro}`,
   'quadro.erroAbrir': (erro: string) => `Não foi possível abrir o quadro: ${erro}`,
   'quadro.salvarTitulo': 'Salvar quadro',

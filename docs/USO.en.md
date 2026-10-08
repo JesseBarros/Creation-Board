@@ -11,14 +11,15 @@ How to use **Creation Board** day to day. If you haven't installed it yet, start
 
 This is the screen the app opens on: your boards, each with a thumbnail, date, object count and size.
 
-- **New board** creates a board and asks for the paper color.
+- **New board** (or `Ctrl+N`) creates a board and asks for a name and the paper color. A named board starts out saved.
+- The **+** at the end of the grid creates a board or a folder.
 - **Import file** brings in boards exported from another app (see [Importing](#importing-from-other-apps)).
-- **Search all boards** looks for text across your whole library at once, including text inside images.
-- The badge with the path, under the title, opens the boards folder in File Explorer.
+- **Search all boards**, at the top of the panel, looks for text across your whole library at once, including text inside images.
+- The badge with the path, next to the title, opens the boards folder in File Explorer.
 
 ### Folders
 
-- **New folder** creates an empty folder. **Dragging one board onto another** creates a folder with both and asks for a name.
+- **New folder** (or the **+**) creates an empty folder. **Dragging one board onto another** creates a folder with both and asks for a name.
 - Drag a board onto a folder to put it inside.
 - Click a folder to open it in a window, with the home screen still in view. Dragging a board from the window onto the home screen takes it out of the folder. `Esc` closes the window.
 - Rename (pencil or `F2`) and delete are on the folder card itself. **Deleting a folder never deletes boards**: they go back to the home screen.
@@ -29,9 +30,13 @@ Folders are an organization inside the app, not Windows folders: the `.wbd` file
 
 The settings button, next to the theme button, opens:
 
-- **Language:** Português (Brasil) or English (US). On first launch, the app follows the Windows language. Switching reloads the window.
-- **Animations:** Off, On (default) or **Maximum**, which adds more motion to the home screen: boards bounce in, tilt as you drag them, and folders react when they receive a board.
+- **Language:** Português (Brasil) or English (US). On first launch, the app follows Windows: Brazilian Portuguese opens in Portuguese, and any other language in English.
+- **Animations:** Off, On or **Maximum** (default).
+- **Tutorial:** **Show again** replays the guided steps for the home screen and the board.
 - **Light / dark theme background:** your own image instead of the photo that comes with the app. The image is copied into the boards folder, without its hidden data (such as GPS location). **Restore default** goes back to the original photo.
+- **Graphics compatibility:** turns off GPU acceleration. Use it if the screen flickers or the drawing appears doubled; the glitch depends on each computer's graphics card.
+
+Language and graphics compatibility take effect when you click **Apply changes**, at the bottom (graphics compatibility reopens the app).
 
 The sun/moon button switches between the light and dark themes.
 
@@ -43,6 +48,7 @@ Every shortcut is listed inside the app: press **`F1`**, or the keyboard button 
 
 | Action | How |
 |---|---|
+| New board | `Ctrl+N` · on the home screen or inside a board |
 | Save | `Ctrl+S` · after the first save, it saves on its own 3 s after the last change |
 | Export | `Ctrl+E` — PNG, SVG or PDF; the whole board or the selection |
 | Back to the home screen | `Ctrl+O` |
@@ -59,7 +65,7 @@ Every shortcut is listed inside the app: press **`F1`**, or the keyboard button 
 | Find on board | `Ctrl+F` · `Enter` next · `Shift+Enter` previous · `Esc` closes |
 | Pan the board | **Right-click + drag** · middle button · two fingers on the trackpad · mouse wheel |
 | Zoom | `Ctrl` + wheel · pinch · `Ctrl+0` for 100% · `Ctrl+1` fits to screen |
-| Grid · rulers · units | `G` · `R` · `U` (px or cm) |
+| Dot grid · rulers · units | `G` · `R` · `U` (px or cm) · the dot grid and rulers start off, and the app remembers your choice |
 | Layers panel | `C` |
 | Context menu | Right-click without dragging |
 
@@ -91,6 +97,8 @@ The **rulers** (`R`) show your position along the top and left, in px or cm (`U`
 - **Text** (`T`): click to create a box; drag to set its width. Clicking an existing box opens it instead of creating another one.
 - **Resizing text** doesn't distort the letters: the **corner** changes the font size and the **side** changes the box width (the text reflows).
 - **Bold, italic and underline** apply while you type, even to a single word. Pasting inside a box pastes plain text.
+- **Text color:** select a passage and pick a color in the Text panel. `Ctrl+A` inside the box changes the whole text; with the box selected on the board, the whole box changes.
+- The panel's **size slider** applies to the text being edited or selected.
 - A **sticky note** (`N`) has its own size. Its color and **flag** (important, question, review) are chosen in the panel, and the same buttons change the selected note.
 - A **pinned** sticky note (context menu) becomes a card in the corner of the screen while it's out of view.
 
