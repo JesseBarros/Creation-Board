@@ -64,7 +64,7 @@ Every shortcut is listed inside the app: press **`F1`**, or the keyboard button 
 | Bring to front / send to back | `Ctrl+Shift+]` / `Ctrl+Shift+[` |
 | Find on board | `Ctrl+F` · `Enter` next · `Shift+Enter` previous · `Esc` closes |
 | Pan the board | **Right-click + drag** · middle button · two fingers on the trackpad · mouse wheel |
-| Zoom | `Ctrl` + wheel · pinch · `Ctrl+0` actual size · `Ctrl+1` fits to screen |
+| Zoom | `Ctrl` + wheel · pinch · `Ctrl+0` actual size · `Ctrl+1` centers the content at 50% |
 | Dot grid · rulers · units | `G` · `R` · `U` (px or cm) · the dot grid and rulers start off, and the app remembers your choice |
 | Layers panel | `C` |
 | Context menu | Right-click without dragging |

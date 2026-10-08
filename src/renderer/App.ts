@@ -33,7 +33,7 @@ import { searchBoard, type SearchHit } from './features/search/search';
 import { invalidateLibraryIndex } from './features/search/libraryQuery';
 import { paintSearchHighlight } from './render/SearchHighlight';
 import { ToolBar } from './ui/ToolBar';
-import { ViewportBar } from './ui/ViewportBar';
+import { ViewportBar, zoomDaEscala } from './ui/ViewportBar';
 import { ContextMenu, type MenuEntry } from './ui/ContextMenu';
 import { Lobby } from './ui/Lobby';
 import { ShortcutsModal } from './ui/ShortcutsModal';
@@ -313,7 +313,7 @@ export class App {
       zoomIn: () => this.#zoomCenter(1.25),
       zoomOut: () => this.#zoomCenter(1 / 1.25),
       zoomTo: (z) => this.#setZoomCenter(z),
-      fitToContent: () => this.fitToContent(),
+      fitToContent: () => this.centralizarConteudo(),
       toggleGrid: () => this.toggleGrid(),
       toggleRulers: () => this.toggleRulers(),
       toggleLayers: () => this.toggleLayers(),
@@ -1263,10 +1263,31 @@ export class App {
 
   // ----------------------------------------------------------------- visao
 
+  /**
+   * Todo o conteudo na tela, com o zoom que for preciso. E o que as medicoes e
+   * o `selftest` usam ([...]); o botao da barra e o Ctrl+1 usam
+   * `centralizarConteudo`.
+   */
   fitToContent(): void {
     const b = this.doc.contentBounds();
     if (!b) return;
     this.camera.fitTo(b, this.#renderer.viewportW, this.#renderer.viewportH);
+    this.#onCameraChanged();
+  }
+
+  /**
+   * O botao "Centralizar" da barra e o Ctrl+1 (07/10/2026): o
+   * conteudo no meio da tela, com o zoom em 50% da barra -- perto do tamanho
+   * real. Encaixar tudo afastava para 12% num quadro espalhado. Num quadro
+   * grande, aparece a parte do meio; o resto se ve arrastando ou com o -.
+   */
+  centralizarConteudo(): void {
+    const b = this.doc.contentBounds();
+    if (!b) return;
+    const zoom = zoomDaEscala(50);
+    this.camera.zoom = zoom;
+    this.camera.x = b.x + b.w / 2 - this.#renderer.viewportW / 2 / zoom;
+    this.camera.y = b.y + b.h / 2 - this.#renderer.viewportH / 2 / zoom;
     this.#onCameraChanged();
   }
 
@@ -2735,7 +2756,7 @@ export class App {
       benchmark: () => this.toggleBenchmark(),
       grid: () => this.toggleGrid(),
       zoom100: () => this.#setZoomCenter(1),
-      fit: () => this.fitToContent(),
+      fit: () => this.centralizarConteudo(),
       zoomIn: () => this.#zoomCenter(1.25),
       zoomOut: () => this.#zoomCenter(1 / 1.25),
       undo: () => this.undo(),

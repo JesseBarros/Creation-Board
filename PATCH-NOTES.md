@@ -28,6 +28,7 @@
 - Barra única com ícones novos, e as opções da ferramenta num painel que sobe da barra.
 - **Régua** e **pontilhado** começam desligados, e o app lembra a sua escolha.
 - A barra mostra o zoom de 1% a 100%, do mínimo ao máximo; o **+** e `Ctrl`+roda vão até o máximo.
+- O botão **Centralizar** (`Ctrl+1`) leva o conteúdo ao meio da tela, com o zoom em 50%.
 - Uma print colada já entra na busca (`Ctrl+F`).
 - Tema claro mais confortável para a vista.
 
@@ -93,6 +94,7 @@ Instale por cima. Os quadros continuam em `C:\Creation Board` e abrem normalment
 - A single toolbar with new icons, and tool options in a panel that rises from the bar.
 - **Rulers** and the **dot grid** start off, and the app remembers your choice.
 - The bar shows zoom from 1% to 100%, minimum to maximum; the **+** button and `Ctrl`+wheel go all the way.
+- The **Center** button (`Ctrl+1`) brings the content to the middle of the screen, at 50% zoom.
 - A pasted screenshot is searchable (`Ctrl+F`) right away.
 - A light theme that's easier on the eyes.
 
