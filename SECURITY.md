@@ -82,7 +82,7 @@ Os nomes de canal também não são strings soltas: vivem num contrato único
 
 ## Nada sai da máquina
 
-- **Sem telemetria, sem análise de uso, sem [...].**
+- **Sem telemetria, sem análise de uso, sem "enviar relatório de erro".**
 - **Sem auto-update.** O `electron-builder.yml` traz `publish: null`, então o app não consulta
   servidor nenhum ao abrir.
 - **Sem nuvem, por decisão registrada.** A alternativa (ligar uma pasta do Google Drive) foi
@@ -158,7 +158,7 @@ return false;
 
 Com **dois processos do app sondando a mesma pasta ao mesmo tempo**, cada um apagava o arquivo
 do outro entre a escrita e a remoção. O `unlink` falhava, o `catch {}` vazio traduzia isso
-como [...] — sobre uma pasta perfeitamente gravável — e o app caía
+como *"esta pasta não aceita escrita"* — sobre uma pasta perfeitamente gravável — e o app caía
 **calado** para uma pasta alternativa, levando os dados do usuário junto.
 
 É um **TOCTOU** (*time-of-check to time-of-use*) clássico: a condição verificada deixa de
@@ -207,6 +207,15 @@ são instrumentos de desenvolvimento, não configuração de usuário.
 O OCR chama `powershell.exe` para alcançar a API de reconhecimento do Windows. Como isso é a
 única execução externa do app, ela é feita com cuidado explícito:
 
+| Escolha | Por quê |
+|---|---|
+| **O script entra pela entrada padrão (stdin)**, e a linha de comando é um texto fixo | Não depende da política de execução **e elimina qualquer escape de aspas** — nada é montado por concatenação. Até 30/09/2026 era `-EncodedCommand`, com as mesmas garantias; saiu porque o antivírus do Windows segurava a criação do processo por quase 2 s a cada leitura, congelando a janela (B29 no [BUGS.md](BUGS.md)) |
+| **`-NoProfile -NonInteractive`** | O perfil do usuário não é carregado, e o processo nunca fica esperando entrada |
+| **`ELECTRON_RUN_AS_NODE` removido** do ambiente do filho | Herdar essa variável muda o comportamento do binário; limpar é fechar uma via de influência externa |
+| **`windowsHide: true`** | Nenhuma janela de console pisca na tela |
+| **Pasta temporária por lote, apagada no fim** | Os bytes precisam tocar o disco (a API lê de arquivo); deixar rastro seria acumular imagens do usuário no temp |
+| **Varredura das sobras ao iniciar** | Fechar o app no meio de uma leitura deixava a pasta do lote para trás, com a print dentro. Ao abrir, o app apaga as pastas `qb-ocr-*` com mais de 10 minutos — só as dele (B30) |
+| **Teto de tempo** | Um lote que trave não deixa o processo pendurado |
 
 ---
 
@@ -316,8 +325,8 @@ colada) **fazer o app agir contra quem o usa**.
 | 10 | 22 alertas do `npm audit` nas **ferramentas de build** (nenhum no que vai para o instalador) | Baixa | **Decisão pendente** |
 
 **Chaves e credenciais: nenhuma.** A varredura cobriu a árvore atual **e todo o
-histórico do git** (todos os ramos), procurando os formatos de chave da AWS,
-Google, OpenAI, GitHub, Slack, GitLab, npm e Hugging Face, chaves
+histórico do git** (todos os ramos), procurando os formatos de chave de API e de
+token dos serviços mais comuns, chaves
 privadas PEM e atribuições do tipo `api_key = "..."`, `senha`, `token`. Nenhum
 arquivo `.env`, `.pem`, `.pfx` ou `.npmrc` versionado. Os commits usam o e-mail
 anônimo do GitHub (`…@users.noreply.github.com`).
@@ -326,7 +335,8 @@ anônimo do GitHub (`…@users.noreply.github.com`).
 
 ### 1. Metadados das imagens dentro dos quadros
 
-**O que acontecia.** O `AssetStore` guardava a imagem [...] — decisão antiga, tomada para não perder qualidade. Junto com os
+**O que acontecia.** O `AssetStore` guardava a imagem "byte a byte, exatamente
+como entrou" — decisão antiga, tomada para não perder qualidade. Junto com os
 pixels iam:
 
 - o **EXIF** — em foto de celular, a **posição de GPS** de onde foi tirada, o
@@ -335,7 +345,7 @@ pixels iam:
   foto inteira);
 - **XMP** e **IPTC** — autor, programa de edição, histórico;
 - o **MPF** e o que vem grudado depois do fim do JPEG — imagens secundárias,
-  mapa de profundidade do modo retrato, o vídeo da [...];
+  mapa de profundidade do modo retrato, o vídeo da "foto com movimento";
 - o **manifesto C2PA** de imagem gerada por IA;
 - o **nome do arquivo** colado ("RG frente.jpg"), gravado e nunca lido por nada.
 
@@ -389,7 +399,7 @@ caminho do ataque "Follina") e `search-ms:` fazem o sistema agir. Agora só
 
 ### 4 e 5. Rede, permissões e CSP
 
-O SECURITY.md promete [...]. Era verdade porque o código não
+O SECURITY.md promete *"nada sai da máquina"*. Era verdade porque o código não
 chamava rede — mas **nada impedia** que chamasse, e a CSP do app instalado tinha
 `connect-src ... ws: http://localhost:*`, afrouxamento que existe para o
 recarregamento do Vite e ia junto para o `.exe`. `ws:` sem host permite abrir
@@ -457,6 +467,19 @@ pessoal; fica registrado para ninguém achar que o arquivo ficou "sem rastro".
 
 ### Decisões pendentes
 
+1. **Atualizar o Electron (33 → 44 ou mais novo).** O 33 está fora de suporte, e
+   o `npm audit` aponta uma falha de integridade do ASAR corrigida só no 44. Mais
+   importante: o Chromium de dentro dele é de 2024, e **imagens e HTML de
+   terceiros são decodificados por ele**. É o conserto de verdade do B18 também,
+   já registrado para a Fase 9. Custo: refazer as medições de interface
+   (armadilha 16 do [ENGENHARIA.md](ENGENHARIA.md)).
+2. **Fuses do Electron.** Hoje o `.exe` instalado aceita `ELECTRON_RUN_AS_NODE` e
+   `--inspect`, que o transformam num interpretador Node com o nome e o ícone do
+   app. O `electron-builder` 26 configura os fuses direto no
+   `electron-builder.yml`; o 25 atual, não. Casa naturalmente com o item 1.
+3. **Ferramentas de build**: 7 dos 22 alertas se corrigem com `npm audit fix`
+   sem mudar versão maior; o resto sai com o electron-builder 26 e o Vite novo.
+   Afetam a máquina de quem compila, não quem instala.
 
 ### Riscos aceitos, por escrito
 
