@@ -1,2374 +1,388 @@
 # Registro de bugs
 
-**O que já deu errado neste app, por quê, e como foi resolvido.**
+**O que deu errado no app, a causa e a correção.**
 
 
+## Abertos
+
+- **[B34](#b34--um-teste-do-arrasto-de-pastas-reprova-com-escala-de-tela-de-150)** — um teste
+  do arrasto de pastas reprova com a escala de tela em 150%.
+- **[B15](#b15--uma-verificação-do-selftest-falhou-uma-vez-e-não-reproduziu)** — uma
+  verificação do `selftest` falhou uma vez e não reproduziu.
 
 ## Por onde procurar
 
-| Se o sintoma é… | Veja |
+| Sintoma | Veja |
 |---|---|
-| A tela **pisca**, deixa rastro ou fica "rasgada" | **[B8](#b8--a-tela-pisca-preto-ao-passar-o-mouse-sobre-ícones-e-cartões)** — a investigação mais longa do projeto, com a causa localizada |
-| Quadros **sumiram** do menu, ou apareceram duplicados | **[B11](#b11--a-biblioteca-está-partida-em-duas-pastas)** — biblioteca partida em duas pastas |
-| O app parece **lento**, ou o `F3` mostra número ruim | **[B9](#b9--o-quadro-crava-em-60-fps-ao-arrastar-com-o-botão-direito)** e **[B5](#b5--queda-breve-de-fps-ao-clicar-num-ícone-da-barra-inferior)** — quase sempre o medidor, não o app |
-| **Exportar** não respeita a resolução pedida | **[B13](#b13--os-três-botões-de-resolução-da-exportação-não-fazem-nada-em-quadro-grande)** — o quadro sai em ladrilhos |
-| Algo **visual** incomoda (sombra, cor, ícone) | **[B16](#b16--uma-sombra-atrás-dos-ícones-da-barra-polui-a-interface)** e **[M10](#m10--a-amostra-de-tinta-quase-preta-some-no-painel-no-tema-escuro)** |
-| Uma verificação do auto-teste **reprovou** | **[B15](#b15--uma-verificação-do-auto-teste-falhou-uma-vez-e-não-reproduziu)**, e o `ENGENHARIA.md` em *"A verificação de arrastar"* |
-| `Ctrl+V` não cola, atalho não responde | **[B6](#b6--ctrlv-não-cola-imagem-da-área-de-transferência)** — o caminho até o atalho, não o atalho |
-| **Texto** distorce, quebra sozinho ou some ao sair da caixa | **[B19](#b19--redimensionar-texto-distorcia-o-desenho-da-letra)** e **[B21](#b21--a-quebra-de-linha-mudava-ao-sair-da-caixa)** |
-| **Fantasma** do desenho ao dar zoom, ou rastro ao rolar | **[B18](#b18--rastro-de-tinta-ao-rolar-a-tela-devagar)** — contornado em 21/09 com composição pela CPU; em 30/09 confirmado que é **desta máquina** (não aparece em outros PCs); desde 06/10 o contorno é a opção **Compatibilidade gráfica** em Configurações |
-| **Borracha** apaga em bolas ou trava o app | **[B24](#b24--a-borracha-apagava-em-bolas-e-travava-o-aplicativo)** |
-| **Borracha** trava só com **zoom alto** | **[B25](#b25--a-borracha-travava-o-app-com-zoom-alto)** — outro defeito, não o B24 |
-| **Animações** de hover não acontecem | **[B26](#b26--as-animações-pararam-de-funcionar--e-não-tinham-parado)** |
-| **Arrastar** o quadro aberto pesa, ou o **zoom rápido** trava | **[B31](#b31--zoom-rápido-com-ctrlroda-travava-o-quadro)** e **[B32](#b32--arrastar-o-quadro-redesenhava-tudo-a-cada-quadro)** — e o `QB_BENCH_QUADRO` para medir |
-
-**Estado: dois itens abertos, o B15 e o B34.** Última atualização: 06/10/2026 (B35 e B36, achados testando o instalador da 1.1.0; antes, B27 a B33 no preparo da 1.1.0; o B34 foi achado conferindo o B33). O B10, que esta linha ainda listava como aberto, está fechado desde 14/08.
-
-**A rodada de 20–21/09/2026 fechou oito itens e abriu um.** Ela veio de usar o app para
-montar resumos de verdade, e quase tudo que apareceu estava em texto e em interface: o
-redimensionamento que distorcia títulos (**B19**), o negrito que só funcionava depois de
-digitar (**B20**), a quebra que mudava ao sair da caixa (**B21**), o tema claro que cansava a
-vista (**B22**) e a "sombra bugada" que ele apontou três vezes até eu ler a medição direito
-(**B23**). O item que ela abriu, o **B18**, foi fechado na tarde do dia 21 — e ele **não era
-daquela rodada**: tinha sido reproduzido no código original.
-
-**O dia 14/08 fechou a investigação do B8**, que era o item mais antigo em aberto de fato —
-formalmente corrigido desde 06/08, mas com a causa desconhecida e um [...]
-pendente. Não há mais pendência ali: ver o B8, seção de 14/08.
-
-**A revisão do tema claro da Fase 9 achou dois itens, e os dois já fecharam.** Ela foi feita
-comparando a **mesma cena** nos dois temas, lado a lado — e o que ela achou não estava no
-tema claro sozinho, estava na *diferença* entre os dois: o **B17** (miniaturas do lobby com o
-tema em que foram salvas, que foi decidido deixar como está) e o **M10** (a amostra de tinta
-quase preta sumindo no painel escuro, corrigida com o anel tirado de `--fg`).
-
-**A Fase 9 fechou o B13, o M8 e a parte do B9 que era corrigível.** O que sobrou do B9 não
-é bug: o teto de 60 é taxa de entrega de evento, e o custo de desenho do quadro de teste
-já cabe num frame de 144 fps — **6,1 ms medidos, contra 6,94 ms de orçamento**. Ver abaixo.
-
-
-
-**Ainda em aberto:**
-
-
-
-**Fechados na Fase 9:** B13 (exportar em ladrilhos), M8 (camadas, nas duas metades), a
-parte corrigível do B9 (o painel do `F3`) e o B16 (a "sombra" atrás dos ícones da barra).
-
-
-
-Vale registrar o padrão, porque ele se repete: **medir antes de corrigir devolveu mais
-resultado que corrigir teria devolvido.** Na rodada de 04/08 nenhuma linha de correção foi
-escrita e três dos cinco bugs fecharam ou encolheram; na de 06/08 a correção final tem
-duas linhas, e as outras nove hipóteses caíram por medição — inclusive as minhas favoritas,
-duas vezes.
-
----
-
-
-
-
-
-| Severidade | Critério |
-|---|---|
-| `crítico` | Perde trabalho, corrompe arquivo ou trava o app |
-| `alto` | Impede uma tarefa comum, sem contornar |
-| `médio` | Atrapalha, mas tem contorno |
-| `baixo` | Incômodo visual ou de acabamento |
+| A tela pisca, deixa rastro ou duplica o desenho no zoom | [B8](#b8--a-tela-pisca-ao-passar-o-mouse-sobre-ícones-e-cartões) e [B18](#b18--fantasma-do-desenho-ao-dar-zoom) |
+| Quadros sumiram do menu ou apareceram duplicados | [B11](#b11--a-biblioteca-estava-partida-em-duas-pastas) |
+| Arrastar ou dar zoom pesa | [B31](#b31--zoom-rápido-com-ctrlroda-travava-o-quadro) e [B32](#b32--arrastar-o-quadro-redesenhava-tudo-a-cada-quadro) |
+| A borracha trava | [B24](#b24--a-borracha-apagava-em-bolas-e-travava-o-aplicativo) e [B25](#b25--a-borracha-travava-o-app-com-zoom-alto) |
+| Texto distorce ou muda a quebra | [B19](#b19--redimensionar-texto-distorcia-as-letras) e [B21](#b21--a-quebra-de-linha-mudava-ao-sair-da-caixa) |
+| Algo treme com o mouse parado | [B37](#b37--quadros-e-botões-tremiam-com-o-mouse-parado-na-borda) e [B38](#b38--com-uma-pasta-aberta-os-quadros-tremiam-todos-juntos) |
 
 ---
 
 ## Bugs
 
-### B31 — Zoom rápido com Ctrl+roda travava o quadro
-`corrigido` · `alto` · 30/09/2026
+### B38 — Com uma pasta aberta, os quadros tremiam todos juntos
+`corrigido` · 07/10/2026
 
+**Problema.** Com uma pasta aberta, passar o mouse pelos quadros do menu fazia todos tremerem.
 
-**Medido com uma bancada nova**, `QB_BENCH_QUADRO=1`, que dispara os eventos que a mão dispara
-(roda com Ctrl, botão direito arrastando) numa cópia do quadro de teste (1.063 objetos, ~640
-textos), janela maximizada: **25 quadros por segundo, travadas de 153 ms, 2,7 s de tarefas
-longas em 4 s, 14.583 textos redesenhados.**
+**Causa.** Com a pasta aberta, o painel do menu fica perto da altura exata de uma fileira. A
+barra de rolagem aparecia, a grade estreitava, os quadros encolhiam e passavam a caber, a
+barra sumia — e o ciclo recomeçava a cada hover.
 
-**A causa:** o texto é desenhado uma vez num bitmap e depois só colado (o cache de
-rasterização), com a escala em degraus de potência de dois. Cada vez que o zoom cruzava um
-degrau, **todos** os textos visíveis eram redesenhados do zero **no mesmo quadro** — e ir e
-voltar rápido cruza o mesmo degrau várias vezes por segundo.
+**Correção.** O lugar da barra de rolagem fica sempre reservado (`scrollbar-gutter`), então a
+largura da grade não muda. Verificado no `selftest`.
 
+### B37 — Quadros e botões tremiam com o mouse parado na borda
+`corrigido` · 07/10/2026
 
-**Hipótese descartada no caminho:** deixar o bitmap de um degrau acima servir de vez ao
-afastar. Evitava trabalho, mas deixava o texto **em repouso** num bitmap diferente do de antes
-— mudança visual permanente para ganhar tempo só durante o gesto. Saiu antes do commit.
+**Problema.** Com o mouse parado na borda de baixo de um quadro ou botão, ele subia e descia
+sem parar.
 
-**Guarda no selftest**, conferida ao contrário: com 740 textos na tela, cruzar um degrau refaz
-só uma parte no primeiro quadro e pede outro; os seguintes terminam; depois disso nenhum texto
-é refeito. Sem o teto, reprova (740 de 740 no primeiro quadro); com o aviso de "falta
-terminar" calado, reprova também.
+**Causa.** O hover levanta o elemento; a borda saía de baixo do mouse, o hover caía, o
+elemento descia e o hover voltava.
 
-### B32 — Arrastar o quadro redesenhava tudo a cada quadro
-`corrigido` · `médio` · 30/09/2026
-
-
-**A correção:** arrastar sem mudar o zoom só **desloca** a imagem. O quadro anterior é copiado
-deslocado sobre si mesmo, e só as faixas que entraram na tela são desenhadas (fundo, grade e os
-objetos que tocam a faixa, recortados nela). Em pixels **inteiros**: meio pixel borraria, e o
-borrão se acumularia. Qualquer coisa fora do caso simples faz o desenho completo de sempre:
-zoom, tamanho ou texto em edição diferentes, documento/preferências/tema alterados, imagem
-ainda carregando, texto esperando o teto do B31, ou um pedido de redesenho **sem** a câmera
-ter mexido.
-
-Depois: **desenho de 0,3 ms** por quadro (era 12) e **68–71 q/s** (era 59–61, medido na mesma
-execução com o caminho antigo ligado). O que limita agora não é o app: com a composição pela
-CPU, qualquer mudança no canvas em tela cheia custa ~17 ms para a janela ser recomposta —
-medido com um único `fillRect` por quadro, que já fica em 57 q/s.
-
-**Guarda no selftest:** três arrastos em direções diferentes, e o resultado comparado pixel a
-pixel com o desenho completo da mesma posição, nas duas grades. Tolera só a suavização de
-borda, que o rasterizador calcula um pouco diferente conforme o lote (1 a 17 níveis de 255, em
-algumas centenas de pixels num milhão). Conferida ao contrário com três sabotagens — faixa sem
-objetos, faixa sem grade, cópia 1 px fora —, todas reprovadas com centenas a cem mil pixels de
-costura. Também roda com escala de tela de 150% (`-- --force-device-scale-factor=1.5`).
-
-**Tentado e desfeito:** esconder a camada de cima quando vazia (ganhava ~14 q/s) embrulhando as
-operações de pintura do canvas dela. Era a peça mais invasiva, e ainda se comportou diferente
-do previsto (a camada nunca ficava vazia: algum pintor desenha nela todo quadro). Saiu antes do
-commit: resolver o desempenho sem trocar as práticas do app.
-
-### B33 — Com escala de tela acima de 100%, a grade cobria só parte do quadro
-`corrigido` · `baixo` · 30/09/2026
-
-
-**A correção:** a grade recebe o DPR e desenha em pixel físico. Era pré-requisito do B32: com a
-grade antiga a faixa nova não casava com a parte deslocada, e a guarda do B32 em 150% reprova
-a grade antiga com 6 mil a 174 mil pixels de costura.
-
-### B34 — Um teste do arrasto de pastas reprova com escala de tela de 150%
-`aberto` · `baixo` · 30/09/2026
-
-Achado conferindo o B33 com `--force-device-scale-factor=1.5`: a verificação [...] reprova (quadro sobre quadro na janela da
-pasta não acende). **Reprova igual na versão anterior às mudanças do B31–B33** — conferido
-com as mudanças guardadas —, então não vem delas. Com 100% passa. Falta saber se é só o teste
-(coordenadas simuladas) ou se o arrasto real numa tela de 150% também erra o alvo.
+**Correção.** Enquanto levantado, uma faixa invisível embaixo do elemento cobre o lugar de
+onde ele saiu, e o hover se mantém. Vale para todo elemento que levanta; o `selftest` confere
+que nenhum fica sem a faixa.
 
 ### B36 — Depois de sair de um quadro sem salvar, o X não fechava mais o app
-`corrigido` · `alto` · 06/10/2026
+`corrigido` · 06/10/2026
 
+**Problema.** Criar um quadro, sair sem salvar e depois clicar no X do Windows não fechava o
+app.
 
-**Dois defeitos que se encontravam:**
+**Causa.** Sair sem salvar deixava o quadro marcado como alterado, e o aviso de fechamento do
+Electron cancelava o X sem mostrar nada.
 
-1. **"Sair sem salvar" não descartava de verdade.** O `#confirmDiscard` devolvia "pode ir",
-   mas o quadro largado continuava marcado como sujo na memória. Já no menu, sem quadro
-   nenhum na tela, o app ainda achava que havia trabalho a perder.
-2. **O guarda do X cancelava calado.** O `beforeunload` fazia `preventDefault` — num
-   navegador isso mostra um aviso; no Electron só **cancela** o fechamento, sem mostrar nada.
-   Juntando os dois: o X não respondia, para sempre, depois de qualquer [...].
-
-**Correção:** descartar limpa o estado; o guarda só vale com um quadro na tela; e o X
-cancelado abre o aviso do próprio app (o mesmo de voltar ao menu), agora com o título *"Perder
-o progresso não salvo?"* e o botão **Perder o progresso**. Decidido, a página pede ao processo
-principal para fechar (`app:fechar`) e deixa o próximo `beforeunload` passar. Dois cliques no X
-abrem um aviso só.
-
+**Correção.** Descartar limpa o estado. Com um quadro não salvo na tela, o X abre o aviso do
+app (Cancelar, Perder o progresso ou Salvar e sair). Verificado no `selftest`.
 
 ### B35 — Trocar o idioma no app instalado não aplicava
-`corrigido` · `médio` · 06/10/2026
+`corrigido` · 06/10/2026
 
+**Problema.** No app instalado, trocar o idioma em Configurações não tinha efeito.
 
-**A causa:** a troca gravava a escolha e chamava `location.reload()`. No app **instalado**, o
-`will-navigate` de `main/index.ts` — que impede um link colado numa caixa de texto de
-sequestrar a janela — cancela **toda** navegação que a página inicia, e recarregar a si mesma é
-uma delas. No dev ele libera o servidor do Vite, e por isso o defeito não aparecia lá.
+**Causa.** A página se recarregava com `location.reload()`, e o bloqueio de navegação do app
+instalado barrava esse recarregar.
 
-**Medido, e não suposto:** o executável empacotado aberto com `--remote-debugging-port`, uma
-marca posta na página, e o recarregar pedido. Com `location.reload()` a marca **sobreviveu**
-(não recarregou); com o caminho novo, sumiu.
+**Correção.** O recarregar é pedido ao processo principal. Configurações ganhou o botão
+**Aplicar alterações**. Verificado no `selftest`.
 
-**Correção:** o recarregar é pedido ao processo principal (`app:recarregar` →
-`webContents.reload()`), que é programático e não passa pelo bloqueio — que fica inteiro para
-o resto; conferido que o `location.reload()` continua barrado. E, o idioma deixou
-de recarregar sozinho: Configurações ganhou **"Aplicar alterações"** no rodapé, aceso só com
-algo pendente, que recarrega a janela (idioma) ou fecha e reabre o app (compatibilidade
-gráfica). O idioma grava na hora, então vale também na próxima abertura sem clicar.
+### B34 — Um teste do arrasto de pastas reprova com escala de tela de 150%
+`aberto` · 30/09/2026
 
+**Problema.** Com a escala de tela em 150%, a verificação de arrastar quadros na janela da
+pasta reprova. Em 100% passa.
 
-**Guarda no selftest:** o rodapé apagado sem pendência, aceso com "reabre" ao mudar a
-compatibilidade e com "recarrega" ao mudar o idioma, uma reabertura e uma recarga. Conferida
-ao contrário com o botão que nunca reabre (reprova: 0 reaberturas, 2 recargas).
+**Falta.** Confirmar se o arrasto real numa tela de 150% também erra o alvo, ou se é só o
+teste.
 
-### B29 — Colar uma print congelava a janela inteira por 1 a 2 segundos
-`corrigido` · `alto` · 30/09/2026
+### B33 — Com escala de tela acima de 100%, a grade cobria só parte do quadro
+`corrigido` · 30/09/2026
 
+**Causa.** A grade era desenhada em pixels CSS sobre um canvas em pixels físicos.
 
+**Correção.** A grade desenha em pixel físico.
 
-Um experimento no empacotado isolou o gatilho: `cmd.exe` 13 ms, `powershell -Command` 10 ms,
-`-ExecutionPolicy Bypass` sozinho 10 ms, **`-EncodedCommand` sozinho 1.762 ms**. PowerShell com
-comando codificado, disparado por um programa desconhecido, é a assinatura clássica de
-malware, e o antivírus segura a criação para inspecionar. Vindo do Electron de
-desenvolvimento, passava direto.
+### B32 — Arrastar o quadro redesenhava tudo a cada quadro
+`corrigido` · 30/09/2026
 
-**A correção:** o script vai pela **entrada padrão**, e a linha de comando é um texto fixo que
-o lê inteiro e o executa como um bloco (`-Command -` sozinho não serve: lê linha a linha e
-blocos não rodam — conferido). Criar o processo caiu para ~10 ms, a leitura no empacotado de
-4,5 s para 0,8 s, e as garantias do `-EncodedCommand` continuam (nada concatenado, sem
-depender da política de execução). Conferido com a pasta temporária num caminho com acento.
+**Problema.** Arrastar um quadro grande ficava pesado.
 
-**Guarda nova, no lugar certo:** o `check:dist` mede as travadas do processo principal
-durante o selftest **dentro do executável** e reprova acima de 500 ms. Conferida ao contrário:
-com o `-EncodedCommand` de volta, o selftest dizia "tudo passou" e o `check:dist` reprovou
-(6 travadas, a pior de 3,5 s).
+**Causa.** Todos os objetos eram redesenhados a cada quadro, mesmo só mudando de lugar.
 
-**Por que só apareceu agora:** antes do B28 a leitura só rodava ao abrir um quadro, uma vez.
-Com o B28 ela passou a rodar a cada print colada — e o custo escondido virou trava visível.
+**Correção.** Arrastar sem mudar o zoom desloca a imagem pronta e desenha só a faixa que
+entrou na tela. Verificado no `selftest`, pixel a pixel contra o desenho completo.
+
+### B31 — Zoom rápido com Ctrl+roda travava o quadro
+`corrigido` · 30/09/2026
+
+**Problema.** Ir e voltar no zoom rapidamente travava quadros grandes.
+
+**Causa.** Cada mudança de escala refazia o bitmap de todos os textos visíveis no mesmo
+quadro.
+
+**Correção.** No máximo 4 ms de textos refeitos por quadro; o resto é refeito nos quadros
+seguintes. Verificado no `selftest`.
 
 ### B30 — Fechar o app no meio de uma leitura deixava a print na pasta temporária
-`corrigido` · `médio` · 30/09/2026
+`corrigido` · 30/09/2026
 
-Achado investigando o B29: oito pastas `qb-ocr-*` esquecidas na pasta temporária, cada uma com
-uma imagem. Cada lote de leitura apaga a própria pasta no fim — mas só se o app continuar
-aberto até lá. Fechar no meio (ou o selftest terminar logo depois de colar uma imagem)
-deixava a pasta, com uma cópia da print da pessoa esquecida no disco.
+**Causa.** A pasta temporária da leitura de texto só era apagada se o app continuasse aberto
+até o fim.
 
+**Correção.** Ao abrir, o app apaga as pastas `qb-ocr-*` esquecidas. Verificado no
+`check:pastas`.
+
+### B29 — Colar uma print congelava a janela por 1 a 2 segundos
+`corrigido` · 30/09/2026
+
+**Causa.** No app instalado, o antivírus segurava a criação do PowerShell com comando
+codificado, usado para ler o texto da imagem.
+
+**Correção.** O script vai pela entrada padrão. O `check:dist` reprova travadas do processo
+principal acima de 500 ms.
 
 ### B28 — Print colada com o quadro aberto não aparecia na busca
-`corrigido` · `médio` · 30/09/2026
+`corrigido` · 30/09/2026
 
+**Causa.** O texto das imagens só era lido ao abrir o quadro.
 
-**A causa:** a leitura do texto das imagens (Fase 7.5) só rodava ao **abrir** um quadro. Ela lê
-as imagens que ainda não têm texto e grava o resultado no `.wbd`; uma imagem que entrasse
-depois, com o quadro aberto, ficava sem leitura até a próxima abertura. O selftest da fase
-testava a leitura chamando-a direto, e nunca pelo caminho do colar — por isso não viu.
+**Correção.** Colar ou arrastar uma imagem dispara a leitura na hora. Verificado no
+`selftest`.
 
-**A correção:** colar ou arrastar imagem, e colar de outro quadro, disparam a mesma leitura
-em segundo plano. Ela só processa o que ainda não foi lido, então chamar a mais não custa
-nada. **Guarda nova** no selftest: uma print com "Firewall de borda" entra pelo caminho real
-(`insertImageFiles`) e o `Ctrl+F` tem de achá-la sem reabrir o quadro. Conferida ao
-contrário: sem a chamada nova, 0 resultados.
+### B27 — Abrir o app criava uma pasta vazia dentro da pasta de quadros
+`corrigido` · 30/09/2026
 
-### B27 — Só abrir o app criava uma pasta dentro da pasta de quadros
-`corrigido` · `baixo` · 30/09/2026
+**Causa.** Ler o fundo personalizado usava a mesma função que grava, e ela criava a pasta.
 
-Achado no `check:dist` da versão 1.1.0: com `C:\Creation Board` vazia, o auto-teste terminou
-e deixou nela `.creation-boardundos`, vazia. A causa: **ler** o fundo personalizado — o que o
-app faz a cada abertura — usava a mesma função que **grava** uma imagem escolhida, e ela cria a
-pasta. Não apagava nada, mas o app gravava no disco da pessoa só para ler.
+**Correção.** Ler não cria nada; só escolher uma imagem cria a pasta.
 
-É o mesmo defeito que o índice de pastas teve em 24/09 (ver `pastasDisco.ts`). **A correção:**
-ler e limpar usam o caminho sem criar nada; só escolher uma imagem cria a pasta. Se ela não
-existe, ler acha nada e limpar não tem o que apagar.
+### B26 — As animações pareciam não funcionar
+`corrigido` · 21/09/2026
 
-### B1 — Lapsos visuais ao alternar rápido entre o lobby e o quadro
-`corrigido pelo B8` · `médio` · 04/08/2026, fechado em 06/08/2026
+**Causa.** O Windows estava com "menos movimento" ligado, e o app obedecia. Seis controles
+também não tinham o efeito de levantar.
 
+**Correção.** Todo controle interativo levanta, a partir de uma lista só no `app.css`. As
+animações passaram a ser uma escolha do app, em **Configurações**.
 
-A correção de 04/08 fica: pintar na hora ao entrar é correto por si. Mas o que ela fazia era
-**forçar repintura num gatilho** — e era isso que escondia a falha real em vez de mostrá-la.
+### B25 — A borracha travava o app com zoom alto
+`corrigido` · 21/09/2026
 
-**Correção de 04/08/2026:** `#enterBoard()` passou a pintar as duas camadas **na hora**, em
-vez de esperar o próximo frame de animação. Até o `requestAnimationFrame` chegar, o canvas ainda
-tinha os pixels do quadro anterior — e era isso que aparecia.
+**Causa.** O recorte da borracha era do tamanho do objeto inteiro: com zoom alto, 4
+megapixels por objeto, a cada quadro.
 
-<details>
-<summary>Investigação</summary>
+**Correção.** O recorte segue a tela. Verificado no `selftest`.
 
-Navegando rapidamente entre as abas e o quadro, aparecem falhas visuais.
+### B24 — A borracha apagava em bolas e travava o aplicativo
+`corrigido` · 21/09/2026
 
-foi confirmado o sintoma: **resíduo do frame anterior** — aparece por um instante o que
-estava na tela antes.
+**Causas.** Ao passar por um vão, a borracha abria um rastro novo de um ponto só, desenhado
+como bola. E o canvas de recorte ficava na CPU.
 
-**Causa provável, e ela é estrutural:** o canvas guarda os pixels do quadro anterior até
-alguém repintar. `#enterBoard()` torna a view visível e agenda o redesenho, mas o
-redesenho só acontece no próximo `requestAnimationFrame` — e entre uma coisa e outra a
-tela mostra o quadro antigo. Nada limpa as duas camadas na troca.
+**Correção.** O rastro continua enquanto a borracha está a menos de um diâmetro do anterior,
+e o canvas de recorte é acelerado. Verificado no `selftest`.
 
-**Correção provável:** limpar (ou redesenhar de forma síncrona) antes de mostrar a view.
-Um frame em branco incomoda muito menos que o quadro de outra pessoa.
+### B23 — Mancha escura em volta das barras
+`corrigido` · 20/09/2026
 
-</details>
+**Causa.** Uma das sombras espalhava escuro igualmente para todos os lados.
 
-### B2 — A régua: decisão da Fase 4.5 **mantida**
-`fechado — não é bug` · 04/08/2026
+**Correção.** Uma sombra só, deslocada para baixo.
 
-Ele avaliou a régua-instrumento de outro aplicativo contra a que existe e **decidiu ficar com a
-atual**: [...]. A decisão da Fase 4.5 continua
-valendo, e a documentação não muda.
+### B22 — O tema claro cansava a vista
+`corrigido` · 20/09/2026
 
+**Correção.** Fundo do quadro mais escuro (`#e3e7ee`) e ícones com mais contraste. A
+exportação continua em fundo branco.
 
+### B21 — A quebra de linha mudava ao sair da caixa
+`corrigido` · 21/09/2026
 
+**Causa.** Uma palavra com formatação diferente em cada metade podia quebrar no meio.
 
-O que se quer é a régua de outros aplicativos de quadro: **um objeto físico no meio do quadro,
-que se gira 360°** e serve de apoio para riscar linhas retas — a tinta encosta na borda
-dela e sai reta.
+**Correção.** A quebra é feita por palavra inteira, como no editor.
 
-**Isto reverte uma decisão da Fase 4.5**, registrada no ENGENHARIA.md: *"régua = réguas nas
-bordas em px/cm, não a régua-transferidor de outros aplicativos"*. Foi escolha na época; a
-documentação precisa mudar junto, senão a próxima sessão lê a decisão e "conserta" de
-volta.
+### B20 — O negrito só funcionava depois de digitar
+`corrigido` · 20/09/2026
 
-**Falta decidir:** as faixas das bordas **saem** ou **ficam** convivendo com a régua nova
-(elas respondem [...], que é outra pergunta)? E se ficarem, qual das duas leva a
-tecla `R`.
+**Causa.** Clicar no botão fechava a caixa de texto antes de aplicar o formato.
 
-**Tamanho real:** isto não é correção, é funcionalidade — do porte de uma fase. Precisa de
-objeto com posição e ângulo, gesto de girar com trava em ângulos redondos, indicação do
-ângulo enquanto gira, e **encaixe da tinta na borda**, que é a parte que a torna útil.
+**Correção.** Os botões B/I/U não tiram o foco da caixa e mostram o formato em vigor.
 
-</details>
+### B19 — Redimensionar texto distorcia as letras
+`corrigido` · 20/09/2026
+
+**Causa.** O texto era esticado como uma imagem.
+
+**Correção.** O canto muda o tamanho da fonte; a lateral muda a largura da caixa. Verificado
+no `selftest`.
+
+### B18 — Fantasma do desenho ao dar zoom
+`corrigido` · 21/09/2026
+
+**Problema.** Ao dar zoom, o desenho anterior ficava na tela por um instante, em outra
+escala.
+
+**Causa.** Defeito da composição gráfica pela GPU em alguns computadores. Não aparece em
+outros PCs com o mesmo app.
+
+**Correção.** A opção **Compatibilidade gráfica**, em **Configurações**, desativa a
+aceleração por GPU para quem tiver o defeito. A GPU continua sendo o padrão. Verificado no
+`check:graficos`.
+
+### B17 — As miniaturas do menu guardam o tema em que o quadro foi salvo
+`fechado — decisão` · 14/08/2026
+
+A miniatura é gravada no tema em uso ao salvar. Fica assim: não há diferença no uso normal.
+
+### B16 — Uma "sombra" atrás dos ícones da barra
+`corrigido` · 13/08/2026
+
+**Causa.** O destaque de botão ligado era cinza sobre uma interface azulada.
+
+**Correção.** O destaque usa a cor de realce. Verificado no `selftest`.
+
+### B15 — Uma verificação do selftest falhou uma vez e não reproduziu
+`aberto` · 12/08/2026
+
+A verificação [...] falhou uma vez,
+com a máquina sob carga. Não reproduziu nas execuções seguintes.
+
+### B14 — Texto por cima de texto no SVG exportado
+`corrigido` · 08/08/2026
+
+**Causa.** Quem abre o SVG pode ter uma fonte um pouco mais larga.
+
+**Correção.** Cada trecho leva a largura medida (`textLength`) e se ajusta a ela. Verificado
+no `selftest`.
+
+### B13 — Os botões de resolução da exportação não mudavam nada em quadro grande
+`corrigido` · 12/08/2026
+
+**Causa.** O teto de tamanho de imagem reduzia toda escala ao mesmo valor.
+
+**Correção.** Quadros grandes saem em vários arquivos, na escala pedida, e o diálogo mostra o
+resultado antes de exportar. Verificado no `selftest`.
+
+### B12 — Texto virava barra cinza no PNG e com o zoom afastado
+`corrigido` · 08/08/2026
+
+**Causa.** Abaixo de um tamanho mínimo, texto e imagens eram trocados por blocos.
+
+**Correção.** Tudo é desenhado de verdade em qualquer zoom. O texto usa um cache de bitmap
+para manter o desempenho.
+
+### B11 — A biblioteca estava partida em duas pastas
+`corrigido` · 08/08/2026
+
+**Causa.** Dois processos do app testando a mesma pasta ao mesmo tempo apagavam o arquivo de
+teste um do outro, e o app caía calado na pasta alternativa.
+
+**Correção.** Cada processo testa com um nome próprio. O app nunca troca de pasta calado e
+mostra no terminal qual pasta usa. Verificado no `selftest`.
+
+### B10 — O custo por quadro crescia com o zoom
+`fechado — não é bug` · 14/08/2026
+
+Sem efeito no uso.
+
+### B9 — O quadro parava em 60 fps ao arrastar
+`fechado — não é bug` · 12/08/2026
+
+O desenho cabe em 144 fps; o limite era a entrega dos eventos do mouse. O painel do `F3`
+passou a mostrar o custo de desenho em destaque.
+
+### B8 — A tela pisca ao passar o mouse sobre ícones e cartões
+`corrigido` · 06/08/2026
+
+**Problema.** Piscar preto no hover, rastros ao voltar para o menu e janela rasgada ao
+redimensionar (os três sintomas do B1, do B7 e deste item).
+
+**Causa.** Defeito da composição gráfica pela GPU em alguns computadores. Não aparece em
+outros PCs com o mesmo app.
+
+**Correção.** A opção **Compatibilidade gráfica**, em **Configurações**, desativa a
+aceleração por GPU para quem tiver o defeito. A GPU continua sendo o padrão.
+
+### B7 — Interface rasgada ao redimensionar a janela
+`corrigido` · 06/08/2026
+
+Mesmo defeito do [B8](#b8--a-tela-pisca-ao-passar-o-mouse-sobre-ícones-e-cartões). A janela
+também é repintada inteira ao mudar de tamanho.
+
+### B6 — `Ctrl+V` não colava imagem da área de transferência
+`corrigido` · 04/08/2026
+
+**Causa.** O atalho cancelava a ação padrão do navegador, que é a que entrega a imagem.
+
+**Correção.** O `Ctrl+V` não cancela mais o padrão. Verificado no `selftest`.
+
+### B5 — Queda de fps ao clicar na barra
+`fechado — não reproduz` · 08/08/2026
+
+Era o servidor de desenvolvimento recarregando a página durante o teste.
+
+### B4 — Cursor de cruz nas ferramentas de desenho
+`corrigido` · 04/08/2026
+
+Caneta e marca-texto usam um cursor de caneta, com a ponta no lugar do traço.
+
+### B3 — Lentidão ao trocar de cor
+`corrigido` · 04/08/2026
+
+**Causas.** Gravar no disco a cada clique e reconstruir o painel inteiro.
+
+**Correção.** A gravação é adiada e só o destaque muda. Verificado no `selftest`.
 
 ### B2b — Grade e ímã
 `fechado — não é bug` · 04/08/2026
 
-Ele esclareceu que o incômodo era só a régua. A medição já mostrava que os dois botões
-fazem efeito.
+Os botões funcionavam.
 
-**Medido em 04/08/2026 (novo no auto-teste):** os três botões foram procurados no DOM,
-clicados e **os três fizeram efeito**. O caminho do botão funciona — o que confirma que o
-problema estava no *comportamento esperado*, e não na fiação.
+### B2 — A régua
+`fechado — decisão` · 04/08/2026
 
-### B3 — Lentidão ao trocar de cor
-`corrigido` · `médio` · 04/08/2026
+A régua nas bordas da tela fica como está.
 
-O seletor de cores respondia com atraso. Eram **duas** causas somadas, e as duas na mesma
-linha de código — o `#commit()` do `DrawStyle`:
+### B1 — Rastro ao alternar entre o menu e o quadro
+`corrigido` · 06/08/2026
 
-1. **Gravava em disco a cada clique.** `localStorage.setItem` é síncrono, então cada cor
-   escolhida punha uma ida ao disco no meio do gesto. Agora a gravação é adiada 400 ms; o
-   estado em memória muda na hora, e quem desenha nunca vê o valor velho.
-2. **Reconstruía o painel inteiro.** O ouvinte da barra recriava as quatro linhas de opção
-   — cerca de vinte botões — a cada mudança, e cada elemento novo obriga o navegador a
-   recalcular estilo e layout. Agora o painel só é reconstruído quando a **ferramenta**
-   muda; trocar cor ou espessura apenas move o destaque.
-
-**Verificação:** o auto-teste guarda a referência de um botão de cor, troca a cor e exige
-que **seja o mesmo elemento** — com o destaque no lugar certo.
-
-### B4 — Cursor de cruz é feio nas ferramentas de desenho
-`corrigido` · `baixo` · 04/08/2026
-
-A caneta e o marca-texto passaram a usar um **cursor de caneta** desenhado em SVG, embutido
-no próprio valor de `cursor` (sem arquivo em disco nem caminho de build). Ele tem contorno
-branco por baixo, porque a caneta escura sumiria justamente sobre tinta escura — que é onde
-ela costuma estar —, e o **ponto quente fica na ponta**: sem isso a tinta sairia deslocada
-do cursor.
-
-**Formas, post-it e texto continuam com o cursor de precisão** (`crosshair` e `text`): ali
-o gesto é posicionar um canto ou um ponto de inserção, e a cruz diz exatamente onde ele
-vai cair. Trocar tudo por caneta seria consistência que atrapalha.
-
-### B5 — Queda breve de fps ao clicar num ícone da barra inferior
-`não reproduz` · `baixo` · 04/08/2026, fechado em 08/08/2026
-
-
-
-
-
-
-
-O que sobra é pequeno e provavelmente da mesma família do B3: clicar num botão da barra
-troca classes e dispara recálculo de estilo, e o app manda repintar junto. Vale corrigir
-com o B3, não sozinho.
-
-
-**A suspeita inicial caiu.** Eu apostava no autosave da Fase 8 (grava 3s depois de cada
-alteração e gera miniatura do quadro inteiro). Não é: o sintoma está preso à troca, não ao
-tempo parado.
-
-**Medido em 04/08/2026, com 4.000 objetos todos na tela:**
-
-| | Custo |
-|---|---|
-| Trocar de ferramenta (só o DOM do painel) | **0,11 ms** |
-| Troca + o frame que ela obriga | 17,4 ms |
-| Frame ocioso, sem trocar nada (piso do vsync) | 15,8 ms |
-| **Custo real da troca** | **1,6 ms** |
-
-Ou seja: o repaint que a troca dispara **cabe folgado num frame**. Trocar de ferramenta,
-sozinho, não explica o engasgo.
-
-**foi confirmado: são os DOIS caminhos** — alternar ferramentas na barra lateral *e* ir e
-voltar entre o lobby e o quadro. E a intuição dele é que o problema está [...].
-
-Isso derruba a explicação mais simples (um caminho caro específico) e deixa o suspeito
-mais desconfortável: **algo comum aos dois** é lento. O que os dois compartilham é a
-reconstrução de DOM da interface e o `invalidate()` que força repintura completa.
-
-**Medido sobre o quadro REAL (resumo importado, 1.063 objetos), em 04/08/2026:**
-
-| Situação | Custo da repintura completa | Render |
-|---|---|---|
-| Tudo na tela (1.063 objetos visíveis) | **0,1 ms** acima do frame ocioso | 1,7 ms |
-| Zoom 100% (1 objeto visível) | 0,1 ms | 0,6 ms |
-
-
-| Suspeito | Veredito |
-|---|---|
-| Autosave gerando miniatura | Descartado — sintoma preso à troca, não ao tempo parado |
-| Repintura ao trocar de ferramenta | Descartado — 0,1 ms no quadro real |
-| DOM do painel de opções | Descartado — 0,11 ms por troca |
-| Clique não chegando ao botão | Descartado — os botões respondem |
-
-**A hipótese que sobra é sobre o ambiente, não sobre o código:** no teste enquanto eu
-editava o projeto. O servidor de desenvolvimento recarrega a página a cada alteração, e
-umas vinte entraram durante a sessão de testes. Recarga no meio do uso produz exatamente
-os três sintomas juntos — engasgo, resíduo do frame anterior e botão que "não responde"
-(porque a página estava trocando).
-
-**Como separar:** ele reproduzir com o `F3` aberto, com o projeto parado. **Feito** — ver
-o resumo acima.
-
-</details>
-
-</details>
+Mesmo defeito do [B8](#b8--a-tela-pisca-ao-passar-o-mouse-sobre-ícones-e-cartões). O quadro
+também é pintado na hora ao entrar.
 
 ---
-
-### B6 — `Ctrl+V` não cola imagem da área de transferência
-`corrigido` · `alto` · 04/08/2026
-
-Copiar uma imagem fora do app e apertar `Ctrl+V` num quadro aberto não colava nada.
-
-**Causa (bug meu, da Fase 7):** o despacho de atalhos chamava `e.preventDefault()` em
-**todo** atalho reconhecido — e `preventDefault` num `Ctrl+V` cancela a ação padrão do
-navegador. É essa ação que dispara o evento `paste`, o único caminho pelo qual a imagem da
-área de transferência do sistema chega ao app. Com ela cancelada, sobrava só a área de
-transferência interna, e a tecla parecia morta.
-
-
-**Correção:** não cancelar o padrão no `paste`. Uma linha, com o porquê ao lado dela.
-
-**Como foi verificado** (três camadas, porque uma só já falhou aqui):
-
-1. verificação no auto-teste de que o `Ctrl+V` **não** cancela o padrão — é o guarda que
-   pega a regressão se alguém reintroduzir o `preventDefault` geral;
-2. `QB_PASTE=1`, um modo novo em que o processo principal envia um **Ctrl+V nativo**
-   (`sendInputEvent`) com uma imagem de verdade na área de transferência do Windows;
-3. a prova invertida: desfiz a correção, rodei de novo e o resultado virou **"NÃO COLOU"**
-   — depois restaurei. Sem esse passo, eu teria uma correção que funciona e nenhuma
-   garantia de que era ela a causa.
-
-### M7 — Remover o lápis da barra
-`corrigido` · `médio` · 04/08/2026
-
-
-
-**O que saiu:** a ferramenta da barra, o atalho `L`, a entrada de estilo e a instância.
-
-**O que FICOU, de propósito:** a variante `pencil` no modelo e o caminho de desenho no
-painter. Quadros salvos antes disso têm traços de lápis, e um arquivo antigo tem de
-continuar sendo desenhado como foi criado. O auto-teste passou a **rasterizar um traço de
-lápis e exigir pixels** — sem isso, alguém limparia esse caminho por parecer código morto e
-os quadros já salvos perderiam tinta.
-
-A gravação de pressão por ponto também ficou: é o que uma mesa digitalizadora entrega, e é
-o que permitiria a caneta modular a espessura sozinha, se um dia isso for desejado — com
-mouse continuaria idêntica ao que é hoje.
-
-### B7 — Interface "rasgada" ao redimensionar a janela
-`corrigido pelo B8` · `alto` · 04/08/2026, fechado em 06/08/2026
-
-**Era o B8.** A leitura de 04/08 — [...] — estava **certa, e era maior do que parecia**: acontece sem redimensionar nada.
-
-Duas coisas ficam do que se fez aqui, e as duas com a etiqueta certa desta vez:
-
-- O `webContents.invalidate()` no resize continua, como proteção — mas é **remendo no
-  gatilho**, e não conserto da causa. Se o B8 voltar, é aqui que se procura primeiro.
-- O `overflow: clip` foi **testado no B8 e não é a causa** de nada. Fica por mérito próprio
-  (a rolagem automática do cursor de texto é real), e não como correção deste bug.
-
-
-**O que foi endurecido, e é correto por si:** `body`, `.qb-app`, `.qb-view` e
-`.qb-canvas-host` usavam `overflow: hidden`. Ele esconde o que passa da borda mas
-**continua sendo um container rolável** — só não pela roda do mouse. E o navegador rola por
-programa toda vez que o cursor de texto se mexe, para mantê-lo à vista; como a caixa em
-edição é posicionada por `transform`, e área transformada conta como área rolável, essa
-rolagem automática podia arrastar a interface inteira. Agora é `overflow: clip`, que **não
-cria container rolável**.
-
-Esse endurecimento **não** foi provado como a causa: o guarda que escrevi passa, mas
-passou também com o CSS antigo de volta — ou seja, o cenário do teste não produz a
-rolagem. Fica como proteção, não como explicação.
-
-**A causa apareceu quando foi dito que [...].** Isso descarta layout e aponta para **pintura**: a tela ficou com pixels
-velhos até algo forçar repintura. Relendo a captura com isso em mente, o desenho fecha: a
-barra lateral aparece **na posição de uma janela mais baixa** em cima, e na posição da
-janela atual embaixo. É a janela sendo **redimensionada** — a região que já existia manteve
-os pixels do tamanho antigo, e só a faixa recém-exposta foi pintada com o layout novo.
-
-**Correção, em duas frentes:**
-
-1. **No processo principal:** `webContents.invalidate()` depois de `resize`, `maximize`,
-   `unmaximize`, `restore` e tela cheia. É a API que existe exatamente para pedir repintura
-   completa — a interface em DOM depende do compositor invalidar a área certa, e é aí que
-   ele falhava. Com um atraso curto, para a rajada de eventos do arraste de borda virar uma
-   repintura só.
-2. **No renderer:** `#measure()` passou a repintar **sempre**, e de forma **síncrona**
-   quando o tamanho muda. Uma medição só acontece porque algo mexeu na janela; nesses
-   momentos a tela pode estar com pixels de antes, e repintar é barato demais para apostar
-   que não está.
-
-**Como confirmar:** redimensionar e maximizar a janela repetidamente, com e sem uma caixa
-de texto aberta. Se não rasgar mais, fecha.
-
-### B8 — A tela pisca preto ao passar o mouse sobre ícones e cartões
-`corrigido` · `alto` · 06/08/2026 · **causa localizada em 14/08/2026**
-
-> **30/09/2026:** em outros computadores, o mesmo app com a composição pela GPU e **sem** as
-> correções não mostrou defeito gráfico — o problema é desta máquina. Ver o fim do
-> [B18](#b18--rastro-de-tinta-ao-rolar-e-fantasma-do-desenho-ao-dar-zoom).
-
-**Causa: a conta de região suja, na composição por GPU.** O Chromium repinta e troca só o
-pedaço da tela que mudou. Nesta máquina essa conta erra: o que ficou de fora mantém os
-pixels velhos (os rastros) e a troca do pedaço aparece como um flash. **Um único defeito
-produzia os três sintomas** — o piscar no hover (B8), o rasgo ao redimensionar (B7) e o
-rastro ao voltar para o menu (B1).
-
-> **A localização foi confirmada em 14/08/2026, e a seção
-> [«A CAUSA FOI LOCALIZADA»](#14082026--a-causa-foi-localizada-as-duas-flags-deixaram-de-ser-remendo)
-> mais abaixo é o resumo que vale ler primeiro.** Em uma linha: dos cinco modos de
-> `QB_GPU`, os dois que curam são exatamente os dois que desligam a **atualização parcial
-> na composição por GPU**, e os três que piscam são os que a mantêm — mesmo trocando
-> DirectComposition, Direct3D e a versão do Chromium. As duas flags deixaram de ser remédio
-> de sintoma.
-
-**Correção:** `--ui-disable-partial-swap` e `--disable-partial-raster`, aplicadas por
-padrão. Repinta e troca a tela inteira a cada frame. Confirmado: [...].
-
-**O preço foi medido, não estimado.** `QB_BENCH=4000`, duas rodadas com e duas sem:
-
-| Fase | Sem a correção | Com a correção |
-|---|---|---|
-| zoom 100% | 144,0 / 144,0 fps | 144,0 / 144,0 fps |
-| zoom 40% | 136,4 / 132,3 fps | 133,6 / 135,0 fps |
-| ajustado à tela | 111,7 / **108,0** fps | 99,7 / **108,0** fps |
-
-A primeira rodada sugeriu 11% de custo na fase pesada; a segunda deu **9,26 ms de frame
-nos dois casos**. O 99,7 era ruído. Conclusão da época: não há custo mensurável.
-
-> **08/08/2026 — e aqui eu quase repeti o erro que este arquivo inteiro alerta.** Duas
-> capturas do `F3` no quadro real, a 2% de zoom, deram frame de **17,8 ms** com a correção e
-> **14,3 ms** sem ela, e eu escrevi que a correção custava ~3,5 ms por frame.
->
-> **Ele derrubou na hora, e está certo:** *"sem o zoom aplicado a variação de ms é muito alta
-> para considerar esses 3,5, porque ao mesmo tempo que chega num teto maior também chega numa
-> baixa"*. Com o quadro todo na tela o frame oscila bastante, e **uma amostra de cada lado não
-> separa sinal de ruído** — é literalmente o mesmo erro que produziu o "99,7 era ruído" três
-> parágrafos acima, cometido por mim, no mesmo arquivo, dois dias depois.
->
-> **O custo da correção continua não estabelecido.** Para estabelecer, seria preciso repetir a
-> leitura várias vezes de cada lado e comparar as distribuições, e não os extremos. Ficou sem
-> resposta porque a pergunta perdeu o objeto: a correção saiu (ver abaixo).
-
-> **14/08/2026 — o Electron subiu até o 43, piscou em todos, e a hipótese de raiz MORREU. O
-> projeto VOLTOU para o 33.4.11.**
->
-
->| Electron | Chromium | Resultado |
-> |---|---|---|
-> | 33.4.11 (o de origem) | ~130, fim de 2024 | pisca |
-> | 41.0.0 | 146.0.7680.65, 2026 | **pisca igual** |
-> | 43.4.0 | o mais novo publicado | **pisca igual** |
->
-> A captura de teste no 41 mostra o quadro aberto com os **cartões do menu desenhados por cima**,
-> mais um pedaço da barra lateral — região que ninguém repintou, o mesmo desenho de 06/08.
->
-> **foi decidido voltar ao 33.4.11**, já que a subida não entregou o que a justificava. O que
-> se perde com a volta está medido no [ENGENHARIA.md](ENGENHARIA.md) e **não tem relação com este
-> bug**.
->
-> **Então não era a idade do Chromium.** Um Chromium de 2026, na mesma máquina, produz o
-> mesmo defeito. A tabela de versões abaixo continua verdadeira e deixou de ser relevante:
-> ela explicava um sintoma que sobrevive à explicação.
->
-
->**Os suspeitos que sobraram naquele momento** — resolvidos algumas horas depois, na seção
-> seguinte: o **Parsec Virtual Display Adapter**, cujo driver é de **24/01/2024**, e
-> `nvspcap64.dll` (**NVIDIA ShadowPlay**, que engancha a apresentação para gravar vídeo e
-> nunca foi testado isoladamente). O RivaTuner já caiu do jeito certo, e o CSS, o conteúdo, os
-> caches, o modo de desenvolvimento e o G-SYNC também. A tabela remedida está mais abaixo.
->
-> **E a lição de método, que é a mais cara desta rodada:** a subida do Electron era o item
-> da Fase 9 justificado *por este bug*. Ela foi feita, valeu por outros motivos (ver o
-> [ENGENHARIA.md](ENGENHARIA.md)) e **não entregou o que prometia aqui**. A hipótese era boa,
-> tinha evidência circunstancial forte — dez versões maiores, uma máquina de 2026 — e estava
-> errada. Só um teste a derrubou, e ele custou um comando e um par de olhos.
-
----
-
-## 14/08/2026 — A CAUSA FOI LOCALIZADA. As duas flags deixaram de ser remendo.
-
-**Leia esta seção antes de reabrir o B8.** Ela é o fim de oito dias de investigação, e
-responde a pergunta que as seções anteriores deixaram em aberto. Se você chegou aqui achando
-que ainda há o que descobrir, provavelmente não há — há um teste barato para o dia em que a
-plataforma mudar, e ele está no fim.
-
-### O achado: o `comp` também cura, e é isso que fecha o caso
-
-O degrau `comp` da escada `QB_GPU` (composição pela **CPU**, com a GPU ainda desenhando)
-estava definido desde 06/08 e **nunca tinha sido testado**. Foi testado hoje, e ele **cura**.
-Palavras do teste: [...].
-
-Com isso, a escada fica inteira — e o padrão que aparece é a resposta:
-
-| Modo | Composição por GPU | Atualização parcial | Resultado |
-|---|---|---|---|
-| `normal` | ligada | ligada | **pisca** |
-| `dc` — sem DirectComposition | ligada | ligada | **pisca** (e o flash muda de preto para branco) |
-| `angle` — ANGLE por OpenGL | ligada | ligada | **pisca** |
-| `comp` — composição pela CPU | **desligada** | — | **cura** |
-| `swap` — **o padrão do app** | ligada | **desligada** | **cura** |
-
-**As duas curas atacam a mesma coisa por caminhos diferentes.** O `swap` desliga a
-atualização parcial e mantém a GPU compondo; o `comp` elimina a atualização parcial junto com
-a composição inteira. Os três que piscam preservam essa combinação — inclusive trocando o
-DirectComposition por outro caminho de apresentação (`dc`) e o Direct3D por OpenGL (`angle`).
-
-**A variável que prevê a cura é uma só: a atualização parcial dentro da composição por GPU.**
-Isso confirma, por uma segunda via independente, o que a investigação de 06/08 concluiu por
-eliminação — a conta de [...] sai errada nesta máquina.
-
-### O ShadowPlay não pode ser isolado, e as tentativas anteriores nunca o isolaram
-
-O `nvspcap64.dll` era o último suspeito nunca testado sozinho. Hoje ele foi medido de
-verdade, lendo os módulos carregados no processo do app:
-
-| Situação | `nvspcap64.dll` no processo |
-|---|---|
-| Sobreposição NVIDIA **desligada** no NVIDIA App | **injetada** |
-| Serviço `NvContainerLocalSystem` **parado**, 3 `nvcontainer` mortos | **injetada** |
-| Rodando em `QB_GPU=comp` | **injetada** |
-
-**Desligar a sobreposição não remove o gancho, e parar o serviço também não.** A DLL entra
-com a inicialização do Direct3D — faz parte da **pilha do driver de vídeo**, não do aplicativo
-opcional de sobreposição. Isso reabilita uma conclusão antiga: os testes anteriores que
-"inocentaram" o ShadowPlay desligando a sobreposição **não testaram nada**, porque ele nunca
-saiu do processo.
-
-Não dá para isolá-lo sem desinstalar o componente de captura da NVIDIA — e, como o `comp` e o
-`swap` já curam com ele dentro, isso deixou de importar: **seja quem for que erra a conta, os
-dois modos que a contornam funcionam com o culpado presente.**
-
-O serviço foi restaurado ao estado exato de antes do teste: `Running`, `Automatic`, 3
-processos.
-
-### O Parsec caiu, e a remoção ficou pela metade
-
-Ele desinstalou o Parsec. O **Virtual Display Adapter sumiu** dos adaptadores de vídeo — só a
-RTX 3050 restou. **O bug continuou.** Ficaram em disco o serviço `Parsec` (rodando,
-`C:\Program Files\Parsec\pservice.exe`) e a pasta `vdd`; a desinstalação pede um reinício para
-terminar. Mas o suspeito já caiu com o adaptador fora da pilha gráfica, que era o que
-importava.
-
-### Placar final, agora completo
-
-| Suspeito | Como caiu |
-|---|---|
-| Conteúdo importado, caches, `Local Storage` | Biblioteca vazia e caches apagados, bug igual |
-| CSS (desfoque, sombra, `clip`, transições) | Cinco desligados juntos, bug igual |
-| RivaTuner (`RTSSHooks64.dll`) | Fechado, bug igual |
-| Modo de desenvolvimento | App construído, bug igual |
-| G-SYNC em modo janela | Trocado para só tela cheia, bug igual |
-| DirectComposition | `QB_GPU=dc`, bug igual (mudou a cor do flash) |
-| **Direct3D vs. OpenGL** | `QB_GPU=angle`, bug igual |
-| **Idade do Chromium** | Electron 33, 41 e 43 — pisca nos três |
-| **Parsec Virtual Display Adapter** | Desinstalado, adaptador fora, bug igual |
-| **NVIDIA App / sobreposição** | Serviço parado e sobreposição desligada, bug igual |
-| **Composição por GPU** | `QB_GPU=comp` — **CURA** |
-| **Atualização parcial** | `QB_GPU=swap` — **CURA** (é o padrão) |
-
-### Por que o `swap` é o padrão, e não o `comp`
-
-Os dois curam. O `swap` é melhor por dois motivos medidos:
-
-
-### O que isto muda no jeito de encarar as duas flags
-
-
-Hoje elas são **uma escolha de caminho de código feita com conhecimento de causa**: o app não
-usa a atualização parcial da composição por GPU porque essa conta erra nesta máquina, e o
-custo de não usá-la é zero dentro do ruído. Isso não é curativo — é configuração.
-
-### O que ficou genuinamente sem resposta
-
-**Qual componente erra a conta.** Chromium, driver NVIDIA, `nvspcap64.dll` e Windows
-compartilham esse caminho, e separar um do outro exigiria instrumentar código que não é nosso.
-**E saber a resposta não mudaria nada aqui:** a correção continuaria sendo as mesmas duas
-flags, ou uma correção de terceiros que não passa por este repositório.
-
-### Como conferir, no dia em que a plataforma mudar
-
-```
-$env:QB_GPU = "normal"
-npm run dev
-```
-
-Passar o mouse pelos ícones e pelos cartões, e ir e voltar entre o menu e um quadro. **Se não
-piscar, as duas flags podem sair.** É o único teste que importa, custa um comando, e precisa
-de olhos — piscar de tela não sai em número nenhum, e é por isso que o `selftest` nunca vai
-cobrir isto.
-
----
-
-> **O que vem daqui para baixo é o registro histórico**, na ordem em que foi descoberto.
-> Duas coisas nele foram **superadas** pela seção acima e ficam por valor de método, não de
-> conclusão: a tese de que a raiz era o Electron velho (testada e derrubada) e o rótulo de
-> [...] nas duas flags.
-
-**Isto é remédio de sintoma.** A raiz provável está na tabela abaixo, e o conserto de
-verdade virou item da Fase 9:
-
-| | Versão | Chromium |
-|---|---|---|
-| Creation Board | **Electron 33.4.11** | ~130, do fim de 2024 |
-| Último Electron | 43.3.0 | atual |
-| Windows desta máquina | build 26200 | 2026 |
-| Driver NVIDIA | instalado em 14/07/2026 | 2026 |
-
-Dez versões maiores atrás. É a resposta para [...]: é o único
-Chromium de 2024 rodando numa máquina de 2026. **Dependência de plataforma envelhece
-sozinha, sem ninguém tocar no código.**
-
-> **14/08/2026 — a mesma tabela, medida de novo depois da subida. E ela aponta para outro
-> lugar.**
->
-> | | Versão | Data |
-> |---|---|---|
-> | Creation Board | **Electron 41.0.0**, Chromium **146.0.7680.65** | 2026 |
-> | Último Electron publicado | 43.4.0 (exige Node ≥ 22.12) | 2026 |
-> | Windows desta máquina | build 26200 | 2026 |
-> | NVIDIA GeForce RTX 3050 | driver 32.0.16.1088, de **21/07/2026** | 2026 |
-> | **Parsec Virtual Display Adapter** | driver **0.45.0.0, de 24/01/2024** | **2024** |
->
-> **O argumento que sustentava a hipótese do Electron não morreu — ele mudou de dono.** A
-> frase acima era [...], e ela continua
-> verdadeira; o que deixou de ser verdade é que o componente seja o nosso. O app agora roda
-> Chromium 146 e o bug voltou. **O que sobrou de 2024 na máquina é o driver do adaptador de
-> vídeo virtual do Parsec**, dois anos e meio parado.
->
-> E o suspeito tem a forma certa, o que é mais do que se pode dizer da hipótese anterior: um
-> **adaptador de vídeo** mora exatamente no caminho de apresentação — que é onde esta
-> investigação já tinha localizado a falha por outros meios (*"o que pisca é a superfície da
-> janela sem nada pintado"*, e [...]). O
-> Parsec já aparecia na tabela de vídeo do B8 desde 06/08 e nunca foi seguido; a atenção
-> estava toda na NVIDIA e no Electron.
->
-> **O teste que decide, e ele custa pouco:** desabilitar o *Parsec Virtual Display Adapter* no
-> Gerenciador de Dispositivos, abrir o app com `QB_GPU=normal` e olhar. Se não piscar, a
-> causa está encontrada depois de oito dias — e a correção passa a ser uma decisão sobre o
-> Parsec, não sobre o app. É reversível com um clique, e **é uma decisão de produto**, porque mexe na
-> máquina e não no repositório.
-
-`QB_GPU=normal` desliga a correção e reproduz o bug — serve para descobrir o dia em que ela
-virar desnecessária, em vez de carregá-la para sempre por inércia.
-
-> **08/08/2026 — o sintoma sumiu sozinho, e a correção FICA assim mesmo.**
->
-> Rodando em `QB_GPU=normal` — o modo que em 06/08 reproduzia o piscar **sempre**, em todo
-> ícone — foi confirmado: *"no aplicativo que está rodando agora não há bug algum de blip de
-> tela"*. Nada no código explica a diferença: o piscar nunca foi nosso, e o que mudou por
-> baixo (driver, Windows, algum overlay injetado) não passa por este repositório.
->
-
->**Fica registrado para quando voltar**, que é o objetivo desta anotação:
->
-
->**O custo da correção segue não medido**, e agora é assunto encerrado por escolha: ela fica
-> independentemente do preço.
-
-**Não dá para cobrir no `selftest`, e vale dizer por quê:** o auto-teste verifica o que o
-app *faz*, e o app fazia tudo certo. O defeito está em como o Chromium entrega pixels
-prontos ao Windows — depois do último ponto que qualquer JavaScript enxerga. Um teste que
-pegasse isto teria que comparar frames apresentados, não estado do documento.
-
-<details>
-<summary>A investigação, e o que cada rodada eliminou</summary>
-
-
-**Confirmado, e cada ponto elimina uma família de causas:**
-
-- **É só visual.** Selecionar, clicar e interagir continuam funcionando. Nada de estado,
-  documento ou entrada está envolvido.
-- **É só no hover, e sempre.** Todo ícone, toda vez. Não é intermitente nem depende de
-  quanto tempo o app está aberto.
-- **A composição por GPU está ativa** nessa máquina — medido, não suposto. A primeira
-  leitura dizia [...] e estava errada: o Chromium levanta a GPU num processo
-  separado, e perguntar no `whenReady` responde antes de a resposta existir. Com atraso, o
-  resultado se inverte. Fica o alerta para a próxima vez que alguém for ler isso.
-- **O piscar atrapalha o próprio diagnóstico.** A primeira versão do painel tinha caixas
-  para marcar, e ele não conseguiu usá-las: apontar o mouse para a caixa já disparava o
-  sintoma. A ferramenta produzia o que deveria medir. Agora é tudo por teclado, e o painel
-  não tem um só alvo de hover.
-
-**O que já dá para afirmar sem medir nada:** não é o nosso desenho. Com o ponteiro sobre a
-barra, o `Scheduler` não repinta o canvas — nenhum `invalidate()` sai de um `:hover`, e não
-existe um só ouvinte de `mouseover`/`pointerover` no renderer. O que muda no hover é
-**exclusivamente CSS**. Um piscar de tela inteira com o JavaScript parado é artefato de
-**composição**: o quadro que o Chromium entrega ao Windows sai preto por um instante.
-
-**Os cinco suspeitos**, todos ligados ao que o hover repinta:
-
-
-E, atrás dos cinco, a **placa de vídeo**: se nenhum resolver, o erro está na composição por
-hardware, e a correção passa a ser desligar o recurso que ela erra.
-
-**A suspeita do tema escuro tem fundamento, mas provavelmente ao contrário:** o piscar deve
-existir nos dois temas — no claro, um flash preto sobre fundo `#eef1f6` seria ainda mais
-visível. O que o tema escuro faz é **mudar o quanto ele incomoda**. Confirmar isso é de
-graça: trocar de tema e olhar.
-
-**Como foi medido.** `QB_DIAG=1 npm run dev` sobe o app normal com um painel de suspeitos
-no canto, **operado só por teclado**: `1` a `5` desligam um suspeito cada, `9` desliga os
-cinco de uma vez, `0` volta ao normal. Cada troca sai no terminal, então o resultado não
-depende de ninguém descrever o que viu.
-
-### Os cinco caíram juntos — e isso vale mais que cair um por um
-
-Ele apertou o `9`, com **os cinco desligados ao mesmo tempo**, e o piscar continuou. Está
-no terminal, repetido cinco vezes. Nenhuma combinação parcial mudou nada.
-
-**A causa não está no CSS.** A lista inteira morreu numa tecla, e a hipótese favorita
-(`overflow: clip`, herdada do B7) morreu junto — o `1` sozinho também não resolveu. O
-endurecimento do B7 fica de pé por mérito próprio, mas não é isto aqui.
-
-### O que a captura de teste mostrou, e que vale mais que o piscar
-
-Na captura de 06/08/2026 os **cartões do lobby aparecem desenhados por cima do quadro** —
-uma faixa retangular da janela com pixels de outra tela, parada, tempo suficiente para sair
-numa foto. Não é piscar: é **região que ninguém repintou**. E ele completou: [...].
-
-**Isto une três bugs que estavam catalogados como separados:**
-
-| Id | Sintoma | O que "corrigiu" |
-|---|---|---|
-| B1 | Rastro ao alternar lobby ↔ quadro | Pintar as duas camadas na hora |
-| B7 | Janela rasgada ao redimensionar | `webContents.invalidate()` depois do resize |
-| B8 | Piscar preto no hover, retângulos perdidos | — |
-
-Os três são **a mesma falha vista de três ângulos**: uma região da janela fica com os
-pixels de antes porque ninguém a repintou. As duas correções anteriores funcionaram porque
-**forçaram repintura**, cada uma no seu gatilho — eram sacos de areia, não a barragem. O
-hover não tem gatilho para forçar, e por isso é onde o problema aparece inteiro.
-
-O B1 tem ainda a pista extra de que a correção foi **só num sentido**: `#enterBoard()`
-pinta na hora, `goToLobby()` não. É exatamente o sentido em que ele vê rastro agora.
-
-### Não é o conteúdo salvo — testado, não suposto
-
-
-**O piscar continuou.** Sem um único quadro na pasta, não há conteúdo importado para
-culpar. Hipótese fechada, e os 6,6 MB de resumo de teste nunca correram risco.
-
-Ficou registrado o método, porque ele serve para a próxima vez: *tirar do caminho não
-precisa significar destruir*.
-
-### Os "quadros fantasmas" eram o próprio bug — **ERRADO, ver o B11**
-
-> **Corrigido em 08/08/2026.** Esta seção chegou à conclusão errada, e o motivo vale mais
-> que a conclusão: eu comparei com **uma** pasta e concluí que a tela mentia. O app estava
-> lendo **outra**. Os dois cards eram dois arquivos de verdade, e estavam na pasta
-> alternativa (`%USERPROFILE%`) — com exatamente as duas datas da captura:
-> `Quadro B (2).wbd` criado em **05/08 01:38** e `Quadro B.wbd` criado em **30/07 21:48**,
-> os dois com **59 objetos**. Ver o **B11**.
->
-> A lição sobrevive à conclusão, só que ao contrário: comparar com o disco **é** o método
-> certo — mas "o disco" não é uma pasta que eu escolhi, e sim a que o app resolveu. Eu não
-> verifiquei qual era, e o app não tinha como dizer.
-
-
-Na pasta existe **um** arquivo com esse nome, e `listBoards()` lê o diretório na hora, sem
-índice nem cache. Um arquivo não produz duas datas. **Não eram dois quadros: era o mesmo
-card pintado duas vezes**, um deles sobrado do desenho de outra sessão — e por isso sumiram
-quando navegar forçou repintura.
-
-### Dois injetores no processo — e os dois inocentados
-
-Medido em 06/08/2026, lendo os módulos carregados no processo do app:
-
-| DLL injetada | Origem | Veredito |
-|---|---|---|
-| `RTSSHooks64.dll` | **RivaTuner Statistics Server** | **inocente** — fechado, o piscar continuou igual |
-| `nvspcap64.dll` | **NVIDIA ShadowPlay** (`nvcontainer`) | ainda dentro; não isolado sozinho |
-
-O RivaTuner era um suspeito forte e caiu do jeito certo: fechado, uma variável de cada vez,
-com o resultado igual. Vale mais registrar o método que o veredito — **medir qual DLL está
-dentro do processo** é uma pergunta que dá para fazer, e ninguém tinha feito.
-
-### O `dc` não curou, mas disse onde dói
-
-Sem DirectComposition, o piscar continuou — **e mudou de cor, de preto para branco**. A cor
-do flash acompanha o caminho de apresentação. Isso prova que o que pisca é a **superfície
-da janela sem nada pintado**, e não conteúdo nosso desenhado errado.
-
-### A hipótese que sobrou: cintilação de taxa variável (VRR)
-
-O vídeo da máquina, medido:
-
-| Achado | Peso |
-|---|---|
-| Dois monitores 1920×1080 | Composição multi-tela erra região suja com mais facilidade |
-| **Parsec Virtual Display Adapter** instalado | Um adaptador de vídeo virtual além da NVIDIA |
-| RTX 3050 a **143 Hz** | 143 e não 144: assinatura de G-SYNC/VRR ativo |
-
-Com G-SYNC em modo janela, o painel segue a taxa de quadros do app em foco. Um app parado
-produz **zero quadros**; o hover dispara as transições e ele produz quadros por uma fração
-de segundo, e para. A taxa do painel salta e volta dezenas de vezes por segundo — e painel
-com taxa saltando pisca.
-
-**Explica o que nenhuma hipótese anterior explicava:** por que é exatamente no hover (único
-momento em que o app sai da imobilidade e volta), por que sobreviveu a apagar CSS, cache,
-biblioteca e RivaTuner (nada disso muda a taxa de quadros), e por que a cor do flash mudou
-com o caminho gráfico.
-
-
-### A causa antiga que não era: dois programas injetados no processo
-
-Medido em 06/08/2026, lendo os módulos carregados no processo do app:
-
-| DLL injetada | Origem | O que faz |
-|---|---|---|
-| `RTSSHooks64.dll` | **RivaTuner Statistics Server** (`RTSS` + `RTSSHooksLoader64` ativos) | Engancha a apresentação de todo processo para desenhar o overlay de FPS |
-| `nvspcap64.dll` | **NVIDIA ShadowPlay** (`nvcontainer`, `EncoderServer`) | Engancha a apresentação para capturar vídeo |
-
-O RivaTuner intercepta justamente a camada que decide **qual região da janela está suja**.
-Região suja errada é, literalmente, o sintoma: pedaço de tela com pixels de antes.
-
-E fecha com a única evidência positiva que existia: a sessão que parou de piscar era a que
-rodou **sem DirectComposition** — o caminho que ele engancha.
-
-Isto também explica por que o app parecia ter três bugs de repintura diferentes. Não tinha
-nenhum: o desenho está certo, e quem erra é o andar de baixo.
-
-### O que sobrou: a apresentação
-
-Eliminado o CSS, resta **como o Chromium entrega o quadro pronto ao Windows**. A composição
-por GPU está ativa nessa máquina (medido), então o próximo corte é o caminho de
-apresentação, e não o desenho.
-
-`QB_GPU=<modo>` desce essa escada, do mais barato ao mais caro:
-
-| Modo | O que muda | Custo |
-|---|---|---|
-| `dc` | Sem DirectComposition | nenhum — segue acelerado |
-| `angle` | ANGLE por OpenGL em vez de Direct3D | baixo |
-| `comp` | Composição pela CPU, GPU ainda desenha | médio |
-| `off` | Sem aceleração nenhuma | alto |
-
-Começar pelo `dc` não é ordem arbitrária: é o único que **não abre mão de nada**, e é onde
-programas que se enfiam entre o app e a tela (ReShade, overlays de jogo, gravadores —
-essa máquina tem esse perfil) quebram a conta das regiões sujas. E [...] é,
-literalmente, [...].
-
-O `dc` **não curou** — e mudou a cor do flash, de preto para branco. Foi essa mudança de cor
-que provou que o que pisca é a **superfície da janela sem nada pintado**, e não conteúdo
-nosso desenhado errado. Um teste que "falha" e ainda assim entrega a informação decisiva.
-
-### O modo de desenvolvimento também caiu
-
-O próprio B5 já registrava um caso em que **o servidor de dev fabricou um bug** (o
-travamento era a página recarregando durante o teste). Todas as rodadas até aqui eram em
-modo dev, então o app foi construído e rodado em `preview`, sem Vite, sem HMR: **piscou
-igual**, e voltou a piscar preto — porque o DirectComposition estava de volta ao normal.
-
-### Placar final da eliminação
-
-| Suspeito | Como caiu |
-|---|---|
-| Conteúdo importado | Biblioteca vazia via `QB_BOARDS`, bug igual |
-| Caches gráficos e `Local Storage` | Apagados, bug igual |
-| CSS (desfoque, sombra, `clip`, transições) | Cinco desligados juntos, bug igual |
-| "Quadros fantasmas" | Eram o bug: disco tem 1 arquivo, tela mostrava 2 |
-| RivaTuner (`RTSSHooks64.dll`) | Fechado, bug igual |
-| Modo de desenvolvimento | App construído, bug igual |
-| G-SYNC em modo janela | Trocado para só tela cheia, bug igual |
-| Máquina em geral | **Só este app pisca**; sistema normal e responsivo |
-| DirectComposition | Não curou, mas mudou a cor do flash |
-| **Repintura parcial** | **Desligada: os dois sintomas pararam** |
-
-**A suspeita inicial do tema escuro tinha fundamento, mas ao contrário:** a cor do flash não
-vem do tema, vem do caminho de apresentação — preto com DirectComposition, branco sem ele.
-O tema só mudava o quanto incomodava.
-
-</details>
-
-### B9 — O quadro crava em 60 fps ao arrastar com o botão direito
-`fechado — não é custo de desenho` · `médio` · 08/08/2026, fechado em 12/08/2026
-
-> **Fechado em 12/08/2026 por medição, e o número que fecha é este:** no quadro de teste
-> (quadro de referência, 1.063 objetos, **tudo na tela**), desenhar custa **6,1 ms**. O orçamento
-> de um frame a 144 fps é **6,94 ms**. O material de verdade já desenha dentro da meta.
->
-> Ou seja: o teto de 60 (e depois 66) nunca foi preço de desenho, exatamente como a análise
-> abaixo suspeitava. É taxa de entrega dos eventos de ponteiro somada ao vsync — nada que
-> otimizar o renderer alcance.
->
-> **O que foi corrigido:** o painel do `F3`, que era o que convidava à leitura errada. Ele
-> agora destaca **Render** (trabalho puro, colorido contra o orçamento de 144 fps) e o antigo
-> "FPS" desceu para o fim com o nome honesto, *Atualizações/s*, **sem cor** — um número baixo
-> ali costuma significar "nada mudou", que é o comportamento certo. O verde antigo começava
-> em 55 fps: o medidor dizia "ótimo" exatamente no número que o incomodava.
->
-> **A tensão com o B12 também se dissolveu, e por medição.** A suspeita era que desenhar todo
-> texto custaria fps. A repartição por tipo mostrou outra coisa (ms por mil objetos na tela):
->
-> | | Desenhar do zero | Com o cache |
-> |---|---|---|
-> | traço | 6,4–6,7 | — (não cacheia) |
-> | forma | 5,7–6,0 | — (não cacheia) |
-> | texto | ~200 | **6,3–6,5** |
->
-> **Cachear traço e forma economizaria menos que zero:** colar um bitmap (6,3–7,0) não é mais
-> barato que desenhar um traço curto (6,4–6,7). O custo que domina é **fixo por objeto**, e o
-> bitmap paga esse custo igual. O que torna o cache valioso em texto não é colar ser barato —
-> é desenhar texto do zero custar ~200 ms por mil. Fator 30.
->
-> **E uma otimização "óbvia" foi testada e reprovada:** reaproveitar um `PaintContext` para o
-> frame inteiro, em vez de montar um por objeto — 4.000 alocações por frame a menos. Quatro
-> execuções de cada lado: faixas idênticas. Revertida, com o porquê comentado no lugar onde
-> alguém tentaria de novo.
-
-<details>
-<summary>A investigação original</summary>
-
-
-
-**O que já dá para afirmar sem medir nada, e é o achado que orienta tudo:** o `QB_BENCH` de
-06/08 mediu **144,0 fps** com a câmera varrendo o quadro e **redesenhando todo frame**. O
-motor alcança 144 — quando quem move a câmera é código. O gesto de arrastar move a câmera
-pela **mesma via**, e chega em 60. A diferença entre os dois não está em desenhar.
-
-**Cravar em exatamente 60** também é assinatura, e não número qualquer: custo produz números
-quebrados (17,4; 9,26) e oscilantes. Um valor redondo e estável é **teto**, não preço.
-
-**Três famílias, e cada uma tem uma medição que a mata ou a confirma:**
-
-
-**Evidência que caiu no colo em 08/08, e ela é boa:** a verificação [...] mede `frame com troca − frame sem troca`, e o segundo termo **é o piso do
-vsync**. Três rodadas do mesmo código, no mesmo dia:
-
-| Hora | Piso (só repintura) | Taxa implícita | "Interface" | Veredito |
-|---|---|---|---|---|
-| 14:37 | **16,6 ms** | ~60 Hz | 2,4 ms | passou |
-| 16:0x | 8,1 ms | ~123 Hz | 5,3 ms | reprovou |
-| 16:1x | 8,7 ms | ~115 Hz | 5,0 ms | reprovou |
-
-**Duas coisas saem daqui.** Primeira: o app **não está preso em 60** — ele alterna entre ~60
-e ~120 Hz entre execuções, o que reforça que o B9 é teto de apresentação, e não custo de
-desenho. Segunda: **a verificação está medindo o vsync junto com o que quer medir**, e por
-isso passa quando a máquina está a 60 Hz e reprova quando está a 120. O teto de 3 ms não é
-frouxo nem apertado — a conta é que está contaminada. Isso é da própria verificação e vale
-consertar junto com o B9.
-
-
-**Custo não se comporta assim.** Se desenhar fosse o gargalo, mover mais rápido daria menos
-fps, e não mais. O que o contador mede é o **intervalo entre redesenhos**, e o `Scheduler`
-só redesenha quando algo muda: mover devagar produz menos mudanças de posição, logo menos
-frames, logo um número menor. Ele lê [...]; o painel está respondendo [...].
-
-O número que importa estava na mesma captura: **render de 6,40 ms com 1.049 objetos
-desenhados a 2% de zoom** — daria 156 fps se houvesse o que desenhar.
-
-**Consequência para este bug:** o teto de 60 (e agora 66) é quase certamente a **taxa de
-entrega dos eventos de ponteiro**, e não um teto de desenho. A medição que separa isso está
-na tabela de suspeitos acima, e continua valendo.
-
-**Consequência para o painel:** o `F3` deve destacar o **custo do frame**, com o fps como
-informação secundária e com nome honesto ([...]). Item da Fase 9.
-
-**Um detalhe que vale corrigir junto, se a meta virar 144:** o próprio painel do `F3` trata
-**60 como alvo** — pinta o número de verde a partir de 55 fps (`DebugPanel.ts:111`). Com a
-meta em 144, o medidor está dizendo "ótimo" justamente no número que incomoda.
-
-</details>
-
-### B11 — A biblioteca está partida em DUAS pastas
-`corrigido` · `crítico` · 08/08/2026
-
-> **Causa encontrada e corrigida em 08/08/2026: a sonda de escrita usava um nome de arquivo
-> FIXO.** `ensureBoardsDir()` testava se a pasta aceitava escrita criando e apagando
-> `.escrita-ok`. Com dois processos do app sondando a mesma pasta ao mesmo tempo, cada um
-> apaga o arquivo do outro — e o `catch {}` vazio lia isso como *"esta pasta não aceita
-> escrita"* sobre uma pasta perfeitamente gravável, mandando a biblioteca para a pasta
-> alternativa, calado.
->
-> **Medido, e não deduzido:**
->
-> | Cenário | Sondas que falharam |
-> |---|---|
-> | Um processo sozinho (controle) | **0 / 300** |
-> | Dois processos, nome de arquivo fixo | **120 / 300** e **144 / 300** (`ENOENT`, `EPERM`) |
-> | Dois processos, nome único por processo (a correção) | **0 / 300** |
-> | Três processos, nome único | **0 / 300** cada |
->
-> **A correção tem três partes, e só a primeira é o conserto:**
->
-> 1. **Nome de sonda único por processo** (`.escrita-ok-<pid>-<aleatório>`) — mata a corrida.
-> 2. **Nunca mais cair de pasta calado.** Se a pasta principal já tem quadros e recusa
->    escrita, o app **falha alto** em vez de gravar noutro lugar: mudar de pasta com trabalho
->    salvo lá dentro é a pior saída possível. E a pasta resolvida agora sai **sempre** no
->    terminal (`[boards] pasta: …`), não só quando `QB_BOARDS` a troca — foi a falta dessa
->    linha que me fez errar o diagnóstico dos "quadros fantasmas" no B8.
-> 3. **A resolução guarda a promessa, não o resultado** — duas chamadas concorrentes dentro
->    do mesmo processo entravam juntas antes da primeira terminar, e cada uma sondava por
->    conta própria.
->
-> **Verificação no `selftest`:** a pasta é pedida **quatro vezes ao mesmo tempo** e as quatro
-> respostas têm de ser idênticas e terminar no nome da pasta de quadros. Uma chamada de cada vez
-> nunca teria pego isto — que é exatamente por que ninguém pegou entre 30/07 e 08/08.
->
-> **O que ficou sem resposta, e vale dizer:** por que o processo vivo desde as 14:41 gravou
-> em `C:\` às 14:44 e na pasta alternativa às 15:29. A instrumentação existe agora para
-> responder isso na próxima vez; antes dela, qualquer explicação seria invenção.
->
-> **Consolidado em 08/08/2026, e nada foi perdido.** As três cópias de `Quadro B` eram
-> **três importações independentes do mesmo `.zip`** — 59 objetos cada, ids **todos
-> diferentes** (nenhum em comum entre as cópias), mesma composição (41 textos, 14 traços, 4
-> imagens) e nenhum apagamento aplicado. Ou seja: **nenhum trabalho feito dentro do app
-> estava preso na pasta alternativa** — o que se perderia era só o esforço de reimportar.
->
-> Duas delas têm geometria idêntica; a terceira difere em **0,5px de altura média de texto**,
-> que é o ruído de medição de fonte já documentado no `ENGENHARIA.md`, e não uma versão melhor.
->
-> As duas cópias da pasta alternativa foram **estacionadas** numa subpasta
-> `_substituidos-2026-08-08\`, e não apagadas: 0,29 MB cada não justificam uma decisão
-> irreversível. Elas não apareciam no lobby porque `listBoards()` só lista arquivos, nunca
-> subpastas.
->
-> **Fechado por completo em 14/08/2026.** Com a biblioteca conferida e nada faltando, as duas
-> cópias estacionadas foram apagadas e a pasta antiga saiu do disco. O item deixa de ter
-> qualquer ponta solta: existe **uma** pasta de quadros, e o auto-teste verifica isso pedindo
-> o caminho quatro vezes ao mesmo tempo e exigindo quatro respostas idênticas.
-
-
-| Pasta | Conteúdo | Última escrita |
-|---|---|---|
-| A pasta documentada, na raiz do disco | Continuação (411 obj), Quadro B (59), quadro de referência (1.063), teste (0) | **08/08 14:44** |
-| A alternativa, em `%USERPROFILE%` (o *fallback*) | Quadro B (59), Quadro B **(2)** (59) | **08/08 15:29** |
-
-**Por que é `crítico` pela régua deste arquivo:** não corrompe e não trava, mas **some com
-trabalho da vista**. Um quadro salvo numa das pastas não aparece no lobby da sessão
-seguinte, se ela resolver a outra — e a pessoa não tem como saber que ele existe. As duas
-cópias de Quadro B já **divergiram**: uma foi atualizada em 07/08 23:04, a outra em 08/08
-15:29.
-
-**Isto explica os "quadros fantasmas" do B8**, e é a mesma dupla de datas da captura
-daquele dia: 05/08 01:38 e 30/07 21:48 são os `createdAt` dos dois arquivos do *fallback*.
-Não eram cards pintados duas vezes. Eram dois arquivos.
-
-**Onde a decisão é tomada** (`src/main/storage/wbdFile.ts`): `ensureBoardsDir()` tenta a
-pasta na raiz do disco; se a escrita de prova falhar, cai **calado** para a mesma pasta
-dentro de `%USERPROFILE%`. Um `catch {}` vazio decide onde mora o trabalho do usuário, e
-nada é registrado — nem no terminal, nem na interface.
-
-**O que já foi eliminado por medição, em 08/08:**
-
-
-**O mecanismo ainda não está identificado, e não vou fingir que está.** O que o processo em
-execução mostra é o que mais incomoda: **um único processo** (vivo desde 14:41) gravou em
-`C:\` às 14:44 e no *fallback* às 15:29. Se fosse só [...],
-isso não podia acontecer — `resolvedDir` é resolvido uma vez por processo.
-
-**Primeiro passo, e é o que faltava desde 30/07:** fazer o app **dizer** qual pasta resolveu
-— no terminal ao subir, e visível na interface. Hoje ele só registra quando `QB_BOARDS`
-troca a pasta; no caminho que interessa, o do `catch` silencioso, ele não diz nada. Sem
-isso, toda investigação daqui para frente é adivinhação — foi exatamente o que aconteceu no
-B8.
-
-**Nada foi perdido:** os quatro quadros de `C:\` estão íntegros e legíveis, e as duas cópias
-de Quadro B do *fallback* também. O que falta é decidir qual das duas Quadro B vale, e juntar
-tudo numa pasta só.
-
-### B12 — Texto vira barra cinza: no PNG exportado e na tela afastada
-`corrigido` · `alto` · 08/08/2026
-
-
-**Causa:** o painter de texto tinha um corte de legibilidade — abaixo de **6px de glifo**
-(`MIN_GLYPH_PX`), o texto virava barra e o conteúdo do post-it não era desenhado. O corte
-faz sentido para a tela e **vazava para o arquivo**, porque exportar reusa os painters (e
-reusar é a decisão certa: dois renderizadores divergiriam). O comentário do `exportBoard`
-até dizia [...] e passava `lod: 'full'` — mas o corte do glifo é um
-**segundo portão**, que não olha o LOD e sim `fontSize × escala do objeto × escala do
-arquivo`.
-
-**Medido no quadro de teste:**
-
-| | |
-|---|---|
-| Área real do quadro | **82.967 × 19.274** unidades |
-| Escala usada pedindo 1x, 2x **ou** 3x | **0,199x nos três casos** (ver o B13) |
-| Textos abaixo do corte de 6px | **126 de 642** |
-| Post-its | **todos** sem texto |
-
-**A correção foi além do export:** [...].
-
-E a razão é boa: num resumo, saber **onde** estão as palavras não substitui saber
-**quais** são — e afastar o zoom é justamente como se procura algo no quadro inteiro.
-
-
-**O que mudou, no fim:**
-
-1. O corte por glifo **deixou de existir** — a constante e o desenho da barra saíram do
-   código, para ninguém reintroduzir.
-2. O nível de LOD **`blocks` foi removido inteiro**. Ele trocava *todo* objeto por um
-   retângulo da cor dominante abaixo de 12% de zoom, e era barato justamente porque mentia.
-   Saiu do renderer, da miniatura do lobby e do tipo `LodLevel`.
-3. Sobrou um único nível reduzido, o `simplified`, e ele **não troca o objeto por outra
-   coisa**: usa a polilinha simplificada do traço, que continua sendo o traço.
-
-O único limite que ficou é físico: objeto menor que meio pixel de tela não é desenhado,
-porque não há pixel onde mostrá-lo.
-
-**O preço, medido e não estimado** (`QB_BENCH=4000`):
-
-| Fase | Antes | Só texto | Sem `blocks` |
-|---|---|---|---|
-| zoom 100% | 144 fps | 144 fps | **144 fps** |
-| zoom 40% | 144 fps | 144 fps | **144 fps** |
-| ajustado à tela (4.000 visíveis) | ~108 fps | 45 fps | **23,3 fps** (frame 43 ms) |
-
-
-**Isto entra em tensão direta com o B9** (meta de 144 fps), e as duas coisas não são
-conciliáveis desenhando tudo do zero a cada frame. A saída que não obriga a escolher é
-**cachear o objeto rasterizado**: desenhar cada caixa de texto e cada imagem uma vez para um
-bitmap e reaproveitar enquanto o objeto não muda — que é como um editor de verdade resolve
-isto. Fica para a Fase 9, e é o item que destrava o B9 junto.
-
-### B14 — Texto por cima de texto no SVG exportado
-`corrigido` · `médio` · 08/08/2026
-
-
-**Causa:** o SVG posiciona cada trecho de texto no ponto que **nós** medimos, mas quem
-desenha os glifos é a fonte de **quem abre o arquivo**. Quando essa fonte é um pouco mais
-larga que a nossa, o trecho transborda e invade o começo do trecho seguinte — que está
-ancorado num ponto fixo e não sai do lugar. O resultado é sobreposição.
-
-Isso não acontece no PNG, e a razão está na decisão 19 do `ENGENHARIA.md`: o PNG **reusa os
-painters**, então ele é pixel a pixel o que está na tela. O SVG não pode reusar (os painters
-falam canvas), e é aí que a fonte de terceiros entra na conta.
-
-**Correção:** cada `<text>` passou a carregar `textLength` com a largura que medimos, mais
-`lengthAdjust="spacingAndGlyphs"`. O navegador então **comprime ou estica o trecho para
-caber exatamente** na largura prevista, e ele nunca invade o vizinho. `spacingAndGlyphs`
-distribui a diferença no espaçamento e na largura dos glifos; só `spacing` empilharia todo o
-erro nos espaços, o que salta à vista muito mais.
-
-**A alternativa definitiva seria embutir a fonte no arquivo** — fidelidade perfeita, arquivo
-muito maior e licença de fonte para resolver. Isto custa dois atributos.
-
-**Verificação no `selftest`:** todo `<text>` do SVG tem de sair com `textLength`, e o arquivo
-tem de conter `spacingAndGlyphs`. É o par que some se alguém simplificar a emissão.
-
-### B17 — As miniaturas do lobby guardam o tema em que o quadro foi salvo
-`fechado — decisão de produto` · `médio` · 13/08/2026, fechado em 14/08/2026
-
-
->**A investigação fica escrita porque a decisão pode mudar**, e nesse dia as três saídas e o
-> preço de cada uma já estão levantados. Nada foi tocado no código.
-
-A miniatura é desenhada na hora de gravar, com o tema que estava ligado
-(`App.#writeBoard` → `renderThumbnail(doc, THEMES[this.#theme])`), e vai **assada dentro do
-`.wbd`**. Ela não é redesenhada ao trocar de tema, porque isso exigiria reabrir todos os
-quadros da pasta.
-
-
-
-| Saída | O que custa |
-|---|---|
-| **Miniatura sempre no tema claro** | Um quadro é branco — é a linha do próprio projeto (`base.css`: [...]). No tema escuro o lobby fica com cartões claros, que é como um gerenciador de arquivos mostra fotos. **Quadros já salvos só mudam ao serem gravados de novo.** |
-| **Guardar as duas** | Nenhum caso feio, e o arquivo cresce (a miniatura é PNG de 480px dentro do `.wbd`). |
-| **Redesenhar ao trocar de tema** | Correto sempre, e caro: obriga a abrir cada `.wbd` da pasta e regravar. |
-
-A primeira é a mais barata e a que menos mente; a terceira é a única que nunca erra. Não
-mexi em nada esperando a decisão.
-
-### M10 — A amostra de tinta quase preta some no painel, no tema escuro
-`corrigido` · `baixo` · 13/08/2026, fechado em 14/08/2026
-
-> **Escolha entre as duas saídas: a de número 2** — [...]. A amostra continua sendo a cor que fica gravada no `.wbd`,
-> que era a decisão original do `ToolBar`; o que muda é de onde sai o anel dela.
->
-
->| | Antes (`--border`) | Agora (`--fg` 30%) |
-> |---|---|---|
-> | anel, tema escuro | 51,57,71 | **90,98,107** |
-> | painel atrás | 28,31,37 | 28,31,37 |
-> | diferença | +22 | **+62** |
->
-> **Verificação no `selftest`:** *"o anel da amostra de cor sai do primeiro plano do tema, e
-> não de uma cor fixa"*. Ela compara a matiz do anel com o token `--fg` em vez de exigir um
-> valor — um anel fixo passaria num tema e falharia no outro, que é exatamente o defeito
-> original.
-
-**Medido na mesma cena, nos dois temas:**
-
-| | Amostra `#1f2933` | Painel atrás dela | Diferença |
-|---|---|---|---|
-| tema claro | 31,41,51 | 252,252,252 | enorme |
-| tema escuro | 31,41,51 | 29,34,40 | **+2, +7, +11** |
-
-No escuro a amostra tem praticamente a cor do painel. O que sobra dela é o próprio contorno
-(`--border`, mais claro que as duas), então ela **se lê como um círculo vazio** — parecida
-com o botão `+` de escolher outra cor, que é um círculo vazio de verdade.
-
-
-**Bate numa decisão deliberada, e por isso entra como `decisão a revisar`.** Está escrita no
-código (`ToolBar.ts`, em `#renderColors`): *"a amostra é a própria cor do documento, sem
-passar pelo adaptador de tema: é ela que fica gravada no `.wbd` e que o usuário está
-escolhendo"*. Isso é verdade e é um bom motivo.
-
-**A tensão é com outra decisão, do mesmo projeto**, a de número 10 do ENGENHARIA.md: [...] A amostra de cor é a única prévia que ficou de
-fora dessa regra — e o sintoma previsto pela regra é exatamente o que aconteceu.
-
-**As duas saídas, e as duas são defensáveis:**
-
-1. **A amostra passa pelo adaptador**, como a prévia do traço. Ela mostra o que vai aparecer
-   no quadro. Perde-se saber qual cor fica gravada no arquivo — que a dica do botão já diz.
-2. **Fica como está, e ganha um anel de contraste** derivado de `--fg` em vez de `--border`.
-   Resolve o sumiço e mantém a decisão original; não resolve escolher preto e sair branco.
-
-
-### B16 — Uma "sombra" atrás dos ícones da barra polui a interface
-`corrigido` · `baixo` · 12/08/2026, fechado em 13/08/2026
-
-> **Era o candidato 1, e a foto da janela mediu o porquê.** A "sombra" é a **pílula de
-> ligado** da barra inferior — o retângulo arredondado atrás de grade, régua e camadas. Ela
-> era cinza neutro (`--fg` a 11%); passou a ser da **cor de destaque** (`--accent` a 16%), a
-> mesma que a barra lateral já usava.
->
-> **Os números, lidos pixel a pixel de uma captura da janela no tema escuro:**
->
-> | | RGB | Passo em luminância |
-> |---|---|---|
-> | quadro, fora da barra | 19,21,26 | — |
-> | barra | 27,30,37 | +8 sobre o quadro |
-> | pílula **neutra** (o bug) | 48,53,59 | **+22 sobre a barra** |
-> | pílula **de destaque** (a correção) | 31,44,69 | **+13 sobre a barra** |
->
-> **Duas coisas saem daí, e nenhuma era visível lendo o CSS.**
->
-> Primeira: o cinza neutro dava um degrau de luminância quase **três vezes maior** que o da
-> própria barra contra o quadro. O indicador de estado estava gritando mais alto que a
-> superfície em que ele mora — daí "polui", e não "está errado".
->
-> Segunda, e é a que explica a palavra *sombra*: **o tema escuro inteiro é azulado.** A razão
-> azul/vermelho é 1,37 no fundo do quadro e 1,37 na barra; a pílula neutra caía para **1,23**.
-> Uma mancha *cinza* sobre uma interface azulada não se lê como destaque, se lê como sujeira.
-> O azul faz o contrário: metade do degrau de luminância, e a diferença vai para a cor — e,
-> como o glifo já é azul, pílula e ícone viram um objeto só em vez de um ícone pousado sobre
-> um borrão.
->
-> **Os candidatos 2 e 3 caíram, e não por eliminação:** a captura mostra a barra com quatorze
-> ícones e **só os três ligados** tinham fundo. `saturate(160%)` e o brilho interno de 1px são
-> da barra inteira; se fossem eles, todos os quatorze estariam manchados.
->
-
->**Verificação no `selftest`:** *"a pílula de ligado usa a cor de destaque, e é a mesma nas
-> duas barras"*. Ela compara **matiz** — a cor composta, sem o alfa — do fundo do botão ligado
-> nas duas barras contra o token `--accent`. Mexer na opacidade da pílula é acabamento e
-> continua passando; voltar para cinza é a regressão, e reprova. A comparação lê `#rrggbb`,
-> `rgb()` e `color(srgb …)` como a mesma coisa, porque `color-mix` sai na terceira forma.
-
-
-**Ficou agendado de propósito.** foi pedido para verificar isto **depois** de fecharmos a
-rodada de ícones — mexer nas duas coisas ao mesmo tempo tornaria impossível dizer qual
-mudança melhorou o quê. É a mesma razão pela qual as correções deste arquivo são agrupadas
-por área tocada, e não por ordem de chegada.
-
-<details>
-<summary>Os três candidatos, antes de medir</summary>
-
-**O que já dava para afirmar sem medir:** a captura é de 12/08/2026, logo depois do polimento
-das barras, e nela os únicos ícones com fundo visível são os **três interruptores ligados**
-(grade, régua e camadas). Então o primeiro suspeito era meu, e recente.
-
-
-</details>
-
-### B15 — Uma verificação do auto-teste falhou uma vez e não reproduziu
-`a investigar` · `baixo` · 12/08/2026
-
-Em 12/08/2026, numa execução do `selftest`, a verificação [...] devolveu **centro=(700, 600)** onde esperava **(700, 400)**.
-
-**Não reproduziu.** Quatro execuções depois — duas no mesmo código, uma no commit anterior
-e uma no seguinte — deram (700, 400). A execução que falhou estava sob carga: na mesma
-saída, o teste de arraste marcou `bbox 3.9` (faixa normal 3,0–3,3).
-
-**Está registrado apesar de não reproduzir, e o motivo é o método:** este projeto trata o
-`selftest` como o verificador, e uma verificação que falha sozinha de vez em quando é pior
-que uma que falha sempre — ela ensina a ignorar falhas. Se aparecer de novo, o suspeito
-inicial é o teste depender do retângulo do host medido num instante em que o layout ainda
-estava assentando.
-
-**O que NÃO explica:** 200px de diferença não é jitter de tempo. A carga externa pode ter
-mudado *quando* algo foi medido, mas alguma medição está lendo estado que ela supõe pronto.
-
-### B13 — Os três botões de resolução da exportação não fazem nada em quadro grande
-`corrigido` · `alto` · 08/08/2026, fechado em 12/08/2026
-
-> **Corrigido na Fase 9, e a saída registrada aqui não era alcançável.**
->
-> O plano anterior dizia [...]. Isso não dá:
-> o quadro de teste tem 82.967 × 19.274 unidades, o que são **1,6 gigapixel a 1x** — 6,4 GB de
-> pixel cru. Não existe PNG único para isso, com ou sem ladrilhos, e nenhum visualizador
-> abriria. **O teto de 64 MP nunca foi o limite que apertava; a aritmética era.**
->
-> Então o ladrilho virou **arquivo**, e não pedaço costurado. A escala pedida passa a ser
-> respeitada exatamente, e o quadro sai numa grade de imagens de tamanho normal — que é o
-> que torna o resumo legível, o pedido original.
->
-> | Pedido | Antes | Agora |
-> |---|---|---|
-> | 1x | 0,199x, 1 arquivo | **1x**, ~25 arquivos |
-> | 2x | 0,199x, 1 arquivo | **2x**, ~100 arquivos |
-> | 3x | 0,199x, 1 arquivo | **3x**, ~225 arquivos |
->
-> **E o mínimo honesto que este arquivo pedia veio junto:** o diálogo diz o que vai sair
-> **antes** de exportar — tamanho final em pixels, escala real e quantos arquivos —, e muda
-> a cada clique. Acima de 24 arquivos ele avisa que são muitos e sugere 1x ou o SVG.
->
-> O **PDF continua cedendo escala**, e o diálogo diz isso com todas as letras: uma página não
-> tem onde pôr o segundo ladrilho.
->
-> Sufixo `-l<linha>c<coluna>` com base 1, **inclusive no primeiro arquivo** — ordenar a pasta
-> por nome remonta a grade.
->
-> **Verificação em duas camadas:** no `selftest`, que as três escalas dão tamanhos
-> diferentes (era isso que o bug quebrava), que nenhum ladrilho passa dos tetos, que a soma
-> deles é exatamente a imagem inteira e que dois vizinhos gravam pedaços **diferentes**
-> (bytes iguais denunciariam a mesma região gravada N vezes); e no `QB_EXPORT`, a grade
-> gravada de verdade, 4 arquivos irmãos no disco.
-
-
-
-| Pedido | Usado | Resultado |
-|---|---|---|
-| 1x | **0,199x** | 16.515 × 3.837 px |
-| 2x | **0,199x** | 16.515 × 3.837 px |
-| 3x | **0,199x** | 16.515 × 3.837 px |
-
-Ou seja: **os três botões produzem o mesmo arquivo**, e ninguém avisa. Um controle que não
-faz nada é pior que um controle ausente — ele promete.
-
-**O teto em si está certo** (o navegador não aloca um canvas maior), mas ele é um limite de
-*uma imagem só*. A saída conhecida é **exportar em ladrilhos e costurar**: renderizar o
-quadro em pedaços de até 64 MP e juntá-los no arquivo final. Com isso o 2x volta a
-significar 2x, e o resumo fica legível.
-
-**Enquanto isso não existe, o mínimo honesto é avisar:** mostrar no diálogo o tamanho final
-em pixels e a escala que será realmente usada, antes de exportar.
-
-### B10 — O custo por frame cresce com o zoom
-`fechado — não é bug` · `baixo` · 08/08/2026, fechado em 14/08/2026
-
-> **Fechado por decisão de produto**, sem medição: [...].
->
-
->**A medição que resolveria continua escrita abaixo**, e custa dez minutos se o sintoma
-> voltar a incomodar. A hipótese registrada — rasterização, não travessia de cena — nunca foi
-> confirmada nem derrubada, e é assim que ela fica.
-
-
-**Está separado do B9 de propósito:** ali é um teto redondo (60), aqui é preço que sobe
-junto com uma variável. Teto e preço não têm a mesma causa nem a mesma correção, e juntá-los
-num id só foi exatamente o que atrasou o B1/B7/B8.
-
-**A explicação provável é a menos interessante, e por isso precisa de medição antes:** com
-zoom alto, um traço curto vira uma geometria enorme na tela, e rasterizar caminho grande
-custa mais pixels — mesmo com **menos** objetos visíveis, que é o que o culling entrega. Se
-for isso, é o preço correto de desenhar, e o item fecha como `não é bug`.
-
-**O que mediria:** custo de render (não de frame) em três níveis de zoom sobre o mesmo
-quadro real, contra o número de objetos visíveis em cada um. Se o custo sobe **enquanto a
-contagem de objetos cai**, é rasterização, e não travessia de cena.
 
 ## Melhorias
 
-### M1 — Botão de negrito na caixa de texto
-`corrigido` · `médio` · 04/08/2026
+### M10 — A amostra de tinta quase preta sumia no tema escuro
+`feita` · 14/08/2026
 
-Negrito **já funcionava** com `Ctrl+B` dentro da caixa (e `Ctrl+I`, `Ctrl+U`); faltava o
-controle visível — recurso sem botão é recurso que ninguém descobre.
+O anel da amostra usa a cor de primeiro plano do tema. Verificado no `selftest`.
 
-Agora há uma linha **B / I / U** no painel da ferramenta de texto, com **dois destinos**:
-digitando, vale para a seleção dentro da caixa (mesmo caminho do `Ctrl+B`); com uma caixa
-selecionada, vale para a caixa inteira. Sem o segundo caso, o botão ficaria inerte
-justamente quando a pessoa acabou de clicar num texto para mudá-lo.
+### M9 — Foto de fundo no menu, com painéis de vidro
+`feita na 1.1.0`
 
-A regra do estado segue a de qualquer editor: se **tudo** já está formatado, o botão tira;
-senão, aplica em tudo.
+Foto de fundo por tema, trocável em **Configurações**, com o painel de vidro.
 
-### M2 — Renomear o botão de importação
-`corrigido` · `baixo` · 04/08/2026
+### M8 — Camadas, com cadeado, e o marca-texto sobre imagens
+`feita` · 12/08/2026
 
-Virou **"Importar arquivo"**. No lobby vazio o rótulo ficou mais longo de propósito —
-"Importar um quadro de outro aplicativo" —, porque ali ele é a explicação do que fazer
-primeiro, e não mais um botão numa fila.
+O marca-texto fica acima das imagens que ele toca e abaixo do texto. Painel de camadas
+(`C`) com olho e cadeado.
 
-### M3 — Redesenhar a barra de ferramentas inferior
-`corrigido` · `médio` · 04/08/2026
+### M7 — Remover o lápis da barra
+`feita` · 04/08/2026
 
-
-**O que mudou:** os doze rótulos escritos viraram **ícones**, agrupados por assunto com
-filetes discretos, sobre fundo translúcido com desfoque (o "acrílico" do Windows 11), com
-cantos mais generosos e o destaque de "ligado" numa barrinha sob o ícone.
-
-**O que continua escrito, de propósito:** o nome do quadro (com o ponto de alterações não
-salvas) e o nível de zoom. Os dois são **informação**, não rótulo de comando — virar ícone
-esconderia justamente o que se precisa ler.
-
-**Os ícones são SVG, não glifos de fonte.** Um `▦` ou um `⌗` depende da fonte instalada e
-do fallback do sistema: muda de máquina para máquina e às vezes vira um retângulo vazio.
-Em SVG a forma é a mesma em qualquer lugar, acompanha a cor do texto e escala sem
-serrilhar.
-
-**Consequência que virou melhoria de teste:** sem texto visível, o nome do botão passou a
-viver no `aria-label` — que é o que um leitor de tela anuncia. E o auto-teste deixou de
-procurar os botões pelo texto (que quebrava a cada renomeação, como aconteceu quando o `?`
-virou "comandos") e passou a procurar por `data-action`, exigindo que **todos** tenham
-ícone e nome acessível.
-
-**Estendido para a barra lateral** (pedido depois de ver a inferior): as oito
-ferramentas, as seis formas, o preenchimento e os dois modos da borracha também viraram
-SVG, e o painel ganhou o mesmo material translúcido. Ali o ganho foi maior que na inferior,
-porque os glifos antigos (`⭦`, `🖊`, `✎`, `▬`) vinham de fontes diferentes — um deles era
-emoji — e chegavam em pesos e tamanhos que não combinavam entre si: a fila parecia
-desalinhada mesmo estando alinhada.
-
-O indicador de "ativo" muda de lado conforme a barra: **embaixo** na horizontal, **na
-lateral** na vertical. Numa fila vertical, o indicador embaixo apontaria para o botão
-seguinte.
-
-### M4 — Renomear o ícone de interrogação para "comandos"
-`corrigido` · `baixo` · 04/08/2026
-
-O `?` virou **"comandos"** escrito. Coberto pelo auto-teste (o botão é procurado pelo
-rótulo).
-
-### M5 — Trocar os três degraus de espessura por uma barra de 0 a 100%
-`corrigido` · `médio` · 04/08/2026
-
-Cada ferramenta tinha três degraus fixos; agora é uma barra contínua, com a porcentagem
-escrita ao lado e o valor real em px na dica.
-
-**As duas consequências foram resolvidas como combinado:**
-
-- **0% não é zero.** A barra mapeia para uma faixa mínimo–máximo por ferramenta (caneta
-  1–14px, marca-texto 8–44, formas 1–14, fonte 10–72, borracha 8–80 px de tela). Um traço
-  de espessura zero seria invisível, e uma barra cujo começo não desenha nada teria um
-  pedaço inútil.
-- **`[` e `]` andam de 10 em 10%** e param nas pontas da faixa, em vez de pular degraus.
-
-O auto-teste cobre as pontas: no mínimo a espessura ainda é maior que zero, e nem `[` nem
-`]` conseguem sair da faixa.
-
-**Efeito colateral medido, e corrigido:** o `input type="range"` (e mais ainda o
-`type="color"` do M6) é **caro de instanciar**, e recriá-los a cada troca de ferramenta
-levou o custo da troca de 1,6 ms para 5,3 ms — a verificação de desempenho reprovou na
-hora. Os dois controles passaram a ser criados uma vez e reaproveitados: 2,5 ms.
-
-### M8 — Camadas, com cadeado — **e o marca-texto que [...]*
-`corrigido` · `médio` · 08/08/2026, fechado em 12/08/2026
-
-> **Feito na Fase 9, nas duas metades — e a primeira resolve o caso sem painel nenhum.**
->
-
->A **decisão 5 do ENGENHARIA.md mudou junto**, senão a próxima sessão lê a regra antiga e
-> "conserta" de volta.
->
-> **M8b, o painel.** Lista de **objetos**, não grupos com nome: das duas perguntas de projeto
-> abaixo, a escolha foi a barata — "camada" é o objeto que já existe, com o `z` que já existe.
-> Quase nada foi construído, e isso é o ponto: `locked` já existia e já era respeitado; o
-> `hidden` já era filtrado dentro do `queryVisible`, que é por onde o renderer **e** a
-> exportação pedem os objetos — então o olho vale para o arquivo também, de graça.
->
-> Detalhes que são decisão: fica na lateral **direita** (a esquerda é de onde se escolhe o
-> que fazer); lista **só o que está no viewport** (mil linhas não são um painel, são um
-> despejo); a lista sai **invertida** em relação à ordem de desenho; o nome de um texto é o
-> **próprio texto**; e **clicar no nome seleciona mesmo travado** — é o que torna o cadeado
-> reversível, porque travar sem uma lista seria uma porta que fecha por fora.
->
-> Atalho `C` e botão na barra inferior — recurso sem botão é recurso que ninguém descobre.
-
-<details>
-<summary>O pedido original e as duas perguntas de projeto</summary>
-
-Pedido: [...].
-
-**O sintoma bate numa decisão deliberada**, e por isso entra como `decisão a revisar` e não
-como bug (é a triagem que fez nascer a Fase 5.5). A regra está no
-[ENGENHARIA.md](ENGENHARIA.md), decisão 5: **o marca-texto entra por baixo de tudo** — por chave
-`z`, não por ordem de desenho — senão grifar cobriria o texto que se quis destacar.
-
-**A regra está certa para texto e errada para imagem, e a diferença é física:** texto é
-tinta escura sobre fundo claro, e o grifo por baixo aparece atrás das letras, como marcador
-de verdade. Uma imagem é **opaca** — não há "atrás" que se veja. O grifo simplesmente
-some. A regra foi escrita quando o app não tinha imagens (Fase 4); as imagens chegaram na
-Fase 7 e ninguém revisitou.
-
-**O que já existe e não precisa ser construído:**
-
-- ordem de camada por objeto (`z`) e os comandos de trazer para frente / mandar para trás;
-- **travar objeto** — já implementado e coberto pelo `selftest` ([...], [...]).
-
-Ou seja, o cadeado que ele pede **já existe por objeto**; o que falta é **enxergá-lo e
-alcançá-lo**, que é justamente o papel de um painel de camadas.
-
-**As duas perguntas de projeto, que valem decidir antes de codar:**
-
-1. **Camada é grupo ou é objeto?** No Photoshop é um grupo com nome, que se cria e se
-   ordena. O que ele descreve resolvido [...] pode ser só um painel
-   listando os objetos do quadro, com olho e cadeado — sem inventar o conceito de grupo.
-2. **O marca-texto sobre imagem:** a saída mais barata é a regra deixar de ser absoluta —
-   grifo vai por baixo de **texto** e por cima de **imagem**. Isso resolve o caso sem
-   painel nenhum, e o painel passa a ser o controle geral, não o remendo.
-
-</details>
-
-### M9 — Plano de fundo no menu principal, com os painéis em vidro
-`abandonada por ora` · `médio` · 12/08/2026, arquivada no mesmo dia
-
-> **Ele desistiu dela no mesmo dia:** *"vamos abandonar a ideia de colocar a imagem de fundo
-> por enquanto, vamos focar nessa informação e nas outras ideias"*.
->
-> **O item fica escrito assim mesmo**, com a viabilidade toda respondida, porque a análise
-> não expira: se a ideia voltar, o trabalho de descobrir o que já existe e onde está a
-> dificuldade está feito. Apagá-la faria a próxima sessão refazer a mesma investigação.
->
-> **E uma parte dela já foi aproveitada:** os ícones da interface são SVG com `currentColor`,
-> e não PNG. Isso não foi decidido pensando em vidro — veio do M3, para não depender da fonte
-> do sistema —, mas é exatamente o que um efeito de transparência precisa: eles herdam a cor,
-> ficam nítidos em qualquer tamanho e aceitam opacidade sem sujar as bordas.
-
-Pedido: [...].
-
-**Está registrado e NÃO começado, por decisão de produto:** [...]. A
-regra é boa — é uma mudança visual grande, e começá-la com a fase aberta misturaria o efeito
-dela com o polimento que ainda está em curso.
-
-**Viabilidade, respondendo à pergunta:** sim, e a maior parte da infraestrutura já
-existe. O que já está pronto e o que falta:
-
-| Peça | Situação |
-|---|---|
-| Escolher o arquivo de imagem | **Pronto** — o app já abre seletor (`importer.pick`) e já lê imagem solta (`features/images/insert`) |
-| Mostrar como fundo do lobby | **Trivial** — `background-image` no `.qb-lobby` |
-| O efeito de vidro | **Pronto** — as barras já usam `backdrop-filter: blur() saturate()`. Hoje ele desfoca um fundo liso, ou seja, **não aparece**. É sobre uma foto que ele passa a valer alguma coisa |
-| Guardar a escolha | **Falta** — copiar o arquivo para a pasta de dados e guardar o caminho. Guardar a imagem em `localStorage` como base64 não serve: uma foto de 4 MB não cabe lá |
-| A CSP | **Atenção** — `img-src 'self' data: blob:` barra `file://`. A imagem tem de chegar por IPC e virar `blob:`, como as imagens do quadro já fazem |
-
-**A parte difícil não é nenhuma dessas, e é onde a coisa vira profissional ou amadora: o
-contraste.** Sobre uma foto qualquer, o texto dos cards e o nome dos quadros podem ficar
-ilegíveis, e o `npm run check:colors` **não cobre isso** — ele confere as cores de marca
-contra os dois fundos de tema, não contra uma imagem arbitrária que o usuário escolheu.
-
-A saída conhecida é um **véu** entre a foto e o conteúdo (uma camada escura ou clara, com
-intensidade regulável), que é exatamente o que a Apple faz. Sem véu, o efeito funciona com a
-foto que se testou e quebra com a próxima.
-
+Sem mesa digitalizadora, o lápis era igual à caneta. Quadros antigos com traços de lápis
+continuam sendo desenhados.
 
 ### M6 — Seletor de cores personalizado
-`corrigido` · `médio` · 04/08/2026
+`feita` · 04/08/2026
 
-A paleta ganhou um **+** que abre o seletor do sistema. A cor escolhida entra como mais uma
-amostra na fila (para ser reescolhida com um clique) e sobrevive ao fechar o app.
+O **+** da paleta abre o seletor do sistema e avisa se a cor vai aparecer ajustada no tema.
 
-**O aviso mudou de ideia durante a implementação, e o motivo vale registrar.** A intenção
-era avisar quando a cor tivesse *contraste baixo* — mas a primeira verificação mostrou que
-isso quase nunca acontece: **o adaptador de tema resgata a cor invertendo a luminosidade**,
-então ela não some. A pergunta útil não era "ela some?", e sim *[...]*.
+### M5 — Barra de espessura de 0 a 100%
+`feita` · 04/08/2026
 
+No lugar de três degraus fixos. `[` e `]` andam de 10 em 10%.
 
----
+### M4 — "Comandos" no lugar do ícone de interrogação
+`feita` · 04/08/2026
 
-## Ordem de correção
+### M3 — Barra inferior redesenhada
+`feita` · 04/08/2026
 
+Ícones em SVG, agrupados, sobre fundo translúcido.
 
-### Etapa 0 — Medir antes de corrigir · **feita em 04/08/2026**
+### M2 — "Importar arquivo" como nome do botão de importação
+`feita` · 04/08/2026
 
-Duas suspeitas minhas caíram, e é por isso que esta etapa existe:
-
-- o autosave **não** é a causa do B5 (o sintoma está preso à troca, não ao tempo parado);
-- trocar de ferramenta custa **1,6 ms** com 4.000 objetos na tela — cabe folgado num
-  frame, então o repaint da troca também não explica o engasgo;
-- os três botões do B2 **funcionam** quando clicados por código.
-
-Sobrou uma pergunta que decide a etapa seguinte: o que exatamente é [...].
-
-O auto-teste ganhou as duas verificações que faltavam — os botões da barra pelo **clique**
-(o teclado já era coberto) e o custo da troca de ferramenta com o quadro cheio.
-
-### Etapa 0b — Medir sobre o quadro REAL · **feita**
-Repintar o resumo importado inteiro custa **0,1 ms** acima do frame ocioso. Com isso, e
-com ele reproduzindo de `F3` aberto, o travamento geral se dissolveu: **três dos cinco
-bugs fecharam ou encolheram sem uma linha de correção**, e as duas verificações novas
-ficaram no auto-teste.
-
-
-Entraram de carona os dois renomes de uma linha: M2 e M4.
-
-
-**Fica um item para a Fase 9, e é barato: subir o Electron.** Está em 33.4.11 (Chromium de
-2024) numa máquina com Windows e driver de 2026, e é essa distância que provavelmente cria
-o defeito. `QB_GPU=normal` reproduz o bug: depois de subir, é com ele que se confere se a
-correção ainda é necessária — senão ela fica para sempre, por inércia.
-
-### Etapa 3 — Barra inferior e nomes (M3, M4, M2)
-Mesmo arquivo (`ViewportBar`), mais o rótulo do lobby (M2). Fazer junto evita mexer duas
-vezes no mesmo lugar. Depende de decidir a direção do redesenho.
-
-### Etapa 4 — Painel das ferramentas (M5, M6, M1) e cursor (B4)
-`ToolBar` + `DrawStyle` são tocados pelos três: a barra de espessura (M5), o seletor de
-cor (M6) e a linha B/I/U do texto (M1). O cursor (B4) entra junto por ser da mesma família
-— aparência das ferramentas — e por ser barato.
-
-Última de propósito: é a etapa que mais mexe em interface, e vai partir de uma barra já
-redesenhada e de um app que não trava mais.
-
----
-
-### B19 — Redimensionar texto distorcia o desenho da letra
-`corrigido` · `alto` · 20/09/2026
-
-
-**Causa.** `scaleObjects` gravava a escala em `transform.scaleX/scaleY` para **todo** tipo de
-objeto. Para traço e imagem está certo — o desenho aumenta. Para texto, esticar o desenho da
-letra produz glifo condensado ou achatado. Somava-se um segundo defeito: a largura de quebra
-(`obj.w`) era a única medida que o redimensionamento **não** tocava, então a linha vazava
-para fora da caixa e nenhuma largura a trazia de volta.
-
-**Correção.** Texto ganhou caminho próprio em `transformOps.scaleText`:
-
-| Gesto | Agora |
-|---|---|
-| Canto (fatores iguais) | muda o **corpo da fonte** e a largura pelo mesmo fator — a quebra fica idêntica |
-| Lado (só o horizontal) | muda só a **largura de quebra**; a fonte fica intacta e o texto reflui |
-| Cima/baixo | não existe para texto: a altura sai sempre do conteúdo |
-
-O fator do canto vem da **projeção do arraste sobre a diagonal original da alça**, e não da
-regra do `max` usada no Shift: arrastar o canto reto para a esquerda daria fator 1 no eixo Y,
-e a caixa ficaria parada enquanto a alça anda.
-
-Texto legado esticado se endireita no primeiro redimensionamento — a escala é absorvida em
-corpo de fonte e largura. Quadros salvos não são tocados ao abrir, que foi a escolha.
-
-> **Verificação no `selftest`:** sete checagens, com as métricas reais do Chromium. A que
-> vale é *"o canto dobra o corpo da fonte e a quebra continua exatamente nos mesmos
-> pontos"* — se ela passa, o redimensionamento é indistinguível de um zoom.
-
----
-
-### B20 — O negrito só funcionava depois de digitar
-`corrigido` · `medio` · 20/09/2026
-
-
-**Causa, e é específica.** O botão **B** não impedia o `pointerdown`. O `TextEditor` tem um
-ouvinte de clique-fora que **fecha a edição**; ele disparava antes do `click`, e quando o
-`click` chegava `isEditing` já era falso — então o formato caía sobre a caixa inteira.
-
-**Correção.** Os botões B/I/U seguram o foco (`preventDefault` no `pointerdown` e no
-`mousedown`) e se marcam com `data-keep-edit`, que o editor reconhece como [...].
-
-Em 21/09 eles viraram **interruptores**: relatam o estado em vigor — `queryCommandState` do
-Chromium enquanto se digita, o conteúdo da caixa quando há uma selecionada. Digitando, é a
-única fonte que distingue [...] de [...]: os dois significam negrito para a próxima letra, e nenhuma
-leitura do documento enxergaria o segundo, porque ele ainda não existe.
-
-**Falha intermediária registrada:** a primeira versão do destaque usou 18% da cor de destaque,
-o mesmo valor dos interruptores da barra, e ficou ilegível. Aqueles 18% pousam sobre uma
-pastilha opaca; sobre o vidro transparente, 18% de qualquer coisa é um véu. Virou pílula
-cheia.
-
----
-
-### B21 — A quebra de linha mudava ao sair da caixa
-`corrigido` · `medio` · 21/09/2026
-
-
-**Causa.** O `tokenize` separava palavras **dentro de cada span**. Quando metade de uma
-palavra está sublinhada e a outra metade não, ela chegava ao layout como **dois átomos** — e
-a quebra, que operava por átomo, podia quebrar no meio dela. O editor nunca fazia isso,
-porque para o navegador `<i>abc</i><u>def</u>` é **uma palavra só**: elemento em linha não
-cria oportunidade de quebra.
-
-**Correção.** A unidade de **quebra** passou a ser a palavra (`groupWords`) e a unidade de
-**desenho** continua sendo o átomo, cada um com a formatação do seu span. O `breakWord`
-também atravessa a fronteira de formatação, para uma palavra longa meio sublinhada não ganhar
-quebra só porque o estilo mudou.
-
----
-
-### B22 — O tema claro cansava a vista
-`corrigido` · `medio` · 20/09/2026
-
-
-**A primeira correção foi tímida e errou.** Fundo `#eef1f6` → `#e7eaf0`, quadro branco →
-`#f2f4f7`. voltou que continuava, e estava certo: **10% de luminância não se
-sente** numa superfície que ocupa a tela toda.
-
-Medido nas fotos da janela, e não no editor de cores — a grade e o desfoque das barras mudam
-o que o olho recebe:
-
-| versão | quadro | luminância |
-|---|---|---|
-| original | `#ffffff` | 1,000 |
-| 1ª tentativa | `#f2f4f7` | 0,903 |
-| 2ª tentativa | `#ebeef3` | 0,853 |
-| final | `#e3e7ee` | **0,797** |
-
-0,80 é onde o macOS põe o fundo de janela — a referência de tela clara que se encara por
-horas sem queixa. **A segunda metade da queixa** tinha um culpado único: `--fg-muted`, o token
-de *todo* ícone apagado do aplicativo, da barra ao lobby. `#667085` → `#414b5c`, que dá 8:1
-sobre o painel (a WCAG pede 4,5:1).
-
-`RenderTheme` ganhou `exportBg`: tela é fonte de luz e pede branco quebrado; papel é
-refletivo, e cinza nele só parece sujo e gasta tinta.
-
----
-
-### B23 — A "sombra bugada" em volta das barras
-`corrigido` · `medio` · 20/09/2026
-
-
-**Minhas duas primeiras correções erraram o alvo, e vale registrar por quê.** A primeira
-reduziu a **opacidade** da sombra — duas vezes, sem resolver. A segunda culpou a **borda**,
-depois de eu ler um filete claro no perfil de pixels.
-
-**A causa era GEOMETRIA**, e a medição já estava na minha frente. Perfil em volta da barra,
-com `0 2px 6px rgba(0,0,0,.3)` + `0 8px 24px rgba(0,0,0,.42)`:
-
-```
-ESQUERDA  o quadro escurece de #13151A até #101115 ao encostar na barra
-ABAIXO    #0B0C0F encostado, subindo até #0F1115 uns 15px depois
-quadro    #14161B
-```
-
-Escurecia nos **quatro lados**, em ordens de grandeza parecidas. **Sombra não faz isso.**
-Sombra cai para um lado, porque a luz vem de um lado — e é essa assimetria que o olho lê como
-volume. Escurecimento igual em volta é uma borda preta desfocada, e foi exatamente assim que
-foi descrita assim.
-
-A culpada era a camada **curta**: 2px de deslocamento com 6px de desfoque espalha quase igual
-para todo lado. **Correção:** uma camada só, `0 12px 28px rgba(0,0,0,.30)`.
-
-| | esquerda | abaixo | acima |
-|---|---|---|---|
-| antes | 13 | 28 | 10 |
-| depois | 6 | 16 | 3 |
-
-**A lição:** quando alguém descreve um defeito com uma palavra ("borda", "mancha"), essa
-palavra costuma ser literal. "Mancha" não era metáfora de sombra feia — era a descrição
-correta do que estava desenhado.
-
----
-
-### B18 — Rastro de tinta ao rolar, e fantasma do desenho ao dar zoom
-`corrigido` · `medio` · 20/09/2026, fechado em 21/09/2026
-
-
->**Corrigido desligando a composição por GPU** (`disable-gpu-compositing`, no modo `padrao`
-> do `QB_GPU`), por decisão de produto, depois de uma caçada que eliminou todo o resto. **O preço
-> está medido e assumido: 144,0 para 77,1 fps na fase leve.** O fim da história está na seção
-> *"Como isto foi fechado"*, no fim deste item — leia por lá se quiser só a conclusão. O que
-> vem primeiro é a investigação, na ordem em que aconteceu.
-
-**Sintoma.** Rolando a tela **devagar** (roda do mouse, com ou sem Ctrl), pedaços do frame
-anterior ficam na tela. Rolando rápido, não aparece. O rastro permanecia **vários segundos**.
-
-**A prova de que não é erro de desenho** está numa captura das réguas: os rótulos aparecem
-**duplicados e deslocados** (`-700` sobre `-5700`, `-250` sobre `-20000`). A régua é desenhada
-no canvas de **overlay**; os traços, no **estático**. Dois caminhos independentes mostrando
-dois frames ao mesmo tempo. As duas camadas se limpam por inteiro a cada frame, e o overlay é
-repintado dentro do frame de conteúdo.
-
-O que sobra é a composição deixando tiles antigos — a família do [B8](#b8--a-tela-pisca-preto-ao-passar-o-mouse-sobre-ícones-e-cartões),
-com as duas flags instaladas **e ainda assim passando**.
-
-**Hipóteses eliminadas, cada uma por um teste:**
-
-| hipótese | como caiu |
-|---|---|
-| as mudanças de 20–21/09 | `git stash` → o bug aparece no código original |
-| filtro SVG de refração do vidro | removido → continuou |
-| `backdrop-filter` | `QB_BLUR=0` desliga todos → continuou |
-| G-Sync / VRR do monitor | desligado no driver → continuou |
-| RivaTuner (RTSS) enganchando a apresentação | fechado → continuou |
-| erro de limpeza de canvas | as duas camadas limpam por inteiro; verificado no código |
-
-**`QB_GPU=comp` deixa o bug imperceptível** — esse modo tira a composição da GPU. Não foi
-adotado como padrão: é contorno, e degradaria a composição de todo mundo por um defeito que
-ainda não tem causa estabelecida.
-
-
-**Ferramenta nova para a caçada:** `QB_BLUR=0` desliga todo `backdrop-filter`, no mesmo idioma
-do `QB_GPU`.
-
-#### 21/09/2026 — o zoom RÁPIDO produz o rastro, e isso contradiz o sintoma registrado
-
-
-Duas leituras, e as duas importam:
-
-1. **A mitigação está funcionando.** "Está saindo rápido" é exatamente o que ela promete —
-   um frame em vez de segundos. O caminho do zoom passa por ela: `ViewportInput.#onWheel`
-   → `camera.zoomAt` → `onChange()` → `App.#onCameraChanged` → `#agendarRedesenhoDeParada`.
-   Conferido no código.
-2. **Mas o gesto contradiz o sintoma acima.** Esta seção diz [...].
-   Ele vê com **zoom rápido**. Não é a mesma coisa que rolar rápido, e a diferença sugere
-   onde procurar: rolar **transloca** o conteúdo, e o compositor consegue reaproveitar tiles
-   deslocando-os; dar zoom muda **a escala de todos os pixels ao mesmo tempo**, e nenhum tile
-   se reaproveita. Se a conta de região suja erra, o zoom é o gesto que mais a expõe.
-   **É hipótese, e ainda não foi testada.**
-
-**Não é regressão da rodada de 21/09.** Conferido no diff: nada entre `360d612` e `54fc8e1`
-encosta no desenho do quadro — são lobby, validação no processo principal, imagens de fundo e
-testes. A correção do B8 continua ativa (`swap` é o modo padrão e aplica
-`ui-disable-partial-swap` + `disable-partial-raster`).
-
-
-```powershell
-$env:QB_GPU='comp'; npm run dev     # composição pela CPU — curou o B8 e o B18
-$env:QB_GPU='normal'; npm run dev   # nada aplicado — controle, tem de PIORAR muito
-```
-
-- `comp` **cura** o rastro no zoom → mesma família do B8/B18, confirmada por um segundo
-  gesto, e a caçada continua na conta de região suja.
-- `comp` **não cura** → é outra coisa, fora da composição, e isso seria o achado mais
-  importante desde 14/08. Nenhuma das hipóteses já eliminadas cobriria.
-- `normal` **não piorar** significaria que as flags não estão pegando nesta execução, e aí o
-  problema é de configuração e não de composição.
-
-#### O resultado do teste, no mesmo dia
-
-Palavras do teste:
-
-| modo | rastro no zoom | fluidez |
-|---|---|---|
-| `comp` | **sumiu** | [...] |
-| `normal` | **presente** | [...] |
-| `swap` (o padrão, que ele já vinha usando) | presente | lisa |
-
-
-
-#### O placar completo dos modos, no gesto do zoom — 21/09/2026
-
-Tudo testado, na máquina de teste, no mesmo dia:
-
-| modo | o que desliga | rastro no zoom | fluidez |
-|---|---|---|---|
-| `normal` | nada | **presente** | lisa |
-| `swap` (padrão) | repintura parcial da **página** | **presente** | lisa |
-| `canvas` | canvas 2D acelerado | **presente** | lisa |
-| `raster` | rasterização fora do processo da GPU | **presente** ([...]) | lisa |
-| `comp` | composição por GPU **inteira** | **sumiu** | [...] |
-
-> **Tudo abaixo vale para o RASTRO NO ZOOM, e só para ele.** Nenhum destes testes tocou o
-> piscar no hover do [B8](#b8--a-tela-pisca-preto-ao-passar-o-mouse-sobre-ícones-e-cartões) —
-> ele não foi reproduzido nesta rodada. São bugs diferentes, e o que este arquivo já registra
-> sobre o B8 continua valendo inteiro. Misturar os dois é o erro que atrasou o B1/B7/B8.
-
-**O que isso elimina — para este rastro:**
-
-- **Não é a textura do canvas.** Se fosse, `canvas` teria curado — ele tira o canvas 2D da
-  GPU mantendo a página composta lá. Não curou.
-- **Não é a repintura parcial da página.** `swap` age exatamente aí e se comporta igual ao
-  `normal` neste gesto. E isto explica, enfim, por que o `swap` conserta o piscar do B8 e não
-  encosta neste rastro: são camadas diferentes. **Note que a conclusão corre neste sentido, e
-  não no contrário** — o `swap` não ajudar aqui nada diz sobre o B8, onde ele cura.
-- **Não é VRR — para este gesto.** Ele desligou o G-SYNC para **modo janela** (deixando só
-  tela cheia) e o rastro no zoom continuou. É um teste muito mais preciso que a linha
-  [...] registrada na tabela acima.
-
-  **A hipótese de VRR do B8 NÃO cai com isto**, e é importante não a arrastar junto: lá o
-  sintoma é o piscar no hover, e a explicação registrada é o painel seguindo um app que sai
-  da imobilidade e volta. Aqui o app está produzindo quadros continuamente — é outro regime.
-  Reabrir aquela hipótese exige reproduzir o piscar, e ninguém reproduziu.
-
-  Vale registrar de onde veio a suspeita, porque era boa e continua valendo como pista para o
-  B8: **o VS Code, outro Chromium, também falha com G-SYNC ligado na mesma máquina.**
-
-**Sobra a conta de dano do compositor da página, e nada mais estreito que ela cura.**
-
-**O que continua NÃO testado para este rastro**, e não deve ser dado por resolvido:
-
-- **Subir de Electron.** A escada do `ENGENHARIA.md` (33, 41 e 43) mediu **o piscar do B8**,
-  e os três piscaram igual. **O rastro no zoom nunca foi testado em Electron novo.** Herdar
-  aquela conclusão aqui seria trocar um bug pelo outro.
-- **`QB_GPU=dc`** (sem DirectComposition). Está na escada desde 06/08, foi testado contra o
-  piscar do B8 — e **nunca contra este rastro**. É o candidato mais direto que resta:
-  promoção a overlay é exatamente um mecanismo capaz de deixar conteúdo velho quando a
-  superfície inteira muda de escala.
-- **O monitor de 60 Hz.** Ver abaixo.
-
-**Dado novo, colhido com uma sonda de intervalo entre frames** (`scratchpad/medir/vrr.*`):
-a janela está num monitor de **144 Hz** e o segundo é de **60 Hz**; com a janela no de 144, o
-intervalo é cravado em 6,90 ms com 0,2% dos frames fora de ±20%. A sonda **não** serve para
-provar que o VRR está desligado (com o app produzindo frames, o `requestAnimationFrame` lê
-144 Hz de qualquer jeito), e isso fica dito aqui em vez de virar conclusão. O que ela confirma
-é o segundo monitor a 60 Hz — que é justamente o teste que a tabela do B8 pediu na linha [...] **e que nunca foi feito**, nem para o B8 nem para este.
-
-#### 21/09/2026 (tarde) — o que o fantasma REALMENTE é, descrito frame a frame
-
-
-
-*"cada vez que eu aplico o zoom ele meio que faz uma transição no desenho, ele meio que
-> sobrepõe o desenho criando um rastro durante o tempo de mudança de zoom… esse rastro
-> aparece de 2 formas diferentes: quando mudamos de forma mais lenta ele aparece o desenho
-> inteiro como se fosse uma sombra do próprio desenho em proporção diferente; quando movemos
-> rápido o zoom ele quebra essa sombra, então ele aparece como se não renderizado a tempo."*
-
-**Não são tiles soltos: é o desenho INTEIRO, duas vezes, em duas escalas, ao mesmo tempo** —
-e o fantasma está mais apagado que o real. Nas capturas, zoom saindo deixa o fantasma
-**maior** que o desenho atual e zoom entrando o deixa **menor**. É o estado anterior do zoom
-sobrevivendo na tela junto com o novo.
-
-**A forma "quebrada" do zoom rápido é a mesma coisa sob pressão**: vários estados
-intermediários sobrepostos, cada um pela metade.
-
-#### A régua também fantasmeia — e isso fecha a porta do lado do app
-
-
-Isso é decisivo, e é a mesma prova que o B18 usou em 20/09 — aqui só foi reencontrada por
-outro caminho. **A régua é desenhada no canvas de OVERLAY; os traços, no ESTÁTICO.** São dois
-canvas independentes, limpos por mecanismos diferentes:
-
-| camada | como é limpa | fantasmeia? |
-|---|---|---|
-| estático | `fillRect` com `boardBg` sobre o canvas inteiro | **sim** |
-| overlay | `clearRect` sobre o canvas inteiro — limpeza total, sem cor | **sim** |
-
-Se fosse erro de limpeza do app, teria de ser um erro **diferente** em cada camada, produzindo
-o **mesmo** sintoma no mesmo frame. Descarta, em particular, a hipótese tentadora de que o
-`boardBg` do `fillRect` tivesse alfa e cada frame estivesse lavando o anterior em vez de
-apagá-lo: isso explicaria o estático e **não** explicaria o overlay, que nem usa cor.
-
-#### O que mais caiu nesta rodada
-
-
-#### O dado de carga, medido
-
-`QB_BENCH` com a mesma carga do quadro mais pesado, no monitor de 144 Hz
-(orçamento **6,95 ms** por frame):
-
-| objetos | enquadramento | visíveis | fps | frame | render |
-|---|---|---|---|---|---|
-| 400 | zoom 100% | 22 | 144,0 | 6,95 ms | 0,70 ms |
-| 400 | ajustado à tela | 400 | 121,1 | 8,26 ms | 2,10 ms |
-| 1070 | zoom 100% | 25 | 144,0 | 6,95 ms | 0,80 ms |
-| **1070** | **ajustado à tela** | **1070** | **50,8** | **19,68 ms** | **6,20 ms** |
-
-**Com tudo na tela o app entrega um frame a cada três.** E repare na última linha: o `render`
-é 6,20 ms, mas o frame inteiro é 19,68 — **13 ms não são o nosso desenho**. Tirar o zoom
-rápido é justamente o gesto que atravessa da primeira linha até a última em uma fração de
-segundo.
-
-Isto **não** é a causa do fantasma (ele aparece também com pouca coisa na tela), mas é um
-problema por mérito próprio e provavelmente é o que torna a forma "quebrada" tão visível.
-
-#### O `comp` como padrão está morto — e agora com número
-
-`QB_BENCH=1070` no monitor de 144 Hz (orçamento **6,95 ms** por frame):
-
-| fase | `swap` (padrão) | `comp` |
-|---|---|---|
-| zoom 100% (26 visíveis) | **144,0 fps** · 6,95 ms | **77,1 fps** · 12,97 ms |
-| zoom 40% (124 visíveis) | 123,4 fps · 8,10 ms | 68,6 fps · 14,59 ms |
-| ajustado à tela (1070) | 48,9 fps · 20,45 ms | 52,9 fps · 18,91 ms |
-
-**Ele corta a taxa pela metade exatamente onde o app é rápido**, que é o uso normal. Com
-quase nada na tela o `render` é 1,40 ms e o frame é 12,97 — o gargalo é a composição pela
-CPU, não o nosso desenho. Sob carga pesada empata, dentro do ruído.
-
-
-#### `QB_DESYNC=1` piora, e o jeito como piora informa
-
-Instrumento criado no mesmo dia: liga `desynchronized` nos dois canvas, tirando-os da fila
-normal de composição para um caminho de baixa latência com buffer próprio. Era o último
-lever do nosso lado que mexe na **entrega** do quadro. Medido antes de ir para as mãos:
-não custa nada (144,0 / 123,4 / 52,5 fps, igual ao padrão).
-
-
-O artefato novo é o achado. Piscar preto é o sintoma clássico de apresentação sem
-sincronismo — e é, de passagem, o mesmo sintoma do
-[B8](#b8--a-tela-pisca-preto-ao-passar-o-mouse-sobre-ícones-e-cartões). Que uma opção de
-**entrega** produza o sintoma do B8 reforça que esta família inteira é de entrega de frame, e
-não de desenho. **O interruptor fica, mas com este aviso: ligá-lo introduz um defeito.**
-
-#### O que já foi verificado no nosso código, e está limpo
-
-Para ninguém refazer:
-
-| verificado | resultado |
-|---|---|
-| limpeza da camada estática | `fillRect` sobre o canvas inteiro, todo `render()`. Incondicional. |
-| limpeza do overlay | `clearRect` sobre o canvas inteiro. Condicional a `#overlayHasContent`, e a máquina de estados está **correta**. |
-| limpeza dupla do overlay | `beginOverlay` e `beginOverlayScreen` ambos limpam; se os dois fossem chamados no mesmo frame, o segundo apagaria o primeiro. **Só `beginOverlayScreen` é chamado**, uma vez por frame, em `App.#paintOverlay`. |
-| reúso do frame anterior | Não existe. O único `drawImage` do caminho de desenho é o do cache de texto/post-it. |
-| cache de rasterização | Só texto e post-it. O que fantasmeia são traços. |
-
-**E o fantasma aparece na CAPTURA DE TELA.** Isso importa e elimina uma hipótese inteira:
-artefato de resposta do monitor (o "ghosting" do vocabulário de monitor) **não sai em
-screenshot**. Se está no arquivo PNG, está no framebuffer — alguém compôs aquilo.
-
-#### O que fazer com isso: partir o `comp` ao meio
-
-O `comp` nunca foi isolado. Ele faz **duas** coisas de uma vez:
-
-
-
-Dois degraus novos na escada `QB_GPU` (`main/index.ts`), para separá-las:
-
-```powershell
-$env:QB_GPU='canvas'; npm run dev    # canvas 2D na CPU, pagina ainda composta na GPU
-$env:QB_GPU='raster'; npm run dev    # rasterizacao fora do processo da GPU
-```
-
-- **`canvas` cura sem lentidão** → o rastro mora na **textura do canvas**, e não na conta de
-  dano do compositor. É o melhor desfecho possível: cura barata e dirigida. Explicaria também
-  por que o `swap` conserta o B8 e não o B18 — `ui-disable-partial-swap` e
-  `disable-partial-raster` agem na página, não na textura do canvas.
-- **`canvas` não cura** → é a conta de dano do compositor, e só o `comp` cura. A escolha volta
-  a ser entre rastro e lentidão, e aí a saída de verdade é subir de Electron (Fase 9).
-
-**Se `canvas` virar candidato a padrão, ele tem de ser MEDIDO antes de ser adotado.** O
-[B24](#b24--a-borracha-apagava-em-bolas-e-travava-o-aplicativo) é o registro de que canvas na
-CPU custa caro: o `Render` do F3 foi de 1,2 ms para 31,3 ms quando uma bandeira empurrou **um**
-canvas intermediário para a CPU. `disable-accelerated-2d-canvas` empurra **todos**. Medir com
-`QB_BENCH` e com a borracha antes de trocar qualquer coisa.
-
-*(Os dois degraus foram criados e testados no mesmo dia. Nenhum curou: o rastro não está na
-textura do canvas nem na rasterização fora do processo. Ver o placar acima.)*
-
----
-
-#### Como isto foi fechado — 21/09/2026
-
-**Decisão de produto, depois de testar com a mão:** adotar `disable-gpu-compositing` como padrão.
-Foi o único modo que curou, e a caçada eliminou todo o resto. O bug fecha como **corrigido
-por contorno de composição**, e não por causa encontrada — a conta de dano do compositor
-continua errada, e o que muda é que ela deixou de ser usada.
-
-**O padrão virou um modo próprio, `padrao`, e não `comp`.** A escada do `QB_GPU` é exclusiva:
-um modo por execução. Trocar o padrão para `comp` derrubaria junto as duas chaves do
-[B8](#b8--a-tela-pisca-preto-ao-passar-o-mouse-sobre-ícones-e-cartões) — e o B8 **já sumiu
-sozinho uma vez**, o que significa que pode voltar do mesmo jeito. O `padrao` aplica as três;
-os degraus puros continuam puros, para bissecção.
-
-**O preço, com três execuções de cada lado:**
-
-| fase | antes (`swap`) | agora (`padrao`) | |
-|---|---|---|---|
-| zoom 100% — 26 visíveis | 144,0 · 144,0 · 144,0 | 111,7 · 108,0 · 112,7 | **−22%** |
-| zoom 40% — 124 visíveis | 144,0 · 144,0 · 144,0 | 87,6 · 83,1 · 91,3 | **−39%** |
-| ajustado à tela — 1070 | 60,6 · 56,6 · 56,1 | 68,9 · 67,8 · 63,5 | **+20%** |
-
-Compor pela CPU custa **por frame, independente do conteúdo**. Por isso a perda aparece onde o
-app seria rápido e **desaparece onde ele já estava lento** — na fase pesada o padrão novo é
-*mais* rápido, porque ali o gargalo nunca foi a composição.
-
-
-**O que continua verdadeiro e não deve ser esquecido:**
-
-- A causa **não** foi encontrada. Isto é contorno.
-- `QB_GPU=normal` continua trazendo os dois bugs de volta, e é assim que se confere, um dia,
-  se o contorno ainda é necessário. Sem isso, o dia em que ele virar desnecessário passa
-  despercebido e o custo fica para sempre.
-- Subir de Electron **não** foi testado contra este bug. A escada de versões do
-  `ENGENHARIA.md` mediu o piscar do B8, não o fantasma do zoom.
-
-#### 30/09/2026 — em outros computadores, não aparece
-
-
-O teste: um instalador à parte, **`npm run dist:gpu`** (`release-gpu/`, nome *"Creation Board
-GPU"*), com o modo `normal` embutido no build (`QB_BUILD_GPU`, porque lá não há terminal para
-passar `QB_GPU`), levado a outros computadores. Conferido no próprio `app.asar` que o modo
-embutido era `normal`.
-
-**Resultado, nas palavras do teste:** [...]
-
-**O que isso muda:**
-
-- A família inteira (B1, B7, B8, B18) passa a ser tratada como **defeito do ambiente desta
-  máquina** — alguma otimização feita nela, segundo ele —, e não do app nem do Electron 33.
-  Bate com o que a caçada já tinha: nada no nosso código curava, e só a composição mudava
-  alguma coisa; e com a pista do B8 de que **o VS Code, outro Chromium, também falha** aqui.
-- O contorno (`padrao`: composição pela CPU) continua sendo o padrão do app **por enquanto**.
-  Trocar o padrão para a GPU — ganho de fluidez para todo mundo, e o contorno só para quem
-  precisar — é decisão de produto, e não foi feita.
-- **Foram dois computadores, os dois com Windows**, e em nenhum o defeito apareceu
-  (confirmado no mesmo dia). O que não foi registrado: quais placas de vídeo e
-  monitores, e se o piscar do B8 foi testado separadamente do fantasma.
-- **Próximo passo, combinado para a sessão seguinte** (finalizar o app): composição pela
-  GPU como padrão, e uma opção em Configurações para voltar à CPU (*"compatibilidade
-  gráfica"*, valendo ao reabrir) — que ele ligaria na máquina de teste. Antes de adotar: medir o
-  zoom rápido com GPU de novo, com a máquina livre (a única medição, 13 q/s, foi feita com um
-  jogo aberto), e conferir o B8 nesse modo.
-
-#### 06/10/2026 — a GPU vira o padrão; o contorno vira opção
-
-Decisão de produto, com o número na mesa. A bancada do quadro (`QB_BENCH_QUADRO=1`) foi rodada
-com a máquina livre, na cópia do quadro de teste de 1.063 objetos, janela maximizada, **três
-rodadas de cada modo, alternadas**, e comparadas as medianas:
-
-| gesto | contorno (CPU) | GPU |
-|---|---|---|
-| arrastar | 58,9 / 45,6 / 56,3 → **56 q/s** | 143 / 144 / 144 → **144 q/s** |
-| zoom rápido | 30,2 / 40,1 / 45,0 → **40 q/s** | 79,7 / 76,5 / 73,5 → **77 q/s** |
-| tarefas longas no zoom | até 7 (398 ms) | **nenhuma** |
-
-(Os 13 q/s da medição de 30/09 com GPU eram o jogo aberto, como se suspeitava.)
-
-**O que mudou:**
-
-
-**Guardas:** `npm run check:graficos` (19 casos: arquivo ausente, corrompido ou com o tipo
-errado cai na GPU; a ordem `QB_GPU` > `QB_NOGPU` > opção > padrão), conferido ao contrário
-com duas sabotagens — aceitar `1` como ligado, e o nome errado cair na GPU —, as duas
-reprovadas. No selftest, a linha de Configurações grava ao clicar e mostra o aviso de
-reabrir; conferida ao contrário tirando o aviso. De ponta a ponta, pelo relatório do
-próprio Chromium (`QB_DIAG=1`): sem arquivo, `gpu_compositing` *enabled*; opção ligada,
-*disabled_software*; ligada com `QB_GPU=normal`, *enabled*; arquivo corrompido, *enabled*.
-
----
-
-### B24 — A borracha apagava em bolas e travava o aplicativo
-`corrigido` · `alto` · 21/09/2026
-
-
-Eram **dois defeitos independentes** que se encontraram no mesmo gesto. Que fossem dois estava
-na própria queixa — "bolas" é um problema de *forma*, "laga" é um problema de *custo*, e
-nenhuma causa única explica os dois.
-
-#### As bolas: continuidade por passo adjacente
-
-O rastro da borracha só continuava se o objeto tivesse sido tocado no passo **imediatamente
-anterior** (`lastTouch.get(id) === step - 1`). Mas `#step` conta *toda* posição varrida,
-inclusive as que não encostam em nada.
-
-Varrendo um rabisco, a borracha encosta num traço, **perde o contato num vão**, e encosta de
-novo. O passo vazio quebrava a corrente, e cada reencontro abria um rastro **novo de um ponto
-só** — e um rastro de um ponto o painter desenha como **disco** (`erase.ts`, `cutMarks`: com
-dois números não há segmento, então vira `arc`). Daí a fileira de bolas com beirada serrilhada.
-
-
-**Medido**, e não suposto: a checagem nova foi rodada com a regra antiga de volta.
-
-| | rastros | de um ponto só | maior rastro |
-|---|---|---|---|
-| regra antiga | 10 | **10** | 1 ponto |
-| agora | 1 | 0 | 10 pontos |
-
-#### O lag: uma bandeira de canvas no lugar errado
-
-`erase.ts` tinha **um** canvas intermediário, criado com `willReadFrequently: true`. Essa
-bandeira diz ao Chromium para manter o canvas na **CPU**.
-
-Quem a exigia é o `isFullyErased`, que precisa de `getImageData` e roda **uma vez por objeto,
-ao soltar a borracha**. Quem *usava* o canvas é o `withErase`, **a cada frame, para cada objeto
-apagado**, num canvas que chega a 4 megapixels com zoom aproximado. Desenhar a tinta na CPU,
-recortar, e devolver o bitmap para um canvas de GPU custa transferência nos dois sentidos, por
-objeto, por frame.
-
-**Correção:** dois canvas. O de desenho acelerado (`getContext('2d')` puro), o da sonda com a
-bandeira — pequeno por definição (64 px) e só no fim do gesto.
-
-
-#### Um terceiro custo, menor, corrigido junto
-
-O `#eraseSpot` copiava **todas** as marcas e **todos** os pontos a cada posição varrida. Como o
-rastro cresce a cada passo, o custo do gesto era quadrático, e um gesto longo sobre um rabisco
-denso chega a centenas de passos. O rastro em curso agora é mutado no lugar — o estado original
-já está em `#before`, que é o que o desfazer usa.
-
-**Guardas novas** (duas checagens, `selftest` em 152): uma varre um rabisco em forma de pente e
-exige um rastro contínuo sem nenhum disco solto; a outra pergunta direto se o canvas de recorte
-continua acelerado. A segunda é binária de propósito — o custo da bandeira só apareceria como
-ms de render, que varia de máquina para máquina.
-
----
-
-### B25 — A borracha travava o app com zoom alto
-`corrigido` · `alto` · 21/09/2026
-
-
-Veio logo depois do [B24](#b24--a-borracha-apagava-em-bolas-e-travava-o-aplicativo) e **não é
-o mesmo defeito** — o B24 já estava corrigido e este continuava. Vale registrar a diferença,
-porque os dois se manifestam como "a borracha laga":
-
-| | B24 | B25 |
-|---|---|---|
-| o custo acompanhava | a bandeira do canvas (CPU) | o **tamanho do objeto** em pixel de tela |
-| aparecia | em qualquer zoom | só com zoom alto |
-
-**A causa.** O `withErase` dimensionava o canvas intermediário pelo retângulo **inteiro** do
-objeto, à resolução da tela. A 2579%, um rabisco grande pede dezenas de milhares de pixels de
-lado; isso estoura o teto de `MAX_PIXELS` e o canvas é **reduzido para caber** — ou seja, o app
-montava **exatamente 4 megapixels por objeto, por frame**, para mostrar a fatia que cabia na
-tela. Com dois objetos apagados no viewport, 8 MP de limpeza, desenho e composição por frame.
-
-O teto disfarçava o problema em vez de resolvê-lo: ele impedia o estouro de memória, mas
-garantia que o pior caso fosse pago **sempre** que o zoom subisse.
-
-
-
-**Medido**, com a guarda nova rodada também com o código antigo de volta:
-
-| | recorte pedido | tela |
-|---|---|---|
-| dimensionando pelo objeto | **4,0016 MP** (2512×1593) | 1,23 MP (1424×861) |
-| dimensionando pela tela | **1,2352 MP** (1428×865) | 1,23 MP (1424×861) |
-
-Os 4 px de sobra são a folga de 2 px físicos por lado, que existe para a borda anti-serrilhada
-do traço não ser cortada rente ao limite da tela.
-
-**A checagem afirma sobre PIXEL, e não sobre ms — de propósito.** Rodando a guarda com o
-código antigo, o render marcou 0,28 ms mesmo assim, porque o rabisco do cenário de teste é
-trivial: o tempo só explode num quadro real. O que discrimina o defeito em qualquer máquina é a
-**área pedida**, e é sobre ela que a checagem falha.
-
-**Confirmado no mesmo dia, num quadro de verdade, a 6400% de zoom** — que é o
-`MAX_ZOOM` do app (`core/Camera.ts`). Para um defeito cujo custo *escalava com o zoom*, o teto
-da faixa é a confirmação mais forte que existe: acima disso não há caso a testar.
-
----
-
-### B26 — "As animações pararam de funcionar" — e não tinham parado
-`corrigido` · `medio` · 21/09/2026
-
-
-**A causa não estava no app.** O Windows de teste pede **menos movimento**
-(Acessibilidade → Efeitos visuais → Efeitos de animação), o `base.css` obedecia zerando
-`--levanta`, e **o app inteiro estava certo**.
-
-
-**Como foi estabelecido**, já que o palpite inicial errou: a primeira leitura foi do registro do
-Windows (`UserPreferencesMask`), e a interpretação dos bits deu "animação LIGADA" — **errado**.
-Quem respondeu foi uma sonda que abre uma janela Electron à parte, injeta as três folhas de
-estilo e passa um **mouse de verdade** (`sendInputEvent`) sobre cada controle:
-
-```
-prefers-reduced-motion: true
---levanta: "0px"
-.qb-btn   -> hover aplicou (a sombra --levanta-sombra apareceu), deslocou 0px
-.qb-card  -> deslocou -2px   <- o valor cravado
-```
-
-A sombra é o que fecha o argumento: ela **só existe dentro da regra `:hover`**, então a regra
-disparou e mesmo assim o deslocamento foi zero. Sem isso, "não moveu" seria indistinguível de
-[...] — que foi, aliás, o defeito das duas primeiras versões da sonda.
-
-**Dois defeitos reais apareceram na investigação:**
-
-1. **Seis controles interativos tinham `:hover` e nenhum levantar** — camadas, busca,
-   segmentado, amostra de cor, escolha de forma e alerta. A implementação de 20/09 espalhou uma
-   linha de `transform` por cada regra que já existia, e essas seis ninguém lembrou.
-2. **A barra levantava sem sombra.** Dois pixels de subida quase não se leem; o que o olho
-   registra como "levantou" é a sombra aparecendo embaixo. O lobby fazia os dois, a barra só
-   metade — e por isso o mesmo gesto parecia mais fraco dentro do quadro.
-
-**Correção.** A lista de quem levanta passou a viver **num bloco só** no fim do `app.css`, e os
-dois valores cravados (`.qb-card`, `.qb-paper`) viraram o token. **13 controles conferidos,
-nenhum cravado.**
-
-**E a decisão de produto:** o app anima **por padrão, independente do Windows**, com um
-interruptor em **Configurações** no menu principal. A troca está assumida e não é neutra —
-o registro de engenharia diz o que se perde.
-
----
-
-## Fechados nesta rodada
-
+### M1 — Botões de negrito, itálico e sublinhado
+`feita` · 04/08/2026
