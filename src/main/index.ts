@@ -89,7 +89,8 @@ if (perfil && isDev && /^[a-z0-9-]{1,32}$/i.test(perfil)) {
  * primeira medicao usou UMA amostra de cada lado e deu "144 -> 77 fps", numero
  * que foi usado para argumentar CONTRA a adocao. Repetindo tres vezes, o 77 era
  * ruido -- a maquina estava ocupada com outras medicoes. E o mesmo erro que o
- * BUGS.md ja registrava duas vezes ([...]), cometido pela terceira. Nao meça isto com uma rodada.
+ * BUGS.md ja registrava duas vezes ("uma amostra de cada lado nao separa sinal
+ * de ruido"), cometido pela terceira. Nao meça isto com uma rodada.
  *
  * As duas abaixo sao a correcao do B8, e continuam.
  *
@@ -98,7 +99,7 @@ if (perfil && isDev && /^[a-z0-9-]{1,32}$/i.test(perfil)) {
  * "rasgada" ao redimensionar, e o rastro do quadro anterior ao voltar para o
  * menu. Em todos, uma regiao da janela ficava com os pixels de antes.
  *
- * A causa e a conta de REGIAO SUJA -- [...] -- saindo
+ * A causa e a conta de REGIAO SUJA -- "que pedaco da tela mudou" -- saindo
  * errada. O Chromium repinta e troca so o pedaco que mudou; quando essa conta
  * erra, o que ficou de fora mantem os pixels velhos, e a troca do pedaco
  * aparece como um flash. As duas chaves abaixo desligam a otimizacao: repinta e
@@ -175,7 +176,7 @@ const GPU_MODOS: Record<string, { nota: string; aplicar: () => void }> = {
     },
   },
   // Troca o tradutor de OpenGL: mesma placa, outro caminho ate ela. Separa
-  // "driver" de [...].
+  // "driver" de "caminho de apresentacao".
   angle: {
     nota: 'ANGLE por OpenGL em vez de Direct3D',
     aplicar: () => app.commandLine.appendSwitch('use-angle', 'gl'),
@@ -203,7 +204,7 @@ const GPU_MODOS: Record<string, { nota: string; aplicar: () => void }> = {
 
     Se o rastro esta na textura do CANVAS, o degrau `canvas` abaixo cura
     sozinho, e sem pagar a composicao da pagina inteira -- que e de onde vem a
-    lentidao que ele sentiu. Se o rastro esta na conta de dano do COMPOSITOR,
+    lentidao sentida no teste. Se o rastro esta na conta de dano do COMPOSITOR,
     `canvas` nao cura e so o `comp` cura, e ai a escolha volta a ser entre
     rastro e lentidao.
 
@@ -461,7 +462,7 @@ function createWindow(): void {
   // obriga o Chromium a ler o fundo num passe proprio e a criar superficies de
   // composicao extras, e essa e a familia de causa do B8 -- conta de regiao suja
   // errada, que deixa pixels velhos na tela. Com um comando da para responder
-  // [...] sem editar CSS nem adivinhar.
+  // "o desfoque esta envolvido?" sem editar CSS nem adivinhar.
   const desfoque = process.env['QB_BLUR'];
   if (desfoque === '0') query = `${query}${query ? '&' : '?'}blur=0`;
 
@@ -659,7 +660,7 @@ if (!gotLock) {
     definirIdioma(idiomaDoSistema(app.getPreferredSystemLanguages()));
     // QB_DIAG=1 imprime no terminal quais recursos graficos estao acelerados.
     // "O que esta em software" e metade da resposta em qualquer problema de
-    // composicao -- foi assim que se descartou [...] no B8.
+    // composicao -- foi assim que se descartou "a maquina nao tem GPU" no B8.
     //
     // O ATRASO e essencial e nao e folga: o Chromium levanta a GPU num processo
     // separado e so preenche esse relatorio quando ele responde. Perguntar no

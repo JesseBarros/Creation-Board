@@ -5,7 +5,10 @@
 /*
   TEMA CLARO: branco quebrado, borda definida.
 
-  Os valores saem de duas queixas, na mesma tarde de 20/09/2026: primeiro [...] e [...]; depois, sobre a PRIMEIRA correcao, [...].
+  Os valores saem de duas queixas, na mesma tarde de 20/09/2026: primeiro "e
+  quase uma lampada ligada nos meus olhos" e "as caixas ficam com menos
+  destaque"; depois, sobre a PRIMEIRA correcao, "continua quase uma flashbang,
+  nao consigo enxergar alguns icones".
 
   A primeira rodada mexeu pouco (fundo `#eef1f6` -> `#e7eaf0`, quadro branco ->
   `#f2f4f7`) e errou por timidez: 10% de luminancia nao se sente numa superficie
@@ -117,7 +120,7 @@
     A SOMBRA DO ESCURO E UMA SO, E DIRECIONAL -- o que havia antes nao era
     sombra, era contorno.
 
-    Relatado tres vezes como [...].
+    Relatado tres vezes como "uma bordinha escura que fica parecendo uma mancha".
     Perfil de pixels em volta da barra, com as duas camadas antigas
     (`0 2px 6px rgba(0,0,0,.3)` + `0 8px 24px rgba(0,0,0,.42)`):
 
@@ -222,7 +225,7 @@
     inset -2px 0 3px -2px rgba(255, 255, 255, 0.18),
     /* Direcional, como a do escuro liso: nada de camada curta contornando os
        quatro lados. Aqui o aro ja marca a borda, entao a sombra so precisa
-       dizer [...]. */
+       dizer "isto esta acima do quadro". */
     0 12px 28px rgba(0, 0, 0, 0.3);
   --chrome-sheen: linear-gradient(
     to bottom,
@@ -243,7 +246,8 @@
 
   `backdrop-filter` e a unica coisa na interface que obriga o Chromium a LER o
   que esta pintado atras do elemento, e para isso ele cria superficies de
-  composicao extras. E a familia de causa do B8. Com este interruptor, [...] vira uma execucao, e nao uma opiniao.
+  composicao extras. E a familia de causa do B8. Com este interruptor, "o
+  desfoque esta envolvido no rastro?" vira uma execucao, e nao uma opiniao.
 
   Vale a raiz inteira: barras, paineis, cards, busca. O que sobra e a cor
   translucida, entao a interface continua legivel -- so deixa de desfocar.
@@ -314,7 +318,7 @@
   ler o fundo num passe separado e a criar superficie de composicao propria.
   Era a familia de causa do B8 multiplicada por quarenta.
 
-  A decisao ja estava escrita no `app.css`, no bloco [...]:
+  A decisao ja estava escrita no `app.css`, no bloco "filtro dentro de filtro":
   a lamina desfoca, e os controles sao objetos POUSADOS nela. Aqui vale igual --
   o painel virou a lamina, o card virou a pastilha. Um `backdrop-filter` no
   lugar de N, e o card continua legivel porque a tinta dele nao mudou: ele
@@ -400,7 +404,7 @@
 
   As manchas acima existem para uma coisa so: dar ao `backdrop-filter` um
   gradiente para refratar. Uma foto faz isso com sobra. Mantidas por cima dela,
-  elas deixariam de ser [...] e passariam a ser um veu de
+  elas deixariam de ser "o que o vidro refrata" e passariam a ser um veu de
   azul, roxo e verde sujando a imagem que o usuario escolheu.
 
   Quem diz que ha foto e o `data-fundo` na raiz, posto pelo `App.#aplicarFundo`
