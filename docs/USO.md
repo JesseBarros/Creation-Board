@@ -64,12 +64,12 @@ Todos os atalhos estão dentro do app: tecla **`F1`**, ou o botão de teclado na
 | Trazer para a frente / enviar para trás | `Ctrl+Shift+]` / `Ctrl+Shift+[` |
 | Buscar no quadro | `Ctrl+F` · `Enter` próximo · `Shift+Enter` anterior · `Esc` fecha |
 | Mover o quadro | **Botão direito + arrastar** · botão do meio · dois dedos no trackpad · roda do mouse |
-| Zoom | `Ctrl` + roda · pinça · `Ctrl+0` em 100% · `Ctrl+1` ajusta à tela |
+| Zoom | `Ctrl` + roda · pinça · `Ctrl+0` tamanho real · `Ctrl+1` ajusta à tela |
 | Pontilhado · réguas · unidade | `G` · `R` · `U` (px ou cm) · pontilhado e réguas começam desligados, e o app lembra a escolha |
 | Painel de camadas | `C` |
 | Menu de contexto | Clique direito sem arrastar |
 
-O zoom vai de **1% a 6400%**.
+A barra mostra o zoom de **1% a 100%**, do mínimo ao máximo (64 vezes o tamanho real). O tamanho real aparece como 53%.
 
 ---
 

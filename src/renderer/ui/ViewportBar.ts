@@ -1,4 +1,4 @@
-import { MAX_ZOOM } from '../core/Camera';
+import { MAX_ZOOM, MIN_ZOOM } from '../core/Camera';
 import { icon, type IconName } from './icons';
 import { formatarData, t } from '@shared/i18n';
 
@@ -20,11 +20,26 @@ export interface ViewportBarActions {
 }
 
 /**
- * Os niveis do menu de zoom vao ate 100%, a escala real. O + da barra, o
- * Ctrl+roda e os atalhos continuam ate 6400% (07/10/2026, pedido: o + nao
- * fica bloqueado).
+ * A ESCALA QUE A BARRA MOSTRA (07/10/2026): de 1% a 100%, do zoom
+ * minimo ao maximo do app. Por baixo o zoom continua indo de 1% a 6400% do
+ * tamanho real; o que muda e o numero escrito. Ex.: 1% -> 1%, o tamanho real ->
+ * 53%, 6400% -> 100%.
+ *
+ * Logaritmica, e nao linear: o zoom anda por fatores (cada + multiplica por
+ * 1,25), e numa escala linear os primeiros 99 passos do mouse caberiam em
+ * menos de 2% do numero.
  */
-const PRESETS = [0.01, 0.05, 0.25, 0.5, 1];
+export function escalaDaBarra(zoom: number): number {
+  return 1 + (99 * Math.log(zoom / MIN_ZOOM)) / Math.log(MAX_ZOOM / MIN_ZOOM);
+}
+
+/** O inverso de `escalaDaBarra`: o zoom de verdade de um numero da barra. */
+export function zoomDaEscala(escala: number): number {
+  return MIN_ZOOM * Math.pow(MAX_ZOOM / MIN_ZOOM, (escala - 1) / 99);
+}
+
+/** Os niveis do menu, na escala da barra: 100% e o zoom maximo. */
+const NIVEIS = [1, 5, 25, 50, 100];
 
 /**
  * Barra flutuante inferior do quadro.
@@ -150,20 +165,20 @@ export class ViewportBar {
     this.#zoomLabel.type = 'button';
     this.#zoomLabel.className = 'qb-bar__btn qb-bar__zoom';
     this.#zoomLabel.dataset['action'] = 'zoom';
-    this.#zoomLabel.textContent = '100%';
+    this.#zoomLabel.textContent = `${Math.round(escalaDaBarra(1))}%`;
     this.#zoomLabel.title = t('barra.niveisDeZoom');
     this.#zoomLabel.addEventListener('click', () => this.#toggleMenu());
 
     this.#menu = document.createElement('div');
     this.#menu.className = 'qb-bar__menu';
     this.#menu.hidden = true;
-    for (const z of PRESETS) {
+    for (const nivel of NIVEIS) {
       const item = document.createElement('button');
       item.type = 'button';
       item.className = 'qb-bar__menu-item';
-      item.textContent = `${z * 100}%`;
+      item.textContent = `${nivel}%`;
       item.addEventListener('click', () => {
-        this.actions.zoomTo(z);
+        this.actions.zoomTo(zoomDaEscala(nivel));
         this.#menu.hidden = true;
       });
       this.#menu.append(item);
@@ -215,7 +230,7 @@ export class ViewportBar {
   }
 
   setZoom(zoom: number): void {
-    this.#zoomLabel.textContent = `${Math.round(zoom * 100)}%`;
+    this.#zoomLabel.textContent = `${Math.round(escalaDaBarra(zoom))}%`;
     // Apagado so no teto do app.
     this.#plusBtn.disabled = zoom >= MAX_ZOOM - 1e-9;
   }

@@ -27,7 +27,7 @@
 - A barra de tamanho do Texto vale para o texto em edição ou selecionado.
 - Barra única com ícones novos, e as opções da ferramenta num painel que sobe da barra.
 - **Régua** e **pontilhado** começam desligados, e o app lembra a sua escolha.
-- O menu de zoom tem níveis até 100%; o **+** e `Ctrl`+roda vão até 6400%.
+- A barra mostra o zoom de 1% a 100%, do mínimo ao máximo; o **+** e `Ctrl`+roda vão até o máximo.
 - Uma print colada já entra na busca (`Ctrl+F`).
 - Tema claro mais confortável para a vista.
 
@@ -92,7 +92,7 @@ Instale por cima. Os quadros continuam em `C:\Creation Board` e abrem normalment
 - The Text size slider applies to the text being edited or selected.
 - A single toolbar with new icons, and tool options in a panel that rises from the bar.
 - **Rulers** and the **dot grid** start off, and the app remembers your choice.
-- The zoom menu has levels up to 100%; the **+** button and `Ctrl`+wheel go up to 6400%.
+- The bar shows zoom from 1% to 100%, minimum to maximum; the **+** button and `Ctrl`+wheel go all the way.
 - A pasted screenshot is searchable (`Ctrl+F`) right away.
 - A light theme that's easier on the eyes.
 
