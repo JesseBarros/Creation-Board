@@ -125,7 +125,8 @@ const THEMES: Record<'light' | 'dark', RenderTheme> = {
     Medido na foto da janela, e nao no editor de cores -- a grade e o desfoque
     das barras mudam o que o olho recebe.
 
-    Isso resolve junto a segunda metade da queixa, [...]: os paineis continuam claros, entao agora eles SALTAM do fundo em
+    Isso resolve junto a segunda metade da queixa, "as caixas ficam com menos
+    destaque": os paineis continuam claros, entao agora eles SALTAM do fundo em
     vez de se dissolverem nele. Duas queixas, um numero.
 
     O arquivo exportado continua branco puro: ver `exportBg` em RenderTheme.
@@ -728,7 +729,7 @@ export class App {
     this.#measure();
     // E pinta AGORA, em vez de esperar o proximo frame de animacao: ate o rAF
     // chegar, as duas camadas ainda tem os pixels do quadro anterior, e e isso
-    // que aparecia como [...] ao alternar entre o lobby e
+    // que aparecia como "residuo do frame anterior" ao alternar entre o lobby e
     // o quadro. Um frame com o fundo do tema custa nada; o quadro de outra
     // pessoa por um instante custa confianca.
     this.#renderer.render();
@@ -1215,7 +1216,7 @@ export class App {
     //
     // Nada se perde: o nome do quadro e o ponto de sujeira continuam na barra
     // inferior, que e onde se olha enquanto se trabalha. A barra de titulo passa
-    // a responder so [...], que e a pergunta dela.
+    // a responder so "que aplicativo e este", que e a pergunta dela.
     document.title = 'Creation Board';
   }
 
@@ -1237,7 +1238,7 @@ export class App {
     if (escolha === 'descartar') {
       // Descartado e DESCARTADO: sem isto o quadro largado continuava marcado
       // como sujo na memoria, e ja no menu o X da janela era cancelado em
-      // silencio -- o app [...] (B36).
+      // silencio -- o app "nao fechava mais" (B36).
       this.#session = { ...this.#session, dirty: false };
       return true;
     }
@@ -1287,7 +1288,7 @@ export class App {
 
   /**
    * Todo o conteudo na tela, com o zoom que for preciso. E o que as medicoes e
-   * o `selftest` usam ([...]); o botao da barra e o Ctrl+1 usam
+   * o `selftest` usam ("tudo na tela"); o botao da barra e o Ctrl+1 usam
    * `centralizarConteudo`.
    */
   fitToContent(): void {
@@ -1628,7 +1629,7 @@ export class App {
    * rolar, parou de desenhar -- e sem frame novo nao ha troca de tela que
    * corrija o que ficou velho. O rastro so some quando outra coisa qualquer
    * pede um desenho, e o primeiro candidato costuma ser o autosave, ocioso por
-   * tres segundos. Bate com [...].
+   * tres segundos. Bate com "fica alguns segundos".
    *
    * Um frame a mais por gesto, e nao por tique: o temporizador e reiniciado a
    * cada movimento, entao rolar continuamente nao agenda nada. O custo e
@@ -1764,7 +1765,7 @@ export class App {
 
       if (choice.format === 'png') {
         // PNG honra a escala pedida, custe quantos arquivos custar (B13). O
-        // quadro de teste daria 1,6 gigapixel a 1x -- nao existe imagem unica para
+        // quadro real de estudo daria 1,6 gigapixel a 1x -- nao existe imagem unica para
         // isso, e reduzir calado era o defeito.
         const plan = planTiles(area, EXPORT_PADDING, choice.scale);
         const total = plan.cols * plan.rows;
@@ -2074,7 +2075,8 @@ export class App {
    * "Em vigor" tem duas fontes, e a ordem entre elas importa:
    *
    * 1. DIGITANDO, quem responde e o proprio Chromium, por `queryCommandState`.
-   *    E a unica fonte que sabe a diferenca entre [...] e [...] --
+   *    E a unica fonte que sabe a diferenca entre "o cursor esta dentro de um
+   *    trecho em negrito" e "o negrito foi ligado e ainda nao se digitou nada" --
    *    os dois significam negrito para a proxima letra, e nenhuma leitura do
    *    modelo enxergaria o segundo, porque ele ainda nao existe no documento.
    *
@@ -2108,7 +2110,7 @@ export class App {
       underline: ligado('underline'),
     });
     // So acende quando TODAS as caixas concordam; com alinhamentos diferentes
-    // nao ha resposta certa para [...].
+    // nao ha resposta certa para "qual esta ligado".
     const primeiro = caixas[0]?.align ?? null;
     this.#toolbar.setTextAlign(
       caixas.length > 0 && caixas.every((o) => o.align === primeiro) ? primeiro : null,
@@ -2126,7 +2128,8 @@ export class App {
   /**
    * Alinha as caixas de texto -- a esquerda, centralizado ou a direita.
    *
-   * Vale para a CAIXA inteira, e nao para um trecho: nao existe [...]. Por isso ele nao passa pelo `execCommand` como o B/I/U; ele
+   * Vale para a CAIXA inteira, e nao para um trecho: nao existe "meia linha
+   * centrada". Por isso ele nao passa pelo `execCommand` como o B/I/U; ele
    * patcha o objeto, mesmo com a caixa aberta para edicao.
    *
    * A ALTURA e remedida junto, e isso nao e detalhe: alinhar nao muda onde as
@@ -2186,7 +2189,7 @@ export class App {
    *   (ver `TextEditor.aplicarCor`). Se o foco esta no seletor de cor do
    *   Windows, a cor espera ele fechar (`#retomarEdicao`).
    * - **com caixas selecionadas**: a caixa inteira muda de cor, e a cor de
-   *   trecho que houvesse nela sai -- e o que [...] quer dizer
+   *   trecho que houvesse nela sai -- e o que "mudar a cor do texto" quer dizer
    *   para quem selecionou a caixa. Um passo de desfazer.
    * - sem nada disso: so a cor do proximo texto, como sempre foi.
    */
@@ -2264,7 +2267,7 @@ export class App {
    * Avisa quando a cor escolhida a mao nao vai aparecer como escolhida.
    *
    * A pergunta util nao e "ela some?" -- o adaptador de tema impede isso --, e
-   * sim [...]. Um cinza bem claro e resgatado por
+   * sim "ela vai ser exibida diferente?". Um cinza bem claro e resgatado por
    * inversao e aparece escuro; descobrir isso ao trocar de tema, dias depois,
    * seria pior que ler um aviso agora. Avisa e nao impede: a paleta e conferida
    * pela paleta do app, mas a escolha livre e de quem usa.
@@ -2878,7 +2881,8 @@ export class App {
    *   espera muda de 8 para 16 ms conforme a taxa do painel (ver o B9).
    *
    * Chamando o renderer direto, o que se mede e o trabalho, e so ele. Nao serve
-   * para medir fluidez percebida -- serve para responder [...], que e a pergunta de quem otimiza.
+   * para medir fluidez percebida -- serve para responder "desenhar isto custa
+   * quanto?", que e a pergunta de quem otimiza.
    */
   renderNowForMeasurement(): RenderStats {
     return this.#renderer.render();

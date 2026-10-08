@@ -25,20 +25,11 @@ editing `src/main/` or `src/preload/` restarts the main process.
 
 ```
 npm run typecheck       # strict TypeScript on both projects
-npm run selftest        # the self-test inside the real app (203 checks)
-npm run check:idiomas   # both languages: nothing hardcoded, accents, translations
-npm run check:imagens   # image metadata: the stripping and the repository images
-npm run check:pastas    # folder index, paths outside the folder, zip bombs
-npm run check:fundo     # validation of the chosen background image
-npm run check:graficos  # the graphics compatibility option: reading it and precedence
-npm run check:abertura  # the splash screen follows the theme, with no flash
-npm run check:privacidade # nothing personal in git: user names, emails, keys or private terms
-npm run check:colors    # board color contrast in both themes
-npm run check:dist      # the self-test running inside the packaged app
 ```
 
-Every new check is **verified in reverse**: break on purpose what it guards and confirm it
-catches it.
+The self-test, the performance measurements and the other automated checks are
+development tools and are kept out of the public repository. The app only loads them
+when the `src/renderer/dev/` folder exists; without it, it builds and runs the same.
 
 ### Development variables
 
@@ -46,14 +37,12 @@ They only work outside the installed app.
 
 | Variable | What it does |
 |---|---|
-| `QB_IDIOMA=pt-BR` or `en-US` | Forces the language without saving it (the self-test runs in pt-BR unless told otherwise) |
+| `QB_IDIOMA=pt-BR` or `en-US` | Forces the language without saving it |
 | `QB_THEME=light` or `dark` | Forces the theme without saving it |
 | `QB_ANIM=off`, `on` or `max` | Forces the animation level without saving it |
 | `QB_BOARDS=<folder>` | Uses another boards folder (to test without touching yours) |
 | `QB_PERFIL=<name>` | A separate Electron profile: runs with the app already open. **Always with `QB_BOARDS`** |
 | `QB_SHOT=<file.png>` | Captures the window a few seconds after it opens |
-| `QB_BENCH_LOBBY=1` | Measures the home screen's frame rate (idle, hover, drag, folder) |
-| `QB_BENCH_QUADRO=1` | Measures an open board's frame rate: dragging and fast Ctrl+wheel on the largest board in `QB_BOARDS` |
 | `QB_GPU=<mode>` | Switches the compositing mode, overriding the Settings option (see `src/main/index.ts`) |
 
 ## Building the installer

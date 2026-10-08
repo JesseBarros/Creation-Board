@@ -4,7 +4,7 @@
   Os dois escondem o que passa da borda, mas `hidden` cria um CONTAINER
   ROLAVEL -- ele so nao rola pela roda do mouse; rola por programa. E o
   navegador rola por programa o tempo todo: sempre que o cursor de texto se
-  mexe, ele leva o cursor [...].
+  mexe, ele leva o cursor "para dentro da vista".
 
   A caixa de texto em edicao e um elemento posicionado em (0,0) e levado ao
   lugar por `transform`, e area transformada CONTA como area rolavel. Editando
@@ -353,7 +353,7 @@
   Com a fila na vertical elas ficavam a direita dela, que era o unico lado livre.
   Na horizontal esse lugar nao existe mais, e o lugar certo passa a ser ACIMA do
   botao que as abriu -- e a direcao que o menu de zoom desta mesma barra ja usa,
-  e a leitura e a mesma: [...].
+  e a leitura e a mesma: "isto pertence ao que esta embaixo".
 */
 .qb-tools__options {
   position: absolute;
@@ -513,7 +513,7 @@
 
   Com o painel de vidro, um botao de fundo transparente nao tem forma -- e uma
   letra solta sobre o quadro. E sem forma DESLIGADA nao existe contraste com a
-  forma LIGADA, que era a queixa: [...].
+  forma LIGADA, que era a queixa: "nao estao como toggle visualmente falando".
   Um interruptor precisa dos dois estados desenhados, e nao so do aceso.
 */
 .qb-tools__format {
@@ -715,7 +715,7 @@
   display: flex;
   flex-direction: column;
   width: 258px;
-  /* Nunca mais alto que a janela: o quadro de teste tem centenas de objetos, e sem
+  /* Nunca mais alto que a janela: um quadro real tem centenas de objetos, e sem
      teto o painel sairia pela borda de baixo. */
   max-height: min(560px, calc(100% - 120px));
   background: color-mix(in srgb, var(--panel) 86%, transparent);
@@ -1005,7 +1005,8 @@
 }
 
 /*
-  CONFIGURACOES, redesenhada em 06/10/2026 ([...]). Tres secoes, cada uma num cartao; uma linha por opcao, com nome
+  CONFIGURACOES, redesenhada em 06/10/2026 ("essa interface de configuracao ta
+  bem porca"). Tres secoes, cada uma num cartao; uma linha por opcao, com nome
   e UMA frase a esquerda e o controle a direita. A largura cresceu de 400 para
   540 px: com os textos ao lado dos controles, e nao embaixo, a tela ficou mais
   baixa, e e a altura que pesava.
@@ -1179,7 +1180,7 @@
 
   Sem borda nem fundo de proposito: o que se ve enquanto se digita tem de ser o
   texto no quadro, e nao um formulario por cima dele. O unico cromo e o anel
-  tenue, que responde [...].
+  tenue, que responde "e aqui que a tecla vai cair".
 */
 .qb-text-edit {
   position: absolute;
@@ -1330,7 +1331,8 @@
   amostra de cor, escolha de forma e alerta.
 
   Espalhar assim contraria o proprio motivo de `--levanta` existir, que o
-  comentario dele no base.css declara: [...]. Um token num lugar so nao serve de nada se a
+  comentario dele no base.css declara: "mudar o quanto a interface levanta passa
+  a ser um numero, num lugar". Um token num lugar so nao serve de nada se a
   LISTA de quem o usa estiver espalhada por trinta regras.
 
   Entao a lista vive aqui. Quem for interativo entra nesta linha, e ganha o

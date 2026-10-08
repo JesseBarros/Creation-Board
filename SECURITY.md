@@ -3,7 +3,7 @@
 **O que este app faz para proteger os dados de quem o usa, e por quê.**
 
 Creation Board guarda material de estudo — resumos inteiros, às vezes anos de anotações. As
-decisões abaixo saíram desse ponto de partida: **o dado é do usuário, mora na máquina de teste, e
+decisões abaixo saíram desse ponto de partida: **o dado é do usuário, mora na máquina de quem usa, e
 não pode sumir nem vazar por descuido do programa.**
 
 Nenhuma delas é teórica. Cada uma está no código, e várias nasceram de um problema real
@@ -247,17 +247,16 @@ produção e um que o compilador recusa.
 
 ## Verificação
 
-O projeto não confia em revisão manual para dizer que continua de pé:
+O projeto não confia em revisão manual para dizer que continua de pé. Antes de cada
+versão rodam, além do `npm run typecheck` (tsc estrito nos dois projetos), verificações
+automatizadas de desenvolvimento, que ficam fora do repositório público:
 
-```
-npm run typecheck     # tsc estrito nos dois projetos
-npm run selftest      # 180 verificações no app REAL, com eventos de mouse e teclado
-npm run check:imagens # metadados: o corte, e toda imagem versionada no repositório
-npm run check:pastas  # inclui caminho fora da pasta de quadros e bomba de zip
-npm run check:fundo   # a validação da imagem de fundo escolhida pelo usuário
-npm run check:colors  # contraste de todas as cores nos dois temas
-npm run check:dist    # o MESMO auto-teste rodando dentro do .exe empacotado
-```
+- um auto-teste no app REAL, com eventos de mouse e teclado (180 verificações na auditoria);
+- metadados de imagem: o corte, e toda imagem versionada no repositório;
+- caminhos fora da pasta de quadros e bomba de zip;
+- a validação da imagem de fundo escolhida pelo usuário;
+- contraste de todas as cores nos dois temas;
+- o MESMO auto-teste rodando dentro do `.exe` empacotado.
 
 O último importa para segurança: o instalador entrega um artefato diferente do que o
 desenvolvedor roda — empacotado em `asar`, com caminhos absolutos diferentes e `isPackaged`
@@ -440,10 +439,10 @@ passa pelo mesmo `esc()` do texto.
 | `icon.ico`, fotos de fundo, capturas do README | — | Já estavam limpos |
 | um relatório interno de desenvolvimento | Caminho com o nome de usuário do Windows | Trocado; o relatório saiu do repositório na 1.1.0 |
 
-**Guarda permanente:** `npm run check:privacidade` reprova caminho de usuário,
-e-mail que não seja o anônimo do GitHub, formato de chave e termos privados (estes
-comparados por SHA-256, para o próprio script não os conter), nos arquivos e em
-todas as mensagens de commit. Roda antes de todo envio ao GitHub.
+**Guarda permanente:** uma verificação de privacidade, de desenvolvimento, reprova
+caminho de usuário, e-mail que não seja o anônimo do GitHub, formato de chave e termos
+privados, nos arquivos e em todas as mensagens de commit. Roda antes de todo envio ao
+GitHub.
 
 **Histórico do git limpo em 07/10/2026**: a versão do logo com o manifesto C2PA
 foi trocada pela limpa (mesmos pixels), e o nome de usuário do Windows saiu de todos
@@ -481,21 +480,15 @@ pessoal; fica registrado para ninguém achar que o arquivo ficou "sem rastro".
 
 ---
 
-### Como conferir
+### Como foi conferido
 
-```
-npm run typecheck
-npm run selftest       # inclui o bloco "seguranca"
-npm run check:imagens  # o corte de metadados + toda imagem versionada
-npm run check:pastas   # inclui os caminhos fora da pasta e a bomba de zip
-npm run check:fundo
-```
+As guardas abaixo são verificações de desenvolvimento, fora do repositório público.
 
 | Guarda | O que confere |
 |---|---|
-| `check:imagens` | JPEG, PNG, WebP e GIF montados com um "segredo" em cada metadado: nenhum sobrevive, os bytes da imagem saem idênticos, a orientação fica, limpar duas vezes é igual a limpar uma; **toda imagem versionada** e **toda imagem embutida** (`data:`) em arquivo de texto do repositório está limpa |
-| `check:pastas` | salvar, abrir e excluir recusam caminho fora, pasta vizinha, `..`, subpasta, relativo e extensão errada — nas funções **reais**, no disco; a bomba de zip é recusada e a lista continua de pé |
-| selftest, bloco `seguranca` | uma foto JPEG com GPS e orientação 6 entra no quadro sem o GPS e sem o nome, **desenhada igual pelo Chromium**; tipo forjado vira `image/jpeg`; toda permissão responde "negado"; a CSP só fala com ela mesma |
+| metadados de imagem | JPEG, PNG, WebP e GIF montados com um "segredo" em cada metadado: nenhum sobrevive, os bytes da imagem saem idênticos, a orientação fica, limpar duas vezes é igual a limpar uma; **toda imagem versionada** e **toda imagem embutida** (`data:`) em arquivo de texto do repositório está limpa |
+| pastas e caminhos | salvar, abrir e excluir recusam caminho fora, pasta vizinha, `..`, subpasta, relativo e extensão errada — nas funções **reais**, no disco; a bomba de zip é recusada e a lista continua de pé |
+| auto-teste, bloco de segurança | uma foto JPEG com GPS e orientação 6 entra no quadro sem o GPS e sem o nome, **desenhada igual pelo Chromium**; tipo forjado vira `image/jpeg`; toda permissão responde "negado"; a CSP só fala com ela mesma |
 
 Cada guarda nova foi **conferida ao contrário** — quebrando de propósito o que
 ela guarda e confirmando que acusa. Numa rodada só, sete quebras: o corte
@@ -506,7 +499,7 @@ o corte perdendo a orientação. **As sete acusaram**, cada uma na guarda certa.
 **A prova do bloqueio de rede**, que a CSP sozinha não dá: em desenvolvimento a
 CSP *permite* `http://localhost:*` (o Vite precisa), então um pedido a outra
 porta do localhost só pode ser barrado pelo processo principal. Um servidor na
-porta 5999 contando visitas recebeu **zero** durante o selftest, e o main
+porta 5999 contando visitas recebeu **zero** durante o auto-teste, e o main
 registrou `[blindagem] requisicao de rede bloqueada`. Com o bloqueio desligado
 de propósito, o mesmo servidor recebeu a visita.
 
@@ -515,8 +508,8 @@ de propósito, o mesmo servidor recebeu a visita.
 sem `localhost`, sem `ws:`. `npm audit --omit=dev`: **0 vulnerabilidades** nas
 dependências de produção.
 
-Resultado final: typecheck limpo, selftest **179/179**, `check:imagens`,
-`check:pastas` e `check:fundo` passando.
+Resultado final: typecheck limpo, auto-teste **179/179**, e as guardas de metadados,
+de pastas e de imagem de fundo passando.
 
 ---
 

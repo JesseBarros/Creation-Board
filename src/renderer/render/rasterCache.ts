@@ -46,7 +46,7 @@ export const RASTER_PAD = 2;
 /**
  * Teto de lado do bitmap. Acima disto nao vale a pena: a memoria cresce com o
  * quadrado do lado, e um objeto tao grande na tela ja aparece sozinho -- o caso
- * que o cache existe para resolver e [...].
+ * que o cache existe para resolver e "milhares deles ao mesmo tempo".
  */
 const MAX_SIDE = 2048;
 
@@ -105,7 +105,7 @@ export class RasterCache {
   /*
     O ZOOM SEM TEMPESTADE (B31, 30/09/2026).
 
-    Medido no quadro de teste (1.063 objetos, ~640 textos), com Ctrl+roda rapido
+    Medido num quadro real (1.063 objetos, ~640 textos), com Ctrl+roda rapido
     para cima e para baixo: 14.583 textos redesenhados em 4 s, 25 quadros por
     segundo e travadas de 150 ms. Cada vez que o zoom cruzava um degrau de
     escala, TODOS os textos visiveis eram redesenhados do zero no mesmo quadro --

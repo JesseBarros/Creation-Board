@@ -68,7 +68,7 @@ export class Renderer {
   /*
     ARRASTAR SEM REDESENHAR TUDO (B32, 30/09/2026).
 
-    Medido no quadro de teste (1.063 objetos), arrastando com o botao direito:
+    Medido num quadro real (1.063 objetos), arrastando com o botao direito:
     56-59 quadros por segundo, com 13 ms de desenho por quadro -- TODOS os objetos
     visiveis redesenhados a cada quadro, para mostrar o mesmo conteudo alguns
     pixels ao lado. Com a composicao pela CPU (o padrao, por causa do B18) o
@@ -402,7 +402,8 @@ export class Renderer {
       todos hoje nao resolve: o proximo pintor nasce sem saber da regra.
 
       Tres linhas aqui tornam a limpeza incondicional, e o selftest tem uma guarda
-      que acusa o vazamento se ele existir ([...]). Ver o B18 no BUGS.md.
+      que acusa o vazamento se ele existir ("nenhum pintor deixa alfa ou
+      composicao vazados"). Ver o B18 no BUGS.md.
     */
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalAlpha = 1;

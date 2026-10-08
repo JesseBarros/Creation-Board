@@ -106,6 +106,11 @@ instalador na Fase 0 e a Fase 9, e nenhuma foi conferida do lado de lá.
 Ele precisa de `npm run dist:dir` antes (é o executável que ele roda), e resolve duas
 armadilhas que custaram tempo em 12/08/2026:
 
+1. **`ELECTRON_RUN_AS_NODE=1`** — o terminal do VS Code exporta essa variável, e com ela o
+   binário do Electron roda como **Node puro**: sai em um segundo, sem janela e sem uma
+   linha de saída. Parece um executável quebrado, e não é.
+2. Um app de subsistema gráfico no Windows só entrega `stdout` se ele estiver
+   **redirecionado** — daí `stdio: 'pipe'` e não `'inherit'`.
 
 ### A verificação de arrastar: como ela parou de medir a máquina
 
@@ -119,7 +124,7 @@ com o Discord e o Chrome ligados — sempre sem uma linha de diferença no códi
 | | |
 |---|---|
 | *"o código regrediu?"* | relativa — a única que um teste pode responder numa máquina compartilhada |
-| [...] | absoluta — depende de quem mais está aberto no Windows naquele minuto |
+| *"esta máquina dá 30 fps?"* | absoluta — depende de quem mais está aberto no Windows naquele minuto |
 
 Ela afirmava a segunda e era lida como a primeira. **Corrigida em 14/08/2026, com duas
 mudanças de método:**
@@ -157,7 +162,8 @@ seguidas parecem sinal. Um A/B de **uma** execução contra **uma** não desfaz 
 duas estiverem sob carga, ele confirma a conclusão errada com ar de rigor. Repetir e comparar
 faixas é o que separa.
 
-⚠️ **A outra verificação que ainda mede a máquina** é da Fase 6: *[...]*, teto de
+⚠️ **A outra verificação que ainda mede a máquina** é da Fase 6: **"buscar em 10.000 objetos
+custa menos que um frame"**, teto de
 16 ms. Ela é o que sustenta não haver índice invertido, e a linha do resultado traz a
 repartição — em 04/08/2026: **4,0 ms por tecla, dos quais 0,9 ms é varrer tudo**. Se um
 dia ela reprovar, olhe primeiro a varredura pura: se ela continuar perto de 1 ms, o
@@ -196,7 +202,7 @@ regressão. **O texto é o caso com história** (leia antes de suspeitar de bug)
 Para conferir os dois temas, `QB_THEME=light` ou `QB_THEME=dark` manda no tema da execução
 **sem gravar a preferência**. Ele soma-se aos outros modos em vez de substituí-los
 (`QB_THEME=light QB_SHOT=... npm run selftest` é o que se usa), e existe porque antes disto
-[...] dependia do que estava no `localStorage` da máquina — ou seja, não
+"conferir o tema claro" dependia do que estava no `localStorage` da máquina — ou seja, não
 era repetível.
 
 Para ver renderização, `QB_SHOT=<arquivo.png> npm run selftest` fotografa **só a janela
@@ -226,6 +232,9 @@ o `printToPDF` não passam pelo auto-teste:
 $env:QB_EXPORT = "$env:TEMP\qb-export"; npm run dev
 ```
 
+Grava `.png`, `.svg`, `.pdf` e ainda `-svg.png`, que é **o SVG relido pelo navegador**:
+se ele não carregar, o arquivo que geramos não serve. Referência em 04/08/2026, com 120
+objetos: PNG 6432×6130 em ~700ms, SVG 75 KB em 4ms, PDF em ~800ms.
 
 **Rodar sempre por `npm run dev`.** O instalador (`npm run dist`) só quando você pedir,
 com tudo estável.
@@ -304,7 +313,8 @@ explicam por que o código é do jeito que é.
 texto, 3.456 palavras**, zero erros. Da segunda abertura em diante, zero.
 
 **E ela puxou uma funcionalidade que não estava no plano:** com o texto das imagens
-indexado, a pergunta deixou de ser [...] e virou [...]. Daí a **busca da biblioteca**, no menu principal — 68 ms para
+indexado, a pergunta deixou de ser "onde está isto neste quadro" e virou "em qual dos meus
+quadros eu escrevi sobre isto". Daí a **busca da biblioteca**, no menu principal — 68 ms para
 ler os três quadros, com um motor de busca só compartilhado com o `Ctrl+F` (`findIn`).
 
 <details>
@@ -317,6 +327,17 @@ de outros aplicativos, e mover/desenhar/exportar vinham antes de ler.
 **O que ela precisa responder antes de qualquer linha de código, e nenhuma tem resposta
 hoje:**
 
+1. **De onde vem o motor de OCR.** Este app é **local e offline** — é a proposta dele desde
+   o começo, e está escrita no `wbdFile.ts`: *"todo quadro sincronizar para a nuvem é o
+   oposto do que o app se propõe a ser"*. Um serviço de nuvem contradiz isso. Um motor
+   embutido (Tesseract em WebAssembly, por exemplo) custa dezenas de MB no instalador, que
+   hoje tem 142 MB de Electron. **É a decisão que define a fase.**
+2. **O que vira o texto reconhecido.** Um `PlainText` novo ao lado da imagem? Um campo na
+   própria imagem, invisível, que só a busca do `Ctrl+F` enxerga? Os dois têm sentido, e
+   respondem a necessidades diferentes: o primeiro é editar, o segundo é achar.
+3. **Se entra na importação ou só sob demanda.** Um resumo de estudo real tem **36 imagens** só no
+   quadro de referência; reconhecer todas na importação atrasaria a abertura de um arquivo que hoje abre
+   em 642 ms.
 
 **O que já está pronto e a fase pode usar:** `AssetStore` guarda os bitmaps, `PatchObjects` é
 o comando genérico de conteúdo (foi ele que absorveu o recorte na Fase 7), a busca já varre
@@ -468,11 +489,16 @@ caso. Depois da separação, o mesmo render custa **1,3–1,5 ms**.
 
 A checagem que guarda isso é **binária de propósito** — ela pergunta se o canvas de desenho
 está acelerado, e não quantos ms ele leva. Um teto em ms passaria numa máquina e falharia na
-seguinte; a pergunta [...] tem a mesma resposta em qualquer PC.
+seguinte; a pergunta "a bandeira está no canvas certo?" tem a mesma resposta em qualquer PC.
 
 O resto do caso — a fileira de bolas, que era um defeito **separado**, de continuidade de
 rastro — está no [B24](BUGS.md#b24--a-borracha-apagava-em-bolas-e-travava-o-aplicativo).
 
+**E havia um terceiro, que só apareceu depois de os dois primeiros saírem do caminho**
+([B25](BUGS.md#b25--a-borracha-travava-o-app-com-zoom-alto)): o canvas intermediário era
+dimensionado pelo objeto **inteiro**, e não pelo pedaço dele que está na tela. Com zoom alto
+isso estoura o teto de pixels, e o teto — que existe para evitar estouro de memória — passava a
+**garantir** que o pior caso fosse pago a cada frame.
 
 **A regra que fica, e ela é mais geral que a borracha:** superfície intermediária se dimensiona
 pelo que vai ser **visto**, não pelo que existe. Quando o custo de desenhar acompanha o tamanho
@@ -514,7 +540,8 @@ vez de ignorá-lo: atende os dois casos e não custa nada além de uma linha na 
 
 ### Um token num lugar só não serve se a LISTA estiver espalhada
 
-O `--levanta` nasceu com um objetivo declarado no próprio comentário: [...]. E o número estava mesmo num lugar.
+O `--levanta` nasceu com um objetivo declarado no próprio comentário: *"mudar o quanto a
+interface levanta passa a ser um número, num lugar"*. E o número estava mesmo num lugar.
 
 Só que a **lista de quem usa o número** foi espalhada por trinta regras `:hover`, uma linha de
 `transform` de cada vez. O resultado, medido em 21/09: **seis controles interativos com hover
@@ -544,7 +571,8 @@ Medido numa janela à parte: o palco fica com `scrollTop` 0 depois de rolar
 
 **A foto substitui as manchas ambiente, e não soma com elas.** As três manchas
 radiais existem para uma coisa só — dar ao `backdrop-filter` um gradiente para
-refratar. Uma foto faz isso com sobra. Mantidas por cima, deixariam de ser [...] e passariam a ser um véu de azul, roxo e verde sujando a
+refratar. Uma foto faz isso com sobra. Mantidas por cima, deixariam de ser "o
+que o vidro refrata" e passariam a ser um véu de azul, roxo e verde sujando a
 imagem que o usuário escolheu.
 
 **O véu virou token.** Os 22% de tinta do lobby estavam cravados na regra. Sobre
@@ -580,7 +608,8 @@ Três decisões de contorno que valem além deste caso:
 
 ### O custo em performance foi medido
 
-A pergunta era direta: [...] `QB_BENCH=4000`, três execuções, tema escuro:
+A pergunta era direta: *"todas essas alterações vão mexer na performance para um PC mais
+fraco?"* `QB_BENCH=4000`, três execuções, tema escuro:
 
 | Fase | fps | frame | **render** |
 |---|---|---|---|
@@ -703,7 +732,7 @@ foi uma por outra — o painel entrou na lista de vidro e **o `.qb-card` saiu**.
 Antes, um lobby com quarenta quadros eram quarenta `backdrop-filter`, cada um
 obrigando a uma leitura separada do fundo. Agora é **um**. A área cresceu e o
 número de passes despencou, e é o número de passes que pesa. A decisão já estava
-escrita no `app.css` sob [...]: a lâmina desfoca, os
+escrita no `app.css` sob "filtro dentro de filtro": a lâmina desfoca, os
 controles são objetos pousados nela.
 
 > **A ressalva honesta é a mesma do B8:** três execuções numa máquina não
@@ -777,6 +806,9 @@ parecia ótimo justamente porque não havia nada sendo desenhado. Hoje há uma
 guarda no selftest que lê o `background-image` calculado com o vidro pronto e
 exige a tinta **e** a foto.
 
+**O que isto ensina:** uma medição vale para a configuração em que foi feita.
+Quando o B18 trocou a composição do app inteiro, toda medição de interface feita
+antes dele virou suspeita — e só a do quadro foi refeita.
 
 ### A segunda rodada: ~100 → 144 q/s, e o atraso que a contagem não via (30/09/2026)
 
@@ -894,9 +926,16 @@ o que elas **não** fazem, e por quê:
    **O que fica no lugar:** o app continua **local e offline**, e mover quadro é assunto de
    importar/exportar arquivo.
 
+1. **A pasta de quadros é `C:\Creation Board`, e a lista de nomes antigos é o que a torna
+   trocável.** Ela se chamou `Resumos-quadrobranco` até 14/08/2026 — nome provisório do
+   projeto, e a única parte dele que aparecia no disco de quem instalasse o app. Trocar o
+   nome sem mais nada faria os quadros salvos sumirem do lobby, e foi por isso que o nome
+   antigo sobreviveu tanto. O que destravou a troca foi `LEGACY_DIRS` em `wbdFile.ts`: a
+   lista de nomes que a pasta já teve, percorrida a cada abertura. **Ela cresce por
+   acréscimo no começo, nunca por substituição** — apagar uma entrada dali é apagar o
+   caminho de volta dos quadros de quem pulou uma versão.
 
-
-<details>
+   <details>
    <summary>A decisão anterior, que esta substitui</summary>
 
    **A pasta de quadros continua `C:\Resumos-quadrobranco`** mesmo com o app renomeado
@@ -912,7 +951,7 @@ o que elas **não** fazem, e por quê:
    texto fossem centradas; o oráculo mostrou `align topLeft`). Existe um oráculo
    (`src/renderer/dev/layoutOracle.ts`) que mede no próprio Chromium — usar ele. Ele
    agora também relata **fonte, peso, entrelinha e número de linhas computados**, que é o
-   que transformou [...] em [...].
+   que transformou "a caixa não fecha" em "a caixa não fecha por causa de emoji".
 4. **O mesmo vale para desempenho.** Na Fase 3, o palpite natural sobre o gargalo do
    arraste em massa (recalcular o AABB dos traços) era o menor dos custos: 3,1 ms de
    27,3. O real era o índice espacial, 20,4 ms. Medir primeiro, otimizar depois.
@@ -936,7 +975,7 @@ o que elas **não** fazem, e por quê:
    estaria errado: no tema escuro a mancha apareceria clara, o marca-texto por baixo
    continuaria visível e a miniatura sairia com retângulos brancos. Um objeto que ficou
    sem nenhum pixel visível sai do quadro; quem decide isso é uma rasterização de 64px, e
-   não a geometria, porque `PathObject` não tem [...] para conferir.
+   não a geometria, porque `PathObject` não tem "pontos do traço" para conferir.
 7. **A espessura do lápis nunca passa de 100% da largura nominal.** O AABB é calculado
    inflando a linha de centro em `width / 2`; um pico maior desenharia tinta fora do
    retângulo do objeto, e o culling a cortaria na borda da tela.
@@ -1069,7 +1108,7 @@ mantém desenhar barato num quadro cheio.
 |---|---|
 | Imagens de fundo | **Fotografias do Unsplash**, a 2560 de largura (Sean Oulashin e Felix Wegerer). Entram sob a **Licença Unsplash**, e não sob a MIT — a procedência está por arquivo no `assets/fundos/LEIA-ME.md`. Trocar é substituir o arquivo mantendo o nome; nenhuma linha de código muda. |
 | Pastas | **Índice no app**, não subpastas reais no disco. Arrastar nunca move arquivo. Clicar numa pasta abre uma **janela** sobre a tela principal (desde 24/09 — antes trocava a tela). Dentro dela, o X **só tira da pasta**. |
-| Fantasma ao dar zoom (B18) | Contornado por **composição pela CPU**, que foi o padrão de 21/09 a 06/10. É contorno, não causa encontrada — e em 30/09 ficou confirmado que o defeito é **de uma máquina só**: o build com GPU e sem correções não mostrou nada em dois outros computadores. **Desde 06/10 a GPU é o padrão** (arrastar 56 → 144 q/s, zoom rápido 40 → 77 q/s no quadro de teste), e o contorno virou a opção **"Compatibilidade gráfica"** de Configurações (`src/main/graficos.ts`), que vale ao reabrir e que se liga no PC de teste. **Custo no menu, achado em 24/09:** o desfoque ao vivo do painel ia a 14 q/s — resolvido com o vidro pronto, sem mexer no B18. |
+| Fantasma ao dar zoom (B18) | Contornado por **composição pela CPU**, que foi o padrão de 21/09 a 06/10. É contorno, não causa encontrada — e em 30/09 ficou confirmado que o defeito é **de uma máquina só**: o build com GPU e sem correções não mostrou nada em dois outros computadores. **Desde 06/10 a GPU é o padrão** (arrastar 56 → 144 q/s, zoom rápido 40 → 77 q/s no quadro de teste), e o contorno virou a opção **"Compatibilidade gráfica"** de Configurações (`src/main/graficos.ts`), que vale ao reabrir e que se liga só no PC com o defeito. **Custo no menu, achado em 24/09:** o desfoque ao vivo do painel ia a 14 q/s — resolvido com o vidro pronto, sem mexer no B18. |
 | "Restaurar padrão" | Volta para a foto que vem com o app, não para o fundo sem imagem. |
 | Movimento | O app anima por padrão, independente do Windows. Toda animação nova tem de passar por `[data-anim='off']`. |
 
@@ -1124,7 +1163,7 @@ mantém desenhar barato num quadro cheio.
    Primeiro apareceu que `color-mix(in srgb, …)` não volta como `rgba(r,g,b,a)`
    e sim como `color(srgb r g b / a)`, com o alfa depois de uma barra. Escrevi um
    `alfaDeCor()` que entendia os dois formatos e conclui que ler a cor pintada
-   era o jeito certo, porque [...].
+   era o jeito certo, porque "compara o que o olho vê".
 
    Horas depois a mesma verificação passou a reprovar devolvendo o **mesmo valor
    nos quatro estados**, serializado em **`oklab(...)`** — que não existe em
@@ -1140,7 +1179,7 @@ mantém desenhar barato num quadro cheio.
 
    Corolário de diagnóstico: quando uma verificação de CSS reprovar, inclua na
    mensagem **o que os atributos da raiz realmente tinham** na hora da leitura.
-   Sem isso não dá para distinguir [...] de [...],
+   Sem isso não dá para distinguir "o CSS está errado" de "o atributo não pegou",
    e as duas mandam quem investiga para arquivos diferentes.
 
 **Do fluxo de trabalho** (as duas de 22/09/2026):
@@ -1162,7 +1201,7 @@ mantém desenhar barato num quadro cheio.
     `document.querySelector('.qb-overlay')` acha **esse**, clica no lugar
     errado e deixa o diálogo de verdade aberto. Anotar os overlays que já
     existiam antes e só tocar nos novos (ver o bloco de pastas do selftest).
-    Pelo mesmo motivo, **nunca** fechar modal [...].
+    Pelo mesmo motivo, **nunca** fechar modal "enquanto existir overlay".
 
 15. **Para conferir que algo NÃO aconteceu, dê tempo para acontecer.** A
     guarda do Escape no arrasto lia o índice logo depois do `pointerup` e,
@@ -1171,7 +1210,7 @@ mantém desenhar barato num quadro cheio.
     Esperar a fila assentar antes de ler o "nada mudou".
 
 16. **Uma medição vale para a configuração em que foi feita.** A do painel de
-    vidro (21/09) dizia [...] — com a composição pela GPU. O B18
+    vidro (21/09) dizia "não custa nada" — com a composição pela GPU. O B18
     trocou a composição do app inteiro no dia seguinte, e só a medição do
     quadro foi refeita. Ao mudar `QB_GPU`, flags do Chromium ou versão do
     Electron, **toda medição de interface anterior vira suspeita**.
@@ -1188,6 +1227,13 @@ mantém desenhar barato num quadro cheio.
 
 **Do projeto:**
 
+7. `npm run check:colors` **não lê CSS nenhum** — só a paleta do canvas. Não
+   serve para auditar contraste da interface.
+8. O selftest roda com `#enterBoard()`, então **o lobby não está montado**.
+   `goToLobby()` está proibido dentro dele: passa por `#confirmDiscard()`, que
+   com quadro sujo abre modal e pendura. Testar o lobby por CSSOM, por forma do
+   DOM no lobby escondido, ou montando um `new Lobby(...)` sintético fora da
+   tela e removendo em `finally`.
 
 ---
 

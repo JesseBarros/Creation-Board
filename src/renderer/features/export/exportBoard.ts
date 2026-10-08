@@ -47,7 +47,8 @@ const MAX_SIDE = 16_384;
  * quadro grande, porque o teto de pixels engolia a escolha calado. Um controle
  * que promete e nao cumpre e pior que um controle ausente.
  *
- * A saida registrada no BUGS.md era [...]. **Ela nao e alcancavel, e vale dizer por que:** o quadro de teste tem
+ * A saida registrada no BUGS.md era "renderizar em pedacos e juntar no arquivo
+ * final". **Ela nao e alcancavel, e vale dizer por que:** um quadro real de estudo tem
  * 82.967 x 19.274 unidades, o que da 1,6 GIGApixel a 1x -- 6,4 GB de pixel cru.
  * Nao existe PNG unico para isso, com ou sem ladrilhos, e nenhum visualizador
  * abriria. O teto de 64 MP nao era o limite que apertava; a aritmetica era.
