@@ -4,6 +4,8 @@
 
 **Português** · [English](README.en.md)
 
+**Quadro branco infinito para estudar, que roda inteiro no seu computador.** Sem login, sem
+nuvem, sem servidor: os quadros ficam no seu disco e não saem dele.
 
 Ele nasceu de um problema concreto: resumos presos dentro de outros aplicativos, difíceis de
 reorganizar e impossíveis de pesquisar direito. Por isso a **importação vem primeiro**: você
@@ -54,7 +56,7 @@ de texto usa o motor do Windows, sem baixar nem enviar nada.
 > Get-FileHash "Creation Board-Setup-1.1.0.exe" -Algorithm SHA256
 > ```
 >
-> O resultado tem de ser `0016248C775931E2A2B9A672F1CD4C8A3C25F84E1A79BD9F25F676E46C9F56E9`.
+> O resultado tem de ser `817A7BBDD3D778C32CCA9198127229F35DD837C3EC907C02D40B02267CA510F5`.
 
 **Vindo da 1.0.0?** Instale por cima. Seus quadros continuam em `C:\Creation Board` e abrem
 normalmente. Desinstalar nunca apaga quadros.
