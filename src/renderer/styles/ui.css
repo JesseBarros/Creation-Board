@@ -439,6 +439,9 @@
 .qb-lobby__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  /* Todas as fileiras com a altura da mais alta: o "+" que cai sozinho numa
+     fileira nova fica do tamanho de um quadro, e nao uma faixa mais baixa. */
+  grid-auto-rows: 1fr;
   gap: 18px;
 }
 
