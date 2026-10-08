@@ -33,7 +33,7 @@ import { searchBoard, type SearchHit } from './features/search/search';
 import { invalidateLibraryIndex } from './features/search/libraryQuery';
 import { paintSearchHighlight } from './render/SearchHighlight';
 import { ToolBar } from './ui/ToolBar';
-import { ViewportBar, ZOOM_MAXIMO_DA_BARRA } from './ui/ViewportBar';
+import { ViewportBar } from './ui/ViewportBar';
 import { ContextMenu, type MenuEntry } from './ui/ContextMenu';
 import { Lobby } from './ui/Lobby';
 import { ShortcutsModal } from './ui/ShortcutsModal';
@@ -309,12 +309,8 @@ export class App {
     this.#boardView.append(this.#progress);
 
     this.#bar = new ViewportBar({
-      // O + da barra para em 100% (ver ZOOM_MAXIMO_DA_BARRA); o Ctrl+= do
-      // teclado, mais abaixo, segue sem esse teto.
-      zoomIn: () => {
-        const z = this.camera.zoom;
-        if (z < ZOOM_MAXIMO_DA_BARRA) this.#setZoomCenter(Math.min(z * 1.25, ZOOM_MAXIMO_DA_BARRA));
-      },
+      // O + vai ate o teto do app (6400%); o menu de niveis e que para em 100%.
+      zoomIn: () => this.#zoomCenter(1.25),
       zoomOut: () => this.#zoomCenter(1 / 1.25),
       zoomTo: (z) => this.#setZoomCenter(z),
       fitToContent: () => this.fitToContent(),

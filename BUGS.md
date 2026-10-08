@@ -2,6 +2,8 @@
 
 **O que deu errado no app, a causa e a correção.**
 
+Cada item tem um id que não é reaproveitado: `B` para bug, `M` para melhoria. É por ele que o
+código, os commits e as verificações do `selftest` se referem ao problema.
 
 ## Abertos
 
@@ -24,6 +26,18 @@
 ---
 
 ## Bugs
+
+### B39 — Não dava para selecionar texto arrastando o mouse na caixa aberta
+`corrigido` · 07/10/2026
+
+**Problema.** Com uma caixa de texto aberta, arrastar o mouse não selecionava um trecho, e a
+caixa parecia perder o texto. Sem seleção, a cor da paleta não tinha onde ser aplicada.
+
+**Causa.** O clique dentro da caixa era repassado à ferramenta de texto: ela cancelava a
+seleção nativa, gravava a caixa e abria outra, vazia, por cima.
+
+**Correção.** O clique dentro da caixa aberta fica com a caixa. Verificado no `selftest` e
+com mouse de verdade pela porta de depuração.
 
 ### B38 — Com uma pasta aberta, os quadros tremiam todos juntos
 `corrigido` · 07/10/2026
@@ -232,7 +246,7 @@ A miniatura é gravada no tema em uso ao salvar. Fica assim: não há diferença
 ### B15 — Uma verificação do selftest falhou uma vez e não reproduziu
 `aberto` · 12/08/2026
 
-A verificação [...] falhou uma vez,
+A verificação *"arrastar um arquivo insere a imagem onde ela foi solta"* falhou uma vez,
 com a máquina sob carga. Não reproduziu nas execuções seguintes.
 
 ### B14 — Texto por cima de texto no SVG exportado

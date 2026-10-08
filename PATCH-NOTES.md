@@ -27,7 +27,7 @@
 - A barra de tamanho do Texto vale para o texto em edição ou selecionado.
 - Barra única com ícones novos, e as opções da ferramenta num painel que sobe da barra.
 - **Régua** e **pontilhado** começam desligados, e o app lembra a sua escolha.
-- Os botões de zoom vão até 100%; `Ctrl`+roda vai até 6400%.
+- O menu de zoom tem níveis até 100%; o **+** e `Ctrl`+roda vão até 6400%.
 - Uma print colada já entra na busca (`Ctrl+F`).
 - Tema claro mais confortável para a vista.
 
@@ -38,6 +38,7 @@
 
 ## Correções
 
+- Arrastar o mouse dentro de uma caixa de texto aberta não selecionava o texto.
 - O X do Windows não fechava o app depois de sair de um quadro sem salvar.
 - Fechar o app com um quadro não salvo agora avisa e oferece salvar.
 - Quadros e botões tremiam com o mouse parado na borda deles.
@@ -91,7 +92,7 @@ Instale por cima. Os quadros continuam em `C:\Creation Board` e abrem normalment
 - The Text size slider applies to the text being edited or selected.
 - A single toolbar with new icons, and tool options in a panel that rises from the bar.
 - **Rulers** and the **dot grid** start off, and the app remembers your choice.
-- The zoom buttons go up to 100%; `Ctrl`+wheel goes up to 6400%.
+- The zoom menu has levels up to 100%; the **+** button and `Ctrl`+wheel go up to 6400%.
 - A pasted screenshot is searchable (`Ctrl+F`) right away.
 - A light theme that's easier on the eyes.
 
@@ -102,6 +103,7 @@ Instale por cima. Os quadros continuam em `C:\Creation Board` e abrem normalment
 
 ## Fixes
 
+- Dragging the mouse inside an open text box didn't select the text.
 - The Windows X button didn't close the app after leaving a board without saving.
 - Closing the app with an unsaved board now warns and offers to save.
 - Boards and buttons shook with the mouse resting on their edge.

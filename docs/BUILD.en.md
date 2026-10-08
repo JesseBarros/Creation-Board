@@ -25,7 +25,7 @@ editing `src/main/` or `src/preload/` restarts the main process.
 
 ```
 npm run typecheck       # strict TypeScript on both projects
-npm run selftest        # the self-test inside the real app (201 checks)
+npm run selftest        # the self-test inside the real app (202 checks)
 npm run check:idiomas   # both languages: nothing hardcoded, accents, translations
 npm run check:imagens   # image metadata: the stripping and the repository images
 npm run check:pastas    # folder index, paths outside the folder, zip bombs

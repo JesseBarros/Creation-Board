@@ -1,3 +1,4 @@
+import { MAX_ZOOM } from '../core/Camera';
 import { icon, type IconName } from './icons';
 import { formatarData, t } from '@shared/i18n';
 
@@ -19,12 +20,10 @@ export interface ViewportBarActions {
 }
 
 /**
- * O zoom da BARRA vai ate 100% (06/10/2026): o + e os niveis do
- * menu servem para voltar a escala real, e nao para mergulhar. Ctrl+roda e os
- * atalhos de teclado continuam indo de 1% a 6400% -- o padrao do app.
+ * Os niveis do menu de zoom vao ate 100%, a escala real. O + da barra, o
+ * Ctrl+roda e os atalhos continuam ate 6400% (07/10/2026, pedido: o + nao
+ * fica bloqueado).
  */
-export const ZOOM_MAXIMO_DA_BARRA = 1;
-
 const PRESETS = [0.01, 0.05, 0.25, 0.5, 1];
 
 /**
@@ -217,8 +216,8 @@ export class ViewportBar {
 
   setZoom(zoom: number): void {
     this.#zoomLabel.textContent = `${Math.round(zoom * 100)}%`;
-    // Apagado no teto da barra -- e acima dele, quando a roda levou mais longe.
-    this.#plusBtn.disabled = zoom >= ZOOM_MAXIMO_DA_BARRA - 1e-9;
+    // Apagado so no teto do app.
+    this.#plusBtn.disabled = zoom >= MAX_ZOOM - 1e-9;
   }
 
   setGridEnabled(on: boolean): void {

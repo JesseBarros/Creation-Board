@@ -122,6 +122,11 @@ export class ToolManager {
 
     on<PointerEvent>(this.host, 'pointerdown', (e) => {
       if (e.button !== 0 || this.#captured !== null) return;
+      // Dentro da caixa de texto aberta o clique e DELA (07/10/2026, relato
+      // dele: "nao da pra selecionar usando mouse 1 + arrasto"). Repassado a
+      // ferramenta, o `preventDefault` matava a selecao nativa e a ferramenta
+      // de texto fechava a caixa e abria outra, vazia, por cima.
+      if (e.target instanceof Element && e.target.closest('[contenteditable="true"]')) return;
       e.preventDefault();
       this.remeasure();
       this.#captured = e.pointerId;
