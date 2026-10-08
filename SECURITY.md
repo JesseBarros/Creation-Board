@@ -312,7 +312,7 @@ colada) **fazer o app agir contra quem o usa**.
 | 5 | CSP de desenvolvimento no app instalado (`ws:` para qualquer servidor); nenhum bloqueio de rede nem de permissões | Média | **Corrigido** |
 | 6 | **Bomba de zip**: descompactação sem teto em três lugares | Média | **Corrigido** |
 | 7 | Tipo da imagem (`mime`) sem escape no SVG exportado | Média | **Corrigido** |
-| 8 | Metadados nas imagens do repositório (manifesto C2PA da OpenAI no logo); nome de usuário do Windows num `.md` | Baixa | **Corrigido** na árvore; **no histórico, decisão pendente** |
+| 8 | Metadados nas imagens do repositório (manifesto C2PA da OpenAI no logo); nome de usuário do Windows num `.md` | Baixa | **Corrigido** na árvore e no histórico |
 | 9 | **Electron 33 fora de suporte**; fuses do Electron não configurados | Média | **Decisão pendente** |
 | 10 | 22 alertas do `npm audit` nas **ferramentas de build** (nenhum no que vai para o instalador) | Baixa | **Decisão pendente** |
 
@@ -440,9 +440,10 @@ passa pelo mesmo `esc()` do texto.
 | `icon.ico`, fotos de fundo, capturas do README | — | Já estavam limpos |
 | um relatório interno de desenvolvimento | Caminho com o nome de usuário do Windows | Trocado; o relatório saiu do repositório na 1.1.0 |
 
-**Continua no histórico do git**: a versão do logo com o manifesto C2PA e linhas
-antigas do `BUGS.md` com o mesmo nome de usuário. Tirar exige reescrever o
-histórico e forçar o envio ao GitHub — ver "Decisões pendentes".
+**Histórico do git limpo em 07/10/2026**: a versão do logo com o manifesto C2PA
+foi trocada pela limpa (mesmos pixels), e o nome de usuário do Windows saiu de todos
+os arquivos antigos, em todos os ramos e tags. Os instaladores publicados não
+continham nenhum dos dois.
 
 O manifesto também diz `c2pa.watermarked`: a OpenAI marca a imagem com uma
 **marca d'água invisível nos pixels**, que remover metadado não tira. Não é dado
