@@ -1,8 +1,8 @@
 /**
  * O VIDRO DO PAINEL DO MENU, desfocado UMA VEZ em vez de a cada quadro.
  *
- * Medido em 24/09/2026 com `QB_BENCH_LOBBY`, depois do relato de "10 fps"
- * ao arrastar um quadro:
+ * Medido em 24/09/2026 com `QB_BENCH_LOBBY`, depois de arrastar um quadro
+ * ficar em 10 fps:
  *
  *   composicao | desfoque | cards levantando | arrastando
  *   CPU        | ligado   |   14 q/s         |   14 q/s     <- o padrao
@@ -31,8 +31,9 @@
  */
 
 /*
-  QUANTO O VIDRO BORRA -- decisao de produto em 30/09/2026, numa prancha de tres
-  niveis sobre as fotos reais: [...], em vez do borrao forte.
+  QUANTO O VIDRO BORRA -- decidido em 30/09/2026, numa prancha de tres
+  niveis sobre as fotos reais: um borrado discreto, que mostra mais o plano de
+  fundo, em vez do borrao forte.
 
   O borrao na tela e o RAIO vezes quanto a imagem e esticada. Por isso a
   largura sobe junto com a vontade de borrar menos: uma versao pequena,
@@ -40,7 +41,7 @@
 
     nivel     | LARGURA | RAIO | na tela (janela ~1400)
     forte     |   480   |  4   | ~12 px   <- ate 30/09/2026
-    medio     |   720   |  3   |  ~6 px   <- a alternativa que se quer poder ver
+    medio     |   720   |  3   |  ~6 px   <- a alternativa intermediaria
     DISCRETO  |  1440   |  3   |  ~3 px   <- o escolhido
 
   Trocar de nivel e trocar os dois numeros abaixo. O custo de desenhar e o

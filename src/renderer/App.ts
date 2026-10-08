@@ -73,7 +73,7 @@ import type { Vec2 } from '@shared/geometry/vec2';
 import { importBoardHtml } from './features/import/boardHtml';
 import type { ImportReport, ImportSource } from '@shared/importer';
 import type { SaveBoardResult } from '@shared/wbd';
-import { generateStressBatches } from './dev/stress';
+import { generateStressBatches } from './features/carga/stress';
 import { resolve as resolveShortcut, type ShortcutId } from './shortcuts';
 import { esquecerVidro, fotoDoPalco, vidroDe } from './ui/vidroPronto';
 import { nivelInicial, type NivelDeMovimento } from './ui/movimento';
@@ -92,17 +92,33 @@ import fotoGalaxia from './assets/fundos/galaxia.webp';
 import { idiomaAtual, t } from '@shared/i18n';
 import { escolherIdioma, IDIOMA_KEY } from './idioma';
 
+/**
+ * Os instrumentos de desenvolvimento -- auto-teste, medicoes, verificacoes e
+ * quadros de exemplo --, carregados SO SE a pasta `dev/` existir.
+ *
+ * Ela nao vai para o repositorio publico nem para o instalador publicado: la
+ * este mapa sai vazio, os modos de verificacao nao fazem nada, e o app compila
+ * igual. Os tipos sao descritos aqui, e nao importados, pelo mesmo motivo -- um
+ * `import type` de um arquivo ausente quebraria a compilacao.
+ */
+const instrumentos = import.meta.glob('./dev/*.ts');
+
+async function instrumento<T>(nome: string): Promise<T | null> {
+  const carregar = instrumentos[`./dev/${nome}.ts`];
+  return carregar ? ((await carregar()) as T) : null;
+}
+
 const THEMES: Record<'light' | 'dark', RenderTheme> = {
   /*
     O quadro claro e um BRANCO QUEBRADO, e nao branco puro.
 
-    Ele era `#ffffff` ate 20/09/2026, e o relato que mudou isso foi direto: [...]. A razao e fisica e nao gosto -- o
+    Ele era `#ffffff` ate 20/09/2026, e cansava a vista. A razao e fisica e nao gosto -- o
     quadro ocupa a tela inteira, e uma tela e fonte de luz: branco maximo em area
     maxima e brilho maximo na cara de quem estuda por horas.
 
     A primeira tentativa foi `#f2f4f7` -- 0,90 de luminancia contra 1,00 do
-    branco --, e voltou que [...]. Estava
-    certo: 10% nao se sente numa superficie que ocupa a tela toda.
+    branco --, e continuou ofuscando: 10% nao se sente numa superficie que
+    ocupa a tela toda.
 
     `#e3e7ee` fica em 0,80. O numero nao e chutado: e onde o macOS poe o fundo de
     janela, que e a referencia de tela clara que se usa por horas sem queixa.
@@ -141,7 +157,7 @@ const THEME_KEY = 'qb.theme';
 
 /**
  * O tema com que o app abre: o forcado por `QB_THEME`, senao o escolhido pelo
- * botao de tema, senao O DO WINDOWS (06/10/2026, pedido: com o Windows no
+ * botao de tema, senao O DO WINDOWS (06/10/2026: antes, com o Windows no
  * escuro, o app abria claro). O Electron segue o modo de aplicativos do Windows
  * no `prefers-color-scheme` (`nativeTheme.themeSource` e 'system' por padrao).
  */
@@ -439,7 +455,7 @@ export class App {
     // ------------------------------------------------------------- setup
     //
     // `QB_THEME=light|dark` manda no tema desta execucao e NAO grava nada: o
-    // tema e preferencia dele, e um modo de verificacao que a sobrescrevesse
+    // tema e preferencia de quem usa, e um modo de verificacao que a sobrescrevesse
     // devolveria o app com outra cara depois de conferir. Sem isto, "conferir o
     // tema claro" dependia do que estava no `localStorage` da maquina -- ou
     // seja, nao era repetivel, que e justamente o que os modos QB_* existem
@@ -453,8 +469,8 @@ export class App {
     this.#rulers = preferenciaDeExibicao(localStorage.getItem(RULERS_KEY));
     this.#grade = preferenciaDeExibicao(localStorage.getItem(GRADE_KEY));
     this.#renderer.grade = this.#grade;
-    // LIGADO por padrao, e de propósito independente do Windows -- decisão de produto
-    // em 21/09/2026. Só desliga quem gravou 'off' aqui, pelo diálogo de
+    // LIGADO por padrao, e de propósito independente do Windows -- decisão de
+    // produto em 21/09/2026. Só desliga quem gravou 'off' aqui, pelo diálogo de
     // Configurações. O porquê está no comentário do `[data-anim]` no base.css.
     //
     // Três níveis desde 30/09/2026 ('off' | 'on' | 'max'), e desde 06/10 o
@@ -593,32 +609,38 @@ export class App {
 
     if (importPath) {
       this.#enterBoard();
-      void import('./dev/importCheck').then((m) =>
-        m.runImportCheck(importPath, this, params.get('save') === '1'),
-      );
+      void instrumento<{ runImportCheck(path: string, app: App, save: boolean): Promise<void> }>(
+        'importCheck',
+      ).then((m) => m?.runImportCheck(importPath, this, params.get('save') === '1'));
     } else if (params.get('paste')) {
       this.#enterBoard();
-      void import('./dev/pasteCheck').then((m) => m.runPasteCheck(this));
+      void instrumento<{ runPasteCheck(app: App): Promise<void> }>('pasteCheck').then((m) =>
+        m?.runPasteCheck(this),
+      );
     } else if (params.get('export')) {
       this.#enterBoard();
-      void import('./dev/exportCheck').then((m) =>
-        m.runExportCheck(params.get('export') ?? '', this),
-      );
+      void instrumento<{ runExportCheck(prefix: string, app: App): Promise<void> }>(
+        'exportCheck',
+      ).then((m) => m?.runExportCheck(params.get('export') ?? '', this));
     } else if (params.get('selftest')) {
       // Precisa do quadro montado e medido para os eventos caírem no canvas.
       this.#enterBoard();
-      void import('./dev/selftest').then((m) => m.runSelfTest(this.#host, this));
+      void instrumento<{ runSelfTest(host: HTMLElement, app: App): Promise<void> }>(
+        'selftest',
+      ).then((m) => m?.runSelfTest(this.#host, this));
     } else if (bench) {
       void this.#runAutoBenchmark(Number(bench));
     } else if (params.get('benchquadro')) {
       dismissBootScreen(true);
-      void import('./dev/quadroBench').then((m) => m.runQuadroBench(this.#host, this));
+      void instrumento<{ runQuadroBench(host: HTMLElement, app: App): Promise<void> }>(
+        'quadroBench',
+      ).then((m) => m?.runQuadroBench(this.#host, this));
     } else if (params.get('exemplos')) {
       // QB_EXEMPLOS=1: grava quadros de exemplo e mostra o menu com eles -- para
-      // as capturas do README. Ver `dev/exemplos.ts`.
+      // as capturas do README.
       this.#enterBoard();
-      void import('./dev/exemplos').then(async (m) => {
-        await m.gerarExemplos(this);
+      void instrumento<{ gerarExemplos(app: App): Promise<void> }>('exemplos').then(async (m) => {
+        await m?.gerarExemplos(this);
         await Promise.all([this.goToLobby(), this.#carregarFundos()]);
         dismissBootScreen(true);
       });
@@ -627,8 +649,8 @@ export class App {
       // ela cobre a janela inteira e seria ELA a composta.
       void Promise.all([this.goToLobby(), this.#carregarFundos()]).then(async () => {
         dismissBootScreen(true);
-        const m = await import('./dev/lobbyBench');
-        await m.runLobbyBench();
+        const m = await instrumento<{ runLobbyBench(): Promise<void> }>('lobbyBench');
+        await m?.runLobbyBench();
       });
     } else {
       // A tela de abertura sai quando a BIBLIOTECA esta listada, e nao quando o
@@ -1378,7 +1400,7 @@ export class App {
       {
         onChange: (c) => {
           // O IDIOMA grava na hora e vale ao recarregar -- pelo "Aplicar
-          // alteracoes" ou na proxima abertura (decisao de produto, 06/10/2026). Os
+          // alteracoes" ou na proxima abertura (06/10/2026). Os
           // textos sao escritos quando cada tela e montada, e redesenhar tudo
           // no lugar arriscaria sobrar texto no idioma antigo.
           localStorage.setItem(IDIOMA_KEY, c.idioma);
@@ -2146,8 +2168,8 @@ export class App {
   /**
    * O tamanho do texto pela barra do menu de Texto.
    *
-   * A barra mudava so o tamanho do PROXIMO texto, e foi relatado que ela "nao
-   * funciona" (06/10/2026): quem a move esta olhando para o texto que acabou de
+   * A barra mudava so o tamanho do PROXIMO texto, e parecia nao funcionar
+   * (06/10/2026): quem a move esta olhando para o texto que acabou de
    * escrever, ou para o selecionado. Agora ela vale para eles, pelo mesmo caminho
    * do alinhamento -- a caixa aberta, senao a selecao -- e continua definindo o
    * tamanho dos proximos.
@@ -2157,7 +2179,8 @@ export class App {
    * remedida junto; a largura fica, e o texto reflui nela.
    */
   /**
-   * A cor escolhida na paleta do Texto (07/10/2026, pedido: [...]).
+   * A cor escolhida na paleta do Texto (07/10/2026: antes, dava para mudar
+   * quase tudo no texto ja escrito, menos a cor).
    *
    * - **digitando**: pinta o trecho selecionado, ou o texto todo com `Ctrl+A`
    *   (ver `TextEditor.aplicarCor`). Se o foco esta no seletor de cor do
@@ -2244,7 +2267,7 @@ export class App {
    * sim [...]. Um cinza bem claro e resgatado por
    * inversao e aparece escuro; descobrir isso ao trocar de tema, dias depois,
    * seria pior que ler um aviso agora. Avisa e nao impede: a paleta e conferida
-   * por `npm run check:colors`, mas a escolha livre e dele.
+   * pela paleta do app, mas a escolha livre e de quem usa.
    */
   warnIfLowContrast(color: string): void {
     const trocada = (['light', 'dark'] as const).filter(

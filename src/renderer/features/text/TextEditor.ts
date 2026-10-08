@@ -58,7 +58,7 @@ export class TextEditor {
   #intervalo: Range | null = null;
   /**
    * O seletor de cor do Windows esta aberto por cima da caixa: o `blur` da
-   * janela que ele causa NAO e [...], e nao pode fechar a edicao.
+   * janela que ele causa NAO e "saiu do app", e nao pode fechar a edicao.
    */
   #seletorAberto = false;
 
@@ -248,8 +248,9 @@ export class TextEditor {
   }
 
   /**
-   * Pinta o trecho SELECIONADO na caixa aberta (07/10/2026, pedido: [...];
-   * com `Ctrl+A` dentro da caixa, muda o texto todo). Sem selecao, vale para as
+   * Pinta o trecho SELECIONADO na caixa aberta (07/10/2026): escolher outra cor
+   * com parte do texto selecionada muda aquelas letras; com `Ctrl+A` dentro da
+   * caixa, muda o texto todo. Sem selecao, vale para as
    * proximas letras, como o negrito.
    *
    * Pelo `execCommand`, o mesmo caminho do `Ctrl+B`: o navegador ja sabe partir

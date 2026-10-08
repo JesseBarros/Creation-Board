@@ -432,7 +432,7 @@
   escuro no claro --, entao nenhuma cor de amostra pode sumir, nem uma quase
   preta no escuro nem uma quase branca no claro.
 
-  Escolha em 13/08/2026, entre esta e adaptar a amostra ao tema: a amostra
+  Escolhido em 13/08/2026, entre esta e adaptar a amostra ao tema: a amostra
   continua sendo a cor que fica gravada no .wbd, que era a decisao original.
 */
 .qb-tools__color {
@@ -1323,8 +1323,8 @@
 
   O LEVANTAR DO HOVER, NUM LUGAR SO.
 
-  Ele chegou em 20/09/2026 -- [...] -- mas chegou
-  espalhado: cada regra `:hover` que ja existia ganhou a sua linha de
+  Ele chegou em 20/09/2026 -- a animacao dos cartoes do lobby tambem na barra
+  e em todos os botoes de selecao do app -- mas chegou espalhado: cada regra `:hover` que ja existia ganhou a sua linha de
   `transform`, e as que ninguem lembrou ficaram sem. Em 21/09 a conta era seis
   controles interativos com hover e SEM levantar: camadas, busca, segmentado,
   amostra de cor, escolha de forma e alerta.
@@ -1362,14 +1362,15 @@
 }
 
 /*
-  O LEVANTAR NAO TREME (07/10/2026, bug relatado com captura: [...]).
+  O LEVANTAR NAO TREME (07/10/2026: com o mouse parado na borda de um quadro,
+  a animacao repetia sem parar).
 
   O laco: com o mouse parado na borda de BAIXO, o hover levanta o controle, a
   borda sobe e sai de baixo do mouse, o hover cai, o controle desce, o hover
   volta -- para sempre. No nivel Maximas o card sobe 5px com mola, e o laco
   fica bem visivel.
 
-  A decisao de produto foi que, com o mouse em cima, o controle FICA levantado e
+  A decisao foi que, com o mouse em cima, o controle FICA levantado e
   parado. Entao, enquanto levantado, uma faixa invisivel embaixo dele cobre o
   lugar de onde ele saiu: o mouse continua "em cima", e o laco nao comeca. A
   faixa so existe no hover e tem a altura do levantar (mais 1px); e fina

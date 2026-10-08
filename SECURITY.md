@@ -456,7 +456,7 @@ pessoal; fica registrado para ninguém achar que o arquivo ficou "sem rastro".
 
 ---
 
-### Decisões pendentes (do mantenedor)
+### Decisões pendentes
 
 
 ### Riscos aceitos, por escrito

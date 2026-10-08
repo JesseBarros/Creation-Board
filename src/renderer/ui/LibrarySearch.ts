@@ -13,8 +13,8 @@ import { t } from '@shared/i18n';
  *
  * ## O que ela responde, e por que e outra pergunta
  *
- * O `Ctrl+F` de dentro do quadro responde [...]. Esta responde
- * [...] -- e e a pergunta que a
+ * O `Ctrl+F` de dentro do quadro responde *"onde esta isto AQUI"*. Esta responde
+ * *"em qual dos meus quadros eu escrevi sobre isto"* -- e e a pergunta que a
  * Fase 7.5 tornou util, porque agora o texto dentro das imagens tambem conta.
  *
  * Por isso os resultados vem **agrupados por quadro e com a contagem ao lado**:
@@ -23,7 +23,7 @@ import { t } from '@shared/i18n';
  * ## Duas decisoes de comportamento
  *
  * - **A leitura da biblioteca acontece na PRIMEIRA tecla**, e nao ao abrir o
- *   lobby. Ela custa 68 ms na biblioteca de teste -- pouco, mas nao vale
+ *   lobby. Ela custa 68 ms numa biblioteca de estudo real -- pouco, mas nao vale
  *   gastar em toda abertura do app para um recurso que nem sempre e usado.
  * - **A lista nao fecha ao clicar.** Abrir o quadro e ir ate o objeto e o meio,
  *   nao o fim: quase sempre se quer ver o proximo resultado depois. Fechar

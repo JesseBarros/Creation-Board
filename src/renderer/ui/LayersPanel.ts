@@ -6,7 +6,8 @@ import { t, type ChaveTexto } from '@shared/i18n';
 /**
  * Painel de camadas: a pilha do quadro, com olho e cadeado.
  *
- * Pedido (M8): [...].
+ * M8: alternar as camadas, como num editor de imagem, de forma mais
+ * simplificada.
  *
  * **E uma lista de OBJETOS, e nao grupos com nome.** As duas perguntas de
  * projeto estavam registradas no BUGS.md, e a escolha foi a barata: "camada"

@@ -58,7 +58,7 @@ const LEGACY_DIRS: ReadonlyArray<() => string> = [
  * QB_BOARDS=<caminho> troca a pasta dos quadros.
  *
  * Existe para testar com uma biblioteca VAZIA sem apagar a de verdade. A
- * pergunta [...] so se responde tirando o
+ * pergunta "o problema vem do conteudo salvo?" so se responde tirando o
  * conteudo do caminho -- e tirar do caminho nao precisa significar destruir
  * 6,6 MB de resumo. O app nunca sabe a diferenca: e a mesma pasta, noutro
  * lugar.
@@ -88,7 +88,7 @@ export function boardsDir(): string {
  * capricho: com um nome fixo, dois processos do app sondando a mesma pasta ao
  * mesmo tempo apagam o arquivo um do outro. Medido em 08/08/2026 -- um processo
  * sozinho falha 0 em 300 tentativas, dois processos falham 120 e 144 em 300,
- * com ENOENT e EPERM. Era o B11: a sonda dizia [...]
+ * com ENOENT e EPERM. Era o B11: a sonda dizia "esta pasta nao aceita escrita"
  * sobre uma pasta perfeitamente gravavel, e a biblioteca do usuario se partia em
  * duas. Em desenvolvimento isso acontece toda vez que o electron-vite reinicia o
  * processo principal, porque o velho ainda nao morreu quando o novo ja sonda.
@@ -453,7 +453,7 @@ export async function listBoards(): Promise<BoardSummary[]> {
 
 export async function deleteBoard(path: string): Promise<void> {
   // Confere que o alvo esta mesmo na pasta de quadros: o caminho vem do
-  // renderer, e apagar arquivo arbitrario seria imprudente. (Ate
+  // renderer, e apagar arquivo arbitrario a pedido do renderer seria imprudente. (Ate
   // 30/09/2026 era `startsWith`, que aceitava a pasta vizinha de nome parecido.)
   await fs.unlink(caminhoDeQuadro(await ensureBoardsDir(), path));
 }

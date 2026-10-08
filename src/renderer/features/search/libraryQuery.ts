@@ -14,8 +14,8 @@ import { findIn, foldText } from './search';
  *
  * ## O texto vem de fora e fica em memoria
  *
- * O processo principal le os `.wbd` e devolve so o texto (68 ms na biblioteca
- * real dele). O resultado fica guardado aqui pela sessao: a primeira tecla paga
+ * O processo principal le os `.wbd` e devolve so o texto (68 ms numa biblioteca
+ * de estudo real). O resultado fica guardado aqui pela sessao: a primeira tecla paga
  * a leitura, e da segunda em diante a busca acontece inteira em memoria.
  *
  * `invalidate()` derruba o cache. Chamar depois de salvar, importar ou apagar um

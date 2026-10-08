@@ -49,7 +49,7 @@ export interface LobbyActions {
  *
  * Existe para o selftest poder montar um `Lobby` de verdade com um disco de
  * mentira. Sem isto, conferir que entrar numa pasta mostra os quadros dela
- * exigiria gravar no indice de pastas REAL dele -- e um teste que mexe no
+ * exigiria gravar no indice de pastas REAL -- e um teste que mexe no
  * agrupamento de verdade do usuario e um teste que ninguem quer rodar duas
  * vezes (a mesma razao de o selftest nunca chamar `pastas.gravar`).
  */
@@ -128,7 +128,7 @@ export class Lobby {
 
     // NAO ha marca aqui, e isso e decisao.
     //
-    // Ela chegou a existir ao lado do titulo, e se viu o problema na hora: a
+    // Ela chegou a existir ao lado do titulo, e o problema apareceu na hora: a
     // barra de titulo da janela ja mostra o mesmo icone com o mesmo nome, um
     // centimetro acima. Eram a mesma coisa duas vezes, empilhadas.
     //
@@ -139,11 +139,11 @@ export class Lobby {
     //
     // O TITULO E A ASSINATURA DA LOGO (30/09/2026), e nao texto de interface:
     // a mesma fonte da palavra na logo (Outfit, embutida) e "Board" no degrade
-    // azul->ciano do traco dela. Escolha numa prancha de quatro variacoes
-    // -- o relato era que a Segoe UI de antes [...].
+    // azul->ciano do traco dela. Escolhido numa prancha de quatro variacoes
+    // -- a Segoe UI de antes era simples demais para a identidade do app.
     //
     // As DUAS palavras sao spans com o mesmo tratamento (ver `ui.css`), e isso e
-    // o conserto de um defeito que se viu no tema claro: com "Creation" em
+    // o conserto de um defeito do tema claro: com "Creation" em
     // texto comum, o Windows a desenhava com suavizacao colorida (ClearType) e
     // "Board", em degrade, com suavizacao cinza -- duas palavras com cara de
     // fontes diferentes, lado a lado.
@@ -163,8 +163,8 @@ export class Lobby {
     title.append(base, ' ', destaque);
 
     // O caminho da pasta virou uma PILULA com icone. Antes era a linha
-    // sublinhada em fonte de codigo, que se achou com "um destaque que nao e
-    // interessante": parecia link, e competia com o titulo. Continua abrindo a
+    // sublinhada em fonte de codigo, que chamava atencao demais: parecia link,
+    // e competia com o titulo. Continua abrindo a
     // pasta no Explorador.
     this.#folderLabel = document.createElement('button');
     this.#folderLabel.type = 'button';
@@ -195,8 +195,8 @@ export class Lobby {
       NAO HA BOTAO DE ATALHOS AQUI, e isto e decisao de 21/09/2026.
 
       A tela de atalhos continua existindo e `F1` continua abrindo -- o que saiu
-      foi o botao NESTA tela. O lobby responde [...]; a lista de
-      teclas responde [...], que e uma pergunta de dentro do quadro.
+      foi o botao NESTA tela. O lobby responde "qual quadro eu abro"; a lista de
+      teclas responde "como eu desenho", que e uma pergunta de dentro do quadro.
       O botao dela na barra inferior fica, porque ali a pergunta faz sentido.
 
       Sobraram tres controles no cabecalho, e os tres respondem a pergunta da
@@ -209,7 +209,7 @@ export class Lobby {
     this.#themeBtn = iconOnlyButton('lua', t('lobby.alternarTema'), () => this.actions.toggleTheme());
 
     // Configuracoes entrou em 21/09/2026, depois de o botao de atalhos ter
-    // SAIDO daqui ([...]). A
+    // SAIDO daqui (era informacao demais para a tela de entrada). A
     // diferenca entre os dois: aquele so contava coisas, este MUDA coisas --
     // e uma preferencia do aplicativo precisa de um lugar onde ser encontrada.
     const configBtn = iconOnlyButton('ajustes', t('lobby.configuracoes'), () =>
@@ -279,7 +279,7 @@ export class Lobby {
       this.actions.importBoards(),
     );
     importCta.classList.add('qb-btn--primary');
-    // Criar ficou no lugar do [...] (07/10/2026, pedido
+    // Criar ficou no lugar do "quadro de demonstracao" (07/10/2026, pedido
     // dele): a primeira tela tem de oferecer o caminho mais comum, e nao so
     // trazer de fora. A demonstracao continua no App (`openDemo`).
     const criarCta = textButton(t('lobby.vazioCriar'), () => this.actions.newBoard());
@@ -307,7 +307,7 @@ export class Lobby {
       nao entre eles. O que entra e a grade e o estado vazio.
 
       O estado vazio entra por um motivo pratico: deixado de fora, o lobby de
-      quem acabou de instalar abriria com a mensagem [...]
+      quem acabou de instalar abriria com a mensagem "nenhum quadro salvo ainda"
       e, logo abaixo dela, uma lamina de vidro vazia. E a pior primeira imagem
       possivel da tela.
     */
@@ -315,8 +315,9 @@ export class Lobby {
       A PASTA ABRE NUMA JANELA MENOR, e a tela principal continua a vista.
 
       Ate 24/09/2026 abrir uma pasta TROCAVA a grade pelo conteudo dela, com
-      uma trilha "Todos os quadros / Nome" para voltar. no teste e pediu o
-      contrario: [...]. Trocando a tela, nao havia de onde
+      uma trilha "Todos os quadros / Nome" para voltar. No teste, o esperado
+      era o contrario: arrastar como itens entre uma pasta do Windows e a area
+      de trabalho. Trocando a tela, nao havia de onde
       trazer um quadro para a pasta nem para onde leva-lo ao tirar.
 
       A janela mora no PALCO (a raiz), e nao na rolagem: ela fica parada
@@ -327,7 +328,7 @@ export class Lobby {
       entao nenhum card fica preso atras da janela.
 
       Ela e OPACA, sem desfoque, de proposito: o relato que a criou veio junto
-      com [...], e empilhar um segundo `backdrop-filter`
+      com "o menu ficou mais lento", e empilhar um segundo `backdrop-filter`
       sobre o do painel seria apostar contra a medicao que ainda nao tinha
       saido.
     */
@@ -375,7 +376,8 @@ export class Lobby {
     });
 
     /*
-      A BUSCA MORA NO PAINEL desde 07/10/2026 (proposta de equilibrio aprovada): o painel virou "a biblioteca" -- a busca e a primeira linha, e
+      A BUSCA MORA NO PAINEL desde 07/10/2026 (proposta de equilibrio
+      aprovada): o painel virou "a biblioteca" -- a busca e a primeira linha, e
       embaixo dela a lista que rola. Solta sobre a foto, centralizada entre um
       titulo a esquerda e botoes a direita, ela nao se alinhava com nada.
 
@@ -457,7 +459,7 @@ export class Lobby {
    *
    * Sol de noite, lua de dia: o botao oferece o proximo estado, e nao relata o
    * atual. Um interruptor de uma tecla so nao tem como dizer as duas coisas, e
-   * [...] e a pergunta de quem esta com o dedo em cima dele.
+   * "para onde isto leva" e a pergunta de quem esta com o dedo em cima dele.
    */
   setTheme(theme: 'light' | 'dark'): void {
     this.#themeBtn.replaceChildren(icon(theme === 'dark' ? 'sol' : 'lua', 17));
@@ -922,7 +924,7 @@ export class Lobby {
     del.append(icon('fechar', 13));
     if (pasta) {
       /*
-        DENTRO DA PASTA, O X SO TIRA DA PASTA. Pedido em 24/09/2026.
+        DENTRO DA PASTA, O X SO TIRA DA PASTA. Desde 24/09/2026.
 
         O mesmo X que na tela principal apaga o arquivo, aqui desagrupa -- e
         por isso nao pergunta nada: nao ha o que perder. O quadro volta para a
@@ -974,7 +976,7 @@ export class Lobby {
    *   - outro QUADRO da tela principal: pasta nova com os dois;
    *   - a JANELA da pasta aberta, vindo da tela principal: entra nessa pasta;
    *   - qualquer outro lugar do menu, vindo da JANELA: sai da pasta -- o
-   *     [...] do Windows, que foi o pedido.
+   *     "largar na area de trabalho" do Windows, que foi o pedido.
    * Dentro da propria janela nada e alvo: a pasta que um quadro criaria ali
    * estaria dentro desta, e pasta dentro de pasta nao existe no indice.
    */

@@ -1,7 +1,7 @@
 /*
  * O TEMA DA TELA DE ABERTURA, decidido antes do primeiro frame (07/10/2026).
  *
- * Pedido: [...]. Antes, a abertura era sempre escura; com o tema claro, a
+ * A abertura segue o tema para nao piscar. Antes, ela era sempre escura; com o tema claro, a
  * janela abria escura e virava clara quando o app assumia.
  *
  * Por que um arquivo a parte, e nao o `main.ts`: modulo e adiado, roda depois de

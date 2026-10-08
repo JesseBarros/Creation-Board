@@ -14,7 +14,40 @@ dist/
 .vscode/
 .idea/
 
-# Ruido do sistema operacional
+# Segredos e credenciais. O app nao usa nenhum; isto impede que um caia aqui
+# por engano (o token da assinatura, por exemplo, mora nos segredos do GitHub).
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+*.p12
+*.cer
+*.crt
+*.secret
+*.token
+credentials*.json
+secrets*.json
+
+# Logs, temporarios e ambientes de outras linguagens
 *.log
+logs/
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+.venv/
+venv/
+__pycache__/
+*.pyc
+coverage/
+.cache/
+
+# Copias de seguranca do historico do git
+*.bundle
+
+# Ruido do sistema operacional
 .DS_Store
 Thumbs.db
+desktop.ini

@@ -10,11 +10,11 @@
  * toda `transition` e `animation` de CSS. Mas ela NAO alcanca a Web Animations
  * API: um `el.animate(...)` roda inteiro com o interruptor desligado. Uma
  * animacao nova que ignore o interruptor repete exatamente o B26 -- entao a
- * pergunta [...] mora num lugar so, e quem anima por
+ * pergunta "o movimento esta ligado?" mora num lugar so, e quem anima por
  * JavaScript nao tem como esquece-la.
  *
- * TRES NIVEIS desde 30/09/2026: desligadas, ligadas (o padrao)
- * e MAXIMAS -- [...]. O nivel vira o mesmo
+ * TRES NIVEIS desde 30/09/2026: desligadas, ligadas (o padrao) e MAXIMAS --
+ * animacoes mais movimentadas, maiores. O nivel vira o mesmo
  * atributo na raiz (`data-anim='off' | 'max'`; ligado e a ausencia dele), e
  * quem anima pergunta o nivel aqui. O maximo nao e so "mais lento": e outra
  * receita -- mola que passa do ponto e volta, entrada em cascata, o fantasma
@@ -46,7 +46,7 @@ export const CURVA_SUGAR = 'cubic-bezier(0.55, 0, 0.75, 0.2)';
 
 /**
  * O nivel com que o app abre: o forcado por `QB_ANIM`, senao o gravado em
- * Configuracoes, senao o PADRAO -- MAXIMAS desde 06/10/2026, decisao de produto (era
+ * Configuracoes, senao o PADRAO -- MAXIMAS desde 06/10/2026 (era
  * Ligadas). Quem ja gravou um nivel continua com o seu.
  */
 export const NIVEL_PADRAO: NivelDeMovimento = 'max';

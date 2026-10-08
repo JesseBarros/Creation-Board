@@ -12,6 +12,11 @@ por medição — e um comentário no código diz *o que* foi escolhido, nunca *
 falhou*. Sem este registro, a próxima pessoa refaz a investigação e chega à mesma conclusão
 duas semanas depois.
 
+> **Sobre este documento.** O app foi usado diariamente durante o desenvolvimento, e várias
+> decisões aqui existem porque uma entrega ficou parada para avaliação e voltou com um
+> incômodo concreto — é o que explica por que as funcionalidades mais úteis do app não
+> estavam em plano nenhum. Os instrumentos de teste e medição citados (`selftest`,
+> `QB_BENCH*`, `check:*`) são de desenvolvimento e ficam fora do repositório público.
 
 **Leia antes de:**
 
@@ -229,7 +234,7 @@ com tudo estável.
 
 ## O Electron subiu até o 43, e VOLTOU para o 33 — a escada inteira está medida
 
-**O projeto está no `^33.2.1` (33.4.11), de propósito e por decisão de produto.** Quem ler
+**O projeto está no `^33.2.1` (33.4.11), de propósito.** Quem ler
 "Electron de 2024" e quiser subir: já foi feito, em 14/08/2026, e o resultado está aqui.
 Não refaça a subida esperando outra resposta — refaça só se tiver um motivo *novo*.
 
@@ -350,6 +355,11 @@ o quadro — que é o assunto — entre as duas. A fila entra na barra inferior 
 `ToolBar`, que sabe de ferramenta, cor e espessura. Sem isso, um dos dois teria de aprender o
 assunto do outro.
 
+**A grade magnética saiu do app, e não foi escondida.** Saíram o campo `snapToGrid` das
+preferências, os ramos de grade no motor de encaixe, a tecla `A` e o botão. O diagnóstico
+de uso bate com o que o código fazia: a grade atraía para onde ela *calhou* de cair, e não para
+onde havia algo com que alinhar — e o encaixe por vizinho já tinha prioridade sobre ela.
+Quadros gravados antes continuam abrindo; o campo é ignorado na leitura.
 
 **O acabamento vitrificado é o único**, desde 21/09. Ele nasceu como modo, com interruptor na
 barra e no lobby, e venceu o outro. A superfície é 100% transparente: o que faz a barra
@@ -376,6 +386,12 @@ provável — tinha de cancelar, procurar o botão e clicar.
 
 ### Os ícones passaram a vir do Lucide
 
+**O motivo foi qualidade.** O conjunto anterior era desenhado à mão dentro do
+`ui/icons.ts`, e depois de duas rodadas de ajuste continuava apenas razoável —
+desenhar quarenta ícones **consistentes entre si** é trabalho de quem faz isso
+em tempo integral, e o resultado aparecia em detalhes que a gente só via lado a
+lado: pesos de traço que variavam, metáforas fracas e, num caso, um ícone
+simplesmente errado.
 
 O [Lucide](https://lucide.dev) tem 2.112 ícones na mesma grade de 24, resolvidos
 por gente do ofício. Trinta e três dos nossos quarenta e um vieram de lá.
@@ -440,6 +456,11 @@ Vale registrar porque a decisão é reaproveitável e o erro é fácil de repeti
 **lê** o canvas. Ela pede ao Chromium para manter o bitmap na CPU, porque um `getImageData`
 num canvas de GPU obriga a trazer os pixels de volta a cada chamada.
 
+O `erase.ts` tinha **um** canvas intermediário com a bandeira ligada, e ela estava lá por causa
+do `isFullyErased` — que é justamente quem **menos** usa o canvas: uma vez por objeto, ao
+soltar a borracha. Quem usa o canvas de verdade é o `withErase`, a **cada frame**, para **cada
+objeto apagado**, com até 4 megapixels. O resultado apareceu no `F3`: **31,30 ms de render
+com três objetos na tela**.
 
 **A regra que fica:** a bandeira pertence ao canvas que é lido, não ao canvas que é desenhado.
 Quando os dois usos moram no mesmo módulo, são dois canvas, e não um com a bandeira do pior
@@ -474,8 +495,14 @@ casos. O tempo só explode num quadro de verdade; a área denuncia em qualquer m
 Vale registrar porque é uma decisão que **troca uma coisa por outra**, e não uma melhoria
 pura.
 
+Até 21/09/2026 o levantar dos botões respeitava `prefers-reduced-motion`, que no Windows vem
+de Acessibilidade → Efeitos visuais → Efeitos de animação. Estava certo, e produziu um
+mal-entendido caro: o levantar foi para todos os botões e, dias depois, parecia que as
+animações tinham parado. Não tinham. O Windows do computador de teste pedia menos movimento, o
+app obedecia, e o **cartão do lobby era o único elemento que desobedecia** — tinha `-2px`
+cravado em vez do token. O app inteiro estava correto e parecia quebrado.
 
-**A decisão de produto:** o app anima por padrão, independente do Windows, com um interruptor em
+**A decisão:** o app anima por padrão, independente do Windows, com um interruptor em
 Configurações no menu principal.
 
 **O que se perde, dito com todas as letras:** o app deixa de atender sozinho quem pede menos
@@ -580,8 +607,8 @@ cacheado por `id:rev`, então só roda quando o texto muda.
 ## Quanto custa uma foto de fundo grande — medido em 21/09/2026
 
 A pergunta foi direta: mandar as fotos do Unsplash no tamanho original (14 e 21
-megapixels) é problema? E o critério que ele deu foi o certo — **nitidez e desempenho**,
-não tamanho de instalador.
+megapixels) é problema? E o critério é **nitidez e desempenho**, não tamanho de
+instalador.
 
 Eu tinha respondido com aritmética de memória e um receio de engasgo na troca de tema.
 **A medição desmontou o receio.** Instrumento em `scratchpad/medir/` (fora do
@@ -605,6 +632,14 @@ o compositor segue em 7,1 ms por frame, que é o intervalo do monitor desta máq
 critério do desempenho, a foto original não custa nada que o usuário sinta, e ele estava
 certo.
 
+**E, pelo critério da nitidez, ela também não GANHA nada.** A captura ampliada 3× das
+margens (palmeiras da praia, campo de estrelas da galáxia — fonte pontual é o teste mais
+cruel de reamostragem) não mostra vantagem do original. A razão é geométrica: a máquina
+de teste reporta **`devicePixelRatio` 1**, e a janela pede ~1584 px de largura. Uma imagem de
+4621 px já é reduzida 2,9× antes de chegar à tela; os pixels a mais são jogados fora pelo
+reamostrador antes de virarem luz. Se acaso o 2560 sai um fio melhor nas palmeiras, é
+porque o Lanczos offline do `ffmpeg` filtra melhor que o reamostrador de composição do
+navegador num salto grande — o contrário da intuição de que maior é mais nítido.
 
 **Conclusão: 2560 de largura, e o motivo mudou.** Não é "o original engasga", que é falso
 e medido. É que o original cobra 3,5–5× o bitmap e 2,5–3× o trabalho de decodificação
@@ -612,8 +647,8 @@ e medido. É que o original cobra 3,5–5× o bitmap e 2,5–3× o trabalho de d
 ficou honesto.
 
 **Onde isto deixaria de valer:** num monitor a `dpr` 2 a janela pediria ~3168 px físicos e
-o 2560 passaria a subir de escala. Esta medição é `dpr` 1, que é a máquina de teste. Se ele
-trocar de monitor, a conta se refaz.
+o 2560 passaria a subir de escala. Esta medição é `dpr` 1, a da máquina de teste. Num
+monitor diferente, a conta se refaz.
 
 **Duas armadilhas do instrumento**, as duas registradas em "Armadilhas de desenvolvimento", no fim deste arquivo: o ambiente
 traz `ELECTRON_RUN_AS_NODE=1`, e com ela o binário do Electron roda como Node puro e
@@ -689,6 +724,8 @@ original é oclusão da janela parando o `requestAnimationFrame`, e não custo.)
 
 ## O painel de vidro CUSTOU, sim — pela CPU. Medido em 24/09/2026
 
+No teste da Parte 4, arrastar um quadro parecia estar a 10 fps, e todas as animações
+do menu principal ficaram bem mais pesadas.
 
 A medição de 21/09 (seção anterior) tinha sido feita com a composição pela GPU.
 Em 22/09 o B18 fez a composição pela CPU virar o padrão, e ninguém refez a
@@ -710,7 +747,7 @@ tela inteira a cada quadro (B8). Com as duas, o `backdrop-filter` de tela cheia
 do painel é refeito na CPU a cada quadro em que qualquer coisa se mexe — cerca de
 70 ms por quadro. Parado não custa nada, e foi por isso que só apareceu mexendo.
 
-**A saída, decisão de produto entre três com os números na mesa:** o que está atrás do
+**A saída, escolhida entre três com os números na mesa:** o que está atrás do
 painel é uma foto PARADA, então ela é desfocada **uma vez**, pequena (480 px), num
 canvas (`src/renderer/ui/vidroPronto.ts`), e o painel a pinta alinhada com o
 fundo por `background-attachment: fixed`. As outras duas eram tirar todo
@@ -743,6 +780,11 @@ exige a tinta **e** a foto.
 
 ### A segunda rodada: ~100 → 144 q/s, e o atraso que a contagem não via (30/09/2026)
 
+Ficou mais fluido, mas ainda sem a sensação de um arrasto liso. O monitor de teste é
+de **144 Hz**, e o
+arrasto medido ficava em ~100 q/s — que na prática é uma mistura de quadros de
+7, 14 e 21 ms. A irregularidade é o que o olho lê como "travado", mais do que a
+média.
 
 | cena (CPU, vidro pronto) | antes | `QB_BLUR=0` | GPU | **depois** |
 |---|---|---|---|---|
@@ -764,7 +806,7 @@ mouse virava uma animação de 120 ms, e o fantasma andava sempre **atrás** do
 cursor. `transition: none` nele, guardado no selftest nos níveis ligado e
 máximo (a mola do máximo vazaria para ele pelo mesmo caminho).
 
-**O borrão discreto do painel (mesmo dia, decisão de produto: [...]).** O vidro pronto passou de 480 px com raio 4 (~12 px de borrão na tela)
+**O borrão discreto do painel (mesmo dia, para mostrar mais o plano de fundo).** O vidro pronto passou de 480 px com raio 4 (~12 px de borrão na tela)
 para 1440 px com raio 3 (~3 px), e a tinta do painel caiu para 26% no claro e 30%
 no escuro. A primeira medição parecia uma queda (claro: parado 114, abre/fecha
 99) — e o borrão ANTIGO, medido em seguida, também caiu para 85 parado: era a
@@ -780,7 +822,7 @@ alternadas de cada e olhando a **mediana**:
 
 Empate. O custo de desenhar é o mesmo (são os mesmos pixels na tela); a imagem
 pronta maior custa memória uma vez (~5,5 MB), e não por quadro. **Lição de
-método:** com o app de teste ou outros programas pesados abertos, uma rodada só não
+método:** com o app instalado ou outros programas pesados abertos, uma rodada só não
 distingue custo de ruído — alternar as versões e comparar medianas.
 
 **O nível máximo de animações**, medido junto (`QB_ANIM=max`): parado,
@@ -793,6 +835,13 @@ Abrir e fechar a janela a cada 400 ms fica em **130**, porque as animações de
 
 ## O quadro aberto: arrastar e zoom rápido — medido em 30/09/2026
 
+Com a 1.1.0 instalada: lag ao arrastar o quadro de um lado para o outro e travadas
+com Ctrl+roda rápido. A medição saiu de uma bancada nova, **`QB_BENCH_QUADRO=1`**
+(`src/renderer/dev/quadroBench.ts`), que abre o maior quadro de `QB_BOARDS` com a janela
+maximizada e dispara os **eventos** da mão — botão direito arrastando, roda com Ctrl — pelo
+mesmo caminho do uso. O `QB_BENCH` antigo move a câmera por código e mede só o desenho; este
+mede o gesto inteiro, inclusive a cadência. Numa cópia de um quadro real (1.063 objetos), na
+mesma execução:
 
 | gesto | antes | depois |
 |---|---|---|
@@ -806,7 +855,7 @@ o que elas **não** fazem, e por quê:
   fica em 57 q/s na janela cheia: qualquer mudança no canvas obriga a janela inteira a ser
   recomposta por software (~17 ms). A composição pela GPU arrasta a ~67 q/s, mas é ela que traz
   de volta o fantasma do B18 — **na máquina de teste**: no mesmo dia o build com GPU rodou limpo em
-  outros computadores (ver o fim do B18). Trocar o padrão é decisão de produto, e não foi feito.
+  outros computadores (ver o fim do B18). Trocar o padrão é decisão de produto, e não foi feito ali.
 - **O desfoque da barra quase não pesa** no quadro (89 contra 95 q/s com `QB_BLUR=0`): ficou.
 - **A camada de cima vazia custa ~14 q/s** e não foi mexida. A saída medida embrulhava as
   operações de pintura do canvas; foi desfeita por ser invasiva (ver o B32).
@@ -819,9 +868,9 @@ o que elas **não** fazem, e por quê:
 
 ## Decisões que não estão óbvias no código
 
-0. **NADA DE NUVEM. Decidido em 14/08/2026, com a alternativa toda avaliada.** foi perguntado
-   se dava para ligar uma pasta do Google Drive ao app, e a resposta foi levantada inteira
-   antes de decidir. **Não é para reabrir isto**, a menos que ele peça.
+0. **NADA DE NUVEM. Decidido em 14/08/2026, com a alternativa toda avaliada.** A pergunta
+   era se dava para ligar uma pasta do Google Drive ao app, e a resposta foi levantada inteira
+   antes de decidir. **Não é para reabrir isto** sem um motivo novo.
 
    A integração por API do Drive é um **subsistema, não uma funcionalidade**: projeto no
    Google Cloud, OAuth de aplicativo instalado, renovação de token (que expira a cada 7 dias
@@ -836,11 +885,11 @@ o que elas **não** fazem, e por quê:
 
    **Dois motivos concretos derrubaram até esse:**
    - **Sincronizar não é backup.** O Drive replica corrupção e apagamento com a mesma
-     fidelidade. As cópias manuais de teste são backup de verdade; o Drive seria só uma segunda
+     fidelidade. Cópias manuais são backup de verdade; o Drive seria só uma segunda
      cópia do estado atual.
    - **O autosave regrava o arquivo inteiro** (3 s parado, 30 s no máximo). O *quadro
-     de referência* tem 4,7 MB: uma tarde de trabalho seriam dezenas de re-envios completos, e
-     palavras do teste — [...].
+     de referência* tem 4,7 MB: uma tarde de trabalho seriam dezenas de re-envios completos,
+     enchendo o Drive de versões sem necessidade.
 
    **O que fica no lugar:** o app continua **local e offline**, e mover quadro é assunto de
    importar/exportar arquivo.
@@ -856,6 +905,82 @@ o que elas **não** fazem, e por quê:
 
    </details>
 
+2. **Reimportar sobrescreve o `.wbd`.** Guarde os `.zip` originais da exportação — eles são
+   a única fonte para reimportar, e o `.wbd` gerado não volta a ser `.zip`.
+3. **Geometria de importação se mede, não se deduz.** Ler o CSS do export já levou a
+   hipóteses plausíveis e erradas — três, contando a da Fase 5 (achei que as âncoras de
+   texto fossem centradas; o oráculo mostrou `align topLeft`). Existe um oráculo
+   (`src/renderer/dev/layoutOracle.ts`) que mede no próprio Chromium — usar ele. Ele
+   agora também relata **fonte, peso, entrelinha e número de linhas computados**, que é o
+   que transformou [...] em [...].
+4. **O mesmo vale para desempenho.** Na Fase 3, o palpite natural sobre o gargalo do
+   arraste em massa (recalcular o AABB dos traços) era o menor dos custos: 3,1 ms de
+   27,3. O real era o índice espacial, 20,4 ms. Medir primeiro, otimizar depois.
+5. **O marca-texto entra por baixo de TEXTO e por cima de IMAGEM** (chave `z`, não ordem de
+   desenho). Por baixo, senão grifar cobriria o texto que se quis destacar. Por cima da
+   imagem, porque imagem é **opaca** e não há "atrás" que se veja — a regra nasceu na Fase 4,
+   quando o app não tinha imagens, e o sintoma apareceu no M8. **E a subida é local:** o
+   grifo sobe só até acima da imagem mais alta **que ele encosta**, e não acima de todas as
+   imagens do quadro. Subir sempre trocaria o problema pelo oposto em outro lugar. Caneta e
+   lápis entram por cima de tudo.
+6. **A borracha apaga por peça (padrão) ou o traço inteiro, e só tinta** (`stroke` e
+   `path`). Ela ignora texto, post-it e imagem de propósito: um gesto largo apagaria o
+   resumo inteiro sem ninguém ter pedido. Os comandos são `EraseInk` e `EraseObjects`,
+   separados de `RemoveObjects` porque a borracha apaga *durante* o arraste — quando o
+   gesto termina o estado já mudou, e a captura tardia viria vazia.
+6b. **O apagamento por peça é MÁSCARA, não recorte da geometria.** O objeto guarda os
+   rastros em `erased` e o buraco aparece no desenho, com `destination-out` num canvas
+   intermediário (`render/painters/erase.ts`). Recortar seria viável no traço de caneta e
+   **impossível de estender** à caligrafia importada, que é contorno preenchido e exigiria
+   subtração booleana de contornos. Pintar por cima com a cor do fundo — a saída barata —
+   estaria errado: no tema escuro a mancha apareceria clara, o marca-texto por baixo
+   continuaria visível e a miniatura sairia com retângulos brancos. Um objeto que ficou
+   sem nenhum pixel visível sai do quadro; quem decide isso é uma rasterização de 64px, e
+   não a geometria, porque `PathObject` não tem [...] para conferir.
+7. **A espessura do lápis nunca passa de 100% da largura nominal.** O AABB é calculado
+   inflando a linha de centro em `width / 2`; um pico maior desenharia tinta fora do
+   retângulo do objeto, e o culling a cortaria na borda da tela.
+8. **O encaixe devolve uma correção, não uma posição.** Quem arrasta tem um delta
+   acumulado desde o início do gesto; substituir a posição faria o objeto perder o
+   vínculo com o cursor. Vale para mover, redimensionar e criar.
+9. **Linha e seta não são normalizadas para o canto superior esquerdo.** Elas guardam a
+   direção em `w`/`h`; normalizar viraria uma seta apontando sempre para baixo e para a
+   direita.
+10. **A prévia de um gesto passa pelo adaptador de cor** (`ToolContext.adapt`), igual aos
+    painters. Sem isso, no tema escuro a prévia de um traço quase preto sumiria no fundo.
+11. **A edição de texto é um `contentEditable` sobre o canvas.** Cursor, seleção,
+    acentuação e IME saem de graça do Chromium; um editor próprio dentro do canvas seria
+    reescrever um motor de texto. Enquanto a caixa está aberta o objeto **não é
+    desenhado** (`Renderer.hiddenId`), senão o texto sai duplicado meio pixel fora.
+12. **A caixa nova só entra no documento se receber texto.** Enquanto se digita ela é só
+    o `<div>` — por isso uma caixa aberta por engano não deixa objeto invisível nem passo
+    de undo. Esvaziar uma caixa existente a remove, pelo mesmo motivo.
+13. **O layout de texto é ponto único de verdade** (`render/text/layout.ts`): painter,
+    importador e editor medem pelo mesmo código. Foi cada um medindo por conta própria
+    que produziu a divergência de tamanho que a importação carregou da Fase 2 à 5.
+14. **A altura de linha vem da fonte, com piso no multiplicador** — `fontBoundingBox` e
+    `actualBoundingBox`, a maior das duas. `fontSize × lineHeight` sozinho corta emoji.
+15. **A busca não tem índice invertido, e isso foi medido.** Varrer 10.000 objetos sem
+    casar com nada custa 0,9 ms: procurar nunca foi o gargalo. O que estava caro era
+    dobrar o texto (tirar acento e caixa) de tudo a cada tecla — 20,8 ms —, resolvido com
+    um `WeakMap` chaveado pelo próprio objeto, já que toda mutação o substitui e a
+    invalidação sai de graça. Antes de "otimizar a busca", ler a repartição na linha do
+    autoteste.
+16. **Arquivo solto na janela do Electron NAVEGA** se ninguém chamar `preventDefault` —
+    o app some e a janela vira um visualizador de imagem, sem volta. Por isso `dragover` e
+    `drop` são barrados na `window` inteira, e não só no canvas.
+17. **O recorte de imagem só aperta para dentro, e compõe no espaço normalizado** (0..1)
+    do arquivo. Compor é o que faz o segundo corte continuar de onde o primeiro parou;
+    medir em pixels acumularia erro e dependeria do tamanho no quadro. "Remover recorte"
+    é o caminho de volta, e por isso arrastar para fora não precisa existir.
+18. **`PatchObjects` é o comando genérico de conteúdo+geometria** (texto, marcadores,
+    recorte). Ele nasceu como `EditText` e foi renomeado na Fase 7, quando o terceiro uso
+    apareceu — se você procurar `EditText` no histórico, é ele.
+19b. **O PNG sai em LADRILHOS quando não cabe num arquivo, e a escala pedida é honrada**
+    (B13). Não existe imagem única para um quadro real desse porte — 82.967 × 19.274 unidades são 1,6
+    gigapixel a 1x. Cada ladrilho vira um arquivo irmão, com sufixo `-l<linha>c<coluna>` em
+    base 1 **inclusive no primeiro**, para ordenar por nome remontar a grade. O PDF continua
+    cedendo escala: uma página não tem onde pôr o segundo ladrilho.
 
 19c. **Medir desenho pelo rAF mente, e há um caminho que não mente.**
     `App.renderNowForMeasurement()` desenha a camada estática na hora e devolve o custo. O
@@ -944,7 +1069,7 @@ mantém desenhar barato num quadro cheio.
 |---|---|
 | Imagens de fundo | **Fotografias do Unsplash**, a 2560 de largura (Sean Oulashin e Felix Wegerer). Entram sob a **Licença Unsplash**, e não sob a MIT — a procedência está por arquivo no `assets/fundos/LEIA-ME.md`. Trocar é substituir o arquivo mantendo o nome; nenhuma linha de código muda. |
 | Pastas | **Índice no app**, não subpastas reais no disco. Arrastar nunca move arquivo. Clicar numa pasta abre uma **janela** sobre a tela principal (desde 24/09 — antes trocava a tela). Dentro dela, o X **só tira da pasta**. |
-| Fantasma ao dar zoom (B18) | Contornado por **composição pela CPU**, que foi o padrão de 21/09 a 06/10. É contorno, não causa encontrada — e em 30/09 ficou confirmado que o defeito é **da máquina de teste**: o build com GPU e sem correções não mostrou nada em dois outros computadores. **Desde 06/10 a GPU é o padrão** (arrastar 56 → 144 q/s, zoom rápido 40 → 77 q/s no quadro de teste), e o contorno virou a opção **"Compatibilidade gráfica"** de Configurações (`src/main/graficos.ts`), que vale ao reabrir e que se liga no PC de teste. **Custo no menu, achado em 24/09:** o desfoque ao vivo do painel ia a 14 q/s — resolvido com o vidro pronto, sem mexer no B18. |
+| Fantasma ao dar zoom (B18) | Contornado por **composição pela CPU**, que foi o padrão de 21/09 a 06/10. É contorno, não causa encontrada — e em 30/09 ficou confirmado que o defeito é **de uma máquina só**: o build com GPU e sem correções não mostrou nada em dois outros computadores. **Desde 06/10 a GPU é o padrão** (arrastar 56 → 144 q/s, zoom rápido 40 → 77 q/s no quadro de teste), e o contorno virou a opção **"Compatibilidade gráfica"** de Configurações (`src/main/graficos.ts`), que vale ao reabrir e que se liga no PC de teste. **Custo no menu, achado em 24/09:** o desfoque ao vivo do painel ia a 14 q/s — resolvido com o vidro pronto, sem mexer no B18. |
 | "Restaurar padrão" | Volta para a foto que vem com o app, não para o fundo sem imagem. |
 | Movimento | O app anima por padrão, independente do Windows. Toda animação nova tem de passar por `[data-anim='off']`. |
 
@@ -974,6 +1099,21 @@ mantém desenhar barato num quadro cheio.
     confiar em espera fixa — fazer o instrumento **se conferir sozinho**,
     fotografando até o quadro mudar em relação ao anterior.
 
+4. O `npm run selftest` é bloqueado pela **trava de instância única** enquanto o
+   app instalado estiver aberto — o comando roda, imprime `start electron app...` e
+   nunca termina. Conferir `node.exe` com `electron-vite` na linha de comando
+   antes, e **não matar o processo de quem está usando o app**. **Resolvido em 30/09/2026 com
+   `QB_PERFIL=<nome>`**: a execução ganha um perfil do Electron próprio e fica
+   fora da trava. **Sempre junto com `QB_BOARDS`** apontando para cópias — só o
+   perfil poria dois processos gravando na mesma pasta de quadros. O selftest
+   confere que a pasta termina em `Creation Board`, então a cópia precisa desse
+   nome (ex.: `...\sel\Creation Board`).
+5. `Set-Content -Encoding UTF8` do PowerShell corrompe o caminho acentuado
+   (`Correção` → `CorreÃ§Ã£o`). Escrever arquivo com a ferramenta de escrita, ou
+   `System.IO.File.WriteAllText` com `UTF8Encoding($false)`.
+6. `insertCSS` do Electron aplica os estilos mas **não** põe a folha em
+   `document.styleSheets` — uma auditoria de CSSOM por ali acusa falso negativo.
+   Injetar um `<style>` de verdade.
 
 **Da leitura de cor pelo CSSOM** (custou uma rodada inteira de selftest):
 

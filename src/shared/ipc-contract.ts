@@ -185,7 +185,7 @@ export interface CreationBoardApi {
     /**
      * Texto buscavel de TODOS os quadros, para a busca da biblioteca.
      *
-     * Le os arquivos na hora -- 68 ms na biblioteca de teste. O renderer guarda
+     * Le os arquivos na hora -- 68 ms numa biblioteca de estudo real. O renderer guarda
      * o resultado em memoria e so pede de novo depois de salvar ou apagar um
      * quadro.
      */

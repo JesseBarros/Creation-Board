@@ -7,10 +7,10 @@ import { join } from 'node:path';
  * GPU. Nasceu em 06/10/2026, quando a GPU virou o padrao do app.
  *
  * O contorno do B8/B18 (composicao pela CPU + repintura completa) foi o padrao
- * de 21/09 a 06/10. Em 30/09 ficou provado que os dois defeitos sao DA MAQUINA
- * do mantenedor: o instalador com GPU rodou limpo em dois outros PCs com
+ * de 21/09 a 06/10. Em 30/09 ficou provado que os dois defeitos sao DE UMA
+ * MAQUINA so: o instalador com GPU rodou limpo em dois outros PCs com
  * Windows. Pagar o contorno em todo computador -- arrasto e zoom mais pesados --
- * para consertar um so deixou de fazer sentido. se liga esta opcao no PC de teste.
+ * para consertar um so deixou de fazer sentido. Quem tiver o defeito liga esta opcao.
  *
  * TRES DECISOES QUE NAO SAO OBVIAS:
  *

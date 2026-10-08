@@ -42,7 +42,7 @@
     embaixo, e de lado nao sobrava nada -- por isso a barra parecia recortada e
     nao levantada. Com o desfoque em cerca de TRES VEZES o deslocamento, a mancha
     escapa pelos lados tambem, e e isso que faz um objeto parecer solto da
-    superficie, como no botao que foi mandado de referencia.
+    superficie, como no botao usado de referencia.
   */
   --shadow:
     0 2px 6px rgba(20, 28, 46, 0.08),
@@ -509,8 +509,8 @@
   A TINTA DO PAINEL, separada da dos cards (30/09/2026).
 
   Ate aqui o painel -- a caixa grande que envolve os quadros -- usava o mesmo
-  `--veu-lobby` dos cards, da busca e dos botoes. foi pedido para testar o painel
-  mais transparente, e isso so da para fazer com ele tendo numero proprio: os
+  `--veu-lobby` dos cards, da busca e dos botoes. Para testar o painel mais
+  transparente, e isso so da para fazer com ele tendo numero proprio: os
   cards CARREGAM texto (nome, data, contagem) e precisam da tinta que tem; o
   painel e uma lamina atras deles, e pode deixar a foto aparecer mais.
 
@@ -521,7 +521,7 @@
 }
 
 /* Sobre foto, a tinta do painel e bem mais leve que a dos cards: 26% no claro
-   e 30% no escuro, contra 46% e 54% deles. Escolha em 30/09/2026, junto do
+   e 30% no escuro, contra 46% e 54% deles. Escolhido em 30/09/2026, junto do
    borrao discreto (ver `ui/vidroPronto.ts`) -- o painel passa a mostrar a foto,
    e os cards, que carregam texto, continuam encorpados. */
 :root[data-fundo='foto'] {
@@ -616,9 +616,9 @@
   consulta zerava `--levanta`. A troca aconteceu porque a versao anterior
   produziu uma confusao concreta, que vale registrar:
 
-  foi pedido o levantar em todos os botoes, recebeu, e relatou dias depois que
-  [...]. Nada
-  tinha parado. O Windows de teste pede menos movimento (Acessibilidade > Efeitos
+  o levantar foi para todos os botoes e, dias depois, parecia que as animacoes
+  tinham parado, menos a do cartao do lobby. Nada tinha parado. O Windows do
+  computador de teste pedia menos movimento (Acessibilidade > Efeitos
   visuais > Efeitos de animacao), o app obedecia, e o cartao era o UNICO
   elemento que desobedecia -- porque tinha `-2px` cravado em vez do token. O
   app inteiro estava certo e parecia quebrado.

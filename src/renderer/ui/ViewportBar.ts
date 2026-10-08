@@ -73,7 +73,7 @@ export class ViewportBar {
   #themeBtn: HTMLButtonElement;
   /** Lugar reservado da fila de ferramentas; ver `mountTools`. */
   #toolsSlot: HTMLElement;
-  /** Leva o ponto de [...]; ver o comentario na construcao. */
+  /** Leva o ponto de "alteracoes nao salvas"; ver o comentario na construcao. */
   #saveBtn: HTMLButtonElement;
   #undoBtn: HTMLButtonElement;
   #redoBtn: HTMLButtonElement;
@@ -135,7 +135,7 @@ export class ViewportBar {
       this.actions.fitToContent(),
     );
     // No grupo de "o que vejo", junto com grade, ima e regua: o painel de
-    // camadas responde [...], que e a mesma familia. Botao, e
+    // camadas responde "o que esta no quadro", que e a mesma familia. Botao, e
     // nao so o atalho -- recurso sem botao e recurso que ninguem descobre, que
     // foi a licao do M1.
     this.#layersBtn = iconButton('camadas', 'camadas', t('barra.camadas'), () =>

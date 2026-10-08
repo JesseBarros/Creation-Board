@@ -30,7 +30,8 @@ export interface BaseObject {
   parentId: ObjectId | null;
   /**
    * Fractional index (ex.: "a0", "a0V", "a1"). Ordenar por string ordena por
-   * camada, e inserir entre dois vizinhos nao renumera o resto -> [...] custa O(1) mesmo com 10 mil objetos.
+   * camada, e inserir entre dois vizinhos nao renumera o resto -> "trazer para
+   * frente" custa O(1) mesmo com 10 mil objetos.
    */
   z: string;
   transform: Transform;
@@ -188,7 +189,7 @@ export interface ImageObject extends BaseObject {
    *
    * Fica GRAVADO no .wbd, e e isso que torna a leitura barata: ela roda uma vez
    * por imagem na vida do quadro, em segundo plano, e nunca mais. Nas 36
-   * imagens do resumo de teste o lote inteiro custou 1,65 s -- e da segunda
+   * imagens de um resumo de estudo real o lote inteiro custou 1,65 s -- e da segunda
    * abertura em diante, zero.
    *
    * Os tres estados sao diferentes e o codigo depende disso:

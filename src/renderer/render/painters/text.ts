@@ -56,11 +56,11 @@ export function paintText(o: TextObject, p: PaintContext): void {
   //
   // Ate 08/08/2026 havia aqui um corte por legibilidade: abaixo de 6px de glifo
   // o texto virava uma barra cinza, porque glifo de 3px e mancha e custa caro
-  // para desenhar a cada frame. foi pedido o contrario, e a razao e boa: num
+  // para desenhar a cada frame. Agora e o contrario, e a razao e boa: num
   // resumo, ver ONDE estao as palavras nao substitui ver QUAIS sao -- e afastar
   // o zoom e justamente como se procura algo no quadro inteiro. A troca foi
-  // aceita de olhos abertos: "mesmo que isso signifique consumir mais
-  // processamento ou uso de GPU". Ver o B12 no BUGS.md, com o custo medido.
+  // aceita de olhos abertos, mesmo custando mais processamento. Ver o B12 no
+  // BUGS.md, com o custo medido.
   //
   // Isso conserta a exportacao de graca: o PNG saia com barra cinza no lugar do
   // texto porque o painter e o mesmo, e a escala do arquivo entrava nesta conta.

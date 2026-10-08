@@ -88,7 +88,7 @@ export interface ShortcutDef {
 }
 
 export const SHORTCUTS: ShortcutDef[] = [
-  // Ctrl+N vale nos dois lugares (06/10/2026, pedido: criar mais rapido).
+  // Ctrl+N vale nos dois lugares (06/10/2026: criar mais rapido).
   // Dentro de um quadro, passa pelo aviso de alteracoes nao salvas.
   { id: 'newBoard', group: 'atalhoGrupo.arquivo', keys: 'Ctrl+N', label: 'atalho.novoQuadro', scope: 'global' },
   { id: 'save', group: 'atalhoGrupo.arquivo', keys: 'Ctrl+S', label: 'atalho.salvar', scope: 'board' },
@@ -136,7 +136,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   { id: 'find', group: 'atalhoGrupo.buscar', keys: 'Ctrl+F', label: 'atalho.buscar', scope: 'board' },
   // O MESMO Ctrl+F no menu principal busca em todos os quadros. Duas entradas
   // com a mesma tecla e escopos diferentes, e nao um atalho novo: a pergunta e a
-  // mesma ([...]), o que muda e o alcance de onde voce esta.
+  // mesma ("onde esta isto"), o que muda e o alcance de onde voce esta.
   {
     id: 'findLibrary',
     group: 'atalhoGrupo.buscar',

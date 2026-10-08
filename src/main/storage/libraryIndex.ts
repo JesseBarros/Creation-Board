@@ -12,7 +12,7 @@ import { ensureBoardsDir } from './wbdFile';
  *
  * ## Por que ler tudo, e nao manter um indice
  *
- * Medido na biblioteca de teste em 14/08/2026, antes de escrever este arquivo:
+ * Medido numa biblioteca de estudo real em 14/08/2026, antes de escrever este arquivo:
  *
  * | Quadro | Arquivo | document.json | Custo |
  * |---|---|---|---|
@@ -58,7 +58,7 @@ export async function readLibraryIndex(): Promise<LibraryIndex> {
   );
 
   const boards = lidos.filter((b): b is LibraryBoard => b !== null);
-  // Mais recente primeiro: e a ordem em que ele reconhece os proprios quadros,
+  // Mais recente primeiro: e a ordem em que se reconhecem os proprios quadros,
   // e a mesma do lobby.
   boards.sort((a, b) => b.updatedAt - a.updatedAt);
 

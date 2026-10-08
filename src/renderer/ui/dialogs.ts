@@ -161,7 +161,7 @@ export function confirmDialog(opts: {
  * um post-it amarelo e uma tag vermelha se separam do fundo; no branco puro
  * todos competem com ele.
  *
- * São sete, e não vinte: a paleta responde "qual clima", não [...].
+ * São sete, e não vinte: a paleta responde "qual clima", não "qual tom exato".
  *
  * CADA PAPEL LEVA UMA `marca` -- a mesma cor, escura o bastante para se
  * identificar sozinha. Ela vira um ponto no alto da amostra, e existe por um
@@ -209,7 +209,7 @@ export const DEFAULT_PAPER = BOARD_PAPERS[0]!.cor;
  * trocar depois muda o fundo de um resumo já montado. Quem não quiser escolher
  * aperta Enter e leva o neutro.
  *
- * O NOME veio em 06/10/2026, pedido: com nome, o quadro já nasce salvo
+ * O NOME veio em 06/10/2026: com nome, o quadro já nasce salvo
  * (tem arquivo, entra no autosave, e nunca vira "não salvo"). Sem nome, é como
  * antes -- o nome é pedido na primeira vez que salvar.
  */
@@ -314,8 +314,8 @@ export function newBoardDialog(): Promise<NovoQuadro | null> {
 export type Criacao = 'quadro' | 'pasta';
 
 /**
- * A escolha do "+" da grade (07/10/2026, pedido: [...], no mesmo jeito dos outros dialogos
- * de criar). Duas opcoes grandes, lado a lado; cada uma leva ao dialogo de
+ * A escolha do "+" da grade (07/10/2026): uma janela para escolher entre os
+ * dois, no mesmo jeito dos outros dialogos de criar. Duas opcoes grandes, lado a lado; cada uma leva ao dialogo de
  * sempre -- o "Novo quadro" ou o "Nova pasta" --, e esta janela so pergunta.
  */
 export function criarDialog(): Promise<Criacao | null> {
@@ -430,7 +430,7 @@ export function unsavedDialog(nome: string): Promise<UnsavedChoice> {
       resolve(value);
     };
     // Fechar pelo Esc ou pelo fundo e CANCELAR, e nunca descartar: um gesto de
-    // [...] nao pode ser o que apaga o trabalho.
+    // "deixa para la" nao pode ser o que apaga o trabalho.
     const modal = openModal(panel, () => done('cancelar'));
 
     salvar.focus();
@@ -747,7 +747,7 @@ function secaoConfig(titulo: string, ...linhas: HTMLElement[]): HTMLElement {
 /**
  * A linha de um fundo: miniatura, nome do arquivo, Trocar e Restaurar.
  *
- * A MINIATURA responde [...] sem ler nada -- a tela antiga
+ * A MINIATURA responde "qual imagem esta valendo" sem ler nada -- a tela antiga
  * dizia so o nome, e "Imagem que vem com o aplicativo" nao mostra qual e.
  * Restaurar e um icone e some quando ja e o padrao: aceso, prometeria uma acao
  * que nao faz nada.
@@ -830,13 +830,13 @@ function linhaFundo(opts: {
 /**
  * Configuracoes do aplicativo, abertas pelo menu principal.
  *
- * REDESENHADA em 06/10/2026 ([...]): tres secoes em cartoes, uma frase por opcao, miniatura no lugar
+ * REDESENHADA em 06/10/2026, porque estava confusa: tres secoes em cartoes, uma frase por opcao, miniatura no lugar
  * dos botoes empilhados do fundo, e o fechar no cabecalho.
  *
  * Animacoes e fundos aplicam NA HORA: o efeito e visivel na propria tela atras
  * do dialogo. Idioma e compatibilidade grafica sao gravados na hora mas so valem
  * ao recarregar (idioma) ou reabrir (compatibilidade) -- e para isso existe o
- * "Aplicar alteracoes" do rodape, pedido com a 1.1.0 instalada: trocar o
+ * "Aplicar alteracoes" do rodape, achado com a 1.1.0 instalada: trocar o
  * idioma e fechar a tela nao mudava nada, e nao havia como aplicar dali.
  */
 export function settingsDialog(atual: Configuracoes, acoes: AcoesConfig): void {

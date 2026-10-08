@@ -132,8 +132,8 @@ export class DrawTool implements Tool {
    *
    * O marca-texto entra por BAIXO -- grifar um resumo importado com ele no topo
    * cobriria com uma faixa translucida justamente o texto que se quis destacar.
-   * **Mas [...] estava errado, e o M8 nasceu disso:** foi relatado
-   * que grifar sobre uma print colada nao mostra nada. Esta certo, e a diferenca
+   * **Mas "por baixo de tudo" estava errado, e o M8 nasceu disso:** grifar
+   * sobre uma print colada nao mostrava nada. A diferenca
    * e fisica -- texto e tinta escura sobre fundo claro, e o grifo aparece atras
    * das letras como um marcador de verdade; uma IMAGEM e opaca, e nao ha "atras"
    * que se veja. A regra foi escrita na Fase 4, quando o app nao tinha imagens;
@@ -218,7 +218,7 @@ const MIN_STEP_PX = 1;
 
 /**
  * Tolerancia do RDP que gera o LOD, em unidades de mundo. O mesmo valor que a
- * carga de teste usa (dev/stress.ts): abaixo de meio zoom a diferenca entre a
+ * carga de teste usa (features/carga/stress.ts): abaixo de meio zoom a diferenca entre a
  * polilinha cheia e a simplificada nao chega a um pixel.
  */
 const LOD_EPSILON = 2.5;

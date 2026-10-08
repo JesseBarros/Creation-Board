@@ -24,7 +24,7 @@
   No hover muda o FUNDO, e nao a borda e o texto.
 
   Antes a borda e o texto viravam azuis juntos: o botao inteiro trocava de cor
-  ao passar o mouse, o que le como [...] e nao como "isto
+  ao passar o mouse, o que le como "isto foi selecionado" e nao como "isto
   responde". Escurecer o fundo um pouco e o gesto discreto que um app de
   desktop faz.
 */
@@ -178,8 +178,8 @@
 */
 /*
   O PAINEL PREENCHE A COLUNA (07/10/2026). Chegou a abracar o conteudo, e a
-  foto embaixo ficava [...] (palavras do teste); vendo a prancha
-  com as tres alturas, foi escolhido a tela cheia. Quem rola e a lista
+  foto embaixo virava um vazio grande; numa prancha com as tres alturas, a
+  escolhida foi a tela cheia. Quem rola e a lista
   (`.qb-lobby__lista`), com a busca parada no alto.
 */
 .qb-lobby__painel {
@@ -211,7 +211,7 @@
   A LISTA e quem rola.
 
   O lugar da barra de rolagem fica SEMPRE reservado (07/10/2026, o tremor com
-  a pasta aberta, relatado). Sem isto, perto do ponto em que a fileira
+  a pasta aberta). Sem isto, perto do ponto em que a fileira
   cabe exata, a barra aparecer estreitava a grade, os cards encolhiam (a
   miniatura guarda a proporcao), passavam a caber, a barra sumia, eles
   alargavam -- e qualquer hover reabria esse vai e vem, com todos os cards
@@ -316,7 +316,7 @@
   comum, saia com a suavizacao COLORIDA do Windows (ClearType) -- franjas
   vermelhas e azuis na borda de cada letra. No tema escuro o branco sobre o
   ceu escondia a diferenca; no claro, o preto grosso franjado ao lado do azul
-  liso parecia outra fonte, e se viu na hora: [...].
+  liso parecia outra fonte, e no modo claro ficava estranho.
   Com as duas no mesmo caminho, a suavizacao e uma so.
 
   Os tons por tema:
@@ -447,7 +447,7 @@
 
 /*
   O "+" que fecha a grade (07/10/2026). No vidro dos cards, sem borda e sem
-  azul: o pedido foi o "glass minimalista" do resto do menu -- o tracejado
+  azul: o mesmo vidro minimalista do resto do menu -- o tracejado
   e o azul destoavam. Ocupa a altura da fileira, como os cards ao lado; o
   `min-height` e so para nunca virar uma faixa fina. O vidro vem do base.css,
   junto do `.qb-card`.
@@ -459,7 +459,7 @@
   min-height: 150px;
   padding: 0;
   /* A borda fina e neutra dos cards: sem ela, o "+" parecia vidro de outro
-     material ao lado deles (nem tracejada, nem azul -- o pedido). */
+     material ao lado deles (nem tracejada, nem azul). */
   border: 1px solid var(--border);
   border-radius: 12px;
   color: var(--fg-muted);
@@ -485,8 +485,8 @@
 /* ============================================ busca em todos os quadros */
 
 /*
-  Sozinha na linha, abaixo do cabecalho -- e CENTRALIZADA desde 06/10/2026
-  (pedido: [...]).
+  Sozinha na linha, abaixo do cabecalho -- e CENTRALIZADA desde 06/10/2026,
+  em vez de ir de ponta a ponta.
 
   Nao entrou na fila de botoes de proposito: ali ela viraria mais um controle
   entre outros quatro, e ela nao e um controle -- e a porta de entrada de quem
@@ -520,7 +520,7 @@
 }
 
 /*
-  Levanta como os botoes do menu (07/10/2026, pedido: [...]). Com o foco ela continua levantada e a lupa
+  Levanta como os botoes do menu (07/10/2026). Com o foco ela continua levantada e a lupa
   acende -- SEM o anel azul de antes, que nao combinava com o vidro.
 */
 .qb-libsearch__field:hover,
@@ -692,8 +692,8 @@
   desobedecia `prefers-reduced-motion`.
 
   Isso apareceu de um jeito confuso em 21/09/2026: com a preferencia ligada no
-  Windows de teste, o cartao era o UNICO elemento que ainda se mexia, e a leitura
-  natural foi [...]. Nao tinham quebrado --
+  Windows dele, o cartao era o UNICO elemento que ainda se mexia, e a leitura
+  natural foi "as animacoes quebraram em todo o resto". Nao tinham quebrado --
   o resto estava obedecendo, e o cartao e que era a excecao.
 */
 .qb-card:hover,
@@ -887,7 +887,8 @@
   justamente arrastar entre ela e a tela principal. Ver o comentario da montagem
   em `ui/Lobby.ts`.
 
-  OPACA, sem `backdrop-filter`. Ela nasceu no mesmo relato que disse [...], e o desfoque do painel ja e o suspeito principal.
+  OPACA, sem `backdrop-filter`. Ela nasceu no mesmo relato que disse "o menu
+  ficou mais lento", e o desfoque do painel ja e o suspeito principal.
 */
 .qb-pasta-janela {
   --altura-janela: min(44vh, 440px);
@@ -1098,7 +1099,7 @@
 }
 
 /* Multiplo do token, e nao `-5px`: o levantar do app e UM numero, e a guarda
-   [...] do selftest existe por um card que ja fugiu dele. */
+   "nenhum com valor cravado" do selftest existe por um card que ja fugiu dele. */
 :root[data-anim='max'] .qb-card:hover,
 :root[data-anim='max'] .qb-card:focus-visible {
   transform: translateY(calc(var(--levanta) * 2.5)) scale(1.02);
@@ -1115,7 +1116,7 @@
 
 /* O fantasma vivo inclina e muda de escala a cada quadro: camada propria, para
    o Chromium mover a imagem pronta em vez de repintar card e sombra a cada
-   quadro. A sombra mais longa e o [...]. */
+   quadro. A sombra mais longa e o "levantei mais alto". */
 :root .qb-card.qb-card--fantasma.qb-card--fantasma-vivo {
   will-change: transform;
   box-shadow: 0 28px 60px rgba(0, 0, 0, 0.38);
@@ -1457,7 +1458,7 @@
 
 /*
   O nome do quadro tinha as proprias regras aqui, e saiu com ele em 20/09/2026
-  (ver ViewportBar). O ponto de [...] que o acompanhava mudou
+  (ver ViewportBar). O ponto de "alteracoes nao salvas" que o acompanhava mudou
   de dono e agora vive no botao de salvar -- a regra esta em app.css, junto das
   demais da barra.
 */

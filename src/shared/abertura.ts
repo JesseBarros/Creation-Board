@@ -3,7 +3,7 @@
  *
  * E a cor que aparece antes de a pagina pintar e nas bordas ao redimensionar,
  * e por isso tem de ser a mesma do fundo da tela de abertura (`index.html`): as
- * duas diferentes seriam a "piscada" que foi pedido para tirar.
+ * duas diferentes seriam uma piscada ao abrir.
  *
  *  - escuro: a cor exata do fundo da logo (medido: rgb(6,9,18)) -- a logo e um
  *    PNG opaco, e qualquer outra cor deixaria o retangulo dela aparecendo;

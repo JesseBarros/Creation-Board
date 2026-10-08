@@ -55,10 +55,9 @@ export function idiomaValido(v: unknown): v is Idioma {
 }
 
 /**
- * O idioma a partir das preferencias do sistema -- decisao de produto: "segue o
- * Windows". So o portugues DO BRASIL vira `pt-BR`; qualquer outro idioma,
- * inclusive o portugues de Portugal, vira `en-US` (07/10/2026: "se o windows =
- * outra lingua diferente de ptbr e ingles us = ingles padrao"; [...]).
+ * O idioma a partir das preferencias do sistema: o app segue o Windows. So o
+ * portugues DO BRASIL vira `pt-BR`; qualquer outro idioma, inclusive o
+ * portugues de Portugal, vira `en-US`, o padrao (07/10/2026).
  *
  * `pt` sem pais conta como Brasil: e como o Chromium chama o portugues quando
  * o sistema nao diz a variante, e quem chega assim mais provavelmente le pt-BR.

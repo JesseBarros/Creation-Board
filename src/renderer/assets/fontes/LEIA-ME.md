@@ -9,6 +9,12 @@ assinatura do app na tela inicial.
 
 ## Por que esta, e por que embutida
 
+**Outfit é a fonte mais próxima da palavra "Creation Board" da logo do
+projeto** (`build/logo-creation-board.png`): geométrica, arredondada, com o "a"
+de um andar só. Escolhida em 30/09/2026, numa prancha que comparou
+Outfit, Quicksand, Urbanist e Lexend sobre as fotos de fundo reais, nos dois
+temas. Antes disto o título usava a fonte da interface (Segoe UI), simples
+demais para a identidade do app.
 
 **Embutida porque a CSP não deixa buscar fonte de fora** (`font-src 'self'
 data:`) — e um app sem rede não deveria mesmo depender de um servidor de fontes

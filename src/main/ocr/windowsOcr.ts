@@ -9,13 +9,13 @@ import type { OcrItem, OcrReport, OcrText } from '@shared/ocr';
  *
  * ## Por que o motor do Windows, e nao uma biblioteca
  *
- * A escolha foi MEDIDA nas 36 imagens do resumo de teste, em 14/08/2026, antes
+ * A escolha foi MEDIDA nas 36 imagens de um resumo de estudo real, em 14/08/2026, antes
  * de escrever este arquivo:
  *
  * | | Windows.Media.Ocr |
  * |---|---|
  * | tamanho no instalador | **0 MB** -- ja vem no sistema |
- * | idioma | pt-BR ja instalado na maquina de teste |
+ * | idioma | pt-BR ja instalado no Windows em portugues |
  * | 36 imagens (4,12 MB) | **1,65 s**, media de 46 ms |
  * | imagens com texto | 30 de 36, **3.456 palavras** |
  * | erros | 0 |

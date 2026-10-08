@@ -15,7 +15,7 @@ const ROTULOS_DO_F3_MENU: Readonly<Record<string, () => string>> = {
 };
 
 /**
- * Painel de desempenho do MENU PRINCIPAL (F3). Pedido em 24/09/2026.
+ * Painel de desempenho do MENU PRINCIPAL (F3). Desde 24/09/2026.
  *
  * NAO e o painel do quadro reaproveitado, e a diferenca e o que ele mede. O F3
  * do quadro destaca o custo de DESENHAR o canvas -- e o menu nao tem canvas. O
@@ -29,7 +29,8 @@ const ROTULOS_DO_F3_MENU: Readonly<Record<string, () => string>> = {
  * algo se mexe, e a composicao que nao esta dando conta.
  *
  * A LICAO DO PAINEL DO QUADRO vale aqui (ver o cabecalho de `DebugPanel.ts`):
- * ele media [...] e era lido como [...]. Aqui o laco e continuo justamente para a cadencia NAO depender de quanta
+ * ele media "quantas vezes a tela mudou" e era lido como "quao rapido o app
+ * e". Aqui o laco e continuo justamente para a cadencia NAO depender de quanta
  * coisa muda -- ela so cai quando o quadro atrasa.
  *
  * O DOM e escrito a cada 250 ms, nao a cada quadro, pelo mesmo motivo do

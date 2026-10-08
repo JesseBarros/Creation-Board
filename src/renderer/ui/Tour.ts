@@ -2,7 +2,7 @@ import { t } from '@shared/i18n';
 
 /**
  * Tutorial guiado: escurece a tela, ilumina um elemento por vez e explica com um
- * balao. Pedido em 06/10/2026: um passo a passo com destaque na primeira
+ * balao. Desde 06/10/2026: um passo a passo com destaque na primeira
  * abertura, e popups dentro do quadro explicando cada ferramenta.
  *
  * Um componente para os dois tutoriais (menu e quadro), e SO o mecanismo: os

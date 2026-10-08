@@ -11,7 +11,7 @@ export const IDIOMA_KEY = 'qb.idioma';
  *      procuram elementos pelo texto, e a maquina de quem roda nao pode decidir
  *      se elas passam;
  *   3. a escolha gravada em Configuracoes;
- *   4. o idioma do Windows -- decisao de produto: "segue o Windows".
+ *   4. o idioma do Windows.
  */
 export function escolherIdioma(): Idioma {
   const params = new URLSearchParams(location.search);

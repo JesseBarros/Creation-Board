@@ -170,7 +170,7 @@ export interface Reconciliado {
  *    indice se perdeu.)
  * 3. Quadro citado por DUAS pastas fica na primeira, pela ordem do indice. Nao
  *    e um estado que a interface produza, mas um arquivo editado a mao produz --
- *    e [...] seria pior que [...].
+ *    e "aparece duas vezes" seria pior que "aparece uma vez no lugar errado".
  *
  * Pasta vazia CONTINUA existindo: o usuario a criou e ainda nao pos nada, e
  * faze-la sumir sozinha seria perder uma acao dele.
@@ -218,7 +218,7 @@ export function nomeDeArquivoDe(b: BoardSummary): string {
 /**
  * Tira um quadro de todas as pastas. Usado antes de po-lo em outra.
  *
- * Separado de [...] de propósito: mover e tirar-e-por, e um mover que
+ * Separado de "por em pasta" de propósito: mover e tirar-e-por, e um mover que
  * esquece de tirar produz o estado da regra 3 acima.
  */
 export function tirarDeTodas(indice: IndicePastas, nomeArquivo: string): IndicePastas {
@@ -316,7 +316,7 @@ export function nomeLivre(nomesEmUso: string[], base: string): string {
  * que so poe cria o quadro em duas pastas. Pasta que nao existe (excluida entre
  * o arrastar e o soltar) devolve o indice como veio -- inclusive NAO tirando o
  * quadro da pasta antiga, porque soltar num alvo que sumiu nao pode virar
- * [...] sem ninguem ter pedido isso.
+ * "tirar da pasta" sem ninguem ter pedido isso.
  */
 export function moverParaPasta(indice: IndicePastas, nomeArquivo: string, pastaId: string): IndicePastas {
   if (!nomeDeArquivoValido(nomeArquivo)) return indice;

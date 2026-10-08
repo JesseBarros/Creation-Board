@@ -204,8 +204,8 @@ function shapeToSvg(o: ShapeObject, adapt: Adapter): string {
  * Sem isto, cada `<text>` e posicionado no ponto que medimos mas desenhado com a
  * fonte de quem abre o arquivo. Quando essa fonte e um pouco mais larga, o
  * trecho transborda e invade o comeco do trecho seguinte -- e o resultado e
- * texto por cima de texto, que nao existe no quadro original. Relatado
- * em 08/08/2026 (B14).
+ * texto por cima de texto, que nao existe no quadro original. Achado em
+ * 08/08/2026 (B14).
  *
  * `spacingAndGlyphs` distribui a diferenca no espacamento E na largura dos
  * glifos. So `spacing` empilharia todo o erro nos espacos, o que aperta ou

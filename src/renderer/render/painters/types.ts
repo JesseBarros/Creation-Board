@@ -42,9 +42,8 @@ export type Painter<T extends BoardObject> = (obj: T, p: PaintContext) => void;
  * Nao existe mais um nivel que substitua o objeto por um retangulo solido.
  *
  * Existia ate 08/08/2026: abaixo de 12% de zoom todo objeto virava um bloco da
- * cor dominante, e era o que fazia as imagens e as formas do quadro de teste
- * aparecerem como quadrados coloridos ao afastar. foi pedido que sumisse,
- * aceitando o custo -- ver o B12 no BUGS.md, com o antes e o depois medidos.
+ * cor dominante, e era o que fazia as imagens e as formas do quadro
+ * aparecerem como quadrados coloridos ao afastar. Saiu, com o custo aceito -- ver o B12 no BUGS.md, com o antes e o depois medidos.
  * O unico corte que ficou e a simplificacao da polilinha, que preserva o traco.
  */
 export function lodForZoom(zoom: number): LodLevel {

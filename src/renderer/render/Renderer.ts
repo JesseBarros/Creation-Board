@@ -223,7 +223,7 @@ export class Renderer {
       translucido. Um compositor que se permite pular a mistura tambem se
       permite contas de cobertura mais agressivas, e uma conta de cobertura
       agressiva com dano mal calculado e exatamente como conteudo velho
-      sobrevive em retangulos -- a forma que o rastro tem na captura de teste.
+      sobrevive em retangulos -- a forma que o rastro tem na captura.
 
       E instrumento, e nao conserto: se curar, a troca (alguns pontos
       percentuais contra o rastro) passa a ser uma decisao de produto, tomada com o
@@ -454,8 +454,8 @@ export class Renderer {
     // Um caminho so, para qualquer zoom. Ate 08/08/2026 havia um atalho aqui:
     // abaixo de 12% de zoom todo objeto virava um retangulo solido da cor
     // dominante, desenhado em lote. Era barato e mentia -- imagem e forma
-    // apareciam como quadrados coloridos, e foi assim que se viu o quadro ao
-    // afastar. Saiu, com o custo aceito e medido (B12).
+    // apareciam como quadrados coloridos ao afastar. Saiu, com o custo aceito e
+    // medido (B12).
     for (let i = 0; i < objects.length; i++) {
       const obj = objects[i]!;
       if (obj.id === this.hiddenId) continue;

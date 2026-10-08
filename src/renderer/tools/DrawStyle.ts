@@ -73,7 +73,7 @@ export const ALERT_ICONS: Record<AlertLevel, string> = {
 /**
  * Faixa de espessura de cada ferramenta, do minimo ao maximo.
  *
- * Ate 04/08/2026 eram tres degraus fixos; foi pedido controle continuo, e a
+ * Ate 04/08/2026 eram tres degraus fixos; agora o controle e continuo, e a
  * barra de 0 a 100% mapeia para esta faixa. **0% nao e zero**: um traco de
  * espessura zero seria invisivel, e uma barra cujo inicio nao desenha nada e uma
  * barra com um pedaco inutil. O minimo e a menor espessura que ainda deixa

@@ -18,7 +18,7 @@ const isDev = !app.isPackaged;
 // QB_PERFIL=<nome> roda esta execucao num PERFIL separado do Electron (pasta de
 // dados propria), e com isso fora da trava de instancia unica do app aberto.
 //
-// Existe pela armadilha 4 do ENGENHARIA.md: com o app de teste aberto, selftest,
+// Existe pela armadilha 4 do ENGENHARIA.md: com o app instalado aberto, selftest,
 // captura e bancada simplesmente nao subiam -- a trava fechava o segundo
 // processo calado. O perfil separa `localStorage` e trava; o disco se separa
 // com o `QB_BOARDS` apontando para copias. Usar os DOIS juntos: so o perfil,
@@ -39,7 +39,7 @@ if (perfil && isDev && /^[a-z0-9-]{1,32}$/i.test(perfil)) {
  * "compatibilidade grafica" de Configuracoes (modo `compat`).
  *
  * De 21/09 a 06/10 o contorno foi o padrao de todo mundo. Em 30/09 ficou
- * provado que o B8 e o B18 sao DA MAQUINA de teste: o instalador com
+ * provado que o B8 e o B18 sao DE UMA MAQUINA so: o instalador com
  * GPU (modo `normal`) rodou limpo em dois outros PCs com Windows. E o preco do
  * contorno, medido em 06/10 com a bancada do quadro (`QB_BENCH_QUADRO=1`, o
  * quadro de teste de 1.063 objetos, tres rodadas alternadas, medianas):
@@ -60,7 +60,7 @@ if (perfil && isDev && /^[a-z0-9-]{1,32}$/i.test(perfil)) {
  *
  * `disable-gpu-compositing` -- correcao do B18, o FANTASMA ao dar zoom.
  *
- * Adotada em 21/09/2026, por decisao de produto, depois de uma caçada que eliminou
+ * Adotada em 21/09/2026, depois de uma caçada que eliminou
  * todo o resto. O sintoma: ao mudar o zoom, o desenho inteiro aparecia DUAS
  * VEZES na tela, em duas escalas, com o estado anterior mais apagado. Acontecia
  * nas duas camadas de canvas ao mesmo tempo e saia na captura de tela.
@@ -83,7 +83,7 @@ if (perfil && isDev && /^[a-z0-9-]{1,32}$/i.test(perfil)) {
  * Compor pela CPU custa por frame independente do conteudo, entao a perda
  * aparece onde o app seria rapido e DESAPARECE onde ele ja estava lento -- na
  * fase pesada o padrao novo e MAIS rapido, porque ali o gargalo nunca foi a
- * composicao. no teste com a mao e escolheu o fantasma fora.
+ * composicao. No teste manual, sem o fantasma ficou melhor.
  *
  * NOTA SOBRE COMO ESTE NUMERO FOI OBTIDO, porque ele quase entrou errado: a
  * primeira medicao usou UMA amostra de cada lado e deu "144 -> 77 fps", numero
@@ -129,7 +129,7 @@ if (perfil && isDev && /^[a-z0-9-]{1,32}$/i.test(perfil)) {
  */
 const GPU_MODOS: Record<string, { nota: string; aplicar: () => void }> = {
   // O PADRAO desde 06/10/2026: composicao pela GPU, nada aplicado. Na maquina
-  // do mantenedor, e assim que o B8/B18 volta -- e e com ele que se confere,
+  // que tem o defeito, e assim que o B8/B18 volta -- e e com ele que se confere,
   // depois de subir de Electron, se a opcao ainda e necessaria la.
   normal: {
     nota: 'composicao pela GPU, sem correcao (o padrao)',
@@ -191,7 +191,8 @@ const GPU_MODOS: Record<string, { nota: string; aplicar: () => void }> = {
 
     O `comp` cura o rastro do zoom (B18), e ele foi o unico que curou -- mas ele
     e grosso: desliga a composicao por GPU INTEIRA, e o preco aparece como
-    lentidao ao mover a tela. Relato, testando: [...].
+    lentidao ao mover a tela: no teste manual, o rastro sumiu, mas mover o
+    quadro ficou com sensacao de atraso.
 
     O problema de diagnostico e que o `comp` faz DUAS coisas de uma vez, e
     nenhuma das duas tinha sido isolada:
@@ -263,7 +264,7 @@ function createWindow(): void {
     show: false,
     // Cor de fundo igual a da TELA DE ABERTURA, no tema do Windows (07/10/2026:
     // antes era sempre a escura, e com o tema claro a janela abria escura e
-    // virava clara -- a "piscada" que foi pedido para tirar). Quem escolheu um
+    // virava clara -- uma piscada ao abrir). Quem escolheu um
     // tema diferente do Windows nao ve diferenca: a janela so aparece depois do
     // primeiro frame (`ready-to-show`), e a pagina avisa o tema dela logo ao
     // montar (`app:tema`). Ver `shared/abertura.ts`.
@@ -276,7 +277,7 @@ function createWindow(): void {
     // dentro do proprio `.exe` como recurso, posto pelo electron-builder, e o
     // caminho abaixo nem existiria (o codigo roda de dentro do asar). Sem esta
     // linha, `npm run dev` mostrava o atomo do Electron -- o icone padrao --,
-    // que foi exatamente o que se viu na barra de titulo.
+    // na barra de titulo.
     ...(isDev ? { icon: join(__dirname, '../../build/icon.ico') } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -290,7 +291,7 @@ function createWindow(): void {
   });
 
   mainWindow.once('ready-to-show', () => {
-    // A bancada do quadro mede na janela MAXIMIZADA: e como se usa, e o custo
+    // A bancada do quadro mede na janela MAXIMIZADA: e o uso tipico, e o custo
     // de compor cresce com a area.
     if (process.env['QB_BENCH_QUADRO'] === '1' && isDev) {
       // A area de trabalho da tela principal ANTES de maximizar: sozinho, o

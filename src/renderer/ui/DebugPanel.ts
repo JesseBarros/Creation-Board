@@ -28,14 +28,15 @@ export interface DebugActions {
  * suficiente para contaminar justamente o numero que o painel esta medindo.
  *
  * **O painel foi pego medindo a coisa errada, e reordenado por causa disso.**
- * foi relatado, olhando o F3 no quadro real: [...].
+ * Olhando o F3 num quadro real: quanto mais rapido se movia o quadro, maior o
+ * fps, ate um teto perto de 66; movendo pouco, ficava em 28-30.
  * Custo nao se comporta assim -- se desenhar fosse o gargalo, mover mais rapido
  * daria MENOS fps, nao mais.
  *
  * O que o contador media era o intervalo entre redesenhos, e o `Scheduler` so
  * redesenha quando algo muda: mover devagar produz menos mudancas, logo menos
- * frames, logo um numero menor. Ele lia [...]; o painel respondia
- * [...]. Na MESMA captura, o render era de
+ * frames, logo um numero menor. A leitura era "o app esta lento"; o painel respondia
+ * "a tela mudou 30 vezes neste segundo". Na MESMA captura, o render era de
  * 6,40 ms com 1.049 objetos -- daria 156 fps se houvesse o que desenhar.
  *
  * Entao o destaque agora e **Render**, que e trabalho e so trabalho, e o antigo
@@ -46,9 +47,9 @@ const UPDATE_INTERVAL_MS = 120;
 /**
  * Orcamento de um frame, em ms, nas duas metas.
  *
- * 144 e a meta ([...], B9). O verde antigo comecava
- * em 55 fps -- ou seja, o medidor dizia "otimo" exatamente no numero que o
- * incomodava.
+ * 144 e a meta (a fluidez de uma tela de 144 Hz, B9). O verde antigo comecava
+ * em 55 fps -- ou seja, o medidor dizia "otimo" exatamente num numero que
+ * ainda travava.
  */
 const ORCAMENTO_144 = 1000 / 144;
 const ORCAMENTO_60 = 1000 / 60;
