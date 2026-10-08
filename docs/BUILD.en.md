@@ -32,6 +32,7 @@ npm run check:pastas    # folder index, paths outside the folder, zip bombs
 npm run check:fundo     # validation of the chosen background image
 npm run check:graficos  # the graphics compatibility option: reading it and precedence
 npm run check:abertura  # the splash screen follows the theme, with no flash
+npm run check:privacidade # nothing personal in git: user names, emails, keys or private terms
 npm run check:colors    # board color contrast in both themes
 npm run check:dist      # the self-test running inside the packaged app
 ```

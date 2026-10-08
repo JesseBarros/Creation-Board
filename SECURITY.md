@@ -440,6 +440,11 @@ passa pelo mesmo `esc()` do texto.
 | `icon.ico`, fotos de fundo, capturas do README | — | Já estavam limpos |
 | um relatório interno de desenvolvimento | Caminho com o nome de usuário do Windows | Trocado; o relatório saiu do repositório na 1.1.0 |
 
+**Guarda permanente:** `npm run check:privacidade` reprova caminho de usuário,
+e-mail que não seja o anônimo do GitHub, formato de chave e termos privados (estes
+comparados por SHA-256, para o próprio script não os conter), nos arquivos e em
+todas as mensagens de commit. Roda antes de todo envio ao GitHub.
+
 **Histórico do git limpo em 07/10/2026**: a versão do logo com o manifesto C2PA
 foi trocada pela limpa (mesmos pixels), e o nome de usuário do Windows saiu de todos
 os arquivos antigos, em todos os ramos e tags. Os instaladores publicados não

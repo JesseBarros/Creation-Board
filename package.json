@@ -19,13 +19,13 @@
   "scripts": {
     "dev": "node scripts/run.mjs dev",
     "preview": "node scripts/run.mjs preview",
-    "typecheck": [...],
+    "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.web.json --noEmit",
     "build": "npm run typecheck && node scripts/run.mjs build",
     "icon": "node build/make-icon.js build/icon.ico",
     "boot-logo": "node build/make-boot-logo.js",
     "prepare:winsign": "node scripts/prepare-wincodesign.mjs",
-    "dist": [...],
-    "dist:dir": [...]
+    "dist": "npm run build && npm run prepare:winsign && electron-builder --win --x64",
+    "dist:dir": "npm run build && npm run prepare:winsign && electron-builder --win --x64 --dir"
   },
   "devDependencies": {
     "@types/rbush": "^4.0.0",

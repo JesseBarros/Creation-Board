@@ -32,6 +32,7 @@ npm run check:pastas    # índice de pastas, caminhos fora da pasta, bomba de zi
 npm run check:fundo     # validação da imagem de fundo escolhida
 npm run check:graficos  # a opção de compatibilidade gráfica: leitura e quem manda
 npm run check:abertura  # a tela de abertura segue o tema, sem piscar
+npm run check:privacidade # nada pessoal no git: usuário, e-mail, chave ou termo privado
 npm run check:colors    # contraste das cores do quadro nos dois temas
 npm run check:dist      # o auto-teste rodando dentro do app empacotado
 ```
